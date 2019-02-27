@@ -27,6 +27,7 @@ where
 }
 ```
 Description
+
 | Field       | Size, B | Description |
 | ----------- | :----:  | :----------- |
 |magic_byte   | 8       | separates files in blob
