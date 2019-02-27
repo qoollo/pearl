@@ -1,0 +1,10 @@
+[package]
+name = "pearl"
+version = "0.1.0"
+description = "low level blob-based I/O library"
+authors = ["Pavel Yakushin <p.yakushin@qoollo.com>"]
+edition = "2018"
+repository = "https://lab.qoollo.com/py/pearl"
+readme = "README.md"
+
+[dependencies]
