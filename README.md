@@ -35,7 +35,7 @@ Description
 |magic_byte   | 8       | separates files in blob
 |key          |any size | used to determined file location and searching
 |flags        |1        | additional file props, e.g. `DELETED`
-|size         |8        | size of whole file record in blob, with header
+|size         |8        | size of data in record, without header
 |blob_offset  |8        | record offset in blob
 |created      |8        | created timestamp
 |modified     |8        | modified timestamp
