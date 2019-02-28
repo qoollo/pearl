@@ -16,7 +16,7 @@ Table of Contents
   * [Header](#header)
 
 # Storage scheme
-![pearl storage scheme](pearl_storage_scheme.png)
+![pearl storage scheme](pearl_storage_scheme.svg)
 
 # Blob
 ## Header
