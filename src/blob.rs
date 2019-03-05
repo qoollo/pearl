@@ -1,6 +1,6 @@
 /// A `Blob` struct for performing of database
 /// # Examples
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Blob {
     header: Header,
 }

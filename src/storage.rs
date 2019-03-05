@@ -4,11 +4,15 @@ use std::{
     path::Path,
 };
 
+use crate::blob::Blob;
+
 /// Used to create a storage, configure it and manage
 /// Examples
 #[derive(Debug)]
 pub struct Storage {
     config: Config,
+    opened_blob: Box<Option<Blob>>,
+    blobs: Vec<Blob>,
 }
 
 impl Storage {
@@ -31,14 +35,14 @@ impl Storage {
             .collect();
         if files_in_work_dir.is_empty() {
             println!("working dir is empty, start new storage");
-        // self.create_new();
+            self.init_new().unwrap();
         } else {
             println!("working dir contains files, try init existing");
             println!("ls:");
             files_in_work_dir
                 .iter()
                 .for_each(|name| println!("{}", name.as_os_str().to_str().unwrap()));
-            // self.from_existing();
+            // self.init_from_existing();
         }
         // @TODO implement
         Ok(())
@@ -65,6 +69,20 @@ impl Storage {
         // @TODO implement
         Ok(())
     }
+
+    /// # Description
+    /// Blobs count contains closed blobs and one opened, if is some
+    /// # Examples
+    /// ```
+    /// use pearl::Builder;
+    ///
+    /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build();
+    /// storage.init();
+    /// assert_eq!(storage.blobs_count(), 1);
+    /// ```
+    pub fn blobs_count(&self) -> usize {
+        self.blobs.len() + if self.opened_blob.is_some() { 1 } else { 0 }
+    }
 }
 
 impl Storage {
@@ -82,12 +100,19 @@ impl Storage {
         fs::create_dir_all(wd)?;
         Ok(())
     }
+
+    fn init_new(&mut self) -> Result<(), ()> {
+        self.opened_blob = Box::new(Some(Default::default()));
+        Ok(())
+    }
 }
 
 impl Default for Storage {
     fn default() -> Self {
         Self {
             config: Default::default(),
+            opened_blob: Box::default(),
+            blobs: Vec::new(),
         }
     }
 }
@@ -111,6 +136,7 @@ impl<'a> Builder {
     pub fn build(self) -> Storage {
         Storage {
             config: self.config,
+            ..Default::default()
         }
     }
 
