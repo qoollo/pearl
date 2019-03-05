@@ -8,3 +8,5 @@ repository = "https://lab.qoollo.com/py/pearl"
 readme = "README.md"
 
 [dependencies]
+env_logger = "0.6.0"
+log = "0.4.6"

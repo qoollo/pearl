@@ -6,6 +6,9 @@
 //!
 //! The `pearl` crate provides Append only key-value blob storage on disk
 
+// #[macro_use]
+// extern crate log;
+
 mod blob;
 mod index;
 mod record;
