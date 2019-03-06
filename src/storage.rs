@@ -139,6 +139,7 @@ impl Storage {
     }
 
     fn search_for_active_blob(&self) -> Option<usize> {
+        // @TODO Search for last active blob by index extracted from file name
         let mut active_blob_id = None;
         self.blobs.iter().enumerate().find(|(i, blob)| {
             let res = blob.is_active();
