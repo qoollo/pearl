@@ -1,3 +1,5 @@
+use std::path::Path;
+
 /// A `Blob` struct for performing of database
 /// # Examples
 #[derive(Debug, Default)]
@@ -13,6 +15,13 @@ struct Header {
     version: u32,
     key_size: u32,
     flags: u64,
+}
+
+impl Blob {
+    pub fn from_file<P: AsRef<Path>>(_path: P) -> Result<Self, ()> {
+        // @TODO implement
+        unimplemented!()
+    }
 }
 
 #[test]

@@ -42,7 +42,7 @@ impl Storage {
             files_in_work_dir
                 .iter()
                 .for_each(|name| println!("{}", name.as_os_str().to_str().unwrap()));
-            // self.init_from_existing();
+            self.init_from_existing().unwrap();
         }
         // @TODO implement
         Ok(())
@@ -103,6 +103,26 @@ impl Storage {
 
     fn init_new(&mut self) -> Result<(), ()> {
         self.opened_blob = Box::new(Some(Default::default()));
+        Ok(())
+    }
+
+    fn init_from_existing(&mut self) -> Result<(), ()> {
+        let wd = Path::new(&self.config.work_dir);
+        let entries: Vec<_> = fs::read_dir(wd)
+            .map_err(|e| eprintln!("{}", e))?
+            .map(std::result::Result::unwrap)
+            .collect();
+        self.blobs = entries
+            .iter()
+            .filter_map(|entry| {
+                if entry.metadata().ok()?.is_file() {
+                    Some(Blob::from_file(entry.path()).ok()?)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        self.init_new()?;
         Ok(())
     }
 }
