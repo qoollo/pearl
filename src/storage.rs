@@ -1,6 +1,6 @@
 use std::{
     fs::{self, DirEntry},
-    io::{self, ErrorKind},
+    io,
     path::Path,
 };
 
@@ -94,21 +94,14 @@ impl Storage {
 
 impl Storage {
     fn prepare_work_dir(&self) -> io::Result<()> {
-        let wd = Path::new(&self.config.work_dir);
-        if let Err(e) = fs::read_dir(wd) {
-            match e.kind() {
-                ErrorKind::NotFound => {
-                    error!("\"{}\" not found", self.config.work_dir);
-                }
-                _ => return Err(e),
-            }
+        let path = Path::new(&self.config.work_dir);
+        if !path.exists() {
+            debug!("create work dir recursively: {}", path.display());
+            fs::create_dir_all(path)
+        } else {
+            debug!("work dir exists: {}", path.display());
+            Ok(())
         }
-        debug!(
-            "create work dir recursively: {}",
-            wd.to_str().unwrap_or("failed to convert path to str")
-        );
-        fs::create_dir_all(wd)?;
-        Ok(())
     }
 
     // @TODO specify more useful error type
