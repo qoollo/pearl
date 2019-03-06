@@ -34,14 +34,14 @@ impl Storage {
             .map(|entry| entry.unwrap().file_name())
             .collect();
         if files_in_work_dir.is_empty() {
-            println!("working dir is empty, start new storage");
+            debug!("working dir is empty, starting empty storage");
             self.init_new().unwrap();
         } else {
-            println!("working dir contains files, try init existing");
-            println!("ls:");
+            debug!("working dir contains files, try init existing");
+            trace!("ls:");
             files_in_work_dir
                 .iter()
-                .for_each(|name| println!("{}", name.as_os_str().to_str().unwrap()));
+                .for_each(|name| trace!("{}", name.as_os_str().to_str().unwrap()));
             self.init_from_existing().unwrap();
         }
         // @TODO implement
@@ -91,12 +91,15 @@ impl Storage {
         if let Err(e) = fs::read_dir(wd) {
             match e.kind() {
                 ErrorKind::NotFound => {
-                    println!("\"{}\" not found", self.config.work_dir);
+                    error!("\"{}\" not found", self.config.work_dir);
                 }
                 _ => return Err(e),
             }
         }
-        println!("create dir all");
+        debug!(
+            "create work dir recursively: {}",
+            wd.to_str().unwrap_or("failed to convert path to str")
+        );
         fs::create_dir_all(wd)?;
         Ok(())
     }
@@ -109,7 +112,7 @@ impl Storage {
     fn init_from_existing(&mut self) -> Result<(), ()> {
         let wd = Path::new(&self.config.work_dir);
         let entries: Vec<_> = fs::read_dir(wd)
-            .map_err(|e| eprintln!("{}", e))?
+            .map_err(|e| error!("{}", e))?
             .map(std::result::Result::unwrap)
             .collect();
         self.blobs = entries
