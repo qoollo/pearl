@@ -22,6 +22,10 @@ impl Blob {
         // @TODO implement
         unimplemented!()
     }
+
+    pub fn is_opened(&self) -> bool {
+        unimplemented!()
+    }
 }
 
 #[test]

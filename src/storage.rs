@@ -1,5 +1,5 @@
 use std::{
-    fs,
+    fs::{self, DirEntry},
     io::{self, ErrorKind},
     path::Path,
 };
@@ -28,21 +28,22 @@ impl Storage {
     /// Storage works in dir provided to builder. If dir not exist,
     /// creates it, otherwise tries init dir as existing storage.
     pub fn init(&mut self) -> io::Result<()> {
+        // @TODO implement work dir validation
         self.prepare_work_dir()?;
         let wd = Path::new(&self.config.work_dir);
         let files_in_work_dir: Vec<_> = fs::read_dir(wd)?
-            .map(|entry| entry.unwrap().file_name())
+            .map(std::result::Result::unwrap) // @TODO handle unwrap explicitly
             .collect();
         if files_in_work_dir.is_empty() {
             debug!("working dir is empty, starting empty storage");
-            self.init_new().unwrap();
+            self.init_new().unwrap(); // @TODO handle unwrap explicitly
         } else {
             debug!("working dir contains files, try init existing");
             trace!("ls:");
             files_in_work_dir
                 .iter()
-                .for_each(|name| trace!("{}", name.as_os_str().to_str().unwrap()));
-            self.init_from_existing().unwrap();
+                .for_each(|name| trace!("{}", name.file_name().as_os_str().to_str().unwrap())); // @TODO handle unwrap explicitly
+            self.init_from_existing(files_in_work_dir).unwrap(); // @TODO handle unwrap explicitly
         }
         // @TODO implement
         Ok(())
@@ -50,6 +51,8 @@ impl Storage {
 
     /// Description
     /// Examples
+
+    // @TODO specify more useful error type
     pub fn write(&mut self) -> Result<(), ()> {
         // @TODO implement
         Ok(())
@@ -57,6 +60,8 @@ impl Storage {
 
     /// Description
     /// Examples
+
+    // @TODO specify more useful error type
     pub fn read(&self) -> Result<(), ()> {
         // @TODO implement
         Ok(())
@@ -65,6 +70,8 @@ impl Storage {
     /// # Description
     /// Closes all file descriptors
     /// # Examples
+
+    // @TODO specify more useful error type
     pub fn close(&mut self) -> Result<(), ()> {
         // @TODO implement
         Ok(())
@@ -104,20 +111,24 @@ impl Storage {
         Ok(())
     }
 
-    fn init_new(&mut self) -> Result<(), ()> {
+    // @TODO specify more useful error type
+    #[inline]
+    fn init_opened_blob(&mut self) -> Result<(), ()> {
         self.opened_blob = Box::new(Some(Default::default()));
         Ok(())
     }
 
-    fn init_from_existing(&mut self) -> Result<(), ()> {
-        let wd = Path::new(&self.config.work_dir);
-        let entries: Vec<_> = fs::read_dir(wd)
-            .map_err(|e| error!("{}", e))?
-            .map(std::result::Result::unwrap)
-            .collect();
-        self.blobs = entries
+    // @TODO specify more useful error type
+    fn init_new(&mut self) -> Result<(), ()> {
+        self.init_opened_blob()
+    }
+
+    // @TODO specify more useful error type
+    fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<(), ()> {
+        self.blobs = files
             .iter()
             .filter_map(|entry| {
+                // @TODO implement more file validations
                 if entry.metadata().ok()?.is_file() {
                     Some(Blob::from_file(entry.path()).ok()?)
                 } else {
@@ -125,8 +136,24 @@ impl Storage {
                 }
             })
             .collect();
-        self.init_new()?;
-        Ok(())
+        if let Some(blob_index) = self.search_for_opened_blob() {
+            self.opened_blob = Box::new(Some(self.blobs.remove(blob_index)));
+            Ok(())
+        } else {
+            self.init_opened_blob()
+        }
+    }
+
+    fn search_for_opened_blob(&self) -> Option<usize> {
+        let mut opened_blob_id = None;
+        self.blobs.iter().enumerate().find(|(i, blob)| {
+            let res = blob.is_opened();
+            if res {
+                opened_blob_id = Some(*i);
+            }
+            res
+        });
+        opened_blob_id
     }
 }
 
