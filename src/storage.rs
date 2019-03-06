@@ -11,7 +11,7 @@ use crate::blob::Blob;
 #[derive(Debug)]
 pub struct Storage {
     config: Config,
-    opened_blob: Box<Option<Blob>>,
+    active_blob: Box<Option<Blob>>,
     blobs: Vec<Blob>,
 }
 
@@ -78,7 +78,7 @@ impl Storage {
     }
 
     /// # Description
-    /// Blobs count contains closed blobs and one opened, if is some
+    /// Blobs count contains closed blobs and one active, if is some
     /// # Examples
     /// ```
     /// use pearl::Builder;
@@ -88,7 +88,7 @@ impl Storage {
     /// assert_eq!(storage.blobs_count(), 1);
     /// ```
     pub fn blobs_count(&self) -> usize {
-        self.blobs.len() + if self.opened_blob.is_some() { 1 } else { 0 }
+        self.blobs.len() + if self.active_blob.is_some() { 1 } else { 0 }
     }
 }
 
@@ -96,7 +96,7 @@ impl Storage {
     fn prepare_work_dir(&self) -> io::Result<()> {
         let path = Path::new(&self.config.work_dir);
         if !path.exists() {
-            debug!("create work dir recursively: {}", path.display());
+            debug!("creating work dir recursively: {}", path.display());
             fs::create_dir_all(path)
         } else {
             debug!("work dir exists: {}", path.display());
@@ -106,14 +106,14 @@ impl Storage {
 
     // @TODO specify more useful error type
     #[inline]
-    fn init_opened_blob(&mut self) -> Result<(), ()> {
-        self.opened_blob = Box::new(Some(Default::default()));
+    fn init_active_blob(&mut self) -> Result<(), ()> {
+        self.active_blob = Box::new(Some(Default::default()));
         Ok(())
     }
 
     // @TODO specify more useful error type
     fn init_new(&mut self) -> Result<(), ()> {
-        self.init_opened_blob()
+        self.init_active_blob()
     }
 
     // @TODO specify more useful error type
@@ -125,28 +125,29 @@ impl Storage {
                 if entry.metadata().ok()?.is_file() {
                     Some(Blob::from_file(entry.path()).ok()?)
                 } else {
+                    debug!("skipping file \"{}\"", entry.path().display());
                     None
                 }
             })
             .collect();
-        if let Some(blob_index) = self.search_for_opened_blob() {
-            self.opened_blob = Box::new(Some(self.blobs.remove(blob_index)));
+        if let Some(blob_index) = self.search_for_active_blob() {
+            self.active_blob = Box::new(Some(self.blobs.remove(blob_index)));
             Ok(())
         } else {
-            self.init_opened_blob()
+            self.init_active_blob()
         }
     }
 
-    fn search_for_opened_blob(&self) -> Option<usize> {
-        let mut opened_blob_id = None;
+    fn search_for_active_blob(&self) -> Option<usize> {
+        let mut active_blob_id = None;
         self.blobs.iter().enumerate().find(|(i, blob)| {
-            let res = blob.is_opened();
+            let res = blob.is_active();
             if res {
-                opened_blob_id = Some(*i);
+                active_blob_id = Some(*i);
             }
             res
         });
-        opened_blob_id
+        active_blob_id
     }
 }
 
@@ -154,7 +155,7 @@ impl Default for Storage {
     fn default() -> Self {
         Self {
             config: Default::default(),
-            opened_blob: Box::default(),
+            active_blob: Box::default(),
             blobs: Vec::new(),
         }
     }

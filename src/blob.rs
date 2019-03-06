@@ -23,7 +23,7 @@ impl Blob {
         unimplemented!()
     }
 
-    pub fn is_opened(&self) -> bool {
+    pub fn is_active(&self) -> bool {
         unimplemented!()
     }
 }
