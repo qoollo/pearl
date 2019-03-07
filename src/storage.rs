@@ -130,25 +130,15 @@ impl Storage {
                 }
             })
             .collect();
-        if let Some(blob_index) = self.search_for_active_blob() {
-            self.active_blob = Box::new(Some(self.blobs.remove(blob_index)));
-            Ok(())
-        } else {
-            self.init_active_blob()
-        }
+        self.set_active_blob()
     }
 
-    fn search_for_active_blob(&self) -> Option<usize> {
+    // @TODO specify more useful error type
+    fn set_active_blob(&mut self) -> Result<(), ()> {
         // @TODO Search for last active blob by index extracted from file name
-        let mut active_blob_id = None;
-        self.blobs.iter().enumerate().find(|(i, blob)| {
-            let res = blob.is_active();
-            if res {
-                active_blob_id = Some(*i);
-            }
-            res
-        });
-        active_blob_id
+        // @TODO Check whether last blob is active or closed
+        self.active_blob = Box::new(Some(self.blobs.pop().ok_or(())?));
+        Ok(())
     }
 }
 

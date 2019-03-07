@@ -22,10 +22,6 @@ impl Blob {
         // @TODO implement
         unimplemented!()
     }
-
-    pub fn is_active(&self) -> bool {
-        unimplemented!()
-    }
 }
 
 #[cfg(test)]
