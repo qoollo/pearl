@@ -6,23 +6,36 @@ use std::{
 
 use crate::blob::Blob;
 
+/// # Description
 /// Used to create a storage, configure it and manage
-/// Examples
+/// `T` - type of storage key, must be [Sized](https://doc.rust-lang.org/std/marker/trait.Sized.html)
+/// # Examples
+/// ```
+/// use pearl::{Storage, Builder};
+///
+/// let mut storage = Builder::new().build::<u32>();
+/// storage.init().unwrap();
+/// ```
+///
 #[derive(Debug)]
-pub struct Storage {
+pub struct Storage<T> {
     config: Config,
-    active_blob: Box<Option<Blob>>,
-    blobs: Vec<Blob>,
+    active_blob: Box<Option<Blob<T>>>,
+    blobs: Vec<Blob<T>>,
 }
 
-impl Storage {
-    /// Creates a new instance of a storage
+impl<T> Storage<T>
+where
+    T: Default,
+{
+    /// Creates a new instance of a storage with u32 key
     /// # Examples
     ///
     /// ```
     /// use pearl::{Storage, Builder};
-    /// let mut stor = Builder::new().build();
-    /// let res = stor.init();
+    ///
+    /// let mut storage = Builder::new().build::<u32>();
+    /// storage.init().unwrap();
     /// ```
     ///
     /// Storage works in dir provided to builder. If dir not exist,
@@ -78,12 +91,12 @@ impl Storage {
     }
 
     /// # Description
-    /// Blobs count contains closed blobs and one active, if is some
+    /// Blobs count contains closed blobs and one active, if is some.
     /// # Examples
     /// ```
     /// use pearl::Builder;
-    ///
-    /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build();
+    /// // key type f64
+    /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build::<f64>();
     /// storage.init();
     /// assert_eq!(storage.blobs_count(), 1);
     /// ```
@@ -92,7 +105,10 @@ impl Storage {
     }
 }
 
-impl Storage {
+impl<T> Storage<T>
+where
+    T: Default,
+{
     fn prepare_work_dir(&self) -> io::Result<()> {
         let path = Path::new(&self.config.work_dir);
         if !path.exists() {
@@ -142,7 +158,7 @@ impl Storage {
     }
 }
 
-impl Default for Storage {
+impl<T> Default for Storage<T> {
     fn default() -> Self {
         Self {
             config: Default::default(),
@@ -168,7 +184,7 @@ impl<'a> Builder {
 
     /// Creates `Storage` based on given configuration
     /// Examples
-    pub fn build(self) -> Storage {
+    pub fn build<T>(self) -> Storage<T> {
         Storage {
             config: self.config,
             ..Default::default()

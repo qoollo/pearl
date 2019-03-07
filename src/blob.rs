@@ -1,10 +1,10 @@
 use std::path::Path;
 
-/// A `Blob` struct for performing of database
-/// # Examples
+/// A `Blob` struct for performing of database,
 #[derive(Debug, Default)]
-pub struct Blob {
+pub struct Blob<T> {
     header: Header,
+    records: Vec<T>, // @TODO needs verification, created to yield generic T up
 }
 
 /// # Description
@@ -17,7 +17,7 @@ struct Header {
     flags: u64,
 }
 
-impl Blob {
+impl<T> Blob<T> {
     pub fn from_file<P: AsRef<Path>>(_path: P) -> Result<Self, ()> {
         // @TODO implement
         unimplemented!()
@@ -30,8 +30,9 @@ mod tests {
 
     #[test]
     fn test_blob_new() {
-        let _ = Blob {
+        let _b: Blob<u32> = Blob {
             header: Default::default(),
+            records: Vec::new(),
         };
     }
 }
