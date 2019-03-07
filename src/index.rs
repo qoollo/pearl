@@ -15,9 +15,14 @@ struct Header {
     flags: u64,
 }
 
-#[test]
-fn test_index_new() {
-    let _index = Index {
-        header: Default::default(),
-    };
+#[cfg(test)]
+mod tests {
+    use super::Index;
+
+    #[test]
+    fn test_index_new() {
+        let _index = Index {
+            header: Default::default(),
+        };
+    }
 }

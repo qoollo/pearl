@@ -1,6 +1,8 @@
+use std::path::Path;
+
 /// A `Blob` struct for performing of database
 /// # Examples
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Blob {
     header: Header,
 }
@@ -15,9 +17,21 @@ struct Header {
     flags: u64,
 }
 
-#[test]
-fn test_blob_new() {
-    let _ = Blob {
-        header: Default::default(),
-    };
+impl Blob {
+    pub fn from_file<P: AsRef<Path>>(_path: P) -> Result<Self, ()> {
+        // @TODO implement
+        unimplemented!()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Blob;
+
+    #[test]
+    fn test_blob_new() {
+        let _ = Blob {
+            header: Default::default(),
+        };
+    }
 }
