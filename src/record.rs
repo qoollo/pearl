@@ -32,8 +32,12 @@ where
     header_checksum: u32,
 }
 
-#[test]
-fn test_record_new() {
-    let rec: Record<usize> = Record::new();
-    assert_eq!(rec.header.magic_byte, 0);
+#[cfg(test)]
+mod tests {
+    use super::Record;
+    #[test]
+    fn test_record_new() {
+        let rec: Record<usize> = Record::new();
+        assert_eq!(rec.header.magic_byte, 0);
+    }
 }

@@ -28,9 +28,14 @@ impl Blob {
     }
 }
 
-#[test]
-fn test_blob_new() {
-    let _ = Blob {
-        header: Default::default(),
-    };
+#[cfg(test)]
+mod tests {
+    use super::Blob;
+
+    #[test]
+    fn test_blob_new() {
+        let _ = Blob {
+            header: Default::default(),
+        };
+    }
 }
