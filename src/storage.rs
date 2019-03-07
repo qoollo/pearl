@@ -43,7 +43,7 @@ where
     pub fn init(&mut self) -> io::Result<()> {
         // @TODO implement work dir validation
         self.prepare_work_dir()?;
-        let wd = Path::new(&self.config.work_dir);
+        let wd = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
         let files_in_work_dir: Vec<_> = fs::read_dir(wd)?
             .map(std::result::Result::unwrap) // @TODO handle unwrap explicitly
             .collect();
@@ -110,7 +110,7 @@ where
     T: Default,
 {
     fn prepare_work_dir(&self) -> io::Result<()> {
-        let path = Path::new(&self.config.work_dir);
+        let path = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
         if !path.exists() {
             debug!("creating work dir recursively: {}", path.display());
             fs::create_dir_all(path)
@@ -223,7 +223,23 @@ impl<'a> Builder {
             panic!("work dir must be a directory");
         }
         info!("work dir set: {}", path.display());
-        self.config.work_dir = path;
+        self.config.work_dir = Some(path);
+        self
+    }
+
+    /// # Description
+    /// Sets storage max blob files num
+    /// Must be greater than zero
+    /// Limited by `u32::MAX`
+    pub fn max_blobs_num<U: Into<u32>>(mut self, max_blobs_num: U) -> Self {
+        let mbn = max_blobs_num.into();
+        debug!("cmp {} with 0", mbn);
+        if mbn > 0 {
+            self.config.max_blobs_num = Some(mbn);
+            info!("maximum blobs number set to: {}", mbn);
+        } else {
+            error!("zero blobs num is useless, not set");
+        }
         self
     }
 }
@@ -232,11 +248,11 @@ impl<'a> Builder {
 /// Examples
 #[derive(Default, Debug)]
 struct Config {
-    work_dir: PathBuf,
-    max_blobs_num: usize,
-    max_blob_size: usize,
-    max_data_in_blob: usize,
-    blob_file_name_pattern: String,
+    work_dir: Option<PathBuf>,
+    max_blobs_num: Option<u32>,
+    max_blob_size: Option<usize>,
+    max_data_in_blob: Option<usize>,
+    blob_file_name_pattern: Option<String>,
 }
 
 #[cfg(test)]
@@ -278,6 +294,15 @@ mod tests {
     #[test]
     fn set_work_dir() {
         create_dir_all(Path::new(WORK_DIR)).unwrap();
-        let _ = Builder::new().work_dir(WORK_DIR);
+        let builder = Builder::new().work_dir(WORK_DIR);
+        assert!(builder.config.work_dir.is_some());
+    }
+
+    #[test]
+    fn set_max_blobs_num() {
+        let mut builder = Builder::new().max_blobs_num(0u32);
+        assert!(builder.config.max_blobs_num.is_none());
+        builder = builder.max_blobs_num(16u32);
+        assert!(builder.config.max_blobs_num.is_some());
     }
 }
