@@ -1,7 +1,7 @@
 use std::{
     fs::{self, DirEntry},
     io,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use crate::blob::Blob;
@@ -191,11 +191,39 @@ impl<'a> Builder {
         }
     }
 
-    /// Sets a string with work dir as pattern for blob naming
-    /// Examples
-    pub fn work_dir<S: Into<&'a str>>(mut self, work_dir: S) -> Self {
-        // @TODO check path
-        self.config.work_dir = work_dir.into().to_string();
+    /// # Description
+    /// Sets a string with work dir as pattern for blob naming.
+    /// If path not exists, Storage will try to create at initialization stage.
+    /// # Panics
+    /// Panics if path is in readonly mode or path isn't a directory
+    /// # Examples
+    /// ```no-run
+    /// let builder = Builder::new().work_dir("/tmp/pearl/");
+    /// ```
+    pub fn work_dir<S: Into<PathBuf>>(mut self, work_dir: S) -> Self {
+        debug!("set work dir");
+        let path: PathBuf = work_dir.into();
+        debug!("check path existence");
+        if !path.exists() {
+            warn!("no such file or directory: {}", path.display());
+        }
+        debug!("load metadata");
+        let metadata = path
+            .metadata()
+            .map_err(|e| error!("metadata load failed: {}", e))
+            .unwrap();
+        let permissions = metadata.permissions();
+        debug!("check is path readonly");
+        debug!("check is path a dir");
+        if permissions.readonly() {
+            error!("{} is in readonly mode", path.display());
+            panic!("work dir must have write permission");
+        } else if !metadata.is_dir() {
+            error!("{} is not a directory", path.display());
+            panic!("work dir must be a directory");
+        }
+        info!("work dir set: {}", path.display());
+        self.config.work_dir = path;
         self
     }
 }
@@ -204,9 +232,52 @@ impl<'a> Builder {
 /// Examples
 #[derive(Default, Debug)]
 struct Config {
-    work_dir: String,
+    work_dir: PathBuf,
     max_blobs_num: usize,
     max_blob_size: usize,
     max_data_in_blob: usize,
     blob_file_name_pattern: String,
+}
+
+#[cfg(test)]
+
+mod tests {
+    use super::*;
+    use std::fs::*;
+
+    const RO_DIR_NAME: &str = "/tmp/pearl_test/readonly_folder/";
+    const FILE_NAME: &str = "/tmp/pearl_test/work_dir.file";
+    const WORK_DIR: &str = "/tmp/pearl_test/";
+
+    #[test]
+    #[should_panic]
+    fn set_readonly_work_dir() {
+        create_dir_all(RO_DIR_NAME).unwrap();
+        let mut perm = Path::new(RO_DIR_NAME).metadata().unwrap().permissions();
+        perm.set_readonly(true);
+        set_permissions(RO_DIR_NAME, perm).unwrap();
+        let _ = Builder::new().work_dir(RO_DIR_NAME);
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_file_as_work_dir() {
+        use std::io::Write;
+
+        let path = Path::new(FILE_NAME);
+        create_dir_all(path.parent().unwrap()).unwrap();
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(path)
+            .unwrap();
+        file.flush().unwrap();
+        let _ = Builder::new().work_dir(FILE_NAME);
+    }
+
+    #[test]
+    fn set_work_dir() {
+        create_dir_all(Path::new(WORK_DIR)).unwrap();
+        let _ = Builder::new().work_dir(WORK_DIR);
+    }
 }
