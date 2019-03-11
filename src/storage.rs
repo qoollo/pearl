@@ -228,17 +228,16 @@ impl<'a> Builder {
     }
 
     /// # Description
-    /// Sets storage max blob files num
+    /// Sets blob file max size
     /// Must be greater than zero
-    /// Limited by `u32::MAX`
-    pub fn max_blobs_num<U: Into<u32>>(mut self, max_blobs_num: U) -> Self {
-        let mbn = max_blobs_num.into();
-        debug!("cmp {} with 0", mbn);
-        if mbn > 0 {
-            self.config.max_blobs_num = Some(mbn);
-            info!("maximum blobs number set to: {}", mbn);
+    pub fn max_blob_size<U: Into<usize>>(mut self, max_blob_size: U) -> Self {
+        let mbs = max_blob_size.into();
+        debug!("cmp {} with 0", mbs);
+        if mbs > 0 {
+            self.config.max_blob_size = Some(mbs);
+            info!("maximum blob size set to: {}", mbs);
         } else {
-            error!("zero blobs num is useless, not set");
+            error!("zero size blobs is useless, not set");
         }
         self
     }
@@ -249,7 +248,6 @@ impl<'a> Builder {
 #[derive(Default, Debug)]
 struct Config {
     work_dir: Option<PathBuf>,
-    max_blobs_num: Option<u32>,
     max_blob_size: Option<usize>,
     max_data_in_blob: Option<usize>,
     blob_file_name_pattern: Option<String>,
@@ -296,13 +294,5 @@ mod tests {
         create_dir_all(Path::new(WORK_DIR)).unwrap();
         let builder = Builder::new().work_dir(WORK_DIR);
         assert!(builder.config.work_dir.is_some());
-    }
-
-    #[test]
-    fn set_max_blobs_num() {
-        let mut builder = Builder::new().max_blobs_num(0u32);
-        assert!(builder.config.max_blobs_num.is_none());
-        builder = builder.max_blobs_num(16u32);
-        assert!(builder.config.max_blobs_num.is_some());
     }
 }
