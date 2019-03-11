@@ -1,16 +1,18 @@
 use std::{
-    fs::{self, DirEntry},
+    fs::{self, DirEntry, OpenOptions},
     io,
     path::{Path, PathBuf},
 };
 
 use crate::blob::Blob;
 
+const TEST_FILE_PATH: &str = "test_file";
+
 /// # Description
 /// Used to create a storage, configure it and manage
 /// `T` - type of storage key, must be [Sized](https://doc.rust-lang.org/std/marker/trait.Sized.html)
 /// # Examples
-/// ```
+/// ```no-run
 /// use pearl::{Storage, Builder};
 ///
 /// let mut storage = Builder::new().build::<u32>();
@@ -31,7 +33,7 @@ where
     /// Creates a new instance of a storage with u32 key
     /// # Examples
     ///
-    /// ```
+    /// ```no-run
     /// use pearl::{Storage, Builder};
     ///
     /// let mut storage = Builder::new().build::<u32>();
@@ -93,7 +95,7 @@ where
     /// # Description
     /// Blobs count contains closed blobs and one active, if is some.
     /// # Examples
-    /// ```
+    /// ```no-run
     /// use pearl::Builder;
     /// // key type f64
     /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build::<f64>();
@@ -113,11 +115,19 @@ where
         let path = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
         if !path.exists() {
             debug!("creating work dir recursively: {}", path.display());
-            fs::create_dir_all(path)
+            fs::create_dir_all(path)?;
         } else {
             debug!("work dir exists: {}", path.display());
-            Ok(())
         }
+        let test_path = path.join(TEST_FILE_PATH);
+        debug!("path: {}", test_path.display());
+        fs::remove_file(&test_path).unwrap_or_else(|e| debug!("try to remove test file: {}", e));
+        let _ = OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&test_path)?;
+        info!("test file created successfully");
+        fs::remove_file(test_path)
     }
 
     // @TODO specify more useful error type
@@ -194,8 +204,6 @@ impl<'a> Builder {
     /// # Description
     /// Sets a string with work dir as pattern for blob naming.
     /// If path not exists, Storage will try to create at initialization stage.
-    /// # Panics
-    /// Panics if path is in readonly mode or path isn't a directory
     /// # Examples
     /// ```no-run
     /// let builder = Builder::new().work_dir("/tmp/pearl/");
@@ -203,26 +211,7 @@ impl<'a> Builder {
     pub fn work_dir<S: Into<PathBuf>>(mut self, work_dir: S) -> Self {
         debug!("set work dir");
         let path: PathBuf = work_dir.into();
-        debug!("check path existence");
-        if !path.exists() {
-            warn!("no such file or directory: {}", path.display());
-        }
-        debug!("load metadata");
-        let metadata = path
-            .metadata()
-            .map_err(|e| error!("metadata load failed: {}", e))
-            .unwrap();
-        let permissions = metadata.permissions();
-        debug!("check is path readonly");
-        debug!("check is path a dir");
-        if permissions.readonly() {
-            error!("{} is in readonly mode", path.display());
-            panic!("work dir must have write permission");
-        } else if !metadata.is_dir() {
-            error!("{} is not a directory", path.display());
-            panic!("work dir must be a directory");
-        }
-        info!("work dir set: {}", path.display());
+        info!("work dir set to: {}", path.display());
         self.config.work_dir = Some(path);
         self
     }
@@ -259,22 +248,32 @@ mod tests {
     use super::*;
     use std::fs::*;
 
-    const RO_DIR_NAME: &str = "/tmp/pearl_test/readonly_folder/";
-    const FILE_NAME: &str = "/tmp/pearl_test/work_dir.file";
+    const RO_DIR_NAME: &str = "/tmp/pearl_test_readonly/";
+    const FILE_NAME: &str = "/tmp/pearl_test.file";
     const WORK_DIR: &str = "/tmp/pearl_test/";
 
     #[test]
-    #[should_panic]
-    fn set_readonly_work_dir() {
-        create_dir_all(RO_DIR_NAME).unwrap();
-        let mut perm = Path::new(RO_DIR_NAME).metadata().unwrap().permissions();
-        perm.set_readonly(true);
-        set_permissions(RO_DIR_NAME, perm).unwrap();
-        let _ = Builder::new().work_dir(RO_DIR_NAME);
+    fn set_work_dir() {
+        let path = Path::new(WORK_DIR);
+        create_dir_all(path).unwrap();
+        let builder = Builder::new().work_dir(WORK_DIR);
+        assert!(builder.config.work_dir.is_some());
+        fs::remove_dir(path).unwrap();
     }
 
     #[test]
-    #[should_panic]
+    fn set_readonly_work_dir() {
+        let path = Path::new(RO_DIR_NAME);
+        create_dir_all(path).unwrap();
+        let mut perm = Path::new(RO_DIR_NAME).metadata().unwrap().permissions();
+        perm.set_readonly(true);
+        set_permissions(RO_DIR_NAME, perm).unwrap();
+        let mut storage = Builder::new().work_dir(RO_DIR_NAME).build::<usize>();
+        assert!(storage.init().is_err());
+        fs::remove_dir(path).unwrap();
+    }
+
+    #[test]
     fn set_file_as_work_dir() {
         use std::io::Write;
 
@@ -286,13 +285,8 @@ mod tests {
             .open(path)
             .unwrap();
         file.flush().unwrap();
-        let _ = Builder::new().work_dir(FILE_NAME);
-    }
-
-    #[test]
-    fn set_work_dir() {
-        create_dir_all(Path::new(WORK_DIR)).unwrap();
-        let builder = Builder::new().work_dir(WORK_DIR);
-        assert!(builder.config.work_dir.is_some());
+        let mut storage = Builder::new().work_dir(FILE_NAME).build::<usize>();
+        assert!(storage.init().is_err());
+        fs::remove_file(path).unwrap();
     }
 }
