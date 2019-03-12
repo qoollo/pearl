@@ -1,12 +1,12 @@
 use std::{
-    fs::{self, DirEntry, OpenOptions},
+    fs::{self, DirEntry, File, OpenOptions},
     io,
     path::{Path, PathBuf},
 };
 
 use crate::blob::Blob;
 
-const TEST_FILE_PATH: &str = "test_file";
+const LOCK_FILE: &str = "pearl.lock";
 
 /// # Description
 /// Used to create a storage, configure it and manage
@@ -24,6 +24,7 @@ pub struct Storage<K> {
     config: Config,
     active_blob: Box<Option<Blob<K>>>,
     blobs: Vec<Blob<K>>,
+    lock_file: Option<File>,
 }
 
 impl<K> Storage<K>
@@ -111,7 +112,7 @@ impl<K> Storage<K>
 where
     K: Default,
 {
-    fn prepare_work_dir(&self) -> io::Result<()> {
+    fn prepare_work_dir(&mut self) -> io::Result<()> {
         let path = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
         if !path.exists() {
             debug!("creating work dir recursively: {}", path.display());
@@ -119,15 +120,15 @@ where
         } else {
             debug!("work dir exists: {}", path.display());
         }
-        let test_path = path.join(TEST_FILE_PATH);
-        debug!("path: {}", test_path.display());
-        fs::remove_file(&test_path).unwrap_or_else(|e| debug!("try to remove test file: {}", e));
-        let _ = OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&test_path)?;
-        info!("test file created successfully");
-        fs::remove_file(test_path)
+        let lock_file = path.join(LOCK_FILE);
+        debug!("try to open lock file: {}", lock_file.display());
+        self.lock_file = Some(
+            OpenOptions::new()
+                .create(true)
+                .write(true)
+                .open(&lock_file)?,
+        );
+        Ok(())
     }
 
     // @TODO specify more useful error type
@@ -174,6 +175,7 @@ impl<K> Default for Storage<K> {
             config: Default::default(),
             active_blob: Box::default(),
             blobs: Vec::new(),
+            lock_file: None,
         }
     }
 }
