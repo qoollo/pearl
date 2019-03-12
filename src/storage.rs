@@ -21,8 +21,9 @@ const LOCK_FILE: &str = "pearl.lock";
 ///
 #[derive(Debug)]
 pub struct Storage<K> {
+    initialized: Option<()>,
     config: Config,
-    active_blob: Box<Option<Blob<K>>>,
+    active_blob: Option<Box<Blob<K>>>,
     blobs: Vec<Blob<K>>,
     lock_file: Option<File>,
 }
@@ -61,17 +62,32 @@ where
                 .for_each(|name| trace!("{}", name.file_name().as_os_str().to_str().unwrap())); // @TODO handle unwrap explicitly
             self.init_from_existing(files_in_work_dir).unwrap(); // @TODO handle unwrap explicitly
         }
-        // @TODO implement
+        self.initialized = Some(());
         Ok(())
     }
 
-    /// Description
-    /// Examples
+    /// # Description
+    /// Writes bytes `value` to active blob
+    /// If active blob reaches it limit, create new and close old
+    /// Returns number of bytes, written to blob
+    /// # Examples
 
     // @TODO specify more useful error type
-    pub fn write(&mut self) -> Result<(), ()> {
-        // @TODO implement
-        Ok(())
+    pub fn write<V>(&mut self, key: K, value: &[u8]) -> Result<usize, ()> {
+        self.initialized.ok_or(())?;
+        // @TODO process unwrap explicitly
+        if self.active_blob.as_ref().unwrap().size()? + value.len()
+            > self.config.max_blob_size.unwrap()
+            || self.active_blob.as_ref().unwrap().len()? >= self.config.max_data_in_blob.unwrap()
+        {
+            let new_active = Box::new(Default::default());
+            // @TODO process unwrap explicitly
+            let mut old_active = self.active_blob.replace(new_active).unwrap();
+            old_active.close()?;
+            self.blobs.push(*old_active);
+        }
+        // @TODO process unwrap explicitly
+        self.active_blob.as_mut().unwrap().write(&key, &value)
     }
 
     /// Description
@@ -134,7 +150,7 @@ where
     // @TODO specify more useful error type
     #[inline]
     fn init_active_blob(&mut self) -> Result<(), ()> {
-        self.active_blob = Box::new(Some(Default::default()));
+        self.active_blob = Some(Box::new(Default::default()));
         Ok(())
     }
 
@@ -164,7 +180,7 @@ where
     fn set_active_blob(&mut self) -> Result<(), ()> {
         // @TODO Search for last active blob by index extracted from file name
         // @TODO Check whether last blob is active or closed
-        self.active_blob = Box::new(Some(self.blobs.pop().ok_or(())?));
+        self.active_blob = Some(Box::new(self.blobs.pop().ok_or(())?));
         Ok(())
     }
 }
@@ -172,8 +188,9 @@ where
 impl<K> Default for Storage<K> {
     fn default() -> Self {
         Self {
+            initialized: None,
             config: Default::default(),
-            active_blob: Box::default(),
+            active_blob: None,
             blobs: Vec::new(),
             lock_file: None,
         }
