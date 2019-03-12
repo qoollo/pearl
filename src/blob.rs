@@ -17,10 +17,10 @@ struct Header {
     flags: u64,
 }
 
-impl<T> Blob<T> {
+impl<T> Blob<T> where T: Default {
     pub fn from_file<P: AsRef<Path>>(_path: P) -> Result<Self, ()> {
         // @TODO implement
-        unimplemented!()
+        Ok(Self::default())
     }
 }
 

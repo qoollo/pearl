@@ -223,7 +223,6 @@ impl<'a> Builder {
     /// Must be greater than zero
     pub fn max_blob_size<U: Into<usize>>(mut self, max_blob_size: U) -> Self {
         let mbs = max_blob_size.into();
-        debug!("cmp {} with 0", mbs);
         if mbs > 0 {
             self.config.max_blob_size = Some(mbs);
             info!("maximum blob size set to: {}", mbs);
@@ -247,30 +246,33 @@ struct Config {
 #[cfg(test)]
 
 mod tests {
-    use super::*;
-    use std::fs::*;
+    use super::{fs, Builder, OpenOptions};
+    use std::{
+        env,
+        fs::{create_dir_all, set_permissions},
+    };
 
-    const RO_DIR_NAME: &str = "/tmp/pearl_test_readonly/";
-    const FILE_NAME: &str = "/tmp/pearl_test.file";
-    const WORK_DIR: &str = "/tmp/pearl_test/";
+    const RO_DIR_NAME: &str = "pearl_test_readonly/";
+    const FILE_NAME: &str = "pearl_test.file";
+    const WORK_DIR: &str = "pearl_test/";
 
     #[test]
     fn set_work_dir() {
-        let path = Path::new(WORK_DIR);
-        create_dir_all(path).unwrap();
-        let builder = Builder::new().work_dir(WORK_DIR);
+        let path = env::temp_dir().join(WORK_DIR);
+        create_dir_all(&path).unwrap();
+        let builder = Builder::new().work_dir(&path);
         assert!(builder.config.work_dir.is_some());
         fs::remove_dir(path).unwrap();
     }
 
     #[test]
     fn set_readonly_work_dir() {
-        let path = Path::new(RO_DIR_NAME);
-        create_dir_all(path).unwrap();
-        let mut perm = Path::new(RO_DIR_NAME).metadata().unwrap().permissions();
+        let path = env::temp_dir().join(RO_DIR_NAME);
+        create_dir_all(&path).unwrap();
+        let mut perm = path.metadata().unwrap().permissions();
         perm.set_readonly(true);
-        set_permissions(RO_DIR_NAME, perm).unwrap();
-        let mut storage = Builder::new().work_dir(RO_DIR_NAME).build::<usize>();
+        set_permissions(&path, perm).unwrap();
+        let mut storage = Builder::new().work_dir(&path).build::<usize>();
         assert!(storage.init().is_err());
         fs::remove_dir(path).unwrap();
     }
@@ -279,15 +281,15 @@ mod tests {
     fn set_file_as_work_dir() {
         use std::io::Write;
 
-        let path = Path::new(FILE_NAME);
+        let path = env::temp_dir().join(FILE_NAME);
         create_dir_all(path.parent().unwrap()).unwrap();
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)
-            .open(path)
+            .open(&path)
             .unwrap();
         file.flush().unwrap();
-        let mut storage = Builder::new().work_dir(FILE_NAME).build::<usize>();
+        let mut storage = Builder::new().work_dir(&path).build::<usize>();
         assert!(storage.init().is_err());
         fs::remove_file(path).unwrap();
     }
