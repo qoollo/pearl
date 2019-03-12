@@ -1,28 +1,44 @@
 use std::{
-    fs::{self, DirEntry},
+    fs::{self, DirEntry, File, OpenOptions},
     io,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use crate::blob::Blob;
 
+const LOCK_FILE: &str = "pearl.lock";
+
+/// # Description
 /// Used to create a storage, configure it and manage
-/// Examples
+/// `K` - type of storage key, must be [Sized](https://doc.rust-lang.org/std/marker/trait.Sized.html)
+/// # Examples
+/// ```no-run
+/// use pearl::{Storage, Builder};
+///
+/// let mut storage = Builder::new().build::<u32>();
+/// storage.init().unwrap();
+/// ```
+///
 #[derive(Debug)]
-pub struct Storage {
+pub struct Storage<K> {
     config: Config,
-    active_blob: Box<Option<Blob>>,
-    blobs: Vec<Blob>,
+    active_blob: Box<Option<Blob<K>>>,
+    blobs: Vec<Blob<K>>,
+    lock_file: Option<File>,
 }
 
-impl Storage {
-    /// Creates a new instance of a storage
+impl<K> Storage<K>
+where
+    K: Default,
+{
+    /// Creates a new instance of a storage with u32 key
     /// # Examples
     ///
-    /// ```
+    /// ```no-run
     /// use pearl::{Storage, Builder};
-    /// let mut stor = Builder::new().build();
-    /// let res = stor.init();
+    ///
+    /// let mut storage = Builder::new().build::<u32>();
+    /// storage.init().unwrap();
     /// ```
     ///
     /// Storage works in dir provided to builder. If dir not exist,
@@ -30,7 +46,7 @@ impl Storage {
     pub fn init(&mut self) -> io::Result<()> {
         // @TODO implement work dir validation
         self.prepare_work_dir()?;
-        let wd = Path::new(&self.config.work_dir);
+        let wd = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
         let files_in_work_dir: Vec<_> = fs::read_dir(wd)?
             .map(std::result::Result::unwrap) // @TODO handle unwrap explicitly
             .collect();
@@ -78,12 +94,12 @@ impl Storage {
     }
 
     /// # Description
-    /// Blobs count contains closed blobs and one active, if is some
+    /// Blobs count contains closed blobs and one active, if is some.
     /// # Examples
-    /// ```
+    /// ```no-run
     /// use pearl::Builder;
-    ///
-    /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build();
+    /// // key type f64
+    /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build::<f64>();
     /// storage.init();
     /// assert_eq!(storage.blobs_count(), 1);
     /// ```
@@ -92,16 +108,27 @@ impl Storage {
     }
 }
 
-impl Storage {
-    fn prepare_work_dir(&self) -> io::Result<()> {
-        let path = Path::new(&self.config.work_dir);
+impl<K> Storage<K>
+where
+    K: Default,
+{
+    fn prepare_work_dir(&mut self) -> io::Result<()> {
+        let path = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
         if !path.exists() {
             debug!("creating work dir recursively: {}", path.display());
-            fs::create_dir_all(path)
+            fs::create_dir_all(path)?;
         } else {
             debug!("work dir exists: {}", path.display());
-            Ok(())
         }
+        let lock_file = path.join(LOCK_FILE);
+        debug!("try to open lock file: {}", lock_file.display());
+        self.lock_file = Some(
+            OpenOptions::new()
+                .create(true)
+                .write(true)
+                .open(&lock_file)?,
+        );
+        Ok(())
     }
 
     // @TODO specify more useful error type
@@ -142,12 +169,13 @@ impl Storage {
     }
 }
 
-impl Default for Storage {
+impl<K> Default for Storage<K> {
     fn default() -> Self {
         Self {
             config: Default::default(),
             active_blob: Box::default(),
             blobs: Vec::new(),
+            lock_file: None,
         }
     }
 }
@@ -168,29 +196,188 @@ impl<'a> Builder {
 
     /// Creates `Storage` based on given configuration
     /// Examples
-    pub fn build(self) -> Storage {
-        Storage {
-            config: self.config,
-            ..Default::default()
+    pub fn build<K>(self) -> Result<Storage<K>, ()> {
+        if self.config.blob_file_name_prefix.is_none()
+            || self.config.max_data_in_blob.is_none()
+            || self.config.max_blob_size.is_none()
+            || self.config.blob_file_name_prefix.is_none()
+        {
+            Err(())
+        } else {
+            Ok(Storage {
+                config: self.config,
+                ..Default::default()
+            })
         }
     }
 
-    /// Sets a string with work dir as pattern for blob naming
-    /// Examples
-    pub fn work_dir<S: Into<&'a str>>(mut self, work_dir: S) -> Self {
-        // @TODO check path
-        self.config.work_dir = work_dir.into().to_string();
+    /// # Description
+    /// Sets a string with work dir as prefix for blob naming.
+    /// If path not exists, Storage will try to create at initialization stage.
+    /// # Examples
+    /// ```no-run
+    /// let builder = Builder::new().work_dir("/tmp/pearl/");
+    /// ```
+    pub fn work_dir<S: Into<PathBuf>>(mut self, work_dir: S) -> Self {
+        debug!("set work dir");
+        let path: PathBuf = work_dir.into();
+        info!("work dir set to: {}", path.display());
+        self.config.work_dir = Some(path);
+        self
+    }
+
+    /// # Description
+    /// Sets blob file max size
+    /// Must be greater than zero
+    pub fn max_blob_size<U: Into<usize>>(mut self, max_blob_size: U) -> Self {
+        let mbs = max_blob_size.into();
+        if mbs > 0 {
+            self.config.max_blob_size = Some(mbs);
+            info!(
+                "maximum blob size set to: {}",
+                self.config.max_blob_size.unwrap()
+            );
+        } else {
+            error!("zero size blobs is useless, not set");
+        }
+        self
+    }
+
+    /// # Description
+    /// Sets max number of records in single blob
+    /// Must be greater than zero
+    pub fn max_data_in_blob<U: Into<usize>>(mut self, max_data_in_blob: U) -> Self {
+        let mdib = max_data_in_blob.into();
+        if mdib > 0 {
+            self.config.max_data_in_blob = Some(mdib);
+            info!(
+                "max number of records in blob set to: {}",
+                self.config.max_data_in_blob.unwrap()
+            );
+        } else {
+            error!("zero size blobs is useless, not set");
+        }
+        self
+    }
+
+    /// # Description
+    /// Sets blob file name prefix, e.g. if prefix set to `hellopearl`,
+    /// files will be named as `hellopearl.[N].blob`.
+    /// Where N - index number of file
+    /// Must be not empty
+    pub fn blob_file_name_prefix<U: Into<String>>(mut self, blob_file_name_prefix: U) -> Self {
+        let prefix = blob_file_name_prefix.into();
+        if !prefix.is_empty() {
+            self.config.blob_file_name_prefix = Some(prefix);
+            info!(
+                "blob file format: {}.{{}}.blob",
+                self.config.blob_file_name_prefix.as_ref().unwrap()
+            );
+        } else {
+            error!("passed empty file prefix, not set");
+        }
         self
     }
 }
 
 /// Description
 /// Examples
-#[derive(Default, Debug)]
+#[derive(Debug)]
 struct Config {
-    work_dir: String,
-    max_blobs_num: usize,
-    max_blob_size: usize,
-    max_data_in_blob: usize,
-    blob_file_name_pattern: String,
+    work_dir: Option<PathBuf>,
+    max_blob_size: Option<usize>,
+    max_data_in_blob: Option<usize>,
+    blob_file_name_prefix: Option<String>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            work_dir: None,
+            max_blob_size: None,
+            max_data_in_blob: None,
+            blob_file_name_prefix: None,
+        }
+    }
+}
+
+#[cfg(test)]
+
+mod tests {
+    use super::{fs, Builder, OpenOptions};
+    use std::{
+        env,
+        fs::{create_dir_all, set_permissions},
+    };
+
+    const RO_DIR_NAME: &str = "pearl_test_readonly/";
+    const FILE_NAME: &str = "pearl_test.file";
+    const WORK_DIR: &str = "pearl_test/";
+
+    #[test]
+    fn set_work_dir() {
+        let path = env::temp_dir().join(WORK_DIR);
+        create_dir_all(&path).unwrap();
+        let builder = Builder::new().work_dir(&path);
+        assert!(builder.config.work_dir.is_some());
+        fs::remove_dir(path).unwrap();
+    }
+
+    #[test]
+    fn set_readonly_work_dir() {
+        let path = env::temp_dir().join(RO_DIR_NAME);
+        create_dir_all(&path).unwrap();
+        let mut perm = path.metadata().unwrap().permissions();
+        perm.set_readonly(true);
+        set_permissions(&path, perm).unwrap();
+        let mut storage = Builder::new()
+            .work_dir(&path)
+            .blob_file_name_prefix("test")
+            .max_blob_size(1_000_000usize)
+            .max_data_in_blob(1_000usize)
+            .build::<usize>()
+            .unwrap();
+        assert!(storage.init().is_err());
+        fs::remove_dir(path).unwrap();
+    }
+
+    #[test]
+    fn set_file_as_work_dir() {
+        use std::io::Write;
+
+        let path = env::temp_dir().join(FILE_NAME);
+        create_dir_all(path.parent().unwrap()).unwrap();
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(&path)
+            .unwrap();
+        file.flush().unwrap();
+        let mut storage = Builder::new()
+            .work_dir(&path)
+            .blob_file_name_prefix("test")
+            .max_blob_size(1_000_000usize)
+            .max_data_in_blob(1_000usize)
+            .build::<usize>()
+            .unwrap();
+        assert!(storage.init().is_err());
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn set_zero_max_data_in_blob() {
+        let builder = Builder::new().max_data_in_blob(0usize);
+        assert!(builder.config.max_data_in_blob.is_none());
+    }
+
+    #[test]
+    fn set_zero_max_blob_size() {
+        let builder = Builder::new().max_blob_size(0usize);
+        assert!(builder.config.max_blob_size.is_none());
+    }
+    #[test]
+    fn set_empty_prefix() {
+        let builder = Builder::new().blob_file_name_prefix("");
+        assert!(builder.config.blob_file_name_prefix.is_none());
+    }
 }
