@@ -196,10 +196,18 @@ impl<'a> Builder {
 
     /// Creates `Storage` based on given configuration
     /// Examples
-    pub fn build<K>(self) -> Storage<K> {
-        Storage {
-            config: self.config,
-            ..Default::default()
+    pub fn build<K>(self) -> Result<Storage<K>, ()> {
+        if self.config.blob_file_name_pattern.is_none()
+            || self.config.max_data_in_blob.is_none()
+            || self.config.max_blob_size.is_none()
+            || self.config.blob_file_name_pattern.is_none()
+        {
+            Err(())
+        } else {
+            Ok(Storage {
+                config: self.config,
+                ..Default::default()
+            })
         }
     }
 
@@ -225,9 +233,48 @@ impl<'a> Builder {
         let mbs = max_blob_size.into();
         if mbs > 0 {
             self.config.max_blob_size = Some(mbs);
-            info!("maximum blob size set to: {}", mbs);
+            info!(
+                "maximum blob size set to: {}",
+                self.config.max_blob_size.unwrap()
+            );
         } else {
             error!("zero size blobs is useless, not set");
+        }
+        self
+    }
+
+    /// # Description
+    /// Sets max number of records in single blob
+    /// Must be greater than zero
+    pub fn max_data_in_blob<U: Into<usize>>(mut self, max_data_in_blob: U) -> Self {
+        let mdib = max_data_in_blob.into();
+        if mdib > 0 {
+            self.config.max_data_in_blob = Some(mdib);
+            info!(
+                "max number of records in blob set to: {}",
+                self.config.max_data_in_blob.unwrap()
+            );
+        } else {
+            error!("zero size blobs is useless, not set");
+        }
+        self
+    }
+
+    /// # Description
+    /// Sets blob file name pattern, e.g. if pattern set to `hellopearl`,
+    /// files will be named as `hellopearl.[N].blob`.
+    /// Where N - index number of file
+    /// Must be not empty
+    pub fn blob_file_name_pattern<U: Into<String>>(mut self, blob_file_name_pattern: U) -> Self {
+        let pattern = blob_file_name_pattern.into();
+        if !pattern.is_empty() {
+            self.config.blob_file_name_pattern = Some(pattern);
+            info!(
+                "blob file format: {}.{{}}.blob",
+                self.config.blob_file_name_pattern.as_ref().unwrap()
+            );
+        } else {
+            error!("passed empty file pattern, not set");
         }
         self
     }
@@ -235,12 +282,23 @@ impl<'a> Builder {
 
 /// Description
 /// Examples
-#[derive(Default, Debug)]
+#[derive(Debug)]
 struct Config {
     work_dir: Option<PathBuf>,
     max_blob_size: Option<usize>,
     max_data_in_blob: Option<usize>,
     blob_file_name_pattern: Option<String>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            work_dir: None,
+            max_blob_size: None,
+            max_data_in_blob: None,
+            blob_file_name_pattern: None,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -272,7 +330,13 @@ mod tests {
         let mut perm = path.metadata().unwrap().permissions();
         perm.set_readonly(true);
         set_permissions(&path, perm).unwrap();
-        let mut storage = Builder::new().work_dir(&path).build::<usize>();
+        let mut storage = Builder::new()
+            .work_dir(&path)
+            .blob_file_name_pattern("test")
+            .max_blob_size(1_000_000usize)
+            .max_data_in_blob(1_000usize)
+            .build::<usize>()
+            .unwrap();
         assert!(storage.init().is_err());
         fs::remove_dir(path).unwrap();
     }
@@ -289,8 +353,31 @@ mod tests {
             .open(&path)
             .unwrap();
         file.flush().unwrap();
-        let mut storage = Builder::new().work_dir(&path).build::<usize>();
+        let mut storage = Builder::new()
+            .work_dir(&path)
+            .blob_file_name_pattern("test")
+            .max_blob_size(1_000_000usize)
+            .max_data_in_blob(1_000usize)
+            .build::<usize>()
+            .unwrap();
         assert!(storage.init().is_err());
         fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn set_zero_max_data_in_blob() {
+        let builder = Builder::new().max_data_in_blob(0usize);
+        assert!(builder.config.max_data_in_blob.is_none());
+    }
+
+    #[test]
+    fn set_zero_max_blob_size() {
+        let builder = Builder::new().max_blob_size(0usize);
+        assert!(builder.config.max_blob_size.is_none());
+    }
+    #[test]
+    fn set_empty_pattern() {
+        let builder = Builder::new().blob_file_name_pattern("");
+        assert!(builder.config.blob_file_name_pattern.is_none());
     }
 }
