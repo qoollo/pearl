@@ -10,7 +10,7 @@ const TEST_FILE_PATH: &str = "test_file";
 
 /// # Description
 /// Used to create a storage, configure it and manage
-/// `T` - type of storage key, must be [Sized](https://doc.rust-lang.org/std/marker/trait.Sized.html)
+/// `K` - type of storage key, must be [Sized](https://doc.rust-lang.org/std/marker/trait.Sized.html)
 /// # Examples
 /// ```no-run
 /// use pearl::{Storage, Builder};
@@ -20,15 +20,15 @@ const TEST_FILE_PATH: &str = "test_file";
 /// ```
 ///
 #[derive(Debug)]
-pub struct Storage<T> {
+pub struct Storage<K> {
     config: Config,
-    active_blob: Box<Option<Blob<T>>>,
-    blobs: Vec<Blob<T>>,
+    active_blob: Box<Option<Blob<K>>>,
+    blobs: Vec<Blob<K>>,
 }
 
-impl<T> Storage<T>
+impl<K> Storage<K>
 where
-    T: Default,
+    K: Default,
 {
     /// Creates a new instance of a storage with u32 key
     /// # Examples
@@ -107,9 +107,9 @@ where
     }
 }
 
-impl<T> Storage<T>
+impl<K> Storage<K>
 where
-    T: Default,
+    K: Default,
 {
     fn prepare_work_dir(&self) -> io::Result<()> {
         let path = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
@@ -168,7 +168,7 @@ where
     }
 }
 
-impl<T> Default for Storage<T> {
+impl<K> Default for Storage<K> {
     fn default() -> Self {
         Self {
             config: Default::default(),
@@ -194,7 +194,7 @@ impl<'a> Builder {
 
     /// Creates `Storage` based on given configuration
     /// Examples
-    pub fn build<T>(self) -> Storage<T> {
+    pub fn build<K>(self) -> Storage<K> {
         Storage {
             config: self.config,
             ..Default::default()
