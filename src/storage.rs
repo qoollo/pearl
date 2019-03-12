@@ -197,10 +197,10 @@ impl<'a> Builder {
     /// Creates `Storage` based on given configuration
     /// Examples
     pub fn build<K>(self) -> Result<Storage<K>, ()> {
-        if self.config.blob_file_name_pattern.is_none()
+        if self.config.blob_file_name_prefix.is_none()
             || self.config.max_data_in_blob.is_none()
             || self.config.max_blob_size.is_none()
-            || self.config.blob_file_name_pattern.is_none()
+            || self.config.blob_file_name_prefix.is_none()
         {
             Err(())
         } else {
@@ -212,7 +212,7 @@ impl<'a> Builder {
     }
 
     /// # Description
-    /// Sets a string with work dir as pattern for blob naming.
+    /// Sets a string with work dir as prefix for blob naming.
     /// If path not exists, Storage will try to create at initialization stage.
     /// # Examples
     /// ```no-run
@@ -261,20 +261,20 @@ impl<'a> Builder {
     }
 
     /// # Description
-    /// Sets blob file name pattern, e.g. if pattern set to `hellopearl`,
+    /// Sets blob file name prefix, e.g. if prefix set to `hellopearl`,
     /// files will be named as `hellopearl.[N].blob`.
     /// Where N - index number of file
     /// Must be not empty
-    pub fn blob_file_name_pattern<U: Into<String>>(mut self, blob_file_name_pattern: U) -> Self {
-        let pattern = blob_file_name_pattern.into();
-        if !pattern.is_empty() {
-            self.config.blob_file_name_pattern = Some(pattern);
+    pub fn blob_file_name_prefix<U: Into<String>>(mut self, blob_file_name_prefix: U) -> Self {
+        let prefix = blob_file_name_prefix.into();
+        if !prefix.is_empty() {
+            self.config.blob_file_name_prefix = Some(prefix);
             info!(
                 "blob file format: {}.{{}}.blob",
-                self.config.blob_file_name_pattern.as_ref().unwrap()
+                self.config.blob_file_name_prefix.as_ref().unwrap()
             );
         } else {
-            error!("passed empty file pattern, not set");
+            error!("passed empty file prefix, not set");
         }
         self
     }
@@ -287,7 +287,7 @@ struct Config {
     work_dir: Option<PathBuf>,
     max_blob_size: Option<usize>,
     max_data_in_blob: Option<usize>,
-    blob_file_name_pattern: Option<String>,
+    blob_file_name_prefix: Option<String>,
 }
 
 impl Default for Config {
@@ -296,7 +296,7 @@ impl Default for Config {
             work_dir: None,
             max_blob_size: None,
             max_data_in_blob: None,
-            blob_file_name_pattern: None,
+            blob_file_name_prefix: None,
         }
     }
 }
@@ -332,7 +332,7 @@ mod tests {
         set_permissions(&path, perm).unwrap();
         let mut storage = Builder::new()
             .work_dir(&path)
-            .blob_file_name_pattern("test")
+            .blob_file_name_prefix("test")
             .max_blob_size(1_000_000usize)
             .max_data_in_blob(1_000usize)
             .build::<usize>()
@@ -355,7 +355,7 @@ mod tests {
         file.flush().unwrap();
         let mut storage = Builder::new()
             .work_dir(&path)
-            .blob_file_name_pattern("test")
+            .blob_file_name_prefix("test")
             .max_blob_size(1_000_000usize)
             .max_data_in_blob(1_000usize)
             .build::<usize>()
@@ -376,8 +376,8 @@ mod tests {
         assert!(builder.config.max_blob_size.is_none());
     }
     #[test]
-    fn set_empty_pattern() {
-        let builder = Builder::new().blob_file_name_pattern("");
-        assert!(builder.config.blob_file_name_pattern.is_none());
+    fn set_empty_prefix() {
+        let builder = Builder::new().blob_file_name_prefix("");
+        assert!(builder.config.blob_file_name_prefix.is_none());
     }
 }
