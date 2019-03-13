@@ -17,7 +17,10 @@ struct Header {
     flags: u64,
 }
 
-impl<K> Blob<K> where K: Default {
+impl<K> Blob<K>
+where
+    K: Default,
+{
     /// # Description
     /// Create new blob from file
     // @TODO more useful result
@@ -27,18 +30,18 @@ impl<K> Blob<K> where K: Default {
     }
 
     /// # Description
-    /// Writes given slice to file, returns number of written bytes
+    /// Writes given slice to file
     // @TODO more useful result
-    pub fn write(&mut self, _key: &K, _value: &[u8]) -> Result<usize, ()>  {
+    pub fn write(&mut self, _key: &K, _value: &[u8]) -> Result<(), ()> {
         // @TODO implement
-        Ok(0usize)
+        Ok(())
     }
 
     /// # Description
     /// Reads record data, yields `Ok(Vec<u8>)` if read successful,
     /// otherwise - `Err`
     // @TODO more useful result
-    pub fn read(&self, _key: &K) -> Result<Vec<u8>, ()>  {
+    pub fn read(&self, _key: &K) -> Result<Vec<u8>, ()> {
         // @TODO implement
         Ok(Vec::new())
     }
@@ -49,7 +52,6 @@ impl<K> Blob<K> where K: Default {
     pub fn close(&mut self) -> Result<(), ()> {
         // @TODO implement
         Ok(())
-
     }
 
     /// # Description

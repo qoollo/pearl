@@ -73,7 +73,7 @@ where
     /// # Examples
 
     // @TODO specify more useful error type
-    pub fn write(&mut self, key: K, value: &[u8]) -> Result<usize, ()> {
+    pub fn write(&mut self, key: K, value: &[u8]) -> Result<(), ()> {
         self.initialized.ok_or(())?;
         // @TODO process unwrap explicitly
         if self.active_blob.as_ref().unwrap().size()? + value.len()
