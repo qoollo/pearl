@@ -24,8 +24,12 @@ fn test_storage_read_write() {
         .blob_file_name_prefix("test")
         .max_blob_size(1_000_000usize)
         .max_data_in_blob(1_000usize);
-    let mut storage = builder.build::<u64>().unwrap();
-    assert!(storage.init().map_err(|e| eprintln!("{}", e)).is_ok());
+    let mut storage = builder.build().unwrap();
+    storage.init().unwrap();
+    let key = "test-data".to_owned();
+    let value = b"The `pearl` provides key-value blob storage";
+    storage.write(key.clone(), value).unwrap();
+    assert!(storage.read(&key).unwrap().is_empty());
     fs::remove_file(path.join("pearl.lock")).unwrap();
     fs::remove_dir(&path).unwrap();
     // write

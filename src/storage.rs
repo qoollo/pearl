@@ -73,7 +73,7 @@ where
     /// # Examples
 
     // @TODO specify more useful error type
-    pub fn write<V>(&mut self, key: K, value: &[u8]) -> Result<usize, ()> {
+    pub fn write(&mut self, key: K, value: &[u8]) -> Result<usize, ()> {
         self.initialized.ok_or(())?;
         // @TODO process unwrap explicitly
         if self.active_blob.as_ref().unwrap().size()? + value.len()
@@ -90,13 +90,30 @@ where
         self.active_blob.as_mut().unwrap().write(&key, &value)
     }
 
-    /// Description
-    /// Examples
+    /// # Description
+    /// Reads data with given key to `Vec<u8>`, if error ocured or there are no
+    /// records with matching key, returns `Err(_)`
 
     // @TODO specify more useful error type
-    pub fn read(&self) -> Result<(), ()> {
-        // @TODO implement
-        Ok(())
+    pub fn read(&self, key: &K) -> Result<Vec<u8>, ()> {
+        // @TODO match error in map_err
+        if let Ok(data) = self
+            .active_blob
+            .as_ref()
+            .ok_or(())?
+            .read(key)
+            .map_err(|_e| debug!("no records in active blob"))
+        {
+            Ok(data)
+        } else if let Some(data) = self.blobs.iter().find_map(|blob| {
+            blob.read(key)
+                .map_err(|_e| debug!("no records with key in blob"))
+                .ok()
+        }) {
+            Ok(data)
+        } else {
+            Err(())
+        }
     }
 
     /// # Description

@@ -35,6 +35,15 @@ impl<K> Blob<K> where K: Default {
     }
 
     /// # Description
+    /// Reads record data, yields `Ok(Vec<u8>)` if read successful,
+    /// otherwise - `Err`
+    // @TODO more useful result
+    pub fn read(&self, _key: &K) -> Result<Vec<u8>, ()>  {
+        // @TODO implement
+        Ok(Vec::new())
+    }
+
+    /// # Description
     /// Closes current blob and sets blob file in readonly mode
     // @TODO more useful result
     pub fn close(&mut self) -> Result<(), ()> {
