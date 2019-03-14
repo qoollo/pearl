@@ -4,10 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{
-    blob::Blob,
-    record::Record,
-};
+use crate::{blob::Blob, record::Record};
 
 const LOCK_FILE: &str = "pearl.lock";
 
@@ -78,11 +75,7 @@ where
     // @TODO specify more useful error type
     pub fn write(&mut self, record: Record<K>) -> Result<(), ()> {
         self.initialized.ok_or(())?;
-        // @TODO process unwrap explicitly
-        if self.active_blob.as_ref().unwrap().size()? + record.size()
-            > self.config.max_blob_size.unwrap()
-            || self.active_blob.as_ref().unwrap().count()? >= self.config.max_data_in_blob.unwrap()
-        {
+        if self.is_active_blob_full(record.size()) {
             let new_active = Box::new(Default::default());
             // @TODO process unwrap explicitly
             let mut old_active = self.active_blob.replace(new_active).unwrap();
@@ -202,6 +195,14 @@ where
         // @TODO Check whether last blob is active or closed
         self.active_blob = Some(Box::new(self.blobs.pop().ok_or(())?));
         Ok(())
+    }
+
+    // @TODO handle unwrap explicitly
+    fn is_active_blob_full(&self, next_record_size: usize) -> bool {
+        self.active_blob.as_ref().unwrap().size().unwrap() + next_record_size
+            > self.config.max_blob_size.unwrap()
+            || self.active_blob.as_ref().unwrap().count().unwrap()
+                >= self.config.max_data_in_blob.unwrap()
     }
 }
 
