@@ -15,3 +15,4 @@ mod record;
 mod storage;
 
 pub use storage::{Builder, Storage};
+pub use record::Record;

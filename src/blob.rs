@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use crate::record::Record;
+
 /// A `Blob` struct for performing of database,
 #[derive(Debug, Default)]
 pub struct Blob<T> {
@@ -32,7 +34,7 @@ where
     /// # Description
     /// Writes given slice to file
     // @TODO more useful result
-    pub fn write(&mut self, _key: &K, _value: &[u8]) -> Result<(), ()> {
+    pub fn write(&mut self, _record: Record<K>) -> Result<(), ()> {
         // @TODO implement
         Ok(())
     }
@@ -41,9 +43,9 @@ where
     /// Reads record data, yields `Ok(Vec<u8>)` if read successful,
     /// otherwise - `Err`
     // @TODO more useful result
-    pub fn read(&self, _key: &K) -> Result<Vec<u8>, ()> {
+    pub fn read(&self, _key: &K) -> Result<Record<K>, ()> {
         // @TODO implement
-        Ok(Vec::new())
+        Ok(Record::new())
     }
 
     /// # Description

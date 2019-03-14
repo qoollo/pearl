@@ -4,7 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::blob::Blob;
+use crate::{
+    blob::Blob,
+    record::Record,
+};
 
 const LOCK_FILE: &str = "pearl.lock";
 
@@ -73,10 +76,10 @@ where
     /// # Examples
 
     // @TODO specify more useful error type
-    pub fn write(&mut self, key: K, value: &[u8]) -> Result<(), ()> {
+    pub fn write(&mut self, record: Record<K>) -> Result<(), ()> {
         self.initialized.ok_or(())?;
         // @TODO process unwrap explicitly
-        if self.active_blob.as_ref().unwrap().size()? + value.len()
+        if self.active_blob.as_ref().unwrap().size()? + record.size()
             > self.config.max_blob_size.unwrap()
             || self.active_blob.as_ref().unwrap().len()? >= self.config.max_data_in_blob.unwrap()
         {
@@ -87,7 +90,7 @@ where
             self.blobs.push(*old_active);
         }
         // @TODO process unwrap explicitly
-        self.active_blob.as_mut().unwrap().write(&key, &value)
+        self.active_blob.as_mut().unwrap().write(record)
     }
 
     /// # Description
@@ -95,22 +98,22 @@ where
     /// records with matching key, returns `Err(_)`
 
     // @TODO specify more useful error type
-    pub fn read(&self, key: &K) -> Result<Vec<u8>, ()> {
+    pub fn read(&self, key: &K) -> Result<Record<K>, ()> {
         // @TODO match error in map_err
-        if let Ok(data) = self
+        if let Ok(r) = self
             .active_blob
             .as_ref()
             .ok_or(())?
             .read(key)
             .map_err(|_e| debug!("no records in active blob"))
         {
-            Ok(data)
-        } else if let Some(data) = self.blobs.iter().find_map(|blob| {
+            Ok(r)
+        } else if let Some(r) = self.blobs.iter().find_map(|blob| {
             blob.read(key)
                 .map_err(|_e| debug!("no records with key in blob"))
                 .ok()
         }) {
-            Ok(data)
+            Ok(r)
         } else {
             Err(())
         }

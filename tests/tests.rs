@@ -1,5 +1,5 @@
-use pearl::Builder;
-use std::{env, fs, path::Path};
+use pearl::{Builder, Record};
+use std::{env, fs};
 
 #[test]
 fn test_storage_init_new() {
@@ -25,11 +25,11 @@ fn test_storage_read_write() {
         .max_blob_size(1_000_000usize)
         .max_data_in_blob(1_000usize);
     let mut storage = builder.build().unwrap();
+    let key = "test";
     storage.init().unwrap();
-    let key = "test-data".to_owned();
-    let value = b"The `pearl` provides key-value blob storage";
-    storage.write(key.clone(), value).unwrap();
-    assert!(storage.read(&key).unwrap().is_empty());
+    let record = Record::new();
+    storage.write(record).unwrap();
+    assert!(storage.read(&key).is_ok());
     fs::remove_file(path.join("pearl.lock")).unwrap();
     fs::remove_dir(&path).unwrap();
     // write
