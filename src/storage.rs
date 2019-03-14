@@ -81,7 +81,7 @@ where
         // @TODO process unwrap explicitly
         if self.active_blob.as_ref().unwrap().size()? + record.size()
             > self.config.max_blob_size.unwrap()
-            || self.active_blob.as_ref().unwrap().len()? >= self.config.max_data_in_blob.unwrap()
+            || self.active_blob.as_ref().unwrap().count()? >= self.config.max_data_in_blob.unwrap()
         {
             let new_active = Box::new(Default::default());
             // @TODO process unwrap explicitly

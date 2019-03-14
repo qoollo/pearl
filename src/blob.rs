@@ -67,7 +67,7 @@ where
     /// # Description
     /// Returns number of records in current blob
     // @TODO more useful result
-    pub fn len(&self) -> Result<usize, ()> {
+    pub fn count(&self) -> Result<usize, ()> {
         // @TODO implement
         Ok(0usize)
     }
