@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use crate::record::Record;
+
 /// A `Blob` struct for performing of database,
 #[derive(Debug, Default)]
 pub struct Blob<T> {
@@ -17,10 +19,56 @@ struct Header {
     flags: u64,
 }
 
-impl<T> Blob<T> where T: Default {
+impl<K> Blob<K>
+where
+    K: Default,
+{
+    /// # Description
+    /// Create new blob from file
+    // @TODO more useful result
     pub fn from_file<P: AsRef<Path>>(_path: P) -> Result<Self, ()> {
         // @TODO implement
         Ok(Self::default())
+    }
+
+    /// # Description
+    /// Writes given slice to file
+    // @TODO more useful result
+    pub fn write(&mut self, _record: Record<K>) -> Result<(), ()> {
+        // @TODO implement
+        Ok(())
+    }
+
+    /// # Description
+    /// Reads record data, yields `Ok(Vec<u8>)` if read successful,
+    /// otherwise - `Err`
+    // @TODO more useful result
+    pub fn read(&self, _key: &K) -> Result<Record<K>, ()> {
+        // @TODO implement
+        Ok(Record::new())
+    }
+
+    /// # Description
+    // @TODO more useful result
+    pub fn flush(&mut self) -> Result<(), ()> {
+        // @TODO implement
+        Ok(())
+    }
+
+    /// # Description
+    /// Returns size of file in bytes
+    // @TODO more useful result
+    pub fn size(&self) -> Result<usize, ()> {
+        // @TODO implement
+        Ok(0usize)
+    }
+
+    /// # Description
+    /// Returns number of records in current blob
+    // @TODO more useful result
+    pub fn count(&self) -> Result<usize, ()> {
+        // @TODO implement
+        Ok(0usize)
     }
 }
 
