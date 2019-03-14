@@ -7,6 +7,7 @@ use std::{
 use crate::{blob::Blob, record::Record};
 
 const LOCK_FILE: &str = "pearl.lock";
+const BLOB_FILE_ETENSION: &str = "blob";
 
 /// # Description
 /// Used to create a storage, configure it and manage
@@ -20,7 +21,10 @@ const LOCK_FILE: &str = "pearl.lock";
 /// ```
 ///
 #[derive(Debug)]
-pub struct Storage<K> {
+pub struct Storage<K>
+where
+    K: Send,
+{
     initialized: Option<()>,
     config: Config,
     active_blob: Option<Box<Blob<K>>>,
@@ -28,9 +32,9 @@ pub struct Storage<K> {
     lock_file: Option<File>,
 }
 
-impl<K> Storage<K>
+impl<K: 'static> Storage<K>
 where
-    K: Default,
+    K: Default + Send,
 {
     /// Creates a new instance of a storage with u32 key
     /// # Examples
@@ -51,8 +55,13 @@ where
         let files_in_work_dir: Vec<_> = fs::read_dir(wd)?
             .map(std::result::Result::unwrap) // @TODO handle unwrap explicitly
             .collect();
-        if files_in_work_dir.is_empty() {
-            debug!("working dir is empty, starting empty storage");
+        if files_in_work_dir
+            .iter()
+            .map(|file| file.file_name().as_os_str().to_str().unwrap().to_owned())
+            .find(|name| name.ends_with(BLOB_FILE_ETENSION))
+            .is_none()
+        {
+            debug!("working dir is unitialized, starting empty storage");
             self.init_new().unwrap(); // @TODO handle unwrap explicitly
         } else {
             debug!("working dir contains files, try init existing");
@@ -137,9 +146,9 @@ where
     }
 }
 
-impl<K> Storage<K>
+impl<K: 'static> Storage<K>
 where
-    K: Default,
+    K: Default + Send,
 {
     fn prepare_work_dir(&mut self) -> io::Result<()> {
         let path = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
@@ -163,7 +172,23 @@ where
     // @TODO specify more useful error type
     #[inline]
     fn init_active_blob(&mut self) -> Result<(), ()> {
-        self.active_blob = Some(Box::new(Default::default()));
+        let new_blob_name = format!(
+            "{}.{}.{}",
+            self.config.blob_file_name_prefix.as_ref().ok_or(())?,
+            self.blobs.len(),
+            BLOB_FILE_ETENSION
+        );
+        let path = self
+            .config
+            .work_dir
+            .as_ref()
+            .ok_or(())?
+            .join(&new_blob_name);
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        // @TODO remove block on
+        let blob = runtime.block_on(Blob::open_new(path)).unwrap();
+        self.active_blob = Some(Box::new(blob));
+        debug!("created new active blob: {}", new_blob_name);
         Ok(())
     }
 
@@ -206,7 +231,10 @@ where
     }
 }
 
-impl<K> Default for Storage<K> {
+impl<K> Default for Storage<K>
+where
+    K: Send,
+{
     fn default() -> Self {
         Self {
             initialized: None,
@@ -234,7 +262,7 @@ impl<'a> Builder {
 
     /// Creates `Storage` based on given configuration
     /// Examples
-    pub fn build<K>(self) -> Result<Storage<K>, ()> {
+    pub fn build<K: Send>(self) -> Result<Storage<K>, ()> {
         if self.config.blob_file_name_prefix.is_none()
             || self.config.max_data_in_blob.is_none()
             || self.config.max_blob_size.is_none()

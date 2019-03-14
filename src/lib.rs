@@ -8,11 +8,13 @@
 
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate futures;
 
 mod blob;
 mod index;
 mod record;
 mod storage;
 
-pub use storage::{Builder, Storage};
 pub use record::Record;
+pub use storage::{Builder, Storage};

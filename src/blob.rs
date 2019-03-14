@@ -1,12 +1,48 @@
-use std::path::Path;
+use futures::{Async, Poll};
+use std::{io, marker::PhantomData, path::Path};
+use tokio::{
+    fs::file::{File, OpenFuture, OpenOptions},
+    prelude::Future,
+};
 
 use crate::record::Record;
 
 /// A `Blob` struct for performing of database,
 #[derive(Debug, Default)]
-pub struct Blob<T> {
+pub struct Blob<K>
+where
+    K: Send,
+{
     header: Header,
-    records: Vec<T>, // @TODO needs verification, created to yield generic T up
+    records: Vec<K>, // @TODO needs verification, created to yield generic T up
+    file: Option<File>,
+}
+
+pub struct BlobOpenFuture<K, P>
+where
+    K: Default + Send,
+    P: AsRef<Path> + Send + 'static,
+{
+    f: OpenFuture<P>,
+    _m: PhantomData<K>,
+}
+
+impl<K, P> Future for BlobOpenFuture<K, P>
+where
+    K: Default + Send,
+    P: AsRef<Path> + Send + 'static,
+{
+    type Item = Blob<K>;
+    type Error = io::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let file = try_ready!(self.f.poll());
+        Ok(Async::Ready(Blob {
+            header: Default::default(),
+            records: Vec::new(),
+            file: Some(file),
+        }))
+    }
 }
 
 /// # Description
@@ -21,8 +57,20 @@ struct Header {
 
 impl<K> Blob<K>
 where
-    K: Default,
+    K: Default + Send,
 {
+    /// Creates new blob file or openes existing and truncates it
+    pub fn open_new<P: AsRef<Path> + Send + 'static>(path: P) -> BlobOpenFuture<K, P> {
+        let open = OpenOptions::new()
+            .create_new(true)
+            .read(true)
+            .write(true)
+            .open(path);
+        BlobOpenFuture {
+            f: open,
+            _m: PhantomData,
+        }
+    }
     /// # Description
     /// Create new blob from file
     // @TODO more useful result
@@ -74,13 +122,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::Blob;
+    use super::{Blob};
 
     #[test]
     fn test_blob_new() {
         let _b: Blob<u32> = Blob {
             header: Default::default(),
             records: Vec::new(),
+            file: None,
         };
     }
 }
