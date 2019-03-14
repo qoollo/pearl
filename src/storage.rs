@@ -86,7 +86,7 @@ where
             let new_active = Box::new(Default::default());
             // @TODO process unwrap explicitly
             let mut old_active = self.active_blob.replace(new_active).unwrap();
-            old_active.close()?;
+            old_active.flush()?;
             self.blobs.push(*old_active);
         }
         // @TODO process unwrap explicitly

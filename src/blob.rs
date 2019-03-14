@@ -49,9 +49,8 @@ where
     }
 
     /// # Description
-    /// Closes current blob and sets blob file in readonly mode
     // @TODO more useful result
-    pub fn close(&mut self) -> Result<(), ()> {
+    pub fn flush(&mut self) -> Result<(), ()> {
         // @TODO implement
         Ok(())
     }
