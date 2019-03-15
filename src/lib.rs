@@ -10,6 +10,8 @@
 extern crate log;
 #[macro_use]
 extern crate futures;
+#[macro_use]
+extern crate serde_derive;
 
 mod blob;
 mod index;

@@ -1,3 +1,7 @@
+use bincode::{deserialize, serialize};
+use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
+
 use futures::{Async, Poll};
 use std::{
     io,
@@ -52,6 +56,19 @@ where
     }
 }
 
+// pub struct BlobWriteFuture {
+
+// }
+
+// impl Future for BlobWriteFuture
+// {
+//     type Item = ();
+//     type Error = io::Error;
+
+//     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+//     }
+// }
+
 /// # Description
 /// # Examples
 #[derive(Debug, Default)]
@@ -64,7 +81,7 @@ struct Header {
 
 impl<K> Blob<K>
 where
-    K: Default + Send,
+    K: for<'de> Deserialize<'de> + Serialize + Default + Send + PartialEq + Debug,
 {
     /// Creates new blob file or openes existing and truncates it
     pub fn open_new<P: AsRef<Path> + Send + 'static>(path: P) -> BlobOpenFuture<K, P> {
@@ -94,10 +111,20 @@ where
     }
 
     /// # Description
-    /// Writes given slice to file
+    /// Writes given record to file
     // @TODO more useful result
-    pub fn write(&mut self, _record: Record<K>) -> Result<(), ()> {
-        // @TODO implement
+    pub fn write(&mut self, record: Record<K>) -> Result<(), ()> {
+        let encoded = serialize(&record).map_err(|e| error!("{}", e))?;
+        let temp_file = self.file.take().unwrap();
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        println!("write");
+        let (temp_file, _) = runtime
+            .block_on(tokio::io::write_all(temp_file, encoded))
+            .unwrap();
+        let (temp_file, _) = runtime
+            .block_on(temp_file.seek(io::SeekFrom::Start(0)))
+            .unwrap();
+        self.file = Some(temp_file);
         Ok(())
     }
 
@@ -105,9 +132,22 @@ where
     /// Reads record data, yields `Ok(Vec<u8>)` if read successful,
     /// otherwise - `Err`
     // @TODO more useful result
-    pub fn read(&self, _key: &K) -> Result<Record<K>, ()> {
-        // @TODO implement
-        Ok(Record::new())
+    pub fn read(&mut self, key: &K) -> Result<Record<K>, ()> {
+        use tokio::io::AsyncRead;
+        let (reader, writer) = self.file.take().unwrap().split();
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        // @TODO remove block on
+        println!("read");
+        let (reader, buf) = runtime
+            .block_on(tokio::io::read_to_end(reader, Vec::new()))
+            .unwrap();
+        self.file = Some(reader.unsplit(writer));
+
+        let record: Record<K> = deserialize(&buf).unwrap();
+        if record.key() != key {
+            error!("no matching key");
+        }
+        Ok(record)
     }
 
     /// # Description

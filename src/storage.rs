@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+use serde::{Deserialize, Serialize};
 use std::{
     fs::{self, DirEntry, File, OpenOptions},
     io,
@@ -34,7 +36,7 @@ where
 
 impl<K: 'static> Storage<K>
 where
-    K: Default + Send,
+    K: Serialize + for<'de> Deserialize<'de> + Default + Send + PartialEq + Debug,
 {
     /// Creates a new instance of a storage with u32 key
     /// # Examples
@@ -100,19 +102,19 @@ where
     /// records with matching key, returns `Err(_)`
 
     // @TODO specify more useful error type
-    pub fn read(&self, key: &K) -> Result<Record<K>, ()> {
+    pub fn read(&mut self, key: &K) -> Result<Record<K>, ()> {
         // @TODO match error in map_err
         if let Ok(r) = self
             .active_blob
-            .as_ref()
-            .ok_or(())?
+            .as_mut()
+            .unwrap()
             .read(key)
-            .map_err(|_e| debug!("no records in active blob"))
+            .map_err(|_e| dbg!("no records in active blob"))
         {
             Ok(r)
-        } else if let Some(r) = self.blobs.iter().find_map(|blob| {
+        } else if let Some(r) = self.blobs.iter_mut().find_map(|blob| {
             blob.read(key)
-                .map_err(|_e| debug!("no records with key in blob"))
+                .map_err(|_e| dbg!("no records with key in blob"))
                 .ok()
         }) {
             Ok(r)
@@ -154,7 +156,7 @@ where
 
 impl<K: 'static> Storage<K>
 where
-    K: Default + Send,
+    K: Serialize + for<'de> Deserialize<'de> + Default + Send + PartialEq + Debug,
 {
     fn prepare_work_dir(&mut self) -> io::Result<()> {
         let path = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly

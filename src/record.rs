@@ -2,9 +2,10 @@ use std::mem;
 
 /// # Description
 /// # Examples
-#[derive(Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Record<K> {
     header: Header<K>,
+    data: Vec<u8>,
 }
 
 impl<K> Record<K>
@@ -21,20 +22,38 @@ where
     pub fn new() -> Self {
         Self {
             header: Default::default(),
+            data: Vec::new(),
         }
     }
 
     /// # Description
-    /// Returns number of bytes, struct `Record` uses on disk
+    /// Get number of bytes, struct `Record` uses on disk
     pub fn size(&self) -> usize {
         // @TODO implement
         self.header.size as usize + Header::<K>::unaligned_heades_size()
+    }
+
+    /// # Description
+    /// Get record key reference
+    pub fn key(&self) -> &K {
+        &self.header.key
+    }
+
+    /// # Description
+    /// Set data to Record, replacing if exists
+    pub fn set_data(&mut self, d: Vec<u8>) {
+        self.data = d;
+    }
+
+    /// # Description
+    pub fn set_key(&mut self, key: K) {
+        self.header.key = key;
     }
 }
 
 /// # Description
 /// # Examples
-#[derive(Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 struct Header<T>
 where
     T: Sized,
