@@ -1,5 +1,9 @@
 use futures::{Async, Poll};
-use std::{io, marker::PhantomData, path::Path};
+use std::{
+    io,
+    marker::PhantomData,
+    path::{Path, PathBuf},
+};
 use tokio::{
     fs::file::{File, OpenFuture, OpenOptions},
     prelude::Future,
@@ -15,6 +19,7 @@ where
 {
     header: Header,
     records: Vec<K>, // @TODO needs verification, created to yield generic T up
+    path: PathBuf,
     file: Option<File>,
 }
 
@@ -24,6 +29,7 @@ where
     P: AsRef<Path> + Send + 'static,
 {
     f: OpenFuture<P>,
+    p: PathBuf,
     _m: PhantomData<K>,
 }
 
@@ -41,6 +47,7 @@ where
             header: Default::default(),
             records: Vec::new(),
             file: Some(file),
+            path: self.p.clone(),
         }))
     }
 }
@@ -61,6 +68,7 @@ where
 {
     /// Creates new blob file or openes existing and truncates it
     pub fn open_new<P: AsRef<Path> + Send + 'static>(path: P) -> BlobOpenFuture<K, P> {
+        let p = path.as_ref().to_owned();
         let open = OpenOptions::new()
             .create_new(true)
             .read(true)
@@ -68,15 +76,21 @@ where
             .open(path);
         BlobOpenFuture {
             f: open,
+            p,
             _m: PhantomData,
         }
     }
     /// # Description
     /// Create new blob from file
     // @TODO more useful result
-    pub fn from_file<P: AsRef<Path>>(_path: P) -> Result<Self, ()> {
-        // @TODO implement
-        Ok(Self::default())
+    pub fn from_file<P: AsRef<Path> + Send + 'static>(path: P) -> BlobOpenFuture<K, P> {
+        let p = path.as_ref().to_owned();
+        let open = OpenOptions::new().read(true).write(true).open(path);
+        BlobOpenFuture {
+            f: open,
+            p,
+            _m: PhantomData,
+        }
     }
 
     /// # Description
@@ -118,11 +132,15 @@ where
         // @TODO implement
         Ok(0usize)
     }
+
+    pub fn path(&self) -> PathBuf {
+        self.path.clone()
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Blob};
+    use super::Blob;
 
     #[test]
     fn test_blob_new() {
@@ -130,6 +148,7 @@ mod tests {
             header: Default::default(),
             records: Vec::new(),
             file: None,
+            path: Default::default(),
         };
     }
 }

@@ -144,6 +144,12 @@ where
     pub fn blobs_count(&self) -> usize {
         self.blobs.len() + if self.active_blob.is_some() { 1 } else { 0 }
     }
+
+    /// # Description
+    /// Returns active blob file path, if active blob unitialized - None
+    pub fn active_blob_path(&self) -> Option<PathBuf> {
+        Some(self.active_blob.as_ref()?.path())
+    }
 }
 
 impl<K: 'static> Storage<K>
@@ -170,7 +176,6 @@ where
     }
 
     // @TODO specify more useful error type
-    #[inline]
     fn init_active_blob(&mut self) -> Result<(), ()> {
         let new_blob_name = format!(
             "{}.{}.{}",
@@ -199,26 +204,36 @@ where
 
     // @TODO specify more useful error type
     fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<(), ()> {
-        self.blobs = files
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let mut max_blob_file_index: Option<usize> = None;
+        let mut active_blob = None;
+        let temp_blobs = files
             .iter()
-            .filter_map(|entry| {
-                // @TODO implement more file validations
-                if entry.metadata().ok()?.is_file() {
-                    Some(Blob::from_file(entry.path()).ok()?)
+            .map(DirEntry::path)
+            .filter(|path| path.is_file())
+            .filter_map(|path| {
+                let blob = runtime.block_on(Blob::from_file(path.clone())).unwrap();
+                let stem = path.file_stem().unwrap().to_str().unwrap();
+                let index_str = stem.split('.').last()?;
+                let id = index_str.parse().ok()?;
+                if let Some(ref mut i) = max_blob_file_index {
+                    if id > *i {
+                        *i = id;
+                        let temp_blob = active_blob.take()?;
+                        active_blob = Some(blob);
+                        Some(temp_blob)
+                    } else {
+                        Some(blob)
+                    }
                 } else {
-                    debug!("skipping file \"{}\"", entry.path().display());
+                    max_blob_file_index = Some(id);
+                    active_blob = Some(blob);
                     None
                 }
             })
             .collect();
-        self.set_active_blob()
-    }
-
-    // @TODO specify more useful error type
-    fn set_active_blob(&mut self) -> Result<(), ()> {
-        // @TODO Search for last active blob by index extracted from file name
-        // @TODO Check whether last blob is active or closed
-        self.active_blob = Some(Box::new(self.blobs.pop().ok_or(())?));
+        self.active_blob = Some(Box::new(active_blob.take().ok_or(())?));
+        self.blobs = temp_blobs;
         Ok(())
     }
 
