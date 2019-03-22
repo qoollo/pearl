@@ -1,3 +1,6 @@
+#![feature(futures_api, await_macro)]
+
+use futures::{executor::ThreadPool, future::FutureExt};
 use pearl::{Builder, Record};
 use std::{env, fs};
 
@@ -74,8 +77,11 @@ fn test_storage_read_write() {
     let mut record = Record::new();
     record.set_data(b"test data string".to_vec());
     record.set_key(key.clone());
-    storage.write(record).unwrap();
-    assert_eq!(storage.read(&key).unwrap().key(), &key);
+    let mut pool = ThreadPool::new().unwrap();
+    let w = storage.write(record);
+    let r = storage.read(key.clone());
+    let rec = pool.run(w.then(|_| r)).unwrap();
+    assert_eq!(rec.key(), &key);
     let blob_file_path = path.join("test.0.blob");
     fs::remove_file(blob_file_path).unwrap();
     fs::remove_file(path.join("pearl.lock")).unwrap();

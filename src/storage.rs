@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    blob::{self, Blob},
+    blob::{self, Blob, WriteFuture, ReadFuture},
     record::Record,
 };
 
@@ -87,18 +87,16 @@ where
     /// # Examples
 
     // @TODO specify more useful error type
-    pub fn write(&mut self, record: Record<K>) -> Result<(), ()> {
-        self.initialized.ok_or(())?;
+    pub fn write(&mut self, record: Record<K>) -> WriteFuture {
         if self.is_active_blob_full(record.size()) {
             let new_active = Box::new(Default::default());
             // @TODO process unwrap explicitly
-            let mut old_active = self.active_blob.replace(new_active).unwrap();
-            old_active.flush()?;
+            let old_active = self.active_blob.replace(new_active).unwrap();
+            // old_active.flush().map_err(Error::WriteFailed)?;
             self.blobs.push(*old_active);
         }
-        unimplemented!();
         // @TODO process unwrap explicitly
-        // self.active_blob.as_mut().unwrap().write(record)
+        self.active_blob.as_mut().unwrap().write(record)
     }
 
     /// # Description
@@ -106,26 +104,13 @@ where
     /// records with matching key, returns `Err(_)`
 
     // @TODO specify more useful error type
-    pub fn read(&mut self, _key: &K) -> Result<Record<K>, ()> {
+    pub fn read(&mut self, key: K) -> ReadFuture<K> {
         // @TODO match error in map_err
-        // if let Ok(r) = self
-        //     .active_blob
-        //     .as_mut()
-        //     .unwrap()
-        //     .read(key)
-        //     .map_err(|_e| dbg!("no records in active blob"))
-        // {
-        //     Ok(r)
-        // } else if let Some(r) = self.blobs.iter_mut().find_map(|blob| {
-        //     blob.read(key)
-        //         .map_err(|_e| dbg!("no records with key in blob"))
-        //         .ok()
-        // }) {
-        //     Ok(r)
-        // } else {
-        //     Err(())
-        // }
-        unimplemented!()
+        if let Some(ref mut blob) = self.active_blob.as_mut() {
+            blob.read(key)
+        } else {
+            self.blobs.iter_mut().find(|blob| {blob.contains(&key)}).unwrap().read(key)
+        }
     }
 
     /// # Description
