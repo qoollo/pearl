@@ -1,7 +1,7 @@
 #![feature(futures_api)]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
-#![cfg_attr(test, deny(warnings))]
+// #![cfg_attr(test, deny(warnings))]
 
 //! # pearl
 //!

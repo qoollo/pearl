@@ -13,7 +13,7 @@ fn test_storage_init_new() {
         .max_blob_size(1_000_000usize)
         .max_data_in_blob(1_000usize);
     let mut storage = builder.build::<u32>().unwrap();
-    assert!(storage.init().map_err(|e| eprintln!("{}", e)).is_ok());
+    assert!(storage.init().map_err(|e| eprintln!("{:?}", e)).is_ok());
     assert_eq!(storage.blobs_count(), 1);
     let blob_file_path = path.join("test.0.blob");
     assert!(blob_file_path.exists());
@@ -49,7 +49,7 @@ fn test_storage_init_from_existing() {
         .max_data_in_blob(1_000usize);
     let mut storage = builder.build::<u32>().unwrap();
 
-    assert!(storage.init().map_err(|e| eprintln!("{}", e)).is_ok());
+    assert!(storage.init().map_err(|e| eprintln!("{:?}", e)).is_ok());
     assert_eq!(storage.blobs_count(), 2);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
@@ -97,7 +97,7 @@ fn test_storage_close() {
         .max_blob_size(1_000_000usize)
         .max_data_in_blob(1_000usize);
     let mut storage = builder.build::<i32>().unwrap();
-    assert!(storage.init().map_err(|e| eprintln!("{}", e)).is_ok());
+    assert!(storage.init().map_err(|e| eprintln!("{:?}", e)).is_ok());
     let blob_file_path = path.join("test.0.blob");
     fs::remove_file(blob_file_path).unwrap();
     fs::remove_file(path.join("pearl.lock")).unwrap();

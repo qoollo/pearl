@@ -7,12 +7,16 @@ use std::{
 };
 
 use crate::{
-    blob::{self, Blob, WriteFuture, ReadFuture},
+    blob::{self, Blob, ReadFuture, WriteFuture},
     record::Record,
 };
 
 const LOCK_FILE: &str = "pearl.lock";
 const BLOB_FILE_ETENSION: &str = "blob";
+
+/// # Description
+/// A specialized Result type
+type Result<T> = std::result::Result<T, Error>;
 
 /// # Description
 /// Used to create a storage, configure it and manage
@@ -30,7 +34,6 @@ pub struct Storage<K>
 where
     K: Send,
 {
-    initialized: Option<()>,
     config: Config,
     active_blob: Option<Box<Blob<K>>>,
     blobs: Vec<Blob<K>>,
@@ -53,12 +56,13 @@ where
     ///
     /// Storage works in dir provided to builder. If dir not exist,
     /// creates it, otherwise tries init dir as existing storage.
-    pub fn init(&mut self) -> io::Result<()> {
+    pub fn init(&mut self) -> Result<()> {
         // @TODO implement work dir validation
         self.prepare_work_dir()?;
-        let wd = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
-        let files_in_work_dir: Vec<_> = fs::read_dir(wd)?
-            .map(std::result::Result::unwrap) // @TODO handle unwrap explicitly
+        let wd = Path::new(self.config.work_dir.as_ref().ok_or(Error::Unitialized)?);
+        let files_in_work_dir: Vec<_> = fs::read_dir(wd)
+            .map_err(Error::IO)?
+            .filter_map(|res_dir_entry| res_dir_entry.map_err(|e| error!("{}", e)).ok())
             .collect();
         if files_in_work_dir
             .iter()
@@ -76,7 +80,6 @@ where
                 .for_each(|name| trace!("{}", name.file_name().as_os_str().to_str().unwrap())); // @TODO handle unwrap explicitly
             self.init_from_existing(files_in_work_dir).unwrap(); // @TODO handle unwrap explicitly
         }
-        self.initialized = Some(());
         Ok(())
     }
 
@@ -109,7 +112,11 @@ where
         if let Some(ref mut blob) = self.active_blob.as_mut() {
             blob.read(key)
         } else {
-            self.blobs.iter_mut().find(|blob| {blob.contains(&key)}).unwrap().read(key)
+            self.blobs
+                .iter_mut()
+                .find(|blob| blob.contains(&key))
+                .unwrap()
+                .read(key)
         }
     }
 
@@ -118,7 +125,7 @@ where
     /// # Examples
 
     // @TODO specify more useful error type
-    pub fn close(&mut self) -> Result<(), ()> {
+    pub fn close(&mut self) -> Result<()> {
         // @TODO implement
         Ok(())
     }
@@ -148,11 +155,11 @@ impl<K: 'static> Storage<K>
 where
     K: Serialize + for<'de> Deserialize<'de> + Default + Send + PartialEq + Debug,
 {
-    fn prepare_work_dir(&mut self) -> io::Result<()> {
+    fn prepare_work_dir(&mut self) -> Result<()> {
         let path = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
         if !path.exists() {
             debug!("creating work dir recursively: {}", path.display());
-            fs::create_dir_all(path)?;
+            fs::create_dir_all(path).map_err(Error::IO)?;
         } else {
             debug!("work dir exists: {}", path.display());
         }
@@ -162,12 +169,13 @@ where
             OpenOptions::new()
                 .create(true)
                 .write(true)
-                .open(&lock_file)?,
+                .open(&lock_file)
+                .map_err(Error::IO)?,
         );
         Ok(())
     }
 
-    fn init_active_blob(&mut self) -> Result<(), Error> {
+    fn init_active_blob(&mut self) -> Result<()> {
         let new_blob_name = format!(
             "{}.{}.{}",
             self.config
@@ -189,12 +197,12 @@ where
     }
 
     // @TODO specify more useful error type
-    fn init_new(&mut self) -> Result<(), Error> {
+    fn init_new(&mut self) -> Result<()> {
         self.init_active_blob()
     }
 
     // @TODO specify more useful error type
-    fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<(), Error> {
+    fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         let mut max_blob_file_index: Option<usize> = None;
         let mut active_blob = None;
         let temp_blobs = files
@@ -242,7 +250,6 @@ where
 {
     fn default() -> Self {
         Self {
-            initialized: None,
             config: Default::default(),
             active_blob: None,
             blobs: Vec::new(),
@@ -251,11 +258,14 @@ where
     }
 }
 
+
 #[derive(Debug)]
 pub enum Error {
     ActiveBlobNotSet,
     InitActiveBlob(blob::Error),
     WrongConfig,
+    Unitialized,
+    IO(io::Error),
 }
 
 /// `Builder` used for initializing a `Storage`.
@@ -274,13 +284,13 @@ impl<'a> Builder {
 
     /// Creates `Storage` based on given configuration
     /// Examples
-    pub fn build<K: Send>(self) -> Result<Storage<K>, ()> {
+    pub fn build<K: Send>(self) -> Result<Storage<K>> {
         if self.config.blob_file_name_prefix.is_none()
             || self.config.max_data_in_blob.is_none()
             || self.config.max_blob_size.is_none()
             || self.config.blob_file_name_prefix.is_none()
         {
-            Err(())
+            Err(Error::Unitialized)
         } else {
             Ok(Storage {
                 config: self.config,
