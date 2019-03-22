@@ -1,6 +1,7 @@
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 #![cfg_attr(test, deny(warnings))]
+#![feature(futures_api)]
 
 //! # pearl
 //!
@@ -8,8 +9,8 @@
 
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate futures;
+// #[macro_use]
+// extern crate futures;
 #[macro_use]
 extern crate serde_derive;
 

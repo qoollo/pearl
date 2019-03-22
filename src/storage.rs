@@ -1,12 +1,15 @@
-use std::fmt::Debug;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::{
     fs::{self, DirEntry, File, OpenOptions},
     io,
     path::{Path, PathBuf},
 };
 
-use crate::{blob::Blob, record::Record};
+use crate::{
+    blob::{self, Blob},
+    record::Record,
+};
 
 const LOCK_FILE: &str = "pearl.lock";
 const BLOB_FILE_ETENSION: &str = "blob";
@@ -93,8 +96,9 @@ where
             old_active.flush()?;
             self.blobs.push(*old_active);
         }
+        unimplemented!();
         // @TODO process unwrap explicitly
-        self.active_blob.as_mut().unwrap().write(record)
+        // self.active_blob.as_mut().unwrap().write(record)
     }
 
     /// # Description
@@ -102,25 +106,26 @@ where
     /// records with matching key, returns `Err(_)`
 
     // @TODO specify more useful error type
-    pub fn read(&mut self, key: &K) -> Result<Record<K>, ()> {
+    pub fn read(&mut self, _key: &K) -> Result<Record<K>, ()> {
         // @TODO match error in map_err
-        if let Ok(r) = self
-            .active_blob
-            .as_mut()
-            .unwrap()
-            .read(key)
-            .map_err(|_e| dbg!("no records in active blob"))
-        {
-            Ok(r)
-        } else if let Some(r) = self.blobs.iter_mut().find_map(|blob| {
-            blob.read(key)
-                .map_err(|_e| dbg!("no records with key in blob"))
-                .ok()
-        }) {
-            Ok(r)
-        } else {
-            Err(())
-        }
+        // if let Ok(r) = self
+        //     .active_blob
+        //     .as_mut()
+        //     .unwrap()
+        //     .read(key)
+        //     .map_err(|_e| dbg!("no records in active blob"))
+        // {
+        //     Ok(r)
+        // } else if let Some(r) = self.blobs.iter_mut().find_map(|blob| {
+        //     blob.read(key)
+        //         .map_err(|_e| dbg!("no records with key in blob"))
+        //         .ok()
+        // }) {
+        //     Ok(r)
+        // } else {
+        //     Err(())
+        // }
+        unimplemented!()
     }
 
     /// # Description
@@ -177,11 +182,13 @@ where
         Ok(())
     }
 
-    // @TODO specify more useful error type
-    fn init_active_blob(&mut self) -> Result<(), ()> {
+    fn init_active_blob(&mut self) -> Result<(), Error> {
         let new_blob_name = format!(
             "{}.{}.{}",
-            self.config.blob_file_name_prefix.as_ref().ok_or(())?,
+            self.config
+                .blob_file_name_prefix
+                .as_ref()
+                .ok_or(Error::WrongConfig)?,
             self.blobs.len(),
             BLOB_FILE_ETENSION
         );
@@ -189,24 +196,20 @@ where
             .config
             .work_dir
             .as_ref()
-            .ok_or(())?
+            .ok_or(Error::WrongConfig)?
             .join(&new_blob_name);
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        // @TODO remove block on
-        let blob = runtime.block_on(Blob::open_new(path)).unwrap();
-        self.active_blob = Some(Box::new(blob));
+        self.active_blob = Some(Blob::open_new(path).map_err(Error::InitActiveBlob)?.boxed());
         debug!("created new active blob: {}", new_blob_name);
         Ok(())
     }
 
     // @TODO specify more useful error type
-    fn init_new(&mut self) -> Result<(), ()> {
+    fn init_new(&mut self) -> Result<(), Error> {
         self.init_active_blob()
     }
 
     // @TODO specify more useful error type
-    fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<(), ()> {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+    fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<(), Error> {
         let mut max_blob_file_index: Option<usize> = None;
         let mut active_blob = None;
         let temp_blobs = files
@@ -214,7 +217,7 @@ where
             .map(DirEntry::path)
             .filter(|path| path.is_file())
             .filter_map(|path| {
-                let blob = runtime.block_on(Blob::from_file(path.clone())).unwrap();
+                let blob: Blob<K> = Blob::from_file(path.clone()).unwrap();
                 let stem = path.file_stem().unwrap().to_str().unwrap();
                 let index_str = stem.split('.').last()?;
                 let id = index_str.parse().ok()?;
@@ -234,7 +237,7 @@ where
                 }
             })
             .collect();
-        self.active_blob = Some(Box::new(active_blob.take().ok_or(())?));
+        self.active_blob = Some(Box::new(active_blob.take().ok_or(Error::ActiveBlobNotSet)?));
         self.blobs = temp_blobs;
         Ok(())
     }
@@ -261,6 +264,13 @@ where
             lock_file: None,
         }
     }
+}
+
+#[derive(Debug)]
+pub enum Error {
+    ActiveBlobNotSet,
+    InitActiveBlob(blob::Error),
+    WrongConfig,
 }
 
 /// `Builder` used for initializing a `Storage`.
