@@ -258,7 +258,6 @@ where
     }
 }
 
-
 #[derive(Debug)]
 pub enum Error {
     ActiveBlobNotSet,

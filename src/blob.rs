@@ -52,14 +52,23 @@ pub struct ReadFuture<K> {
 
 impl<K> Future for ReadFuture<K>
 where
-    K: for<'de> Deserialize<'de>,
+    K: for<'de> Deserialize<'de> + Default,
 {
     type Output = Result<Record<K>, Error>;
 
     fn poll(self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
-        let mut buf = [0u8; 1024];
+        let header_size = Record::<K>::header_size();
+        dbg!(&header_size);
+        let mut buf = vec![0u8; header_size];
         self.f.try_clone().unwrap().read_at(&mut buf, 0).unwrap();
-        let rec = deserialize(&buf).unwrap();
+        let mut rec = Record::with_raw_header(&buf);
+        let mut buf = vec![0u8; dbg!(rec.data_len())];
+        self.f
+            .try_clone()
+            .unwrap()
+            .read_at(&mut buf, header_size as u64)
+            .unwrap();
+        rec.set_data(buf);
         Poll::Ready(Ok(rec))
     }
 }
@@ -104,9 +113,12 @@ impl<K> Blob<K> {
 
     pub fn write(&self, record: Record<K>) -> WriteFuture
     where
-        K: Serialize,
+        K: Serialize + Default,
     {
-        let buf = serialize(&record).unwrap();
+        let mut buf = serialize(&record.raw_header()).unwrap();
+        println!("write header len {}", buf.len());
+        let mut data = serialize(record.data()).unwrap();
+        buf.append(&mut data);
         WriteFuture {
             f: self.file.as_ref().unwrap().try_clone().unwrap(),
             b: Some(buf),

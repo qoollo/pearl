@@ -72,16 +72,20 @@ fn test_storage_read_write() {
         .max_blob_size(1_000_000usize)
         .max_data_in_blob(1_000usize);
     let mut storage = builder.build().unwrap();
-    let key = "test".to_owned();
+    let key = "test-test".to_owned();
     storage.init().unwrap();
     let mut record = Record::new();
-    record.set_data(b"test data string".to_vec());
+    let data = b"test data string".to_vec();
+    record.set_data(data.clone());
     record.set_key(key.clone());
+    dbg!(&record);
     let mut pool = ThreadPool::new().unwrap();
     let w = storage.write(record);
     let r = storage.read(key.clone());
     let rec = pool.run(w.then(|_| r)).unwrap();
+    dbg!(&rec);
     assert_eq!(rec.key(), &key);
+    assert_eq!(rec.data().len(), data.len());
     let blob_file_path = path.join("test.0.blob");
     fs::remove_file(blob_file_path).unwrap();
     fs::remove_file(path.join("pearl.lock")).unwrap();
