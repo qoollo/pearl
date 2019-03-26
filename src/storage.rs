@@ -32,7 +32,7 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub struct Storage<K>
 where
-    K: Send,
+    K: Send + AsRef<[u8]>,
 {
     config: Config,
     active_blob: Option<Box<Blob<K>>>,
@@ -42,7 +42,7 @@ where
 
 impl<K: 'static> Storage<K>
 where
-    K: Serialize + for<'de> Deserialize<'de> + Default + Send + PartialEq + Debug,
+    K: Serialize + for<'de> Deserialize<'de> + Default + Send + PartialEq + Debug + AsRef<[u8]>,
 {
     /// Creates a new instance of a storage with u32 key
     /// # Examples
@@ -91,7 +91,7 @@ where
 
     // @TODO specify more useful error type
     pub fn write(&mut self, record: Record<K>) -> WriteFuture {
-        if self.is_active_blob_full(record.size()) {
+        if self.is_active_blob_full(record.full_size()) {
             let new_active = Box::new(Default::default());
             // @TODO process unwrap explicitly
             let old_active = self.active_blob.replace(new_active).unwrap();
@@ -153,7 +153,7 @@ where
 
 impl<K: 'static> Storage<K>
 where
-    K: Serialize + for<'de> Deserialize<'de> + Default + Send + PartialEq + Debug,
+    K: Serialize + for<'de> Deserialize<'de> + Default + Send + PartialEq + Debug + AsRef<[u8]>,
 {
     fn prepare_work_dir(&mut self) -> Result<()> {
         let path = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
@@ -246,7 +246,7 @@ where
 
 impl<K> Default for Storage<K>
 where
-    K: Send,
+    K: Send + AsRef<[u8]>,
 {
     fn default() -> Self {
         Self {
@@ -283,7 +283,10 @@ impl<'a> Builder {
 
     /// Creates `Storage` based on given configuration
     /// Examples
-    pub fn build<K: Send>(self) -> Result<Storage<K>> {
+    pub fn build<K>(self) -> Result<Storage<K>>
+    where
+        K: Send + AsRef<[u8]>,
+    {
         if self.config.blob_file_name_prefix.is_none()
             || self.config.max_data_in_blob.is_none()
             || self.config.max_blob_size.is_none()
@@ -422,7 +425,7 @@ mod tests {
             .blob_file_name_prefix("test")
             .max_blob_size(1_000_000usize)
             .max_data_in_blob(1_000usize)
-            .build::<usize>()
+            .build::<Vec<_>>()
             .unwrap();
         assert!(storage.init().is_err());
         fs::remove_dir(path).unwrap();
@@ -445,7 +448,7 @@ mod tests {
             .blob_file_name_prefix("test")
             .max_blob_size(1_000_000usize)
             .max_data_in_blob(1_000usize)
-            .build::<usize>()
+            .build::<Vec<_>>()
             .unwrap();
         assert!(storage.init().is_err());
         fs::remove_file(path).unwrap();

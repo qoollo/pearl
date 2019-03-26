@@ -12,7 +12,7 @@ fn test_storage_init_new() {
         .blob_file_name_prefix("test")
         .max_blob_size(1_000_000usize)
         .max_data_in_blob(1_000usize);
-    let mut storage = builder.build::<u32>().unwrap();
+    let mut storage = builder.build::<Vec<_>>().unwrap();
     assert!(storage.init().map_err(|e| eprintln!("{:?}", e)).is_ok());
     assert_eq!(storage.blobs_count(), 1);
     let blob_file_path = path.join("test.0.blob");
@@ -31,7 +31,7 @@ fn test_storage_init_from_existing() {
             .blob_file_name_prefix("test")
             .max_blob_size(1_000_000usize)
             .max_data_in_blob(1_000usize);
-        let mut temp_storage = builder.build::<u32>().unwrap();
+        let mut temp_storage = builder.build::<Vec<_>>().unwrap();
         temp_storage.init().unwrap();
         fs::OpenOptions::new()
             .write(true)
@@ -47,7 +47,7 @@ fn test_storage_init_from_existing() {
         .blob_file_name_prefix("test")
         .max_blob_size(1_000_000usize)
         .max_data_in_blob(1_000usize);
-    let mut storage = builder.build::<u32>().unwrap();
+    let mut storage = builder.build::<Vec<_>>().unwrap();
 
     assert!(storage.init().map_err(|e| eprintln!("{:?}", e)).is_ok());
     assert_eq!(storage.blobs_count(), 2);
@@ -65,6 +65,7 @@ fn test_storage_init_from_existing() {
 
 #[test]
 fn test_storage_read_write() {
+    env_logger::init();
     let path = env::temp_dir().join("pearl_rw/");
     let builder = Builder::new()
         .work_dir(&path)
@@ -76,20 +77,17 @@ fn test_storage_read_write() {
     storage.init().unwrap();
     let mut record = Record::new();
     let data = b"test data string".to_vec();
-    record.set_data(data.clone());
-    record.set_key(key.clone());
-    dbg!(&record);
+    record.set_body(key.clone(), data.clone());
     let mut pool = ThreadPool::new().unwrap();
     let w = storage.write(record);
     let r = storage.read(key.clone());
     let rec = pool.run(w.then(|_| r)).unwrap();
-    dbg!(&rec);
-    assert_eq!(rec.key(), &key);
     assert_eq!(rec.data().len(), data.len());
     let blob_file_path = path.join("test.0.blob");
     fs::remove_file(blob_file_path).unwrap();
     fs::remove_file(path.join("pearl.lock")).unwrap();
     fs::remove_dir(&path).unwrap();
+    assert_eq!(rec.key(), &key.into_bytes());
 }
 
 #[test]
@@ -100,7 +98,7 @@ fn test_storage_close() {
         .blob_file_name_prefix("test")
         .max_blob_size(1_000_000usize)
         .max_data_in_blob(1_000usize);
-    let mut storage = builder.build::<i32>().unwrap();
+    let mut storage = builder.build::<Vec<_>>().unwrap();
     assert!(storage.init().map_err(|e| eprintln!("{:?}", e)).is_ok());
     let blob_file_path = path.join("test.0.blob");
     fs::remove_file(blob_file_path).unwrap();

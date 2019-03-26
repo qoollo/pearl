@@ -1,4 +1,3 @@
-use bincode::{deserialize, serialize};
 use futures::{
     future::Future,
     task::{Poll, Waker},
@@ -11,9 +10,12 @@ use crate::record::Record;
 
 /// A `Blob` struct for performing of database,
 #[derive(Debug, Default)]
-pub struct Blob<K> {
+pub struct Blob<K>
+where
+    K: AsRef<[u8]>,
+{
     header: Header,
-    records: Vec<K>, // @TODO needs verification, created to yield generic T up
+    records: Vec<K>, // @TODO needs verification, created to yield generic K up
     file: Option<fs::File>,
     path: PathBuf,
 }
@@ -52,28 +54,32 @@ pub struct ReadFuture<K> {
 
 impl<K> Future for ReadFuture<K>
 where
-    K: for<'de> Deserialize<'de> + Default,
+    K: for<'de> Deserialize<'de> + Serialize + Default + AsRef<[u8]>,
 {
-    type Output = Result<Record<K>, Error>;
+    type Output = Result<Record<Vec<u8>>, Error>;
 
     fn poll(self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
-        let header_size = Record::<K>::header_size();
-        dbg!(&header_size);
-        let mut buf = vec![0u8; header_size];
-        self.f.try_clone().unwrap().read_at(&mut buf, 0).unwrap();
-        let mut rec = Record::with_raw_header(&buf);
-        let mut buf = vec![0u8; dbg!(rec.data_len())];
+        let header_size = Record::<Vec<_>>::header_size();
+        let mut raw_header = vec![0u8; header_size];
+        self.f.read_at(&mut raw_header, 0).unwrap();
+        let mut rec = Record::with_raw_header(&raw_header);
+        let key_len = rec.header_key_len();
+        let mut raw_key = vec![0u8; key_len as usize];
+        self.f.read_at(&mut raw_key, header_size as u64).unwrap();
+        let data_len = rec.header_data_len();
+        let mut data = vec![0u8; data_len as usize];
         self.f
-            .try_clone()
-            .unwrap()
-            .read_at(&mut buf, header_size as u64)
+            .read_at(&mut data, header_size as u64 + key_len)
             .unwrap();
-        rec.set_data(buf);
+        rec.set_body(raw_key, data);
         Poll::Ready(Ok(rec))
     }
 }
 
-impl<K> Blob<K> {
+impl<K> Blob<K>
+where
+    K: AsRef<[u8]>,
+{
     /// # Description
     /// Creates new blob file
     pub fn open_new(path: PathBuf) -> Result<Self, Error> {
@@ -115,10 +121,7 @@ impl<K> Blob<K> {
     where
         K: Serialize + Default,
     {
-        let mut buf = serialize(&record.raw_header()).unwrap();
-        println!("write header len {}", buf.len());
-        let mut data = serialize(record.data()).unwrap();
-        buf.append(&mut data);
+        let buf = record.to_raw();
         WriteFuture {
             f: self.file.as_ref().unwrap().try_clone().unwrap(),
             b: Some(buf),

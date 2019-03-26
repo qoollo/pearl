@@ -1,18 +1,23 @@
 use bincode::{deserialize, serialize};
 use serde::{Deserialize, Serialize};
-use std::mem;
+
+const HEADER_UNALIGNED_SIZE: usize = 49;
 
 /// # Description
 /// # Examples
 #[derive(Serialize, Deserialize, Debug, Default)]
-pub struct Record<K> {
-    header: Header<K>,
+pub struct Record<K>
+where
+    K: AsRef<[u8]>,
+{
+    header: Header,
+    key: K,
     data: Vec<u8>,
 }
 
 impl<K> Record<K>
 where
-    K: Default,
+    K: Default + AsRef<[u8]>,
 {
     /// # Description
     /// Creates new `Record`, temporarily as `Default`
@@ -23,16 +28,24 @@ where
     /// ```
     pub fn new() -> Self {
         Self {
-            header: Default::default(),
-            data: Vec::new(),
+            ..Default::default()
         }
+    }
+/// # Description
+    pub fn header_key_len(&self) -> u64 {
+        self.header.key_len
+    }
+
+    /// # Description
+    pub fn header_data_len(&self) -> u64 {
+        self.header.size - HEADER_UNALIGNED_SIZE as u64 - self.header.key_len
     }
 
     /// # Description
     /// Get number of bytes, struct `Record` uses on disk
-    pub fn size(&self) -> usize {
+    pub fn full_size(&self) -> usize {
         // @TODO implement
-        self.header.size as usize + Header::<K>::unaligned_header_size()
+        self.header.size as usize + Self::header_size()
     }
 
     /// # Description
@@ -42,7 +55,13 @@ where
     }
 
     /// # Description
-    /// Get immutable reference to data
+    /// Returns key len from header
+    pub fn key_len(&self) -> usize {
+        self.header.key_len as usize
+    }
+
+    /// # Description
+    /// Get  data ref
     pub fn data(&self) -> &[u8] {
         &self.data
     }
@@ -50,42 +69,53 @@ where
     /// # Description
     /// Get record key reference
     pub fn key(&self) -> &K {
-        &self.header.key
+        &self.key
     }
 
     /// # Description
     /// Set data to Record, replacing if exists
-    pub fn set_data(&mut self, d: Vec<u8>) {
-        self.header.size = d.len() as u64;
-        self.data = d;
+    pub fn set_body(&mut self, key: K, data: Vec<u8>) {
+        self.key = key;
+        self.data = data;
+        self.update_header();
     }
 
     /// # Description
-    pub fn set_key(&mut self, key: K) {
-        self.header.key = key;
+    pub fn update_header(&mut self) {
+        self.header.key_len = self.key.as_ref().len() as u64;
+        self.header.size =
+            (HEADER_UNALIGNED_SIZE + self.key.as_ref().len() + self.data.len()) as u64;
     }
+}
 
+impl<K> Record<K>
+where
+    K: AsRef<[u8]>,
+{
     /// # Description
     /// Returns unaligned record Header size with provided key type
     pub fn header_size() -> usize {
-        Header::<K>::unaligned_header_size()
+        HEADER_UNALIGNED_SIZE
     }
 }
 
 impl<K> Record<K>
 where
-    K: Serialize,
+    K: Serialize + AsRef<[u8]>,
 {
     /// # Description
     /// Serialize header to `Vec<u8>` bytes
-    pub fn raw_header(&self) -> Vec<u8> {
-        self.header.to_raw()
+    pub fn to_raw(&self) -> Vec<u8> {
+        let mut buf = self.header.to_raw();
+        buf.extend_from_slice(self.key.as_ref());
+        buf.extend_from_slice(&self.data);
+        buf
     }
 }
 
 impl<K> Record<K>
 where
-    K: for<'de> Deserialize<'de>,
+    K: for<'de> Deserialize<'de> + AsRef<[u8]> + Default,
 {
     /// # Description
     /// Returns Record instant with initialized header from raw buffer
@@ -93,6 +123,7 @@ where
         let header = Header::from_raw(buf);
         Self {
             header,
+            key: Default::default(),
             data: Vec::new(),
         }
     }
@@ -101,61 +132,24 @@ where
 /// # Description
 /// # Examples
 #[derive(Serialize, Deserialize, Debug, Default)]
-struct Header<T>
-where
-    T: Sized,
-{
+#[repr(C)]
+struct Header {
     magic_byte: u64,
+    key_len: u64,
     size: u64,
     flags: u8,
     blob_offset: u64,
     created: u64,
-    key: T,
     data_checksum: u32,
     header_checksum: u32,
 }
 
-impl<K> Header<K>
-where
-    K: for<'de> Deserialize<'de>,
-{
+impl Header {
     pub fn from_raw(buf: &[u8]) -> Self {
         deserialize(&buf).unwrap()
     }
-}
 
-impl<K> Header<K>
-where
-    K: Serialize,
-{
     pub fn to_raw(&self) -> Vec<u8> {
         serialize(&self).unwrap()
-    }
-}
-
-impl<K> Header<K> {
-    pub fn unaligned_header_size() -> usize {
-        let sizeofu64 = mem::size_of::<u64>();
-        let sizeofu32 = mem::size_of::<u32>();
-        let sizeofu8 = mem::size_of::<u8>();
-        let sizeofkey = mem::size_of::<K>();
-        let unaligned = sizeofu64 * 4 + sizeofu32 * 2 + sizeofu8 + sizeofkey;
-        let aligned = mem::size_of::<Self>();
-        if unaligned > aligned {
-            error!("bug in unaligned size calculation");
-            aligned
-        } else {
-            unaligned
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Record;
-    #[test]
-    fn test_record_new() {
-        let rec: Record<usize> = Record::new();
-        assert_eq!(rec.header.magic_byte, 0);
     }
 }
