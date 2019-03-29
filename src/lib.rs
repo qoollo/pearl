@@ -1,4 +1,4 @@
-#![feature(futures_api)]
+#![feature(futures_api, await_macro, async_await)]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 // #![cfg_attr(test, deny(warnings))]
@@ -11,6 +11,8 @@
 extern crate log;
 #[macro_use]
 extern crate serde_derive;
+// #[macro_use]
+// extern crate futures;
 
 mod blob;
 mod index;

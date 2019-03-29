@@ -1,24 +1,17 @@
 use bincode::{deserialize, serialize};
-use serde::{Deserialize, Serialize};
 
 const HEADER_UNALIGNED_SIZE: usize = 49;
 
 /// # Description
 /// # Examples
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct Record<K>
-where
-    K: AsRef<[u8]>,
-{
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct Record {
     header: Header,
-    key: K,
+    key: Vec<u8>,
     data: Vec<u8>,
 }
 
-impl<K> Record<K>
-where
-    K: Default + AsRef<[u8]>,
-{
+impl Record {
     /// # Description
     /// Creates new `Record`, temporarily as `Default`
     /// # Examples
@@ -31,7 +24,8 @@ where
             ..Default::default()
         }
     }
-/// # Description
+
+    /// # Description
     pub fn header_key_len(&self) -> u64 {
         self.header.key_len
     }
@@ -45,7 +39,7 @@ where
     /// Get number of bytes, struct `Record` uses on disk
     pub fn full_size(&self) -> usize {
         // @TODO implement
-        self.header.size as usize + Self::header_size()
+        self.header.size as usize + Record::header_size()
     }
 
     /// # Description
@@ -68,30 +62,57 @@ where
 
     /// # Description
     /// Get record key reference
-    pub fn key(&self) -> &K {
+    pub fn key(&self) -> &[u8] {
         &self.key
     }
 
     /// # Description
+    /// Get record header reference
+    pub fn header(&self) -> &Header {
+        &self.header
+    }
+
+     /// # Description
+    /// Get record header mutable reference
+    pub fn header_mut(&mut self) -> &mut Header {
+        &mut self.header
+    }
+
+    /// # Description
     /// Set data to Record, replacing if exists
-    pub fn set_body(&mut self, key: K, data: Vec<u8>) {
-        self.key = key;
-        self.data = data;
+    pub fn set_body<K, D>(&mut self, key: K, data: D)
+    where
+        K: AsRef<[u8]>,
+        D: AsRef<[u8]> ,
+    {
+        self.key = key.as_ref().to_vec();
+        self.data = data.as_ref().to_vec();
         self.update_header();
     }
 
     /// # Description
-    pub fn update_header(&mut self) {
-        self.header.key_len = self.key.as_ref().len() as u64;
-        self.header.size =
-            (HEADER_UNALIGNED_SIZE + self.key.as_ref().len() + self.data.len()) as u64;
+    /// Init new `Record` from raw buffer, returns `None` if buf len is less than header
+    pub fn from_raw(buf: &[u8]) -> Option<Self> {
+        // @TODO Header validation
+        let mut record = Self::new();
+        if buf.len() < HEADER_UNALIGNED_SIZE {
+            None
+        } else {
+            record.header = Header::from_raw(buf);
+            record.key = buf
+                [HEADER_UNALIGNED_SIZE..HEADER_UNALIGNED_SIZE + record.header.key_len as usize]
+                .to_vec();
+            record.data = buf[HEADER_UNALIGNED_SIZE + record.header.key_len as usize..].to_vec();
+            Some(record)
+        }
     }
-}
 
-impl<K> Record<K>
-where
-    K: AsRef<[u8]>,
-{
+    /// # Description
+    pub fn update_header(&mut self) {
+        self.header.key_len = self.key.len() as u64;
+        self.header.size = (HEADER_UNALIGNED_SIZE + self.key.len() + self.data.len()) as u64;
+    }
+
     /// # Description
     /// Returns unaligned record Header size with provided key type
     pub fn header_size() -> usize {
@@ -99,10 +120,7 @@ where
     }
 }
 
-impl<K> Record<K>
-where
-    K: Serialize + AsRef<[u8]>,
-{
+impl Record {
     /// # Description
     /// Serialize header to `Vec<u8>` bytes
     pub fn to_raw(&self) -> Vec<u8> {
@@ -113,10 +131,7 @@ where
     }
 }
 
-impl<K> Record<K>
-where
-    K: for<'de> Deserialize<'de> + AsRef<[u8]> + Default,
-{
+impl Record {
     /// # Description
     /// Returns Record instant with initialized header from raw buffer
     pub fn with_raw_header(buf: &[u8]) -> Self {
@@ -131,14 +146,13 @@ where
 
 /// # Description
 /// # Examples
-#[derive(Serialize, Deserialize, Debug, Default)]
-#[repr(C)]
-struct Header {
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct Header {
     magic_byte: u64,
     key_len: u64,
-    size: u64,
+    pub size: u64,
     flags: u8,
-    blob_offset: u64,
+    pub blob_offset: u64,
     created: u64,
     data_checksum: u32,
     header_checksum: u32,

@@ -2,22 +2,20 @@ use futures::{
     future::Future,
     task::{Poll, Waker},
 };
-use serde::{Deserialize, Serialize};
-use std::{fs, io, os::unix::fs::FileExt, path::PathBuf, pin::Pin};
-// use std::fmt::Debug;
+use std::{collections::BTreeMap, fs, io, os::unix::fs::FileExt, path::PathBuf, pin::Pin};
 
-use crate::record::Record;
+use crate::record::{self, Record};
+
+type Result<T> = std::result::Result<T, Error>;
 
 /// A `Blob` struct for performing of database,
 #[derive(Debug, Default)]
-pub struct Blob<K>
-where
-    K: AsRef<[u8]>,
-{
+pub struct Blob {
+    index: BTreeMap<Vec<u8>, record::Header>,
     header: Header,
-    records: Vec<K>, // @TODO needs verification, created to yield generic K up
     file: Option<fs::File>,
     path: PathBuf,
+    current_offset: u64,
 }
 
 /// # Description
@@ -32,69 +30,60 @@ struct Header {
 
 #[derive(Debug)]
 pub struct WriteFuture {
-    f: fs::File,
-    b: Option<Vec<u8>>,
+    file: fs::File,
+    buf: Option<Vec<u8>>,
+    current_offset: u64,
 }
 
 impl Future for WriteFuture {
-    type Output = Result<(), Error>;
+    type Output = Result<()>;
 
     fn poll(mut self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
-        let buf = self.b.take().unwrap();
-        self.f.write_all_at(&buf, 0).unwrap();
+        let buf = self.buf.take().unwrap();
+        self.file.write_at(&buf, self.current_offset).unwrap();
         Poll::Ready(Ok(()))
     }
 }
 
 #[derive(Debug)]
-pub struct ReadFuture<K> {
+pub struct ReadFuture {
     f: fs::File,
-    k: K,
+    k: Vec<u8>,
+    offset: u64,
+    size: u64,
 }
 
-impl<K> Future for ReadFuture<K>
-where
-    K: for<'de> Deserialize<'de> + Serialize + Default + AsRef<[u8]>,
-{
-    type Output = Result<Record<Vec<u8>>, Error>;
+impl Future for ReadFuture {
+    type Output = Result<Record>;
 
     fn poll(self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
-        let header_size = Record::<Vec<_>>::header_size();
-        let mut raw_header = vec![0u8; header_size];
-        self.f.read_at(&mut raw_header, 0).unwrap();
-        let mut rec = Record::with_raw_header(&raw_header);
-        let key_len = rec.header_key_len();
-        let mut raw_key = vec![0u8; key_len as usize];
-        self.f.read_at(&mut raw_key, header_size as u64).unwrap();
-        let data_len = rec.header_data_len();
-        let mut data = vec![0u8; data_len as usize];
-        self.f
-            .read_at(&mut data, header_size as u64 + key_len)
-            .unwrap();
-        rec.set_body(raw_key, data);
-        Poll::Ready(Ok(rec))
+        let mut buf = vec![0u8; self.size as usize];
+        self.f.read_at(&mut buf, self.offset).unwrap();
+        if let Some(rec) = Record::from_raw(&buf).take() {
+            Poll::Ready(Ok(rec))
+        } else {
+            Poll::Ready(Err(Error::RecordFromRawFailed))
+        }
     }
 }
 
-impl<K> Blob<K>
-where
-    K: AsRef<[u8]>,
-{
+impl Blob {
     /// # Description
     /// Creates new blob file
-    pub fn open_new(path: PathBuf) -> Result<Self, Error> {
+    pub fn open_new(path: PathBuf) -> Result<Self> {
         Ok(Self {
             header: Default::default(),
-            records: Vec::new(),
             file: Some(
                 fs::OpenOptions::new()
                     .create_new(true)
-                    .write(true)
+                    .append(true)
                     .read(true)
                     .open(&path)
                     .map_err(Error::OpenNew)?,
             ),
             path,
+            index: BTreeMap::new(),
+            current_offset: 0,
         })
     }
 
@@ -102,41 +91,57 @@ where
         Box::new(self)
     }
 
-    pub fn from_file(path: PathBuf) -> Result<Self, Error> {
+    pub fn from_file(path: PathBuf) -> Result<Self> {
+        let file = fs::OpenOptions::new()
+            .create(false)
+            .append(true)
+            .read(true)
+            .open(&path)
+            .map_err(Error::FromFile)?;
+        let len = file.metadata().unwrap().len();
+        let file = Some(file);
+        // @TODO Scan existing file to create index
         Ok(Self {
             header: Default::default(),
-            records: Vec::new(),
-            file: Some(
-                fs::OpenOptions::new()
-                    .create(false)
-                    .read(true)
-                    .open(&path)
-                    .map_err(Error::FromFile)?,
-            ),
+            file,
             path,
+            index: Default::default(),
+            current_offset: len,
         })
     }
 
-    pub fn write(&self, record: Record<K>) -> WriteFuture
-    where
-        K: Serialize + Default,
-    {
+    pub fn write(&mut self, record: &mut Record) -> WriteFuture {
+        record.header_mut().blob_offset = self.current_offset;
+        self.index
+            .insert(record.key().to_vec(), record.header().clone());
         let buf = record.to_raw();
+        self.current_offset += buf.len() as u64;
         WriteFuture {
-            f: self.file.as_ref().unwrap().try_clone().unwrap(),
-            b: Some(buf),
+            file: self.file.as_ref().unwrap().try_clone().unwrap(),
+            buf: Some(buf),
+            current_offset: self.current_offset,
         }
     }
 
-    pub fn read(&self, key: K) -> ReadFuture<K> {
-        ReadFuture {
-            f: self.file.as_ref().unwrap().try_clone().unwrap(),
-            k: key,
-        }
+    pub fn read<K>(&self, key: &K) -> Option<ReadFuture>
+    where
+        K: AsRef<[u8]> + Ord,
+    {
+        let (offset, size) = self.locate(&key)?;
+        Some(ReadFuture {
+            f: self.file.as_ref()?.try_clone().ok()?,
+            k: key.as_ref().to_vec(),
+            offset,
+            size,
+        })
     }
 
-    pub fn contains(&self, _key: &K) -> bool {
-        false
+    fn locate<K>(&self, key: &K) -> Option<(u64, u64)>
+    where
+        K: AsRef<[u8]> + Ord,
+    {
+        let header = self.index.get(key.as_ref())?;
+        Some((header.blob_offset, header.size))
     }
 
     /// # Description
@@ -149,7 +154,7 @@ where
     /// # Description
     /// Returns size of file in bytes
     // @TODO more useful result
-    pub fn size(&self) -> Result<usize, ()> {
+    pub fn size(&self) -> Result<usize> {
         // @TODO implement
         Ok(0usize)
     }
@@ -157,7 +162,7 @@ where
     /// # Description
     /// Returns number of records in current blob
     // @TODO more useful result
-    pub fn count(&self) -> Result<usize, ()> {
+    pub fn count(&self) -> Result<usize> {
         // @TODO implement
         Ok(0usize)
     }
@@ -171,4 +176,6 @@ where
 pub enum Error {
     OpenNew(io::Error),
     FromFile(io::Error),
+    NotFound,
+    RecordFromRawFailed,
 }

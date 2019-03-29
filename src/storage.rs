@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
 use std::{
     fs::{self, DirEntry, File, OpenOptions},
     io,
@@ -30,20 +28,14 @@ type Result<T> = std::result::Result<T, Error>;
 /// ```
 ///
 #[derive(Debug)]
-pub struct Storage<K>
-where
-    K: Send + AsRef<[u8]>,
-{
+pub struct Storage {
     config: Config,
-    active_blob: Option<Box<Blob<K>>>,
-    blobs: Vec<Blob<K>>,
+    active_blob: Option<Box<Blob>>,
+    blobs: Vec<Blob>,
     lock_file: Option<File>,
 }
 
-impl<K: 'static> Storage<K>
-where
-    K: Serialize + for<'de> Deserialize<'de> + Default + Send + PartialEq + Debug + AsRef<[u8]>,
-{
+impl Storage {
     /// Creates a new instance of a storage with u32 key
     /// # Examples
     ///
@@ -90,33 +82,40 @@ where
     /// # Examples
 
     // @TODO specify more useful error type
-    pub fn write(&mut self, record: Record<K>) -> WriteFuture {
-        if self.is_active_blob_full(record.full_size()) {
-            let new_active = Box::new(Default::default());
+    pub fn write(&mut self, record: &mut Record) -> Result<WriteFuture> {
+        if self.is_active_blob_full(record.full_size())? {
+            let new_active = Blob::open_new(self.next_blob_path()?)
+                .map_err(Error::BlobError)?
+                .boxed();
             // @TODO process unwrap explicitly
             let old_active = self.active_blob.replace(new_active).unwrap();
-            // old_active.flush().map_err(Error::WriteFailed)?;
             self.blobs.push(*old_active);
         }
         // @TODO process unwrap explicitly
-        self.active_blob.as_mut().unwrap().write(record)
+        Ok(self.active_blob.as_mut().unwrap().write(record))
     }
+}
 
+impl Storage {
     /// # Description
     /// Reads data with given key to `Vec<u8>`, if error ocured or there are no
     /// records with matching key, returns `Err(_)`
-
     // @TODO specify more useful error type
-    pub fn read(&mut self, key: K) -> ReadFuture<K> {
-        // @TODO match error in map_err
-        if let Some(ref mut blob) = self.active_blob.as_mut() {
-            blob.read(key)
+    pub fn read<K>(&mut self, key: &K) -> Result<ReadFuture>
+    where
+        K: AsRef<[u8]> + Ord,
+    {
+        if let Some(fut) = self
+            .active_blob
+            .as_ref()
+            .and_then(|active_blob| active_blob.read(&key))
+        {
+            Ok(fut)
         } else {
             self.blobs
-                .iter_mut()
-                .find(|blob| blob.contains(&key))
-                .unwrap()
-                .read(key)
+                .iter()
+                .find_map(|blob| blob.read(&key))
+                .ok_or(Error::RecordNotFound)
         }
     }
 
@@ -149,12 +148,7 @@ where
     pub fn active_blob_path(&self) -> Option<PathBuf> {
         Some(self.active_blob.as_ref()?.path())
     }
-}
 
-impl<K: 'static> Storage<K>
-where
-    K: Serialize + for<'de> Deserialize<'de> + Default + Send + PartialEq + Debug + AsRef<[u8]>,
-{
     fn prepare_work_dir(&mut self) -> Result<()> {
         let path = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
         if !path.exists() {
@@ -210,7 +204,7 @@ where
             .map(DirEntry::path)
             .filter(|path| path.is_file())
             .filter_map(|path| {
-                let blob: Blob<K> = Blob::from_file(path.clone()).unwrap();
+                let blob = Blob::from_file(path.clone()).unwrap();
                 let stem = path.file_stem().unwrap().to_str().unwrap();
                 let index_str = stem.split('.').last()?;
                 let id = index_str.parse().ok()?;
@@ -236,25 +230,34 @@ where
     }
 
     // @TODO handle unwrap explicitly
-    fn is_active_blob_full(&self, next_record_size: usize) -> bool {
-        self.active_blob.as_ref().unwrap().size().unwrap() + next_record_size
+    fn is_active_blob_full(&self, next_record_size: usize) -> Result<bool> {
+        Ok(self
+            .active_blob
+            .as_ref()
+            .ok_or(Error::ActiveBlobNotSet)?
+            .size()
+            .map_err(Error::BlobError)?
+            + next_record_size
             > self.config.max_blob_size.unwrap()
             || self.active_blob.as_ref().unwrap().count().unwrap()
-                >= self.config.max_data_in_blob.unwrap()
+                >= self.config.max_data_in_blob.unwrap())
     }
-}
 
-impl<K> Default for Storage<K>
-where
-    K: Send + AsRef<[u8]>,
-{
-    fn default() -> Self {
-        Self {
-            config: Default::default(),
-            active_blob: None,
-            blobs: Vec::new(),
-            lock_file: None,
+    fn next_blob_path(&self) -> Result<PathBuf> {
+        let mut next_id = self.blobs.len() + 1;
+        if self.active_blob.is_none() {
+            next_id -= 1;
         }
+        Ok(format!(
+            "{}.{}.{}",
+            self.config
+                .blob_file_name_prefix
+                .as_ref()
+                .ok_or(Error::Unitialized)?,
+            next_id,
+            BLOB_FILE_ETENSION
+        )
+        .into())
     }
 }
 
@@ -262,9 +265,11 @@ where
 pub enum Error {
     ActiveBlobNotSet,
     InitActiveBlob(blob::Error),
+    BlobError(blob::Error),
     WrongConfig,
     Unitialized,
     IO(io::Error),
+    RecordNotFound,
 }
 
 /// `Builder` used for initializing a `Storage`.
@@ -283,10 +288,7 @@ impl<'a> Builder {
 
     /// Creates `Storage` based on given configuration
     /// Examples
-    pub fn build<K>(self) -> Result<Storage<K>>
-    where
-        K: Send + AsRef<[u8]>,
-    {
+    pub fn build(self) -> Result<Storage> {
         if self.config.blob_file_name_prefix.is_none()
             || self.config.max_data_in_blob.is_none()
             || self.config.max_blob_size.is_none()
@@ -296,7 +298,9 @@ impl<'a> Builder {
         } else {
             Ok(Storage {
                 config: self.config,
-                ..Default::default()
+                active_blob: None,
+                blobs: Vec::new(),
+                lock_file: None,
             })
         }
     }
@@ -392,7 +396,6 @@ impl Default for Config {
 }
 
 #[cfg(test)]
-
 mod tests {
     use super::{fs, Builder, OpenOptions};
     use std::{
@@ -425,7 +428,7 @@ mod tests {
             .blob_file_name_prefix("test")
             .max_blob_size(1_000_000usize)
             .max_data_in_blob(1_000usize)
-            .build::<Vec<_>>()
+            .build()
             .unwrap();
         assert!(storage.init().is_err());
         fs::remove_dir(path).unwrap();
@@ -448,7 +451,7 @@ mod tests {
             .blob_file_name_prefix("test")
             .max_blob_size(1_000_000usize)
             .max_data_in_blob(1_000usize)
-            .build::<Vec<_>>()
+            .build()
             .unwrap();
         assert!(storage.init().is_err());
         fs::remove_file(path).unwrap();
