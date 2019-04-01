@@ -45,18 +45,17 @@ impl Future for WriteFuture {
 
 #[derive(Debug)]
 pub struct ReadFuture {
-    f: fs::File,
-    k: Vec<u8>,
-    offset: u64,
-    size: u64,
+    file: fs::File,
+    key: Vec<u8>,
+    loc: Location,
 }
 
 impl Future for ReadFuture {
     type Output = Result<Record>;
 
     fn poll(self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
-        let mut buf = vec![0u8; self.size as usize];
-        self.f.read_at(&mut buf, self.offset).unwrap();
+        let mut buf = vec![0u8; self.loc.size as usize];
+        self.file.read_at(&mut buf, self.loc.offset).unwrap();
         if let Some(rec) = Record::from_raw(&buf).take() {
             Poll::Ready(Ok(rec))
         } else {
@@ -126,21 +125,19 @@ impl Blob {
     where
         K: AsRef<[u8]> + Ord,
     {
-        let (offset, size) = self.locate(&key)?;
         Some(ReadFuture {
-            f: self.file.as_ref()?.try_clone().ok()?,
-            k: key.as_ref().to_vec(),
-            offset,
-            size,
+            file: self.file.as_ref()?.try_clone().ok()?,
+            key: key.as_ref().to_vec(),
+            loc: self.locate(&key)?,
         })
     }
 
-    fn locate<K>(&self, key: &K) -> Option<(u64, u64)>
+    fn locate<K>(&self, key: &K) -> Option<Location>
     where
         K: AsRef<[u8]> + Ord,
     {
         let header = self.index.get(key.as_ref())?;
-        Some((header.blob_offset, header.size))
+        Some(Location::new(header.blob_offset, header.size))
     }
 
     /// # Description
@@ -250,5 +247,17 @@ impl Header {
             version: 0,
             flags: 0,
         }
+    }
+}
+
+#[derive(Debug)]
+struct Location {
+    offset: u64,
+    size: u64,
+}
+
+impl Location {
+    fn new(offset: u64, size: u64) -> Self {
+        Self { offset, size }
     }
 }
