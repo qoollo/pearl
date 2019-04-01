@@ -1,4 +1,4 @@
-#![feature(futures_api, await_macro, repeat_generic_slice)]
+#![feature(futures_api, await_macro, repeat_generic_slice, duration_float)]
 
 use futures::{
     executor::ThreadPool,
@@ -117,6 +117,7 @@ fn test_storage_multiple_read_write() {
         })
         .collect();
     records.shuffle(&mut rand::thread_rng());
+    let now = std::time::Instant::now();
     let write_futures: Vec<_> = records
         .iter_mut()
         .map(|mut record| storage.write(&mut record).unwrap())
@@ -132,9 +133,12 @@ fn test_storage_multiple_read_write() {
             .map(Result::unwrap)
             .collect::<Vec<_>>(),
     );
+    let elapsed = now.elapsed().as_secs_f64();
     records.sort_by_key(|record| record.key().to_owned());
     records_from_file.sort_by_key(|record| record.key().to_owned());
     let blob_file_path = path.join("test.0.blob");
+    let written = fs::metadata(&blob_file_path).unwrap().len();
+    println!("{}B/s", written as f64 / elapsed);
     fs::remove_file(blob_file_path).unwrap();
     fs::remove_file(path.join("pearl.lock")).unwrap();
     fs::remove_dir(&path).unwrap();

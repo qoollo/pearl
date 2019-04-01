@@ -70,7 +70,8 @@ impl Future for ReadFuture {
 impl Blob {
     /// # Description
     /// Creates new blob file
-    pub fn open_new(path: PathBuf) -> Result<Self> {
+    pub fn open_new<T>(path: T) -> Result<Self> where T: Into<PathBuf> {
+        let path = path.into();
         Ok(Self {
             header: Default::default(),
             file: Some(
