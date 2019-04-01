@@ -56,11 +56,7 @@ impl Future for ReadFuture {
     fn poll(self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
         let mut buf = vec![0u8; self.loc.size as usize];
         self.file.read_at(&mut buf, self.loc.offset).unwrap();
-        if let Some(rec) = Record::from_raw(&buf).take() {
-            Poll::Ready(Ok(rec))
-        } else {
-            Poll::Ready(Err(Error::RecordFromRawFailed))
-        }
+        Poll::Ready(Record::from_raw(&buf).map_err(Error::RecordError))
     }
 }
 
@@ -109,7 +105,7 @@ impl Blob {
     }
 
     pub fn write(&mut self, record: &mut Record) -> WriteFuture {
-        record.header_mut().blob_offset = self.current_offset;
+        record.set_blob_offset(self.current_offset);
         self.index
             .insert(record.key().to_vec(), record.header().clone());
         let buf = record.to_raw();
@@ -137,7 +133,7 @@ impl Blob {
         K: AsRef<[u8]> + Ord,
     {
         let header = self.index.get(key.as_ref())?;
-        Some(Location::new(header.blob_offset, header.full_len))
+        Some(Location::new(header.blob_offset(), header.full_len()))
     }
 
     /// # Description
@@ -182,6 +178,7 @@ pub enum Error {
     NonUnicode(std::ffi::OsString),
     FileNamePattern(String),
     IndexParseFailed(String),
+    RecordError(record::Error),
 }
 
 #[derive(Debug)]
