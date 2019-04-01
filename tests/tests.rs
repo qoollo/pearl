@@ -117,16 +117,21 @@ fn test_storage_multiple_read_write() {
         })
         .collect();
     records.shuffle(&mut rand::thread_rng());
-    let now = std::time::Instant::now();
     let write_futures: Vec<_> = records
         .iter_mut()
         .map(|mut record| storage.write(&mut record).unwrap())
         .collect();
     let write_stream = futures_ordered(write_futures);
     let mut pool = ThreadPool::new().unwrap();
+    let now = std::time::Instant::now();
     pool.run(write_stream.map_err(|e| dbg!(e)).collect::<Vec<_>>());
+    let elapsed = now.elapsed().as_secs_f64();
+    let blob_file_path = path.join("test.0.blob");
+    let written = fs::metadata(&blob_file_path).unwrap().len();
+    println!("write {}B/s", written as f64 / elapsed);
     let read_futures: Vec<_> = keys.iter().map(|key| storage.read(key).unwrap()).collect();
     let read_stream = futures_ordered(read_futures);
+    let now = std::time::Instant::now();
     let mut records_from_file = pool.run(
         read_stream
             .map_err(|e| dbg!(e))
@@ -136,9 +141,8 @@ fn test_storage_multiple_read_write() {
     let elapsed = now.elapsed().as_secs_f64();
     records.sort_by_key(|record| record.key().to_owned());
     records_from_file.sort_by_key(|record| record.key().to_owned());
-    let blob_file_path = path.join("test.0.blob");
     let written = fs::metadata(&blob_file_path).unwrap().len();
-    println!("{}B/s", written as f64 / elapsed);
+    println!("read {}B/s", written as f64 / elapsed);
     fs::remove_file(blob_file_path).unwrap();
     fs::remove_file(path.join("pearl.lock")).unwrap();
     fs::remove_dir(&path).unwrap();
