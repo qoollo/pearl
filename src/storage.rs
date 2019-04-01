@@ -91,7 +91,11 @@ impl Storage {
             self.blobs.push(*old_active);
         }
         // @TODO process unwrap explicitly
-        Ok(self.active_blob.as_mut().unwrap().write(record))
+        self.active_blob
+            .as_mut()
+            .unwrap()
+            .write(record)
+            .map_err(Error::BlobError)
     }
 
     fn next_blob_name(&self) -> Result<blob::FileName> {
@@ -128,13 +132,13 @@ impl Storage {
         if let Some(fut) = self
             .active_blob
             .as_ref()
-            .and_then(|active_blob| active_blob.read(&key))
+            .and_then(|active_blob| active_blob.read(&key).ok())
         {
             Ok(fut)
         } else {
             self.blobs
                 .iter()
-                .find_map(|blob| blob.read(&key))
+                .find_map(|blob| blob.read(&key).ok())
                 .ok_or(Error::RecordNotFound)
         }
     }

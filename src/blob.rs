@@ -21,7 +21,7 @@ type Result<T> = std::result::Result<T, Error>;
 pub struct Blob {
     index: BTreeMap<Vec<u8>, record::Header>,
     header: Header,
-    file: Option<fs::File>,
+    file: fs::File,
     name: FileName,
     current_offset: u64,
 }
@@ -66,14 +66,13 @@ impl Blob {
     pub fn open_new(name: FileName) -> Result<Self> {
         Ok(Self {
             header: Header::new(),
-            file: Some(
+            file:
                 fs::OpenOptions::new()
                     .create_new(true)
                     .append(true)
                     .read(true)
                     .open(name.as_path())
                     .map_err(Error::OpenNew)?,
-            ),
             name,
             index: BTreeMap::new(),
             current_offset: 0,
@@ -93,7 +92,6 @@ impl Blob {
             .map_err(Error::FromFile)?;
         let name = FileName::from_path(&path)?;
         let len = file.metadata().map_err(Error::FromFile)?.len();
-        let file = Some(file);
         // @TODO Scan existing file to create index
         Ok(Self {
             header: Header::new(),
@@ -104,36 +102,36 @@ impl Blob {
         })
     }
 
-    pub fn write(&mut self, record: &mut Record) -> WriteFuture {
+    pub fn write(&mut self, record: &mut Record) -> Result<WriteFuture> {
         record.set_blob_offset(self.current_offset);
         self.index
             .insert(record.key().to_vec(), record.header().clone());
         let buf = record.to_raw();
         self.current_offset += buf.len() as u64;
-        WriteFuture {
-            file: self.file.as_ref().unwrap().try_clone().unwrap(),
+        Ok(WriteFuture {
+            file: self.file.try_clone().map_err(Error::CloneFd)?,
             buf: Some(buf),
             current_offset: self.current_offset,
-        }
+        })
     }
 
-    pub fn read<K>(&self, key: &K) -> Option<ReadFuture>
+    pub fn read<K>(&self, key: &K) -> Result<ReadFuture>
     where
         K: AsRef<[u8]> + Ord,
     {
-        Some(ReadFuture {
-            file: self.file.as_ref()?.try_clone().ok()?,
+        Ok(ReadFuture {
+            file: self.file.try_clone().map_err(Error::CloneFd)?,
             key: key.as_ref().to_vec(),
             loc: self.locate(&key)?,
         })
     }
 
-    fn locate<K>(&self, key: &K) -> Option<Location>
+    fn locate<K>(&self, key: &K) -> Result<Location>
     where
         K: AsRef<[u8]> + Ord,
     {
-        let header = self.index.get(key.as_ref())?;
-        Some(Location::new(header.blob_offset(), header.full_len()))
+        let header = self.index.get(key.as_ref()).ok_or(Error::NotFound)?;
+        Ok(Location::new(header.blob_offset(), header.full_len()))
     }
 
     /// # Description
@@ -172,6 +170,7 @@ impl Blob {
 pub enum Error {
     OpenNew(io::Error),
     FromFile(io::Error),
+    CloneFd(io::Error),
     NotFound,
     RecordFromRawFailed,
     PathWithoutFileName(PathBuf),
