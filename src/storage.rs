@@ -84,10 +84,8 @@ impl Storage {
     // @TODO specify more useful error type
     pub fn write(&mut self, record: &mut Record) -> Result<WriteFuture> {
         if self.is_active_blob_full(record.full_size())? {
-            let next_id = self.next_blob_id()?;
-            let new_active = Blob::open_new(self.next_blob_path()?, next_id)
-                .map_err(Error::BlobError)?
-                .boxed();
+            let next = self.next_blob_name()?;
+            let new_active = Blob::open_new(next).map_err(Error::BlobError)?.boxed();
             // @TODO process unwrap explicitly
             let old_active = self.active_blob.replace(new_active).unwrap();
             self.blobs.push(*old_active);
@@ -96,16 +94,25 @@ impl Storage {
         Ok(self.active_blob.as_mut().unwrap().write(record))
     }
 
-    fn next_blob_id(&self) -> Result<usize> {
-        let active_blob_id = self.active_blob.as_ref().ok_or(Error::ActiveBlobNotSet)?.id;
-        let blobs_max_id = self
-            .blobs
-            .iter()
-            .max_by_key(|blob| blob.id)
-            .map(|blob| blob.id)
-            .unwrap_or(0);
+    fn next_blob_name(&self) -> Result<blob::FileName> {
+        let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
+        let blobs_max_id = self.blobs.iter().max_by_key(|blob| blob.id()).map(Blob::id);
         let max_id = active_blob_id.max(blobs_max_id);
-        Ok(max_id + 1)
+        let next_id = if let Some(id) = max_id { id + 1 } else { 0 };
+        Ok(blob::FileName::new(
+            self.config
+                .blob_file_name_prefix
+                .as_ref()
+                .ok_or(Error::Unitialized)?
+                .to_owned(),
+            next_id,
+            BLOB_FILE_ETENSION.to_owned(),
+            self.config
+                .work_dir
+                .as_ref()
+                .ok_or(Error::Unitialized)?
+                .to_owned(),
+        ))
     }
 }
 
@@ -183,28 +190,12 @@ impl Storage {
     }
 
     fn init_new(&mut self) -> Result<()> {
-        let initital_id = 0;
-        let new_blob_name = format!(
-            "{}.{}.{}",
-            self.config
-                .blob_file_name_prefix
-                .as_ref()
-                .ok_or(Error::WrongConfig)?,
-            initital_id,
-            BLOB_FILE_ETENSION
+        let next = self.next_blob_name()?;
+        self.active_blob = Some(Blob::open_new(next).map_err(Error::InitActiveBlob)?.boxed());
+        debug!(
+            "created new active blob: {}",
+            self.active_blob.as_ref().unwrap().id()
         );
-        let path = self
-            .config
-            .work_dir
-            .as_ref()
-            .ok_or(Error::WrongConfig)?
-            .join(&new_blob_name);
-        self.active_blob = Some(
-            Blob::open_new(path, initital_id)
-                .map_err(Error::InitActiveBlob)?
-                .boxed(),
-        );
-        debug!("created new active blob: {}", new_blob_name);
         Ok(())
     }
 
@@ -259,20 +250,6 @@ impl Storage {
             > self.config.max_blob_size.unwrap()
             || self.active_blob.as_ref().unwrap().count().unwrap()
                 >= self.config.max_data_in_blob.unwrap())
-    }
-
-    fn next_blob_path(&self) -> Result<PathBuf> {
-        let next_id = self.next_blob_id()?;
-        Ok(format!(
-            "{}.{}.{}",
-            self.config
-                .blob_file_name_prefix
-                .as_ref()
-                .ok_or(Error::Unitialized)?,
-            next_id,
-            BLOB_FILE_ETENSION
-        )
-        .into())
     }
 }
 

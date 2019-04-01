@@ -2,31 +2,28 @@ use futures::{
     future::Future,
     task::{Poll, Waker},
 };
-use std::{collections::BTreeMap, fs, io, os::unix::fs::FileExt, path::PathBuf, pin::Pin};
+use std::{
+    collections::BTreeMap,
+    fs, io,
+    os::unix::fs::FileExt,
+    path::{Path, PathBuf},
+    pin::Pin,
+};
 
 use crate::record::{self, Record};
+
+const BLOB_MAGIC_BYTE: u64 = 0xdeaf;
 
 type Result<T> = std::result::Result<T, Error>;
 
 /// A `Blob` struct for performing of database,
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Blob {
-    pub id: usize,
     index: BTreeMap<Vec<u8>, record::Header>,
     header: Header,
     file: Option<fs::File>,
-    path: PathBuf,
+    name: FileName,
     current_offset: u64,
-}
-
-/// # Description
-/// # Examples
-#[derive(Debug, Default)]
-struct Header {
-    magic_byte: u64,
-    version: u32,
-    key_size: u32,
-    flags: u64,
 }
 
 #[derive(Debug)]
@@ -71,23 +68,18 @@ impl Future for ReadFuture {
 impl Blob {
     /// # Description
     /// Creates new blob file
-    pub fn open_new<T>(path: T, id: usize) -> Result<Self>
-    where
-        T: Into<PathBuf>,
-    {
-        let path = path.into();
+    pub fn open_new(name: FileName) -> Result<Self> {
         Ok(Self {
-            id,
-            header: Default::default(),
+            header: Header::new(),
             file: Some(
                 fs::OpenOptions::new()
                     .create_new(true)
                     .append(true)
                     .read(true)
-                    .open(&path)
+                    .open(name.as_path())
                     .map_err(Error::OpenNew)?,
             ),
-            path,
+            name,
             index: BTreeMap::new(),
             current_offset: 0,
         })
@@ -104,28 +96,14 @@ impl Blob {
             .read(true)
             .open(&path)
             .map_err(Error::FromFile)?;
+        let name = FileName::from_path(&path)?;
         let len = file.metadata().map_err(Error::FromFile)?.len();
         let file = Some(file);
-        let file_name = path
-            .file_name()
-            .ok_or_else(|| Error::PathWithoutFileName(path.to_owned()))?;
-        let fname_str = file_name
-            .to_str()
-            .ok_or_else(|| Error::NonUnicode(file_name.to_owned()))?;
-        let parts = fname_str.split('.');
-        let id_str = parts
-            .rev()
-            .nth(1)
-            .ok_or_else(|| Error::FileNamePattern("[prefix].[Id].[extension]".to_owned()))?;
-        let id = id_str
-            .parse()
-            .map_err(|_| Error::IndexParseFailed(fname_str.to_owned()))?;
         // @TODO Scan existing file to create index
         Ok(Self {
-            id,
-            header: Default::default(),
+            header: Header::new(),
             file,
-            path,
+            name,
             index: Default::default(),
             current_offset: len,
         })
@@ -189,7 +167,11 @@ impl Blob {
     }
 
     pub fn path(&self) -> PathBuf {
-        self.path.clone()
+        self.name.as_path()
+    }
+
+    pub fn id(&self) -> usize {
+        self.name.id
     }
 }
 
@@ -203,4 +185,70 @@ pub enum Error {
     NonUnicode(std::ffi::OsString),
     FileNamePattern(String),
     IndexParseFailed(String),
+}
+
+#[derive(Debug)]
+pub struct FileName {
+    name_prefix: String,
+    id: usize,
+    extension: String,
+    dir: PathBuf,
+}
+
+impl FileName {
+    pub fn new(name_prefix: String, id: usize, extension: String, dir: PathBuf) -> Self {
+        Self {
+            name_prefix,
+            id,
+            extension,
+            dir,
+        }
+    }
+
+    pub fn from_path(path: &Path) -> Result<Self> {
+        let file_name = path
+            .file_name()
+            .ok_or_else(|| Error::PathWithoutFileName(path.to_owned()))?;
+        let fname_str = file_name
+            .to_str()
+            .ok_or_else(|| Error::NonUnicode(file_name.to_owned()))?;
+        let mut parts = fname_str.split('.');
+        let name_prefix = parts.next().unwrap().to_owned();
+        let id = parts.next().unwrap().parse().unwrap();
+        let extension = path.extension().unwrap().to_str().unwrap().to_owned();
+        let dir = path.parent().unwrap().to_owned();
+        Ok(Self {
+            name_prefix,
+            id,
+            extension,
+            dir,
+        })
+    }
+
+    pub fn as_path(&self) -> PathBuf {
+        self.dir.join(self.name_to_string())
+    }
+
+    fn name_to_string(&self) -> String {
+        format!("{}.{}.{}", self.name_prefix, self.id, self.extension)
+    }
+}
+
+/// # Description
+/// # Examples
+#[derive(Debug)]
+struct Header {
+    magic_byte: u64,
+    version: u32,
+    flags: u64,
+}
+
+impl Header {
+    pub fn new() -> Self {
+        Self {
+            magic_byte: BLOB_MAGIC_BYTE,
+            version: 0,
+            flags: 0,
+        }
+    }
 }
