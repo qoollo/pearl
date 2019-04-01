@@ -12,7 +12,7 @@ use std::{
 
 use crate::record::{self, Record};
 
-const BLOB_MAGIC_BYTE: u64 = 0xdeaf;
+const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -66,13 +66,12 @@ impl Blob {
     pub fn open_new(name: FileName) -> Result<Self> {
         Ok(Self {
             header: Header::new(),
-            file:
-                fs::OpenOptions::new()
-                    .create_new(true)
-                    .append(true)
-                    .read(true)
-                    .open(name.as_path())
-                    .map_err(Error::OpenNew)?,
+            file: fs::OpenOptions::new()
+                .create_new(true)
+                .append(true)
+                .read(true)
+                .open(name.as_path())
+                .map_err(Error::OpenNew)?,
             name,
             index: BTreeMap::new(),
             current_offset: 0,

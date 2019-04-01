@@ -1,6 +1,6 @@
 use bincode::{deserialize, serialize};
 
-const RECORD_MAGIC_BYTE: u64 = 0xacdc;
+const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
 type Result<T> = std::result::Result<T, Error>;
 
