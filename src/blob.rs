@@ -137,7 +137,7 @@ impl Blob {
         K: AsRef<[u8]> + Ord,
     {
         let header = self.index.get(key.as_ref())?;
-        Some(Location::new(header.blob_offset, header.size))
+        Some(Location::new(header.blob_offset, header.full_len))
     }
 
     /// # Description
@@ -150,15 +150,15 @@ impl Blob {
     /// # Description
     /// Returns size of file in bytes
     // @TODO more useful result
-    pub fn size(&self) -> Result<usize> {
+    pub fn file_size(&self) -> Result<u64> {
         // @TODO implement
-        Ok(0usize)
+        Ok(0)
     }
 
     /// # Description
     /// Returns number of records in current blob
     // @TODO more useful result
-    pub fn count(&self) -> Result<usize> {
+    pub fn records_count(&self) -> Result<usize> {
         // @TODO implement
         Ok(0usize)
     }

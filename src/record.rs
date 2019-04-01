@@ -1,6 +1,8 @@
 use bincode::{deserialize, serialize};
+use std::time::Instant;
 
-const HEADER_UNALIGNED_SIZE: usize = 49;
+const HEADER_UNALIGNED_SIZE: u64 = 49;
+const RECORD_MAGIC_BYTE: u64 = 0xacdc;
 
 /// # Description
 /// # Examples
@@ -13,39 +15,35 @@ pub struct Record {
 
 impl Record {
     /// # Description
-    /// Creates new `Record`, temporarily as `Default`
+    /// Creates new `Record`
     /// # Examples
     /// ```no-run
     /// use pearl::Record;
     /// let rec = Record::new();
     /// ```
-    pub fn new() -> Self {
+    pub fn new<T, D>(key: T, data: D) -> Self
+    where
+        T: AsRef<[u8]>,
+        D: AsRef<[u8]>,
+    {
         Self {
-            ..Default::default()
+            key: key.as_ref().to_vec(),
+            data: data.as_ref().to_vec(),
+            header: Header::new(),
         }
     }
 
     /// # Description
-    pub fn header_key_len(&self) -> u64 {
-        self.header.key_len
-    }
-
-    /// # Description
-    pub fn header_data_len(&self) -> u64 {
-        self.header.size - HEADER_UNALIGNED_SIZE as u64 - self.header.key_len
-    }
-
-    /// # Description
     /// Get number of bytes, struct `Record` uses on disk
-    pub fn full_size(&self) -> usize {
+    pub fn full_len(&self) -> u64 {
         // @TODO implement
-        self.header.size as usize + Record::header_size()
+        self.header.full_len + Record::header_size()
     }
 
     /// # Description
     /// Returns data size from header
     pub fn data_len(&self) -> usize {
-        self.header.size as usize
+        self.data.len()
     }
 
     /// # Description
@@ -72,7 +70,7 @@ impl Record {
         &self.header
     }
 
-     /// # Description
+    /// # Description
     /// Get record header mutable reference
     pub fn header_mut(&mut self) -> &mut Header {
         &mut self.header
@@ -80,42 +78,40 @@ impl Record {
 
     /// # Description
     /// Set data to Record, replacing if exists
-    pub fn set_body<K, D>(&mut self, key: K, data: D)
+    pub fn set_body<K, D>(&mut self, key: K, data: D) -> &mut Self
     where
         K: AsRef<[u8]>,
-        D: AsRef<[u8]> ,
+        D: AsRef<[u8]>,
     {
         self.key = key.as_ref().to_vec();
+        self.header.key_len = self.key.len() as u64;
         self.data = data.as_ref().to_vec();
-        self.update_header();
+        self.header.full_len = Self::header_size() + self.header.key_len + self.data.len() as u64;
+        self
     }
 
     /// # Description
     /// Init new `Record` from raw buffer, returns `None` if buf len is less than header
     pub fn from_raw(buf: &[u8]) -> Option<Self> {
         // @TODO Header validation
-        let mut record = Self::new();
-        if buf.len() < HEADER_UNALIGNED_SIZE {
+        if (buf.len() as u64) < HEADER_UNALIGNED_SIZE {
             None
         } else {
-            record.header = Header::from_raw(buf);
-            record.key = buf
-                [HEADER_UNALIGNED_SIZE..HEADER_UNALIGNED_SIZE + record.header.key_len as usize]
-                .to_vec();
-            record.data = buf[HEADER_UNALIGNED_SIZE + record.header.key_len as usize..].to_vec();
-            Some(record)
+            let header = Header::from_raw(buf);
+            let key_offset = HEADER_UNALIGNED_SIZE as usize;
+            let key_len = header.key_len as usize;
+            let data_offset = key_offset + key_len;
+            let key = buf[key_offset..key_offset + key_len].to_vec();
+            let data = buf[data_offset..].to_vec();
+            let mut rec = Record::new(key, data);
+            rec.header = header;
+            Some(rec)
         }
     }
 
     /// # Description
-    pub fn update_header(&mut self) {
-        self.header.key_len = self.key.len() as u64;
-        self.header.size = (HEADER_UNALIGNED_SIZE + self.key.len() + self.data.len()) as u64;
-    }
-
-    /// # Description
     /// Returns unaligned record Header size with provided key type
-    pub fn header_size() -> usize {
+    pub fn header_size() -> u64 {
         HEADER_UNALIGNED_SIZE
     }
 }
@@ -125,7 +121,7 @@ impl Record {
     /// Serialize header to `Vec<u8>` bytes
     pub fn to_raw(&self) -> Vec<u8> {
         let mut buf = self.header.to_raw();
-        buf.extend_from_slice(self.key.as_ref());
+        buf.extend_from_slice(&self.key);
         buf.extend_from_slice(&self.data);
         buf
     }
@@ -150,7 +146,7 @@ impl Record {
 pub struct Header {
     magic_byte: u64,
     key_len: u64,
-    pub size: u64,
+    pub full_len: u64,
     flags: u8,
     pub blob_offset: u64,
     created: u64,
@@ -159,6 +155,26 @@ pub struct Header {
 }
 
 impl Header {
+    pub fn new() -> Self {
+        // @TODO calculate check sums
+        Self {
+            magic_byte: RECORD_MAGIC_BYTE,
+            key_len: 0,
+            full_len: HEADER_UNALIGNED_SIZE,
+            flags: 0,
+            blob_offset: 0,
+            created: std::time::UNIX_EPOCH
+                .elapsed()
+                .map(|d| d.as_secs())
+                .unwrap_or_else(|e| {
+                    error!("{}", e);
+                    0
+                }),
+            data_checksum: 0,
+            header_checksum: 0,
+        }
+    }
+
     pub fn from_raw(buf: &[u8]) -> Self {
         deserialize(&buf).unwrap()
     }

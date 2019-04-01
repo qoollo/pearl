@@ -83,7 +83,7 @@ impl Storage {
 
     // @TODO specify more useful error type
     pub fn write(&mut self, record: &mut Record) -> Result<WriteFuture> {
-        if self.is_active_blob_full(record.full_size())? {
+        if self.is_active_blob_full(record.full_len())? {
             let next = self.next_blob_name()?;
             let new_active = Blob::open_new(next).map_err(Error::BlobError)?.boxed();
             // @TODO process unwrap explicitly
@@ -239,16 +239,16 @@ impl Storage {
     }
 
     // @TODO handle unwrap explicitly
-    fn is_active_blob_full(&self, next_record_size: usize) -> Result<bool> {
+    fn is_active_blob_full(&self, next_record_size: u64) -> Result<bool> {
         Ok(self
             .active_blob
             .as_ref()
             .ok_or(Error::ActiveBlobNotSet)?
-            .size()
+            .file_size()
             .map_err(Error::BlobError)?
             + next_record_size
             > self.config.max_blob_size.unwrap()
-            || self.active_blob.as_ref().unwrap().count().unwrap()
+            || self.active_blob.as_ref().unwrap().records_count().unwrap() as u64
                 >= self.config.max_data_in_blob.unwrap())
     }
 }
@@ -315,10 +315,9 @@ impl<'a> Builder {
     /// # Description
     /// Sets blob file max size
     /// Must be greater than zero
-    pub fn max_blob_size<U: Into<usize>>(mut self, max_blob_size: U) -> Self {
-        let mbs = max_blob_size.into();
-        if mbs > 0 {
-            self.config.max_blob_size = Some(mbs);
+    pub fn max_blob_size(mut self, max_blob_size: u64) -> Self {
+        if max_blob_size > 0 {
+            self.config.max_blob_size = Some(max_blob_size);
             info!(
                 "maximum blob size set to: {}",
                 self.config.max_blob_size.unwrap()
@@ -332,10 +331,9 @@ impl<'a> Builder {
     /// # Description
     /// Sets max number of records in single blob
     /// Must be greater than zero
-    pub fn max_data_in_blob<U: Into<usize>>(mut self, max_data_in_blob: U) -> Self {
-        let mdib = max_data_in_blob.into();
-        if mdib > 0 {
-            self.config.max_data_in_blob = Some(mdib);
+    pub fn max_data_in_blob(mut self, max_data_in_blob: u64) -> Self {
+        if max_data_in_blob > 0 {
+            self.config.max_data_in_blob = Some(max_data_in_blob);
             info!(
                 "max number of records in blob set to: {}",
                 self.config.max_data_in_blob.unwrap()
@@ -371,8 +369,8 @@ impl<'a> Builder {
 #[derive(Debug)]
 struct Config {
     work_dir: Option<PathBuf>,
-    max_blob_size: Option<usize>,
-    max_data_in_blob: Option<usize>,
+    max_blob_size: Option<u64>,
+    max_data_in_blob: Option<u64>,
     blob_file_name_prefix: Option<String>,
 }
 
@@ -418,8 +416,8 @@ mod tests {
         let mut storage = Builder::new()
             .work_dir(&path)
             .blob_file_name_prefix("test")
-            .max_blob_size(1_000_000usize)
-            .max_data_in_blob(1_000usize)
+            .max_blob_size(1_000_000u64)
+            .max_data_in_blob(1_000)
             .build()
             .unwrap();
         assert!(storage.init().is_err());
@@ -441,8 +439,8 @@ mod tests {
         let mut storage = Builder::new()
             .work_dir(&path)
             .blob_file_name_prefix("test")
-            .max_blob_size(1_000_000usize)
-            .max_data_in_blob(1_000usize)
+            .max_blob_size(1_000_000)
+            .max_data_in_blob(1_000)
             .build()
             .unwrap();
         assert!(storage.init().is_err());
@@ -451,13 +449,13 @@ mod tests {
 
     #[test]
     fn set_zero_max_data_in_blob() {
-        let builder = Builder::new().max_data_in_blob(0usize);
+        let builder = Builder::new().max_data_in_blob(0);
         assert!(builder.config.max_data_in_blob.is_none());
     }
 
     #[test]
     fn set_zero_max_blob_size() {
-        let builder = Builder::new().max_blob_size(0usize);
+        let builder = Builder::new().max_blob_size(0);
         assert!(builder.config.max_blob_size.is_none());
     }
     #[test]

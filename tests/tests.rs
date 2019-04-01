@@ -15,8 +15,8 @@ fn test_storage_init_new() {
     let builder = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
-        .max_blob_size(1_000_000usize)
-        .max_data_in_blob(1_000usize);
+        .max_blob_size(1_000_000)
+        .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
     assert!(storage.init().map_err(|e| eprintln!("{:?}", e)).is_ok());
     assert_eq!(storage.blobs_count(), 1);
@@ -34,8 +34,8 @@ fn test_storage_init_from_existing() {
         let builder = Builder::new()
             .work_dir(&path)
             .blob_file_name_prefix("test")
-            .max_blob_size(1_000_000usize)
-            .max_data_in_blob(1_000usize);
+            .max_blob_size(1_000_000)
+            .max_data_in_blob(1_000);
         let mut temp_storage = builder.build().unwrap();
         temp_storage.init().unwrap();
         fs::OpenOptions::new()
@@ -50,8 +50,8 @@ fn test_storage_init_from_existing() {
     let builder = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
-        .max_blob_size(1_000_000usize)
-        .max_data_in_blob(1_000usize);
+        .max_blob_size(1_000_000)
+        .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
 
     assert!(storage.init().map_err(|e| eprintln!("{:?}", e)).is_ok());
@@ -74,13 +74,13 @@ fn test_storage_read_write() {
     let builder = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
-        .max_blob_size(1_000_000usize)
-        .max_data_in_blob(1_000usize);
+        .max_blob_size(1_000_000)
+        .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
     storage.init().unwrap();
     let key = "test-test".to_owned();
-    let mut record = Record::new();
     let data = b"test data string".to_vec();
+    let mut record = Record::new(&key, &data);
     record.set_body(key.clone(), data.clone());
     let mut pool = ThreadPool::new().unwrap();
     let w = storage.write(&mut record).unwrap();
@@ -100,17 +100,17 @@ fn test_storage_multiple_read_write() {
     let mut storage = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
-        .max_blob_size(1_000_000usize)
-        .max_data_in_blob(1_000usize)
+        .max_blob_size(1_000_000)
+        .max_data_in_blob(1_000)
         .build()
         .unwrap();
     storage.init().unwrap();
     let mut keys = Vec::new();
     let mut records: Vec<_> = (0..1000)
         .map(|i| {
-            let mut rec = Record::new();
             let data = b"viva".repeat(i + 1);
             let key = format!("key{}", i);
+            let mut rec = Record::new(&key, &data);
             keys.push(key.clone());
             rec.set_body(key, data);
             rec
@@ -152,8 +152,8 @@ fn test_storage_close() {
     let builder = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
-        .max_blob_size(1_000_000usize)
-        .max_data_in_blob(1_000usize);
+        .max_blob_size(1_000_000)
+        .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
     assert!(storage.init().map_err(|e| eprintln!("{:?}", e)).is_ok());
     let blob_file_path = path.join("test.0.blob");
