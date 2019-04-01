@@ -11,6 +11,7 @@ type Result<T> = std::result::Result<T, Error>;
 /// A `Blob` struct for performing of database,
 #[derive(Debug, Default)]
 pub struct Blob {
+    pub id: usize,
     index: BTreeMap<Vec<u8>, record::Header>,
     header: Header,
     file: Option<fs::File>,
@@ -70,9 +71,13 @@ impl Future for ReadFuture {
 impl Blob {
     /// # Description
     /// Creates new blob file
-    pub fn open_new<T>(path: T) -> Result<Self> where T: Into<PathBuf> {
+    pub fn open_new<T>(path: T, id: usize) -> Result<Self>
+    where
+        T: Into<PathBuf>,
+    {
         let path = path.into();
         Ok(Self {
+            id,
             header: Default::default(),
             file: Some(
                 fs::OpenOptions::new()
@@ -99,10 +104,25 @@ impl Blob {
             .read(true)
             .open(&path)
             .map_err(Error::FromFile)?;
-        let len = file.metadata().unwrap().len();
+        let len = file.metadata().map_err(Error::FromFile)?.len();
         let file = Some(file);
+        let file_name = path
+            .file_name()
+            .ok_or_else(|| Error::PathWithoutFileName(path.to_owned()))?;
+        let fname_str = file_name
+            .to_str()
+            .ok_or_else(|| Error::NonUnicode(file_name.to_owned()))?;
+        let parts = fname_str.split('.');
+        let id_str = parts
+            .rev()
+            .nth(1)
+            .ok_or_else(|| Error::FileNamePattern("[prefix].[Id].[extension]".to_owned()))?;
+        let id = id_str
+            .parse()
+            .map_err(|_| Error::IndexParseFailed(fname_str.to_owned()))?;
         // @TODO Scan existing file to create index
         Ok(Self {
+            id,
             header: Default::default(),
             file,
             path,
@@ -179,4 +199,8 @@ pub enum Error {
     FromFile(io::Error),
     NotFound,
     RecordFromRawFailed,
+    PathWithoutFileName(PathBuf),
+    NonUnicode(std::ffi::OsString),
+    FileNamePattern(String),
+    IndexParseFailed(String),
 }

@@ -9,8 +9,8 @@ use crate::{
     record::Record,
 };
 
-const LOCK_FILE: &str = "pearl.lock";
 const BLOB_FILE_ETENSION: &str = "blob";
+const LOCK_FILE: &str = "pearl.lock";
 
 /// # Description
 /// A specialized Result type
@@ -84,7 +84,8 @@ impl Storage {
     // @TODO specify more useful error type
     pub fn write(&mut self, record: &mut Record) -> Result<WriteFuture> {
         if self.is_active_blob_full(record.full_size())? {
-            let new_active = Blob::open_new(self.next_blob_path()?)
+            let next_id = self.next_blob_id()?;
+            let new_active = Blob::open_new(self.next_blob_path()?, next_id)
                 .map_err(Error::BlobError)?
                 .boxed();
             // @TODO process unwrap explicitly
@@ -93,6 +94,18 @@ impl Storage {
         }
         // @TODO process unwrap explicitly
         Ok(self.active_blob.as_mut().unwrap().write(record))
+    }
+
+    fn next_blob_id(&self) -> Result<usize> {
+        let active_blob_id = self.active_blob.as_ref().ok_or(Error::ActiveBlobNotSet)?.id;
+        let blobs_max_id = self
+            .blobs
+            .iter()
+            .max_by_key(|blob| blob.id)
+            .map(|blob| blob.id)
+            .unwrap_or(0);
+        let max_id = active_blob_id.max(blobs_max_id);
+        Ok(max_id + 1)
     }
 }
 
@@ -169,14 +182,15 @@ impl Storage {
         Ok(())
     }
 
-    fn init_active_blob(&mut self) -> Result<()> {
+    fn init_new(&mut self) -> Result<()> {
+        let initital_id = 0;
         let new_blob_name = format!(
             "{}.{}.{}",
             self.config
                 .blob_file_name_prefix
                 .as_ref()
                 .ok_or(Error::WrongConfig)?,
-            self.blobs.len(),
+            initital_id,
             BLOB_FILE_ETENSION
         );
         let path = self
@@ -185,17 +199,15 @@ impl Storage {
             .as_ref()
             .ok_or(Error::WrongConfig)?
             .join(&new_blob_name);
-        self.active_blob = Some(Blob::open_new(path).map_err(Error::InitActiveBlob)?.boxed());
+        self.active_blob = Some(
+            Blob::open_new(path, initital_id)
+                .map_err(Error::InitActiveBlob)?
+                .boxed(),
+        );
         debug!("created new active blob: {}", new_blob_name);
         Ok(())
     }
 
-    // @TODO specify more useful error type
-    fn init_new(&mut self) -> Result<()> {
-        self.init_active_blob()
-    }
-
-    // @TODO specify more useful error type
     fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         let mut max_blob_file_index: Option<usize> = None;
         let mut active_blob = None;
@@ -203,6 +215,12 @@ impl Storage {
             .iter()
             .map(DirEntry::path)
             .filter(|path| path.is_file())
+            .filter(|path| {
+                path.extension()
+                    .map(|os_str| os_str.to_str().unwrap())
+                    .unwrap_or("")
+                    == BLOB_FILE_ETENSION
+            })
             .filter_map(|path| {
                 let blob = Blob::from_file(path.clone()).unwrap();
                 let stem = path.file_stem().unwrap().to_str().unwrap();
@@ -244,10 +262,7 @@ impl Storage {
     }
 
     fn next_blob_path(&self) -> Result<PathBuf> {
-        let mut next_id = self.blobs.len() + 1;
-        if self.active_blob.is_none() {
-            next_id -= 1;
-        }
+        let next_id = self.next_blob_id()?;
         Ok(format!(
             "{}.{}.{}",
             self.config
