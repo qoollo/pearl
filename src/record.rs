@@ -1,5 +1,4 @@
 use bincode::{deserialize, serialize};
-use std::time::Instant;
 
 const HEADER_UNALIGNED_SIZE: u64 = 49;
 const RECORD_MAGIC_BYTE: u64 = 0xacdc;
@@ -120,7 +119,9 @@ impl Record {
     /// # Description
     /// Serialize header to `Vec<u8>` bytes
     pub fn to_raw(&self) -> Vec<u8> {
-        let mut buf = self.header.to_raw();
+        let raw_header = self.header.to_raw();
+        let mut buf = Vec::with_capacity(self.header.full_len as usize);
+        buf.extend(raw_header.iter());
         buf.extend_from_slice(&self.key);
         buf.extend_from_slice(&self.data);
         buf
