@@ -9,7 +9,7 @@ use crate::{
     record::Record,
 };
 
-const BLOB_FILE_ETENSION: &str = "blob";
+const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
 
 /// # Description
@@ -59,7 +59,7 @@ impl Storage {
         if files_in_work_dir
             .iter()
             .map(|file| file.file_name().as_os_str().to_str().unwrap().to_owned())
-            .find(|name| name.ends_with(BLOB_FILE_ETENSION))
+            .find(|name| name.ends_with(BLOB_FILE_EXTENSION))
             .is_none()
         {
             debug!("working dir is unitialized, starting empty storage");
@@ -106,7 +106,7 @@ impl Storage {
                 .ok_or(Error::Unitialized)?
                 .to_owned(),
             next_id,
-            BLOB_FILE_ETENSION.to_owned(),
+            BLOB_FILE_EXTENSION.to_owned(),
             self.config
                 .work_dir
                 .as_ref()
@@ -210,7 +210,7 @@ impl Storage {
                 path.extension()
                     .map(|os_str| os_str.to_str().unwrap())
                     .unwrap_or("")
-                    == BLOB_FILE_ETENSION
+                    == BLOB_FILE_EXTENSION
             })
             .filter_map(|path| {
                 let blob = Blob::from_file(path.clone()).unwrap();
