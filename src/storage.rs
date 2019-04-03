@@ -33,6 +33,7 @@ pub struct Storage {
     active_blob: Option<Box<Blob>>,
     blobs: Vec<Blob>,
     lock_file: Option<File>,
+    next_blob_id: usize,
 }
 
 impl Storage {
@@ -98,18 +99,20 @@ impl Storage {
             .map_err(Error::BlobError)
     }
 
-    fn next_blob_name(&self) -> Result<blob::FileName> {
+    fn max_id(&self) -> Option<usize> {
         let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
         let blobs_max_id = self.blobs.iter().max_by_key(|blob| blob.id()).map(Blob::id);
-        let max_id = active_blob_id.max(blobs_max_id);
-        let next_id = if let Some(id) = max_id { id + 1 } else { 0 };
+        active_blob_id.max(blobs_max_id)
+    }
+
+    fn next_blob_name(&self) -> Result<blob::FileName> {
         Ok(blob::FileName::new(
             self.config
                 .blob_file_name_prefix
                 .as_ref()
                 .ok_or(Error::Unitialized)?
                 .to_owned(),
-            next_id,
+            self.next_blob_id,
             BLOB_FILE_EXTENSION.to_owned(),
             self.config
                 .work_dir
@@ -218,10 +221,11 @@ impl Storage {
             })
             .filter_map(|path| {
                 let blob = Blob::from_file(path.clone()).unwrap();
-                let stem = path.file_stem().unwrap().to_str().unwrap();
-                let index_str = stem.split('.').last()?;
-                let id = index_str.parse().ok()?;
-                if let Some(ref mut i) = max_blob_file_index {
+                blob.check_data_consistency()
+                    .map_err(|e| error!("Check data consistency failed: {:?}", e))
+                    .ok()?;
+                let id = blob.id();
+                if let Some(i) = max_blob_file_index.as_mut() {
                     if id > *i {
                         *i = id;
                         let temp_blob = active_blob.take()?;
@@ -239,6 +243,8 @@ impl Storage {
             .collect();
         self.active_blob = Some(Box::new(active_blob.take().ok_or(Error::ActiveBlobNotSet)?));
         self.blobs = temp_blobs;
+        self.blobs.sort_by_key(Blob::id);
+        self.next_blob_id = self.max_id().map(|i| i + 1).unwrap_or(0);
         Ok(())
     }
 
@@ -297,6 +303,7 @@ impl<'a> Builder {
                 active_blob: None,
                 blobs: Vec::new(),
                 lock_file: None,
+                next_blob_id: 0,
             })
         }
     }

@@ -19,11 +19,51 @@ type Result<T> = std::result::Result<T, Error>;
 /// A `Blob` struct for performing of database,
 #[derive(Debug)]
 pub struct Blob {
-    index: BTreeMap<Vec<u8>, record::Header>,
     header: Header,
-    file: fs::File,
+    index: Index,
     name: FileName,
+    file: fs::File,
     current_offset: u64,
+}
+
+#[derive(Debug, Default)]
+struct Index {
+    headers: BTreeMap<Vec<u8>, record::Header>,
+}
+
+impl Index {
+    fn new(_path: &Path) -> Self {
+        // @TODO initialize new index from file
+        Self {
+            headers: BTreeMap::new(),
+        }
+    }
+
+    fn from_default(_path: &Path) -> Result<Self> {
+        // @TODO implement
+        Ok(Default::default())
+    }
+
+    fn contains_key<K>(&self, key: K) -> bool
+    where
+        K: AsRef<[u8]>,
+    {
+        self.headers.contains_key(key.as_ref())
+    }
+
+    fn insert<K>(&mut self, key: K, header: record::Header)
+    where
+        K: AsRef<[u8]>,
+    {
+        self.headers.insert(key.as_ref().to_vec(), header);
+    }
+
+    fn get<K>(&self, key: K) -> Option<&record::Header>
+    where
+        K: AsRef<[u8]>,
+    {
+        self.headers.get(key.as_ref())
+    }
 }
 
 #[derive(Debug)]
@@ -62,20 +102,43 @@ impl Future for ReadFuture {
 
 impl Blob {
     /// # Description
-    /// Creates new blob file
+    /// Creates new blob file with given FileName
+    /// # Panic
+    /// Panics if file with same path already exists
     pub fn open_new(name: FileName) -> Result<Self> {
-        Ok(Self {
+        let file = Self::create_file(&name.as_path())?;
+        let mut blob = Self {
             header: Header::new(),
-            file: fs::OpenOptions::new()
-                .create_new(true)
-                .append(true)
-                .read(true)
-                .open(name.as_path())
-                .map_err(Error::OpenNew)?,
+            file,
+            index: Index::new(&name.as_path()),
             name,
-            index: BTreeMap::new(),
             current_offset: 0,
-        })
+        };
+        blob.flush()?;
+        Ok(blob)
+    }
+
+    fn flush(&mut self) -> Result<()> {
+        // @TODO implement
+        Ok(())
+    }
+
+    fn create_file(path: &Path) -> Result<fs::File> {
+        fs::OpenOptions::new()
+            .create_new(true)
+            .append(true)
+            .read(true)
+            .open(path)
+            .map_err(Error::OpenNew)
+    }
+
+    fn open_file(path: &Path) -> Result<fs::File> {
+        fs::OpenOptions::new()
+            .create(false)
+            .append(true)
+            .read(true)
+            .open(path)
+            .map_err(Error::FromFile)
     }
 
     pub fn boxed(self) -> Box<Self> {
@@ -83,28 +146,36 @@ impl Blob {
     }
 
     pub fn from_file(path: PathBuf) -> Result<Self> {
-        let file = fs::OpenOptions::new()
-            .create(false)
-            .append(true)
-            .read(true)
-            .open(&path)
-            .map_err(Error::FromFile)?;
+        let file = Self::open_file(&path)?;
         let name = FileName::from_path(&path)?;
         let len = file.metadata().map_err(Error::FromFile)?.len();
-        // @TODO Scan existing file to create index
-        Ok(Self {
+        let _header = Header::from_reader(&file)?;
+        let index = Index::from_default(&path)?;
+
+        let blob = Self {
             header: Header::new(),
             file,
             name,
-            index: Default::default(),
+            index,
             current_offset: len,
-        })
+        };
+
+        // @TODO Scan existing file to create index
+        Ok(blob)
+    }
+
+    pub fn check_data_consistency(&self) -> Result<()> {
+        // @TODO implement
+        Ok(())
     }
 
     pub fn write(&mut self, record: &mut Record) -> Result<WriteFuture> {
         record.set_blob_offset(self.current_offset);
-        self.index
-            .insert(record.key().to_vec(), record.header().clone());
+        let key = record.key().to_vec();
+        if self.index.contains_key(&key) {
+            return Err(Error::AlreadyContainsSameKey);
+        }
+        self.index.insert(key, record.header().clone());
         let buf = record.to_raw();
         self.current_offset += buf.len() as u64;
         Ok(WriteFuture {
@@ -121,11 +192,11 @@ impl Blob {
         Ok(ReadFuture {
             file: self.file.try_clone().map_err(Error::CloneFd)?,
             key: key.as_ref().to_vec(),
-            loc: self.locate(&key)?,
+            loc: self.lookup(&key)?,
         })
     }
 
-    fn locate<K>(&self, key: &K) -> Result<Location>
+    fn lookup<K>(&self, key: &K) -> Result<Location>
     where
         K: AsRef<[u8]> + Ord,
     {
@@ -174,9 +245,11 @@ pub enum Error {
     RecordFromRawFailed,
     PathWithoutFileName(PathBuf),
     NonUnicode(std::ffi::OsString),
-    FileNamePattern(String),
+    WrongFileNamePattern(PathBuf),
     IndexParseFailed(String),
     RecordError(record::Error),
+    AlreadyContainsSameKey,
+    DeserializationFailed(bincode::ErrorKind),
 }
 
 #[derive(Debug)]
@@ -198,23 +271,7 @@ impl FileName {
     }
 
     pub fn from_path(path: &Path) -> Result<Self> {
-        let file_name = path
-            .file_name()
-            .ok_or_else(|| Error::PathWithoutFileName(path.to_owned()))?;
-        let fname_str = file_name
-            .to_str()
-            .ok_or_else(|| Error::NonUnicode(file_name.to_owned()))?;
-        let mut parts = fname_str.split('.');
-        let name_prefix = parts.next().unwrap().to_owned();
-        let id = parts.next().unwrap().parse().unwrap();
-        let extension = path.extension().unwrap().to_str().unwrap().to_owned();
-        let dir = path.parent().unwrap().to_owned();
-        Ok(Self {
-            name_prefix,
-            id,
-            extension,
-            dir,
-        })
+        Self::try_from_path(path).ok_or_else(|| Error::WrongFileNamePattern(path.to_owned()))
     }
 
     pub fn as_path(&self) -> PathBuf {
@@ -223,6 +280,25 @@ impl FileName {
 
     fn name_to_string(&self) -> String {
         format!("{}.{}.{}", self.name_prefix, self.id, self.extension)
+    }
+
+    fn try_from_path(path: &Path) -> Option<Self> {
+        let extension = path.extension()?.to_str()?.to_owned();
+        let stem = path.file_stem()?;
+        let mut parts = stem
+            .to_str()?
+            .splitn(2, '.')
+            .collect::<Vec<_>>()
+            .into_iter();
+        let name_prefix = parts.next()?.to_owned();
+        let id = parts.next()?.parse().ok()?;
+        let dir = path.parent()?.to_owned();
+        Some(Self {
+            name_prefix,
+            id,
+            extension,
+            dir,
+        })
     }
 }
 
@@ -242,6 +318,14 @@ impl Header {
             version: 0,
             flags: 0,
         }
+    }
+
+    fn from_reader<R>(_reader: R) -> Result<Self>
+    where
+        R: std::io::Read,
+    {
+        // @TODO implement
+        Ok(Self::new())
     }
 }
 
