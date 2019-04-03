@@ -207,9 +207,7 @@ impl Storage {
     }
 
     fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
-        let mut max_blob_file_index: Option<usize> = None;
-        let mut active_blob = None;
-        let temp_blobs = files
+        let mut temp_blobs: Vec<_> = files
             .iter()
             .map(DirEntry::path)
             .filter(|path| path.is_file())
@@ -224,26 +222,13 @@ impl Storage {
                 blob.check_data_consistency()
                     .map_err(|e| error!("Check data consistency failed: {:?}", e))
                     .ok()?;
-                let id = blob.id();
-                if let Some(i) = max_blob_file_index.as_mut() {
-                    if id > *i {
-                        *i = id;
-                        let temp_blob = active_blob.take()?;
-                        active_blob = Some(blob);
-                        Some(temp_blob)
-                    } else {
-                        Some(blob)
-                    }
-                } else {
-                    max_blob_file_index = Some(id);
-                    active_blob = Some(blob);
-                    None
-                }
+                Some(blob)
             })
             .collect();
-        self.active_blob = Some(Box::new(active_blob.take().ok_or(Error::ActiveBlobNotSet)?));
+        temp_blobs.sort_by_key(Blob::id);
+        let active_blob = temp_blobs.pop().unwrap().boxed();
+        self.active_blob = Some(active_blob);
         self.blobs = temp_blobs;
-        self.blobs.sort_by_key(Blob::id);
         self.next_blob_id = self.max_id().map(|i| i + 1).unwrap_or(0);
         Ok(())
     }
