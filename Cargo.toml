@@ -10,3 +10,8 @@ readme = "README.md"
 [dependencies]
 env_logger = "0.6.0"
 log = "0.4.6"
+futures-preview = "0.3.0-alpha.13"
+serde = "1.0.89"
+serde_derive = "1.0.89"
+bincode = "1.1.2"
+rand = "0.6.5"

@@ -1,6 +1,7 @@
+#![feature(futures_api, await_macro, async_await)]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
-#![cfg_attr(test, deny(warnings))]
+// #![cfg_attr(test, deny(warnings))]
 
 //! # pearl
 //!
@@ -8,11 +9,15 @@
 
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate serde_derive;
+// #[macro_use]
+// extern crate futures;
 
 mod blob;
 mod index;
 mod record;
 mod storage;
 
-pub use storage::{Builder, Storage};
 pub use record::Record;
+pub use storage::{Builder, Storage};
