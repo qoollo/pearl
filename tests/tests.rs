@@ -9,6 +9,8 @@ use pearl::{Builder, Record};
 use rand::seq::SliceRandom;
 use std::{env, fs};
 
+mod common;
+
 #[test]
 fn test_storage_init_new() {
     let path = env::temp_dir().join("pearl_new/");
@@ -70,13 +72,8 @@ fn test_storage_init_from_existing() {
 
 #[test]
 fn test_storage_read_write() {
-    let path = env::temp_dir().join("pearl_rw/");
-    let builder = Builder::new()
-        .work_dir(&path)
-        .blob_file_name_prefix("test")
-        .max_blob_size(1_000_000)
-        .max_data_in_blob(1_000);
-    let mut storage = builder.build().unwrap();
+    let path = env::temp_dir().join("pearl_test/");
+    let mut storage = common::default_test_storage().unwrap();
     storage.init().unwrap();
     let key = "test-test".to_owned();
     let data = b"test data string".to_vec();
@@ -148,6 +145,33 @@ fn test_storage_multiple_read_write() {
     fs::remove_dir(&path).unwrap();
     assert_eq!(records.len(), records_from_file.len());
     assert_eq!(records, records_from_file);
+}
+
+#[test]
+fn test_multithread_read_write() -> Result<(), String> {
+    use std::thread;
+
+    let pool = ThreadPool::builder().name_prefix("test-pool-").stack_size(4).create().map_err(|e| format!("{:?}", e))?;
+    let storage = common::default_test_storage()?;
+    let indexes = (0..9)
+        .map(|i| (0..9).map(|j| i * 10 + j).collect::<Vec<usize>>())
+        .collect::<Vec<_>>();
+    let handles = indexes
+        .iter()
+        .cloned()
+        .map(|mut range| {
+            thread::spawn(move || {
+                range.shuffle(&mut rand::thread_rng());
+                range.iter().map(|i| {
+                    common::write(&storage, *i, pool);
+                }).collect::<Vec<_>>();
+            })
+        })
+        .collect::<Vec<_>>();
+    let errs_cnt = handles.into_iter().map(|handle| handle.join()).collect::<Vec<_>>();
+    let keys = indexes.iter().flatten().cloned().collect::<Vec<_>>();
+    common::check(&storage, keys)?;
+    Ok(())
 }
 
 #[test]
