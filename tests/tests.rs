@@ -10,7 +10,7 @@ use futures::{
     executor::block_on,
     executor::ThreadPool,
     future::FutureExt,
-    stream::{futures_ordered, StreamExt, TryStreamExt},
+    stream::{futures_ordered, futures_unordered, StreamExt, TryStreamExt},
 };
 use pearl::{Builder, Record};
 use rand::seq::SliceRandom;
@@ -173,37 +173,57 @@ fn test_storage_multiple_read_write() {
 fn test_multithread_read_write() -> Result<(), String> {
     use std::thread;
 
+    println!("create thread pool");
     let pool = ThreadPool::builder()
         .name_prefix("test-pool-")
         .stack_size(4)
         .create()
         .map_err(|e| format!("{:?}", e))?;
+    println!("block on create default test storage");
     let storage = block_on(common::default_test_storage())?;
-    let indexes = (0..9)
-        .map(|i| (0..9).map(|j| i * 10 + j).collect::<Vec<usize>>())
+    println!("collect indexes");
+    let indexes = (0..2)
+        .map(|i| (0..2).map(|j| i * 10 + j).collect::<Vec<usize>>())
         .collect::<Vec<_>>();
+    println!("spawn std threads");
     let handles = indexes
         .iter()
         .cloned()
         .map(|mut range| {
             let s = storage.clone();
             thread::spawn(move || {
+                println!("thread: {:?}", range);
                 let mut temp_s = s.clone();
+                println!("shuffle indexes");
                 range.shuffle(&mut rand::thread_rng());
-                range
+                println!("iter over range");
+                let write_futures: Vec<_> = range
                     .iter()
-                    .map(|i| block_on(common::write(&mut temp_s, *i)))
-                    .for_each(drop);
+                    .map(|i| {
+                        println!("block on: {}", i);
+                        block_on(common::write(&mut temp_s, *i))
+                    })
+                    .collect();
+                block_on(
+                    futures_unordered(write_futures)
+                        .map_err(|e| println!("{:?}", e))
+                        .collect::<Vec<_>>(),
+                );
             })
         })
         .collect::<Vec<_>>();
-    let _errs_cnt = handles
+    println!("threads count: {}", handles.len());
+    let errs_cnt = handles
         .into_iter()
         .map(std::thread::JoinHandle::join)
-        .collect::<Vec<_>>();
+        .count();
+    println!("errors count: {}", errs_cnt);
+    println!("generate flat indexes");
     let keys = indexes.iter().flatten().cloned().collect::<Vec<_>>();
+    println!("check result");
     common::check(&storage, keys, pool.clone())?;
-    common::clean();
+    // common::clean();
+    println!("done");
     Ok(())
 }
 

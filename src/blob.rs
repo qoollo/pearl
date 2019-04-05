@@ -91,6 +91,9 @@ impl Future for WriteFuture {
 
     fn poll(mut self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
         let buf = self.buf.take().unwrap();
+        let record = Record::from_raw(&buf).unwrap();
+        println!("write key: {:?}", record.key());
+        let buf = record.to_raw();
         self.file.write_at(&buf, self.current_offset).unwrap();
         Poll::Ready(Ok(()))
     }
@@ -115,8 +118,11 @@ impl Future for ReadFuture {
 
     fn poll(self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
         let mut buf = vec![0u8; self.loc.size as usize];
+        println!("read count: {}", buf.len());
         self.file.read_at(&mut buf, self.loc.offset).unwrap();
-        Poll::Ready(Record::from_raw(&buf).map_err(Error::RecordError))
+        let record = Record::from_raw(&buf).map_err(Error::RecordError)?;
+        println!("read key: {:?}", record.key());
+        Poll::Ready(Ok(record))
     }
 }
 
@@ -205,8 +211,7 @@ impl Blob {
         })
     }
 
-    pub async fn read(&self, key: Vec<u8>) -> Result<Record>
-    {
+    pub async fn read(&self, key: Vec<u8>) -> Result<Record> {
         let read_fut = ReadFuture {
             file: self.file.try_clone().map_err(Error::CloneFd)?,
             loc: self.lookup(&key)?,

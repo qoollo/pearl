@@ -19,6 +19,6 @@ mod index;
 mod record;
 mod storage;
 
+pub use blob::WriteFuture;
 pub use record::Record;
 pub use storage::{Builder, Storage};
-pub use blob::WriteFuture;

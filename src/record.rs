@@ -7,6 +7,7 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     FromRaw(bincode::ErrorKind),
+    WrongMagicByte(u64),
 }
 
 /// # Description
@@ -31,10 +32,11 @@ impl Record {
         T: AsRef<[u8]>,
         D: AsRef<[u8]>,
     {
+        let header = Header::new(key.as_ref().len() as u64, data.as_ref().len() as u64);
         Self {
             key: key.as_ref().to_vec(),
             data: data.as_ref().to_vec(),
-            header: Header::new(),
+            header,
         }
     }
 
@@ -101,9 +103,12 @@ impl Record {
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
         // @TODO Header validation
         let header = Header::from_raw(buf)?;
+        dbg!(&header);
         let key_offset = header.serialized_size() as usize;
         let key_len = header.key_len as usize;
         let data_offset = key_offset + key_len;
+        dbg!(data_offset);
+        dbg!(buf.len());
         let key = buf[key_offset..key_offset + key_len].to_vec();
         let data = buf[data_offset..].to_vec();
         let mut rec = Record::new(key, data);
@@ -151,12 +156,12 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn new() -> Self {
+    pub fn new(key_len: u64, data_len: u64) -> Self {
         // @TODO calculate check sums
         Self {
             magic_byte: RECORD_MAGIC_BYTE,
-            key_len: 0,
-            data_len: 0,
+            key_len,
+            data_len,
             flags: 0,
             blob_offset: 0,
             created: std::time::UNIX_EPOCH
@@ -172,7 +177,12 @@ impl Header {
     }
 
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
-        deserialize(&buf).map_err(|e| Error::FromRaw(*e))
+        let header: Self = deserialize(&buf).map_err(|e| Error::FromRaw(*e))?;
+        if header.magic_byte != RECORD_MAGIC_BYTE {
+            Err(Error::WrongMagicByte(header.magic_byte))
+        } else {
+            Ok(header)
+        }
     }
 
     pub fn to_raw(&self) -> Vec<u8> {
