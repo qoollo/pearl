@@ -1,15 +1,9 @@
-#![feature(
-    futures_api,
-    async_await,
-    await_macro,
-    repeat_generic_slice,
-    duration_float
-)]
+#![feature(futures_api, async_await, await_macro)]
+
 use futures::{
     executor::ThreadPool,
-    future::{FutureExt, FutureObj, TryFutureExt},
+    future::{FutureExt, FutureObj},
     stream::{futures_unordered, StreamExt},
-    task::Spawn,
 };
 use std::{env, fs};
 
@@ -23,7 +17,7 @@ pub async fn default_test_storage() -> Result<Storage, String> {
         .max_blob_size(1_000_000)
         .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
-    await!(storage.init());
+    await!(storage.init()).unwrap();
     Ok(storage)
 }
 
@@ -32,11 +26,7 @@ pub fn clean() {
     fs::remove_dir_all(path).unwrap();
 }
 
-pub async fn write(
-    storage: &mut Storage,
-    base_number: usize,
-    mut executor: ThreadPool,
-) -> WriteFuture {
+pub async fn write(storage: &mut Storage, base_number: usize) -> WriteFuture {
     let key = format!("{}key", base_number);
     let data = "omn".repeat(base_number);
     let record = Record::new(key, data);
@@ -45,8 +35,6 @@ pub async fn write(
 
 pub fn check(storage: &Storage, nums: Vec<usize>, mut executor: ThreadPool) -> Result<(), String> {
     let keys = nums.iter().map(|n| format!("{}key", n)).collect::<Vec<_>>();
-    let key = keys.first().unwrap();
-    let fut = storage.read(key.as_bytes().to_vec());
     let read_futures = keys
         .into_iter()
         .map(|key: String| storage.read(key.as_bytes().to_vec()))

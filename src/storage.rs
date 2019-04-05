@@ -118,7 +118,10 @@ impl Storage {
 
     // @TODO specify more useful error type
     pub async fn write(&self, mut record: Record) -> Result<WriteFuture> {
-        if await!(self.is_active_blob_full(record.full_len()))? {
+        trace!("check active blob full");
+        let is_full = await!(self.is_active_blob_full(record.full_len()))?;
+        if is_full {
+            trace!("is full, replace");
             let next = self.next_blob_name()?;
             let new_active = Blob::open_new(next).map_err(Error::BlobError)?.boxed();
             // @TODO process unwrap explicitly
@@ -129,7 +132,10 @@ impl Storage {
             await!(self.inner.lock()).blobs.push(*old_active);
         }
         // @TODO process unwrap explicitly
-        await!(self.inner.lock())
+        trace!("await for inner lock");
+        let mut inner = await!(self.inner.lock());
+        trace!("return write future");
+        inner
             .active_blob
             .as_mut()
             .unwrap()
@@ -286,7 +292,10 @@ impl Storage {
 
     // @TODO handle unwrap explicitly
     async fn is_active_blob_full(&self, next_record_size: u64) -> Result<bool> {
-        Ok(await!(self.inner.lock())
+        trace!("lock on inner");
+        let inner = await!(self.inner.lock());
+        trace!("return result");
+        Ok(inner
             .active_blob
             .as_ref()
             .ok_or(Error::ActiveBlobNotSet)?
@@ -294,12 +303,7 @@ impl Storage {
             .map_err(Error::BlobError)?
             + next_record_size
             > self.shared.config.max_blob_size.unwrap()
-            || await!(self.inner.lock())
-                .active_blob
-                .as_ref()
-                .unwrap()
-                .records_count()
-                .unwrap() as u64
+            || inner.active_blob.as_ref().unwrap().records_count().unwrap() as u64
                 >= self.shared.config.max_data_in_blob.unwrap())
     }
 }
