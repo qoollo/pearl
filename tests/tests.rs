@@ -1,9 +1,16 @@
-#![feature(futures_api, await_macro, repeat_generic_slice, duration_float)]
+#![feature(
+    futures_api,
+    async_await,
+    await_macro,
+    repeat_generic_slice,
+    duration_float
+)]
 
 use futures::{
     executor::ThreadPool,
     future::FutureExt,
-    stream::{futures_ordered, StreamExt, TryStreamExt},
+    stream::{futures_ordered, futures_unordered, StreamExt, TryStreamExt},
+    task::SpawnExt,
 };
 use pearl::{Builder, Record};
 use rand::seq::SliceRandom;
@@ -151,8 +158,12 @@ fn test_storage_multiple_read_write() {
 fn test_multithread_read_write() -> Result<(), String> {
     use std::thread;
 
-    let pool = ThreadPool::builder().name_prefix("test-pool-").stack_size(4).create().map_err(|e| format!("{:?}", e))?;
-    let storage = common::default_test_storage()?;
+    let pool = ThreadPool::builder()
+        .name_prefix("test-pool-")
+        .stack_size(4)
+        .create()
+        .map_err(|e| format!("{:?}", e))?;
+    let mut storage = common::default_test_storage()?;
     let indexes = (0..9)
         .map(|i| (0..9).map(|j| i * 10 + j).collect::<Vec<usize>>())
         .collect::<Vec<_>>();
@@ -160,17 +171,25 @@ fn test_multithread_read_write() -> Result<(), String> {
         .iter()
         .cloned()
         .map(|mut range| {
+            let mut s = storage.clone();
+            let p = pool.clone();
             thread::spawn(move || {
+                let mut temp_s = s.clone();
                 range.shuffle(&mut rand::thread_rng());
-                range.iter().map(|i| {
-                    common::write(&storage, *i, pool);
-                }).collect::<Vec<_>>();
+                range
+                    .iter()
+                    .map(|i| common::write(&mut temp_s, *i, p.clone()))
+                    .collect::<Vec<_>>();
             })
         })
         .collect::<Vec<_>>();
-    let errs_cnt = handles.into_iter().map(|handle| handle.join()).collect::<Vec<_>>();
+    let _errs_cnt = handles
+        .into_iter()
+        .map(std::thread::JoinHandle::join)
+        .collect::<Vec<_>>();
     let keys = indexes.iter().flatten().cloned().collect::<Vec<_>>();
-    common::check(&storage, keys)?;
+    common::check(&mut storage, keys, pool.clone())?;
+    common::clean();
     Ok(())
 }
 

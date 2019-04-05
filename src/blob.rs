@@ -26,7 +26,19 @@ pub struct Blob {
     current_offset: u64,
 }
 
-#[derive(Debug, Default)]
+impl Clone for Blob {
+    fn clone(&self) -> Self {
+        Self {
+            header: self.header.clone(),
+            current_offset: self.current_offset,
+            name: self.name.clone(),
+            file: self.file.try_clone().unwrap(),
+            index: self.index.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone)]
 struct Index {
     headers: BTreeMap<Vec<u8>, record::Header>,
 }
@@ -66,6 +78,7 @@ impl Index {
     }
 }
 
+/// Write future
 #[derive(Debug)]
 pub struct WriteFuture {
     file: fs::File,
@@ -80,6 +93,13 @@ impl Future for WriteFuture {
         let buf = self.buf.take().unwrap();
         self.file.write_at(&buf, self.current_offset).unwrap();
         Poll::Ready(Ok(()))
+    }
+}
+
+impl WriteFuture {
+    /// Wrap self to ```Box<WriteFuture>```
+    pub fn boxed(self) -> Box<Self> {
+        Box::new(self)
     }
 }
 
@@ -185,7 +205,7 @@ impl Blob {
         })
     }
 
-    pub fn read<K>(&self, key: &K) -> Result<ReadFuture>
+    pub fn read<K>(&self, key: K) -> Result<ReadFuture>
     where
         K: AsRef<[u8]> + Ord,
     {
@@ -252,7 +272,7 @@ pub enum Error {
     DeserializationFailed(bincode::ErrorKind),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FileName {
     name_prefix: String,
     id: usize,
@@ -304,7 +324,7 @@ impl FileName {
 
 /// # Description
 /// # Examples
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Header {
     magic_byte: u64,
     version: u32,

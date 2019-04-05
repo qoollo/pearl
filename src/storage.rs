@@ -1,7 +1,12 @@
+use futures::lock::Mutex;
 use std::{
     fs::{self, DirEntry, File, OpenOptions},
     io,
     path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
 use crate::{
@@ -29,11 +34,30 @@ type Result<T> = std::result::Result<T, Error>;
 ///
 #[derive(Debug)]
 pub struct Storage {
-    config: Config,
+    shared: Arc<Shared>,
+    inner: Arc<Mutex<Inner>>,
+}
+
+#[derive(Debug)]
+struct Inner {
     active_blob: Option<Box<Blob>>,
     blobs: Vec<Blob>,
     lock_file: Option<File>,
-    next_blob_id: usize,
+}
+
+#[derive(Debug)]
+struct Shared {
+    config: Config,
+    next_blob_id: AtomicUsize,
+}
+
+impl Clone for Storage {
+    fn clone(&self) -> Self {
+        Self {
+            shared: self.shared.clone(),
+            inner: self.inner.clone(),
+        }
+    }
 }
 
 impl Storage {
@@ -49,10 +73,16 @@ impl Storage {
     ///
     /// Storage works in dir provided to builder. If dir not exist,
     /// creates it, otherwise tries init dir as existing storage.
-    pub fn init(&mut self) -> Result<()> {
+    pub async fn init(&mut self) -> Result<()> {
         // @TODO implement work dir validation
-        self.prepare_work_dir()?;
-        let wd = Path::new(self.config.work_dir.as_ref().ok_or(Error::Unitialized)?);
+        await!(self.prepare_work_dir())?;
+        let wd = Path::new(
+            self.shared
+                .config
+                .work_dir
+                .as_ref()
+                .ok_or(Error::Unitialized)?,
+        );
         let files_in_work_dir: Vec<_> = fs::read_dir(wd)
             .map_err(Error::IO)?
             .filter_map(|res_dir_entry| res_dir_entry.map_err(|e| error!("{}", e)).ok())
@@ -64,14 +94,14 @@ impl Storage {
             .is_none()
         {
             debug!("working dir is unitialized, starting empty storage");
-            self.init_new().unwrap(); // @TODO handle unwrap explicitly
+            await!(self.init_new()).unwrap(); // @TODO handle unwrap explicitly
         } else {
             debug!("working dir contains files, try init existing");
             trace!("ls:");
             files_in_work_dir
                 .iter()
                 .for_each(|name| trace!("{}", name.file_name().as_os_str().to_str().unwrap())); // @TODO handle unwrap explicitly
-            self.init_from_existing(files_in_work_dir).unwrap(); // @TODO handle unwrap explicitly
+            await!(self.init_from_existing(files_in_work_dir)).unwrap(); // @TODO handle unwrap explicitly
         }
         Ok(())
     }
@@ -83,38 +113,51 @@ impl Storage {
     /// # Examples
 
     // @TODO specify more useful error type
-    pub fn write(&mut self, record: &mut Record) -> Result<WriteFuture> {
-        if self.is_active_blob_full(record.full_len())? {
+    pub async fn write<'a>(&'a mut self, record: &'a mut Record) -> Result<WriteFuture> {
+        if await!(self.is_active_blob_full(record.full_len()))? {
             let next = self.next_blob_name()?;
             let new_active = Blob::open_new(next).map_err(Error::BlobError)?.boxed();
             // @TODO process unwrap explicitly
-            let old_active = self.active_blob.replace(new_active).unwrap();
-            self.blobs.push(*old_active);
+            let old_active = await!(self.inner.lock())
+                .active_blob
+                .replace(new_active)
+                .unwrap();
+            await!(self.inner.lock()).blobs.push(*old_active);
         }
         // @TODO process unwrap explicitly
-        self.active_blob
+        await!(self.inner.lock())
+            .active_blob
             .as_mut()
             .unwrap()
             .write(record)
             .map_err(Error::BlobError)
     }
 
-    fn max_id(&self) -> Option<usize> {
-        let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
-        let blobs_max_id = self.blobs.iter().max_by_key(|blob| blob.id()).map(Blob::id);
+    async fn max_id(&self) -> Option<usize> {
+        let active_blob_id = await!(self.inner.lock())
+            .active_blob
+            .as_ref()
+            .map(|blob| blob.id());
+        let blobs_max_id = await!(self.inner.lock())
+            .blobs
+            .iter()
+            .max_by_key(|blob| blob.id())
+            .map(Blob::id);
         active_blob_id.max(blobs_max_id)
     }
 
     fn next_blob_name(&self) -> Result<blob::FileName> {
         Ok(blob::FileName::new(
-            self.config
+            self.shared
+                .config
                 .blob_file_name_prefix
                 .as_ref()
                 .ok_or(Error::Unitialized)?
                 .to_owned(),
-            self.next_blob_id,
+            self.shared.next_blob_id.load(Ordering::Relaxed),
             BLOB_FILE_EXTENSION.to_owned(),
-            self.config
+            self.shared
+                .config
                 .work_dir
                 .as_ref()
                 .ok_or(Error::Unitialized)?
@@ -128,20 +171,21 @@ impl Storage {
     /// Reads data with given key to `Vec<u8>`, if error ocured or there are no
     /// records with matching key, returns `Err(_)`
     // @TODO specify more useful error type
-    pub fn read<K>(&mut self, key: &K) -> Result<ReadFuture>
+    pub async fn read<'a, K>(&'a mut self, key: K) -> Result<ReadFuture>
     where
         K: AsRef<[u8]> + Ord,
     {
-        if let Some(fut) = self
+        if let Some(fut) = await!(self.inner.lock())
             .active_blob
             .as_ref()
             .and_then(|active_blob| active_blob.read(&key).ok())
         {
             Ok(fut)
         } else {
-            self.blobs
+            await!(self.inner.lock())
+                .blobs
                 .iter()
-                .find_map(|blob| blob.read(&key).ok())
+                .find_map(|blob| blob.read(key).ok())
                 .ok_or(Error::RecordNotFound)
         }
     }
@@ -166,18 +210,23 @@ impl Storage {
     /// storage.init();
     /// assert_eq!(storage.blobs_count(), 1);
     /// ```
-    pub fn blobs_count(&self) -> usize {
-        self.blobs.len() + if self.active_blob.is_some() { 1 } else { 0 }
+    pub async fn blobs_count(&self) -> usize {
+        await!(self.inner.lock()).blobs.len()
+            + if await!(self.inner.lock()).active_blob.is_some() {
+                1
+            } else {
+                0
+            }
     }
 
     /// # Description
     /// Returns active blob file path, if active blob unitialized - None
-    pub fn active_blob_path(&self) -> Option<PathBuf> {
-        Some(self.active_blob.as_ref()?.path())
+    pub async fn active_blob_path(&self) -> Option<PathBuf> {
+        Some(await!(self.inner.lock()).active_blob.as_ref()?.path())
     }
 
-    fn prepare_work_dir(&mut self) -> Result<()> {
-        let path = Path::new(self.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
+    async fn prepare_work_dir(&mut self) -> Result<()> {
+        let path = Path::new(self.shared.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
         if !path.exists() {
             debug!("creating work dir recursively: {}", path.display());
             fs::create_dir_all(path).map_err(Error::IO)?;
@@ -186,7 +235,7 @@ impl Storage {
         }
         let lock_file = path.join(LOCK_FILE);
         debug!("try to open lock file: {}", lock_file.display());
-        self.lock_file = Some(
+        await!(self.inner.lock()).lock_file = Some(
             OpenOptions::new()
                 .create(true)
                 .write(true)
@@ -196,17 +245,18 @@ impl Storage {
         Ok(())
     }
 
-    fn init_new(&mut self) -> Result<()> {
+    async fn init_new(&mut self) -> Result<()> {
         let next = self.next_blob_name()?;
-        self.active_blob = Some(Blob::open_new(next).map_err(Error::InitActiveBlob)?.boxed());
+        await!(self.inner.lock()).active_blob =
+            Some(Blob::open_new(next).map_err(Error::InitActiveBlob)?.boxed());
         debug!(
             "created new active blob: {}",
-            self.active_blob.as_ref().unwrap().id()
+            await!(self.inner.lock()).active_blob.as_ref().unwrap().id()
         );
         Ok(())
     }
 
-    fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
+    async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         let mut temp_blobs: Vec<_> = files
             .iter()
             .map(DirEntry::path)
@@ -227,24 +277,32 @@ impl Storage {
             .collect();
         temp_blobs.sort_by_key(Blob::id);
         let active_blob = temp_blobs.pop().unwrap().boxed();
-        self.active_blob = Some(active_blob);
-        self.blobs = temp_blobs;
-        self.next_blob_id = self.max_id().map(|i| i + 1).unwrap_or(0);
+        await!(self.inner.lock()).active_blob = Some(active_blob);
+        await!(self.inner.lock()).blobs = temp_blobs;
+        self.shared.next_blob_id.store(
+            await!(self.max_id()).map(|i| i + 1).unwrap_or(0),
+            Ordering::Relaxed,
+        );
         Ok(())
     }
 
     // @TODO handle unwrap explicitly
-    fn is_active_blob_full(&self, next_record_size: u64) -> Result<bool> {
-        Ok(self
+    async fn is_active_blob_full(&self, next_record_size: u64) -> Result<bool> {
+        Ok(await!(self.inner.lock())
             .active_blob
             .as_ref()
             .ok_or(Error::ActiveBlobNotSet)?
             .file_size()
             .map_err(Error::BlobError)?
             + next_record_size
-            > self.config.max_blob_size.unwrap()
-            || self.active_blob.as_ref().unwrap().records_count().unwrap() as u64
-                >= self.config.max_data_in_blob.unwrap())
+            > self.shared.config.max_blob_size.unwrap()
+            || await!(self.inner.lock())
+                .active_blob
+                .as_ref()
+                .unwrap()
+                .records_count()
+                .unwrap() as u64
+                >= self.shared.config.max_data_in_blob.unwrap())
     }
 }
 
@@ -284,11 +342,15 @@ impl<'a> Builder {
             Err(Error::Unitialized)
         } else {
             Ok(Storage {
-                config: self.config,
-                active_blob: None,
-                blobs: Vec::new(),
-                lock_file: None,
-                next_blob_id: 0,
+                shared: Arc::new(Shared {
+                    config: self.config,
+                    next_blob_id: AtomicUsize::new(0),
+                }),
+                inner: Arc::new(Mutex::new(Inner {
+                    active_blob: None,
+                    blobs: Vec::new(),
+                    lock_file: None,
+                })),
             })
         }
     }
@@ -362,7 +424,7 @@ impl<'a> Builder {
 
 /// Description
 /// Examples
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Config {
     work_dir: Option<PathBuf>,
     max_blob_size: Option<u64>,
@@ -378,85 +440,5 @@ impl Default for Config {
             max_data_in_blob: None,
             blob_file_name_prefix: None,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{fs, Builder, OpenOptions};
-    use std::{
-        env,
-        fs::{create_dir_all, set_permissions},
-    };
-
-    const RO_DIR_NAME: &str = "pearl_test_readonly/";
-    const FILE_NAME: &str = "pearl_test.file";
-    const WORK_DIR: &str = "pearl_test/";
-
-    #[test]
-    fn set_work_dir() {
-        let path = env::temp_dir().join(WORK_DIR);
-        create_dir_all(&path).unwrap();
-        let builder = Builder::new().work_dir(&path);
-        assert!(builder.config.work_dir.is_some());
-        fs::remove_dir(path).unwrap();
-    }
-
-    #[test]
-    fn set_readonly_work_dir() {
-        let path = env::temp_dir().join(RO_DIR_NAME);
-        create_dir_all(&path).unwrap();
-        let mut perm = path.metadata().unwrap().permissions();
-        perm.set_readonly(true);
-        set_permissions(&path, perm).unwrap();
-        let mut storage = Builder::new()
-            .work_dir(&path)
-            .blob_file_name_prefix("test")
-            .max_blob_size(1_000_000u64)
-            .max_data_in_blob(1_000)
-            .build()
-            .unwrap();
-        assert!(storage.init().is_err());
-        fs::remove_dir(path).unwrap();
-    }
-
-    #[test]
-    fn set_file_as_work_dir() {
-        use std::io::Write;
-
-        let path = env::temp_dir().join(FILE_NAME);
-        create_dir_all(path.parent().unwrap()).unwrap();
-        let mut file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open(&path)
-            .unwrap();
-        file.flush().unwrap();
-        let mut storage = Builder::new()
-            .work_dir(&path)
-            .blob_file_name_prefix("test")
-            .max_blob_size(1_000_000)
-            .max_data_in_blob(1_000)
-            .build()
-            .unwrap();
-        assert!(storage.init().is_err());
-        fs::remove_file(path).unwrap();
-    }
-
-    #[test]
-    fn set_zero_max_data_in_blob() {
-        let builder = Builder::new().max_data_in_blob(0);
-        assert!(builder.config.max_data_in_blob.is_none());
-    }
-
-    #[test]
-    fn set_zero_max_blob_size() {
-        let builder = Builder::new().max_blob_size(0);
-        assert!(builder.config.max_blob_size.is_none());
-    }
-    #[test]
-    fn set_empty_prefix() {
-        let builder = Builder::new().blob_file_name_prefix("");
-        assert!(builder.config.blob_file_name_prefix.is_none());
     }
 }

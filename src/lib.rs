@@ -21,3 +21,4 @@ mod storage;
 
 pub use record::Record;
 pub use storage::{Builder, Storage};
+pub use blob::WriteFuture;
