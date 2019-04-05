@@ -205,15 +205,14 @@ impl Blob {
         })
     }
 
-    pub fn read<K>(&self, key: K) -> Result<ReadFuture>
-    where
-        K: AsRef<[u8]> + Ord,
+    pub async fn read(&self, key: Vec<u8>) -> Result<Record>
     {
-        Ok(ReadFuture {
+        let read_fut = ReadFuture {
             file: self.file.try_clone().map_err(Error::CloneFd)?,
-            key: key.as_ref().to_vec(),
             loc: self.lookup(&key)?,
-        })
+            key,
+        };
+        await!(read_fut)
     }
 
     fn lookup<K>(&self, key: &K) -> Result<Location>

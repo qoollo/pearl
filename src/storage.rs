@@ -1,4 +1,8 @@
-use futures::lock::Mutex;
+use futures::{
+    future::FutureExt,
+    lock::Mutex,
+    stream::{futures_unordered, StreamExt},
+};
 use std::{
     fs::{self, DirEntry, File, OpenOptions},
     io,
@@ -113,7 +117,7 @@ impl Storage {
     /// # Examples
 
     // @TODO specify more useful error type
-    pub async fn write<'a>(&'a mut self, record: &'a mut Record) -> Result<WriteFuture> {
+    pub async fn write(&self, mut record: Record) -> Result<WriteFuture> {
         if await!(self.is_active_blob_full(record.full_len()))? {
             let next = self.next_blob_name()?;
             let new_active = Blob::open_new(next).map_err(Error::BlobError)?.boxed();
@@ -129,7 +133,7 @@ impl Storage {
             .active_blob
             .as_mut()
             .unwrap()
-            .write(record)
+            .write(&mut record)
             .map_err(Error::BlobError)
     }
 
@@ -171,22 +175,20 @@ impl Storage {
     /// Reads data with given key to `Vec<u8>`, if error ocured or there are no
     /// records with matching key, returns `Err(_)`
     // @TODO specify more useful error type
-    pub async fn read<'a, K>(&'a mut self, key: K) -> Result<ReadFuture>
-    where
-        K: AsRef<[u8]> + Ord,
-    {
-        if let Some(fut) = await!(self.inner.lock())
-            .active_blob
-            .as_ref()
-            .and_then(|active_blob| active_blob.read(&key).ok())
-        {
-            Ok(fut)
+    pub async fn read(&self, key: Vec<u8>) -> Result<Record> {
+        let inner = await!(self.inner.lock());
+        if let Some(active_blob) = &inner.active_blob {
+            return await!(active_blob.read(key)).map_err(Error::BlobError);
         } else {
-            await!(self.inner.lock())
+            let futs = inner
                 .blobs
                 .iter()
-                .find_map(|blob| blob.read(key).ok())
-                .ok_or(Error::RecordNotFound)
+                .map(|blob| blob.read(key.clone()))
+                .collect::<Vec<_>>();
+            let mut stream = futures_unordered(futs);
+            return await!(stream.next())
+                .ok_or(Error::RecordNotFound)?
+                .map_err(Error::BlobError);
         }
     }
 
@@ -211,12 +213,8 @@ impl Storage {
     /// assert_eq!(storage.blobs_count(), 1);
     /// ```
     pub async fn blobs_count(&self) -> usize {
-        await!(self.inner.lock()).blobs.len()
-            + if await!(self.inner.lock()).active_blob.is_some() {
-                1
-            } else {
-                0
-            }
+        let inner = await!(self.inner.lock());
+        inner.blobs.len() + if inner.active_blob.is_some() { 1 } else { 0 }
     }
 
     /// # Description

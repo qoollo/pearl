@@ -32,36 +32,32 @@ pub fn clean() {
     fs::remove_dir_all(path).unwrap();
 }
 
-pub async fn write(storage: &mut Storage, base_number: usize, mut executor: ThreadPool) -> WriteFuture {
+pub async fn write(
+    storage: &mut Storage,
+    base_number: usize,
+    mut executor: ThreadPool,
+) -> WriteFuture {
     let key = format!("{}key", base_number);
     let data = "omn".repeat(base_number);
-    let mut record = Record::new(key, data);
-    await!(storage
-        .write(&mut record)).unwrap()
+    let record = Record::new(key, data);
+    await!(storage.write(record)).unwrap()
 }
 
-pub fn check(
-    storage: &mut Storage,
-    nums: Vec<usize>,
-    mut executor: ThreadPool,
-) -> Result<(), String> {
-    let keys = nums.iter().map(|n| {format!("{}key", n)}).collect::<Vec<_>>();
+pub fn check(storage: &Storage, nums: Vec<usize>, mut executor: ThreadPool) -> Result<(), String> {
+    let keys = nums.iter().map(|n| format!("{}key", n)).collect::<Vec<_>>();
+    let key = keys.first().unwrap();
+    let fut = storage.read(key.as_bytes().to_vec());
     let read_futures = keys
-        .iter()
-        .map(|key| {
-            storage.read(key)
-        })
+        .into_iter()
+        .map(|key: String| storage.read(key.as_bytes().to_vec()))
         .collect::<Vec<_>>();
     println!("readed futures: {}", read_futures.len());
     let futures = futures_unordered(read_futures).collect::<Vec<_>>();
     let expected_len = nums.len();
-    let future_obj = FutureObj::new(Box::new(
-        futures.map(move |records| {
-            assert_eq!(records.len(), expected_len);
-            records.iter().for_each(|r| println!("{:?}", r))
-            }),
-    ));
-    executor
-        .spawn_obj(future_obj)
-        .map_err(|e| format!("{:#?}", e))
+    let future_obj = FutureObj::new(Box::new(futures.map(move |records| {
+        assert_eq!(records.len(), expected_len);
+        records.iter().for_each(|r| println!("{:?}", r))
+    })));
+    executor.run(future_obj);
+    Ok(())
 }
