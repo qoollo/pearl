@@ -5,14 +5,15 @@
 
 //! # pearl
 //!
-//! The `pearl` crate provides Append only key-value blob storage on disk
+//! The `pearl` library is a Append only key-value blob storage on disk.
+//! Crate `pearl` provides [`Futures 0.3`] interface.
+//!
+//! [`Futures 0.3`]: https://rust-lang-nursery.github.io/futures-api-docs#latest
 
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate serde_derive;
-// #[macro_use]
-// extern crate futures;
 
 mod blob;
 mod index;

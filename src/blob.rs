@@ -13,7 +13,10 @@ const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 
 type Result<T> = std::result::Result<T, Error>;
 
-/// A `Blob` struct for performing of database,
+/// A [`Blob`] struct representing file with records,
+/// provides methods for read/write access by key
+///
+/// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
 pub struct Blob {
     header: Header,
@@ -23,21 +26,9 @@ pub struct Blob {
     current_offset: Arc<Mutex<u64>>,
 }
 
-impl Clone for Blob {
-    fn clone(&self) -> Self {
-        Self {
-            header: self.header.clone(),
-            current_offset: self.current_offset.clone(),
-            name: self.name.clone(),
-            file: self.file.try_clone().unwrap(),
-            index: self.index.clone(),
-        }
-    }
-}
-
 #[derive(Debug, Default, Clone)]
 struct Index {
-    headers: BTreeMap<Vec<u8>, RecordMetaData>,
+    bunch: BTreeMap<Vec<u8>, RecordMetaData>,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -50,7 +41,7 @@ impl Index {
     fn new(_path: &Path) -> Self {
         // @TODO initialize new index from file
         Self {
-            headers: BTreeMap::new(),
+            bunch: BTreeMap::new(),
         }
     }
 
@@ -59,51 +50,26 @@ impl Index {
         Ok(Default::default())
     }
 
-    fn contains_key<K>(&self, key: K) -> bool
-    where
-        K: AsRef<[u8]>,
-    {
-        self.headers.contains_key(key.as_ref())
+    fn contains_key(&self, key: &[u8]) -> bool {
+        self.bunch.contains_key(key)
     }
 
-    fn insert<K>(&mut self, key: K, meta: RecordMetaData)
-    where
-        K: AsRef<[u8]>,
-    {
-        self.headers.insert(key.as_ref().to_vec(), meta);
+    fn insert(&mut self, key: Vec<u8>, meta: RecordMetaData) {
+        self.bunch.insert(key, meta);
     }
 
-    fn get<K>(&self, key: K) -> Option<&RecordMetaData>
-    where
-        K: AsRef<[u8]>,
-    {
-        self.headers.get(key.as_ref())
+    fn get(&self, key: &[u8]) -> Option<&RecordMetaData> {
+        self.bunch.get(key.as_ref())
     }
 }
 
-// #[derive(Debug)]
-// pub struct ReadFuture {
-//     file: fs::File,
-//     key: Vec<u8>,
-//     loc: Location,
-// }
-
-// impl Future for ReadFuture {
-//     type Output = Result<Record>;
-
-//     fn poll(self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
-//         let mut buf = vec![0u8; self.loc.size as usize];
-//         self.file.read_at(&mut buf, self.loc.offset).unwrap();
-//         let record = Record::from_raw(&buf).map_err(Error::RecordError)?;
-//         Poll::Ready(Ok(record))
-//     }
-// }
-
 impl Blob {
     /// # Description
-    /// Creates new blob file with given FileName
+    /// Creates new blob file with given [`FileName`]
     /// # Panic
     /// Panics if file with same path already exists
+    ///
+    /// [`FileName`]: struct.FileName.html
     pub fn open_new(name: FileName) -> Result<Self> {
         let file = Self::create_file(&name.as_path())?;
         let mut blob = Self {
@@ -125,7 +91,6 @@ impl Blob {
     fn create_file(path: &Path) -> Result<fs::File> {
         fs::OpenOptions::new()
             .create_new(true)
-            // .append(true)
             .write(true)
             .read(true)
             .open(path)
@@ -192,8 +157,16 @@ impl Blob {
     pub async fn read(&self, key: Vec<u8>) -> Result<Record> {
         let loc = self.lookup(&key)?;
         let mut buf = vec![0u8; loc.size as usize];
-        self.file.read_at(&mut buf, loc.offset).unwrap();
-        Record::from_raw(&buf).map_err(Error::RecordError)
+        let bytes_read = self
+            .file
+            .read_at(&mut buf, loc.offset)
+            .map_err(Error::ReadFailed)?;
+        let record = Record::from_raw(&buf).map_err(Error::RecordError)?;
+        if record.full_len() != bytes_read as u64 {
+            Err(Error::CorruptedData)
+        } else {
+            Ok(record)
+        }
     }
 
     fn lookup<K>(&self, key: &K) -> Result<Location>
@@ -205,27 +178,13 @@ impl Blob {
         Ok(Location::new(offset as u64, meta.full_len))
     }
 
-    /// # Description
-    // @TODO more useful result
-    // pub fn flush(&mut self) -> Result<(), Error> {
-    // @TODO implement
-    //     Ok(())
-    // }
-
-    /// # Description
-    /// Returns size of file in bytes
-    // @TODO more useful result
     pub fn file_size(&self) -> Result<u64> {
         // @TODO implement
         Ok(0)
     }
 
-    /// # Description
-    /// Returns number of records in current blob
-    // @TODO more useful result
-    pub fn records_count(&self) -> Result<usize> {
-        // @TODO implement
-        Ok(0usize)
+    pub fn records_count(&self) -> usize {
+        self.index.bunch.len()
     }
 
     pub fn path(&self) -> PathBuf {
@@ -252,6 +211,9 @@ pub enum Error {
     AlreadyContainsSameKey,
     DeserializationFailed(bincode::ErrorKind),
     WriteFailed(io::Error),
+    CloneFailed(io::Error),
+    ReadFailed(io::Error),
+    CorruptedData,
 }
 
 #[derive(Debug, Clone)]

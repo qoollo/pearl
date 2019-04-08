@@ -297,7 +297,7 @@ impl Storage {
             .map_err(Error::BlobError)?
             + next_record_size
             > self.shared.config.max_blob_size.unwrap()
-            || inner.active_blob.as_ref().unwrap().records_count().unwrap() as u64
+            || inner.active_blob.as_ref().unwrap().records_count() as u64
                 >= self.shared.config.max_data_in_blob.unwrap())
     }
 }

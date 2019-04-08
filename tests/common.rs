@@ -29,7 +29,8 @@ pub fn clean(dir: &str) {
 pub async fn write<'a>(storage: &'a Pin<&'a mut Storage>, base_number: usize) {
     let key = format!("{}key", base_number);
     let data = "omn".repeat(base_number);
-    let record = Record::new(key, data);
+    let mut record = Record::new();
+    record.set_body(key, data);
     await!(storage.write(record)).unwrap()
 }
 

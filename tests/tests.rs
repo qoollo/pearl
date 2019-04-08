@@ -86,7 +86,7 @@ fn test_storage_read_write() {
     let key = "test-test".to_owned();
     let data = b"test data string".to_vec();
     println!("new record");
-    let mut record = Record::new(&key, &data);
+    let mut record = Record::new();
     println!("set record body");
     record.set_body(key.clone(), data.clone());
     println!("init thread pool");
@@ -121,9 +121,9 @@ fn test_storage_multiple_read_write() {
         .map(|i| {
             let data = b"viva".repeat(i + 1);
             let key = format!("key{}", i);
-            let mut rec = Record::new(&key, &data);
+            let mut rec = Record::new();
+            rec.set_body(&key, &data);
             keys.push(key.clone());
-            rec.set_body(key, data);
             rec
         })
         .collect();
