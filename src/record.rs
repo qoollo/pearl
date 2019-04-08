@@ -103,12 +103,12 @@ impl Record {
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
         // @TODO Header validation
         let header = Header::from_raw(buf)?;
-        dbg!(&header);
+        // dbg!(&header);
         let key_offset = header.serialized_size() as usize;
         let key_len = header.key_len as usize;
         let data_offset = key_offset + key_len;
-        dbg!(data_offset);
-        dbg!(buf.len());
+        // dbg!(data_offset);
+        // dbg!(buf.len());
         let key = buf[key_offset..key_offset + key_len].to_vec();
         let data = buf[data_offset..].to_vec();
         let mut rec = Record::new(key, data);

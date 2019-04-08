@@ -5,12 +5,12 @@ use futures::{
     future::{FutureExt, FutureObj},
     stream::{futures_unordered, StreamExt},
 };
-use std::{env, fs};
+use std::{env, fs, pin::Pin};
 
-use pearl::{Builder, Record, Storage, WriteFuture};
+use pearl::{Builder, Record, Storage};
 
-pub async fn default_test_storage() -> Result<Storage, String> {
-    let path = env::temp_dir().join("pearl_test/");
+pub async fn default_test_storage_in(dir_name: &'static str) -> Result<Storage, String> {
+    let path = env::temp_dir().join(dir_name);
     let builder = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
@@ -21,12 +21,12 @@ pub async fn default_test_storage() -> Result<Storage, String> {
     Ok(storage)
 }
 
-pub fn clean() {
-    let path = env::temp_dir().join("pearl_test/");
+pub fn clean(dir: &str) {
+    let path = env::temp_dir().join(dir);
     fs::remove_dir_all(path).unwrap();
 }
 
-pub async fn write(storage: &mut Storage, base_number: usize) -> WriteFuture {
+pub async fn write<'a>(storage: &'a Pin<&'a mut Storage>, base_number: usize) {
     let key = format!("{}key", base_number);
     let data = "omn".repeat(base_number);
     let record = Record::new(key, data);
@@ -44,7 +44,10 @@ pub fn check(storage: &Storage, nums: Vec<usize>, mut executor: ThreadPool) -> R
     let expected_len = nums.len();
     let future_obj = FutureObj::new(Box::new(futures.map(move |records| {
         assert_eq!(records.len(), expected_len);
-        records.iter().for_each(|r| println!("{:?}", r))
+        records
+            .iter()
+            .filter_map(|res| res.as_ref().err())
+            .for_each(|r| println!("{:?}", r))
     })));
     executor.run(future_obj);
     Ok(())

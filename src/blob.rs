@@ -1,5 +1,6 @@
 use futures::{
     future::Future,
+    lock::{Mutex, MutexLockFuture},
     task::{Poll, Waker},
 };
 use std::{
@@ -8,6 +9,10 @@ use std::{
     os::unix::fs::FileExt,
     path::{Path, PathBuf},
     pin::Pin,
+    sync::{
+        atomic::{AtomicIsize, AtomicU64},
+        Arc,
+    },
 };
 
 use crate::record::{self, Record};
@@ -23,14 +28,14 @@ pub struct Blob {
     index: Index,
     name: FileName,
     file: fs::File,
-    current_offset: u64,
+    current_offset: Arc<Mutex<u64>>,
 }
 
 impl Clone for Blob {
     fn clone(&self) -> Self {
         Self {
             header: self.header.clone(),
-            current_offset: self.current_offset,
+            current_offset: self.current_offset.clone(),
             name: self.name.clone(),
             file: self.file.try_clone().unwrap(),
             index: self.index.clone(),
@@ -40,7 +45,13 @@ impl Clone for Blob {
 
 #[derive(Debug, Default, Clone)]
 struct Index {
-    headers: BTreeMap<Vec<u8>, record::Header>,
+    headers: BTreeMap<Vec<u8>, RecordMetaData>,
+}
+
+#[derive(Debug, Default, Clone)]
+struct RecordMetaData {
+    blob_offset: u64,
+    full_len: u64,
 }
 
 impl Index {
@@ -63,14 +74,14 @@ impl Index {
         self.headers.contains_key(key.as_ref())
     }
 
-    fn insert<K>(&mut self, key: K, header: record::Header)
+    fn insert<K>(&mut self, key: K, meta: RecordMetaData)
     where
         K: AsRef<[u8]>,
     {
-        self.headers.insert(key.as_ref().to_vec(), header);
+        self.headers.insert(key.as_ref().to_vec(), meta);
     }
 
-    fn get<K>(&self, key: K) -> Option<&record::Header>
+    fn get<K>(&self, key: K) -> Option<&RecordMetaData>
     where
         K: AsRef<[u8]>,
     {
@@ -80,30 +91,11 @@ impl Index {
 
 /// Write future
 #[derive(Debug)]
-pub struct WriteFuture {
+pub struct WriteFuture<'a> {
     file: fs::File,
     buf: Option<Vec<u8>>,
-    current_offset: u64,
-}
-
-impl Future for WriteFuture {
-    type Output = Result<()>;
-
-    fn poll(mut self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
-        let buf = self.buf.take().unwrap();
-        let record = Record::from_raw(&buf).unwrap();
-        println!("write key: {:?}", record.key());
-        let buf = record.to_raw();
-        self.file.write_at(&buf, self.current_offset).unwrap();
-        Poll::Ready(Ok(()))
-    }
-}
-
-impl WriteFuture {
-    /// Wrap self to ```Box<WriteFuture>```
-    pub fn boxed(self) -> Box<Self> {
-        Box::new(self)
-    }
+    offset: Arc<AtomicIsize>,
+    write_position: MutexLockFuture<'a, AtomicU64>,
 }
 
 #[derive(Debug)]
@@ -118,10 +110,8 @@ impl Future for ReadFuture {
 
     fn poll(self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
         let mut buf = vec![0u8; self.loc.size as usize];
-        println!("read count: {}", buf.len());
         self.file.read_at(&mut buf, self.loc.offset).unwrap();
         let record = Record::from_raw(&buf).map_err(Error::RecordError)?;
-        println!("read key: {:?}", record.key());
         Poll::Ready(Ok(record))
     }
 }
@@ -138,7 +128,7 @@ impl Blob {
             file,
             index: Index::new(&name.as_path()),
             name,
-            current_offset: 0,
+            current_offset: Arc::new(Mutex::new(0)),
         };
         blob.flush()?;
         Ok(blob)
@@ -152,7 +142,8 @@ impl Blob {
     fn create_file(path: &Path) -> Result<fs::File> {
         fs::OpenOptions::new()
             .create_new(true)
-            .append(true)
+            // .append(true)
+            .write(true)
             .read(true)
             .open(path)
             .map_err(Error::OpenNew)
@@ -183,7 +174,7 @@ impl Blob {
             file,
             name,
             index,
-            current_offset: len,
+            current_offset: Arc::new(Mutex::new(len)),
         };
 
         // @TODO Scan existing file to create index
@@ -195,20 +186,24 @@ impl Blob {
         Ok(())
     }
 
-    pub fn write(&mut self, record: &mut Record) -> Result<WriteFuture> {
-        record.set_blob_offset(self.current_offset);
+    pub async fn write(&mut self, record: Record) -> Result<()> {
         let key = record.key().to_vec();
         if self.index.contains_key(&key) {
             return Err(Error::AlreadyContainsSameKey);
         }
-        self.index.insert(key, record.header().clone());
         let buf = record.to_raw();
-        self.current_offset += buf.len() as u64;
-        Ok(WriteFuture {
-            file: self.file.try_clone().map_err(Error::CloneFd)?,
-            buf: Some(buf),
-            current_offset: self.current_offset,
-        })
+        let mut offset = await!(self.current_offset.lock());
+        let bytes_written = self
+            .file
+            .write_at(&buf, *offset)
+            .map_err(Error::WriteFailed)?;
+        let meta = RecordMetaData {
+            blob_offset: *offset,
+            full_len: bytes_written as u64,
+        };
+        self.index.insert(key, meta);
+        *offset += bytes_written as u64;
+        Ok(())
     }
 
     pub async fn read(&self, key: Vec<u8>) -> Result<Record> {
@@ -224,8 +219,9 @@ impl Blob {
     where
         K: AsRef<[u8]> + Ord,
     {
-        let header = self.index.get(key.as_ref()).ok_or(Error::NotFound)?;
-        Ok(Location::new(header.blob_offset(), header.full_len()))
+        let meta = self.index.get(key.as_ref()).ok_or(Error::NotFound)?;
+        let offset = meta.blob_offset;
+        Ok(Location::new(offset as u64, meta.full_len))
     }
 
     /// # Description
@@ -274,6 +270,7 @@ pub enum Error {
     RecordError(record::Error),
     AlreadyContainsSameKey,
     DeserializationFailed(bincode::ErrorKind),
+    WriteFailed(io::Error),
 }
 
 #[derive(Debug, Clone)]

@@ -1,5 +1,4 @@
 use futures::{
-    future::FutureExt,
     lock::Mutex,
     stream::{futures_unordered, StreamExt},
 };
@@ -14,7 +13,7 @@ use std::{
 };
 
 use crate::{
-    blob::{self, Blob, ReadFuture, WriteFuture},
+    blob::{self, Blob},
     record::Record,
 };
 
@@ -117,7 +116,7 @@ impl Storage {
     /// # Examples
 
     // @TODO specify more useful error type
-    pub async fn write(&self, mut record: Record) -> Result<WriteFuture> {
+    pub async fn write(&self, record: Record) -> Result<()> {
         trace!("check active blob full");
         let is_full = await!(self.is_active_blob_full(record.full_len()))?;
         if is_full {
@@ -135,12 +134,7 @@ impl Storage {
         trace!("await for inner lock");
         let mut inner = await!(self.inner.lock());
         trace!("return write future");
-        inner
-            .active_blob
-            .as_mut()
-            .unwrap()
-            .write(&mut record)
-            .map_err(Error::BlobError)
+        await!(inner.active_blob.as_mut().unwrap().write(record)).map_err(Error::BlobError)
     }
 
     async fn max_id(&self) -> Option<usize> {
