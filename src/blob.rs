@@ -1,18 +1,10 @@
-use futures::{
-    future::Future,
-    lock::{Mutex, MutexLockFuture},
-    task::{Poll, Waker},
-};
+use futures::lock::Mutex;
 use std::{
     collections::BTreeMap,
     fs, io,
     os::unix::fs::FileExt,
     path::{Path, PathBuf},
-    pin::Pin,
-    sync::{
-        atomic::{AtomicIsize, AtomicU64},
-        Arc,
-    },
+    sync::Arc,
 };
 
 use crate::record::{self, Record};
@@ -89,32 +81,23 @@ impl Index {
     }
 }
 
-/// Write future
-#[derive(Debug)]
-pub struct WriteFuture<'a> {
-    file: fs::File,
-    buf: Option<Vec<u8>>,
-    offset: Arc<AtomicIsize>,
-    write_position: MutexLockFuture<'a, AtomicU64>,
-}
+// #[derive(Debug)]
+// pub struct ReadFuture {
+//     file: fs::File,
+//     key: Vec<u8>,
+//     loc: Location,
+// }
 
-#[derive(Debug)]
-pub struct ReadFuture {
-    file: fs::File,
-    key: Vec<u8>,
-    loc: Location,
-}
+// impl Future for ReadFuture {
+//     type Output = Result<Record>;
 
-impl Future for ReadFuture {
-    type Output = Result<Record>;
-
-    fn poll(self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
-        let mut buf = vec![0u8; self.loc.size as usize];
-        self.file.read_at(&mut buf, self.loc.offset).unwrap();
-        let record = Record::from_raw(&buf).map_err(Error::RecordError)?;
-        Poll::Ready(Ok(record))
-    }
-}
+//     fn poll(self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
+//         let mut buf = vec![0u8; self.loc.size as usize];
+//         self.file.read_at(&mut buf, self.loc.offset).unwrap();
+//         let record = Record::from_raw(&buf).map_err(Error::RecordError)?;
+//         Poll::Ready(Ok(record))
+//     }
+// }
 
 impl Blob {
     /// # Description
@@ -207,12 +190,10 @@ impl Blob {
     }
 
     pub async fn read(&self, key: Vec<u8>) -> Result<Record> {
-        let read_fut = ReadFuture {
-            file: self.file.try_clone().map_err(Error::CloneFd)?,
-            loc: self.lookup(&key)?,
-            key,
-        };
-        await!(read_fut)
+        let loc = self.lookup(&key)?;
+        let mut buf = vec![0u8; loc.size as usize];
+        self.file.read_at(&mut buf, loc.offset).unwrap();
+        Record::from_raw(&buf).map_err(Error::RecordError)
     }
 
     fn lookup<K>(&self, key: &K) -> Result<Location>
