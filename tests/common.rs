@@ -1,24 +1,42 @@
 #![feature(futures_api, async_await, await_macro)]
 
 use futures::{
-    executor::ThreadPool,
+    executor::{block_on, ThreadPool},
     future::{FutureExt, FutureObj},
     stream::{futures_unordered, StreamExt},
+    task::SpawnExt,
 };
 use std::{env, fs, pin::Pin};
 
 use pearl::{Builder, Record, Storage};
 
-pub async fn default_test_storage_in(dir_name: &'static str) -> Result<Storage, String> {
+pub async fn default_test_storage_in<S: SpawnExt + Clone + Send + 'static>(
+    spawner: S,
+    dir_name: &'static str,
+) -> Result<Storage, String> {
+    await!(create_test_storage(spawner, dir_name, 1_000_000))
+}
+
+pub async fn create_test_storage<S: SpawnExt + Clone + Send + 'static>(
+    spawner: S,
+    dir_name: &'static str,
+    max_blob_size: u64,
+) -> Result<Storage, String> {
     let path = env::temp_dir().join(dir_name);
     let builder = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
-        .max_blob_size(1_000_000)
+        .max_blob_size(max_blob_size)
         .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
-    await!(storage.init()).unwrap();
+    await!(storage.init(spawner)).unwrap();
     Ok(storage)
+}
+
+pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
+    (0..threads)
+        .map(|i| (0..writes).map(|j| i * threads + j).collect())
+        .collect()
 }
 
 pub fn clean(dir: &str) {
@@ -26,7 +44,7 @@ pub fn clean(dir: &str) {
     fs::remove_dir_all(path).unwrap();
 }
 
-pub async fn write<'a>(storage: &'a Pin<&'a mut Storage>, base_number: usize) {
+pub async fn write<'a>(storage: Pin<&'a Storage>, base_number: usize) {
     let key = format!("{}key", base_number);
     let data = "omn".repeat(base_number);
     let mut record = Record::new();
@@ -34,7 +52,7 @@ pub async fn write<'a>(storage: &'a Pin<&'a mut Storage>, base_number: usize) {
     await!(storage.write(record)).unwrap()
 }
 
-pub fn check(storage: &Storage, nums: Vec<usize>, mut executor: ThreadPool) -> Result<(), String> {
+pub fn check_all_written(storage: &Storage, nums: Vec<usize>) -> Result<(), String> {
     let keys = nums.iter().map(|n| format!("{}key", n)).collect::<Vec<_>>();
     let read_futures = keys
         .into_iter()
@@ -50,6 +68,6 @@ pub fn check(storage: &Storage, nums: Vec<usize>, mut executor: ThreadPool) -> R
             .filter_map(|res| res.as_ref().err())
             .for_each(|r| println!("{:?}", r))
     })));
-    executor.run(future_obj);
+    block_on(future_obj);
     Ok(())
 }

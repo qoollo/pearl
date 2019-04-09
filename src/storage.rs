@@ -1,15 +1,19 @@
 use futures::{
+    future::{Future, FutureObj, TryFutureExt},
     lock::Mutex,
-    stream::{futures_unordered, StreamExt},
+    stream::{futures_unordered, Stream, StreamExt},
+    task::{self, Poll, Spawn, SpawnExt, Waker},
 };
 use std::{
     fs::{self, DirEntry, File, OpenOptions},
     io,
     path::{Path, PathBuf},
+    pin::Pin,
     sync::{
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicU64, AtomicUsize, Ordering},
         Arc,
     },
+    time::{Duration, Instant},
 };
 
 use crate::{
@@ -54,6 +58,59 @@ struct Shared {
     next_blob_id: AtomicUsize,
 }
 
+async fn launch_observer<S>(mut spawner: S, storage: Storage)
+where
+    S: SpawnExt,
+{
+    let mut observer = Observer {
+        storage: Arc::new(storage),
+        next_update: Instant::now(),
+    };
+    while let Some(f) = await!(observer.next()) {
+        spawner.spawn(f);
+    }
+}
+
+struct Observer {
+    storage: Arc<Storage>,
+    next_update: Instant,
+}
+
+impl Stream for Observer {
+    type Item = FutureObj<'static, ()>;
+
+    fn poll_next(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Option<Self::Item>> {
+        println!("Observer poll next");
+        if self.next_update < Instant::now() {
+            self.as_mut().next_update = Instant::now() + Duration::from_millis(1);
+            let storage_cloned = self.storage.clone();
+            let fut = update_active_blob(storage_cloned);
+            let fut_boxed = Box::new(fut);
+            let obj = fut_boxed.into();
+            Poll::Ready(Some(obj))
+        } else {
+            Poll::Pending
+        }
+    }
+}
+
+async fn update_active_blob(s: Arc<Storage>) {
+    println!("Storage update");
+    // @TODO process unwrap explicitly
+    let mut inner = await!(s.inner.lock());
+    let is_full = inner.active_blob.as_ref().unwrap().file_size().unwrap()
+        > s.shared.config.max_blob_size.unwrap()
+        || inner.active_blob.as_ref().unwrap().records_count() as u64
+            >= s.shared.config.max_data_in_blob.unwrap();
+    if is_full {
+        println!("is full, replace");
+        let next = s.next_blob_name().unwrap();
+        let new_active = Blob::open_new(next).unwrap().boxed();
+        let old_active = inner.active_blob.replace(new_active).unwrap();
+        inner.blobs.push(*old_active);
+    }
+}
+
 impl Clone for Storage {
     fn clone(&self) -> Self {
         Self {
@@ -76,7 +133,10 @@ impl Storage {
     ///
     /// Storage works in dir provided to builder. If dir not exist,
     /// creates it, otherwise tries init dir as existing storage.
-    pub async fn init(&mut self) -> Result<()> {
+    pub async fn init<S>(&mut self, mut spawner: S) -> Result<()>
+    where
+        S: Spawn + Clone + Send + 'static,
+    {
         // @TODO implement work dir validation
         await!(self.prepare_work_dir())?;
         let wd = Path::new(
@@ -106,6 +166,11 @@ impl Storage {
                 .for_each(|name| trace!("{}", name.file_name().as_os_str().to_str().unwrap())); // @TODO handle unwrap explicitly
             await!(self.init_from_existing(files_in_work_dir)).unwrap(); // @TODO handle unwrap explicitly
         }
+        spawner
+            .spawn::<FutureObj<'static, ()>>(
+                Box::new(launch_observer(spawner.clone(), self.clone())).into(),
+            )
+            .map_err(Error::ObserverSpawnFailed)?;
         Ok(())
     }
 
@@ -116,25 +181,17 @@ impl Storage {
     /// # Examples
 
     // @TODO specify more useful error type
-    pub async fn write(&self, record: Record) -> Result<()> {
-        trace!("check active blob full");
-        let is_full = await!(self.is_active_blob_full(record.full_len()))?;
-        if is_full {
-            trace!("is full, replace");
-            let next = self.next_blob_name()?;
-            let new_active = Blob::open_new(next).map_err(Error::BlobError)?.boxed();
-            // @TODO process unwrap explicitly
-            let old_active = await!(self.inner.lock())
-                .active_blob
-                .replace(new_active)
-                .unwrap();
-            await!(self.inner.lock()).blobs.push(*old_active);
-        }
-        // @TODO process unwrap explicitly
+    pub async fn write<'a>(self: Pin<&'a Self>, record: Record) -> Result<()> {
         trace!("await for inner lock");
         let mut inner = await!(self.inner.lock());
         trace!("return write future");
-        await!(inner.active_blob.as_mut().unwrap().write(record)).map_err(Error::BlobError)
+        // @TODO process unwrap explicitly
+        await!(inner
+            .active_blob
+            .as_mut()
+            .unwrap()
+            .write(record)
+            .map_err(Error::BlobError))
     }
 
     async fn max_id(&self) -> Option<usize> {
@@ -283,23 +340,6 @@ impl Storage {
         );
         Ok(())
     }
-
-    // @TODO handle unwrap explicitly
-    async fn is_active_blob_full(&self, next_record_size: u64) -> Result<bool> {
-        trace!("lock on inner");
-        let inner = await!(self.inner.lock());
-        trace!("return result");
-        Ok(inner
-            .active_blob
-            .as_ref()
-            .ok_or(Error::ActiveBlobNotSet)?
-            .file_size()
-            .map_err(Error::BlobError)?
-            + next_record_size
-            > self.shared.config.max_blob_size.unwrap()
-            || inner.active_blob.as_ref().unwrap().records_count() as u64
-                >= self.shared.config.max_data_in_blob.unwrap())
-    }
 }
 
 #[derive(Debug)]
@@ -311,6 +351,7 @@ pub enum Error {
     Unitialized,
     IO(io::Error),
     RecordNotFound,
+    ObserverSpawnFailed(task::SpawnError),
 }
 
 /// `Builder` used for initializing a `Storage`.
@@ -339,7 +380,7 @@ impl<'a> Builder {
         } else {
             Ok(Storage {
                 shared: Arc::new(Shared {
-                    config: self.config,
+                    config: self.config.clone(),
                     next_blob_id: AtomicUsize::new(0),
                 }),
                 inner: Arc::new(Mutex::new(Inner {
