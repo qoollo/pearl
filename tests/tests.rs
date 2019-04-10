@@ -82,7 +82,7 @@ fn test_storage_read_write() {
     let dir = "pearl_tsrw/";
     println!("create default test storage");
     let storage = block_on(common::default_test_storage_in(pool, dir)).unwrap();
-    let storage = Pin::new(&storage);
+
     println!("create key/data");
     let key = "test-test".to_owned();
     let data = b"test data string".to_vec();
@@ -93,7 +93,7 @@ fn test_storage_read_write() {
     println!("init thread pool");
     let mut pool = ThreadPool::new().unwrap();
     println!("block on write");
-    block_on(storage.write(record)).unwrap();
+    block_on(storage.clone().write(record)).unwrap();
     println!("block on read");
     let r = storage.read(key.as_bytes().to_vec());
     println!("run write->read futures");
@@ -118,7 +118,7 @@ fn test_storage_multiple_read_write() {
         .build()
         .unwrap();
     block_on(storage.init(pool)).unwrap();
-    let storage = Pin::new(&storage);
+
     let mut keys = Vec::new();
     let mut records: Vec<_> = (0..1000)
         .map(|i| {
@@ -134,7 +134,7 @@ fn test_storage_multiple_read_write() {
     let write_futures: Vec<_> = records
         .clone()
         .into_iter()
-        .map(|record| storage.write(record))
+        .map(|record| storage.clone().write(record))
         .collect();
     let write_stream = futures_ordered(write_futures);
     let mut pool = ThreadPool::new().unwrap();
@@ -192,11 +192,9 @@ fn test_multithread_read_write() -> Result<(), String> {
             thread::Builder::new()
                 .name(format!("thread#{}", range[0]))
                 .spawn(move || {
-                    let mut temp_s = s.clone();
-                    let ps = Pin::new(&temp_s);
                     range.shuffle(&mut rand::thread_rng());
                     let write_futures: Vec<_> =
-                        range.iter().map(|i| common::write(ps, *i)).collect();
+                        range.iter().map(|i| common::write(s.clone(), *i)).collect();
                     block_on(futures_unordered(write_futures).collect::<Vec<_>>());
                 })
                 .unwrap()
@@ -220,43 +218,73 @@ fn test_multithread_read_write() -> Result<(), String> {
 
 #[test]
 fn test_storage_multithread_blob_overflow() -> Result<(), String> {
+    use futures::compat::Compat;
+    use futures::compat::{Executor01CompatExt, Future01CompatExt};
+    use futures::future::TryFutureExt;
     use std::thread;
     use std::time::{Duration, Instant};
+    use tokio::prelude::Future as OldFuture;
+    use tokio::runtime::Runtime;
+    use tokio::timer::Delay;
 
     let dir = "pearl_tsmtbo/";
-    let mut pool = ThreadPool::builder()
-        .name_prefix("test-pool-")
-        .stack_size(4)
-        .create()
-        .map_err(|e| format!("{:?}", e))?;
-    let storage = block_on(common::create_test_storage(pool.clone(), dir, 10_000)).unwrap();
-    let storage = Pin::new(&storage);
-    let indexes = common::create_indexes(2, 3);
-    pool.run(
-        async {
-            let mut range: Vec<_> = (0..100).map(|i| i).collect();
-            range.shuffle(&mut rand::thread_rng());
-            let mut next_write = Instant::now();
-            let storage = Pin::new(&storage);
-            let data = "omn".repeat(150);
-            let write_futures: Vec<_> = range
-                .iter()
-                .map(move |i| {
-                    println!("write");
-                    next_write += Duration::from_millis(500);
-                    let key = format!("{}key", i);
-                    let mut record = Record::new();
-                    record.set_body(key, &data);
-                    storage.write(record)
-                })
-                .collect();
-            await!(futures_unordered(write_futures).collect::<Vec<_>>());
-        },
-    );
-    let path = env::temp_dir().join(dir);
-    assert!(path.join("test.0.blob").exists());
-    assert!(path.join("test.1.blob").exists());
-    common::clean(dir);
+    // let mut pool = ThreadPool::builder()
+    //     .name_prefix("test-pool-")
+    //     .stack_size(4)
+    //     .create()
+    //     .map_err(|e| format!("{:?}", e))?;
+    let mut pool = Runtime::new().unwrap();
+    let storage = block_on(common::create_test_storage(
+        pool.executor().clone().compat(),
+        dir,
+        10_000,
+    ))
+    .unwrap();
+    {
+        let indexes = common::create_indexes(2, 3);
+        let fut = Compat::new(
+            async {
+                let mut range: Vec<u64> = (0..100).map(|i| i).collect();
+                range.shuffle(&mut rand::thread_rng());
+                let mut next_write = Instant::now();
+                let data = "omn".repeat(150);
+                let delay_futures: Vec<_> = range
+                    .iter()
+                    .map(|i| {
+                        Delay::new(Instant::now() + Duration::from_millis(i * 100))
+                            .compat()
+                            .map_err(|e| {})
+                    })
+                    .collect();
+                let write_futures: Vec<_> = range
+                    .iter()
+                    .zip(delay_futures)
+                    .map(move |(i, df)| {
+                        next_write += Duration::from_millis(500);
+                        let key = format!("{}key", i);
+                        let mut record = Record::new();
+                        record.set_body(key, &data);
+                        let write_fut = storage.clone().write(record).map_err(|e| {});
+                        df.and_then(move |_| {
+                            println!("delay finished");
+                            write_fut
+                        })
+                    })
+                    .collect();
+                println!("start await");
+                await!(futures_unordered(write_futures).collect::<Vec<_>>());
+                println!("finish await");
+                Ok(())
+            }
+                .boxed(),
+        );
+        pool.spawn(fut);
+        pool.shutdown_on_idle().wait().unwrap();
+        let path = env::temp_dir().join(dir);
+        assert!(path.join("test.0.blob").exists());
+        assert!(path.join("test.1.blob").exists());
+        common::clean(dir);
+    }
     Ok(())
 }
 

@@ -67,7 +67,7 @@ where
         next_update: Instant::now(),
     };
     while let Some(f) = await!(observer.next()) {
-        spawner.spawn(f);
+        spawner.spawn(f).unwrap();
     }
 }
 
@@ -80,35 +80,41 @@ impl Stream for Observer {
     type Item = FutureObj<'static, ()>;
 
     fn poll_next(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Option<Self::Item>> {
-        println!("Observer poll next");
         if self.next_update < Instant::now() {
-            self.as_mut().next_update = Instant::now() + Duration::from_millis(1);
+            println!("Observer update");
+            self.as_mut().next_update = Instant::now() + Duration::from_millis(1000);
             let storage_cloned = self.storage.clone();
             let fut = update_active_blob(storage_cloned);
             let fut_boxed = Box::new(fut);
             let obj = fut_boxed.into();
             Poll::Ready(Some(obj))
         } else {
+            waker.wake();
             Poll::Pending
         }
     }
 }
 
 async fn update_active_blob(s: Arc<Storage>) {
-    println!("Storage update");
+    println!("Storage update, lock");
     // @TODO process unwrap explicitly
     let mut inner = await!(s.inner.lock());
-    let is_full = inner.active_blob.as_ref().unwrap().file_size().unwrap()
-        > s.shared.config.max_blob_size.unwrap()
+    println!("lock acquired");
+    let active_size = inner.active_blob.as_ref().unwrap().file_size().unwrap();
+    let config_max = s.shared.config.max_blob_size.unwrap();
+    let is_full = active_size > config_max
         || inner.active_blob.as_ref().unwrap().records_count() as u64
             >= s.shared.config.max_data_in_blob.unwrap();
+
     if is_full {
         println!("is full, replace");
         let next = s.next_blob_name().unwrap();
+        println!("next name: {:?}", next);
         let new_active = Blob::open_new(next).unwrap().boxed();
         let old_active = inner.active_blob.replace(new_active).unwrap();
         inner.blobs.push(*old_active);
     }
+    println!("not full yet, {} > {} = false", active_size, config_max);
 }
 
 impl Clone for Storage {
@@ -181,7 +187,7 @@ impl Storage {
     /// # Examples
 
     // @TODO specify more useful error type
-    pub async fn write<'a>(self: Pin<&'a Self>, record: Record) -> Result<()> {
+    pub async fn write(self, record: Record) -> Result<()> {
         trace!("await for inner lock");
         let mut inner = await!(self.inner.lock());
         trace!("return write future");
@@ -208,6 +214,7 @@ impl Storage {
     }
 
     fn next_blob_name(&self) -> Result<blob::FileName> {
+        let next_id = self.shared.next_blob_id.fetch_add(1, Ordering::Relaxed);
         Ok(blob::FileName::new(
             self.shared
                 .config
@@ -215,7 +222,7 @@ impl Storage {
                 .as_ref()
                 .ok_or(Error::Unitialized)?
                 .to_owned(),
-            self.shared.next_blob_id.load(Ordering::Relaxed),
+            next_id,
             BLOB_FILE_EXTENSION.to_owned(),
             self.shared
                 .config

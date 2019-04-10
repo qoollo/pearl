@@ -205,6 +205,7 @@ impl Blob {
     }
 
     pub async fn write(&mut self, record: Record) -> Result<()> {
+        println!("write {}", String::from_utf8(record.key().to_vec()).unwrap());
         let key = record.key().to_vec();
         if self.index.contains_key(&key) {
             return Err(Error::AlreadyContainsSameKey);
@@ -239,7 +240,7 @@ impl Blob {
 
     pub fn file_size(&self) -> Result<u64> {
         // @TODO implement
-        Ok(0)
+        Ok(self.file.metadata().unwrap().len())
     }
 
     pub fn records_count(&self) -> usize {

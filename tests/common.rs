@@ -44,7 +44,7 @@ pub fn clean(dir: &str) {
     fs::remove_dir_all(path).unwrap();
 }
 
-pub async fn write<'a>(storage: Pin<&'a Storage>, base_number: usize) {
+pub async fn write(storage: Storage, base_number: usize) {
     let key = format!("{}key", base_number);
     let data = "omn".repeat(base_number);
     let mut record = Record::new();
