@@ -1,9 +1,10 @@
-use futures::lock::Mutex;
+use futures::{future::poll_fn, future::Future, io::AsyncWrite, lock::Mutex, task::Waker, Poll};
 use std::{
     collections::BTreeMap,
     fs, io,
     os::unix::fs::FileExt,
     path::{Path, PathBuf},
+    pin::Pin,
     sync::Arc,
 };
 
@@ -22,8 +23,51 @@ pub struct Blob {
     header: Header,
     index: Index,
     name: FileName,
-    file: fs::File,
+    file: File,
     current_offset: Arc<Mutex<u64>>,
+}
+
+#[derive(Debug)]
+struct File {
+    fd: fs::File,
+}
+
+struct WriteAt {
+    fd: fs::File,
+    buf: Vec<u8>,
+    offset: u64,
+}
+
+impl Future for WriteAt {
+    type Output = Result<usize>;
+
+    fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
+        match self.fd.write_at(&self.buf, self.offset) {
+            Ok(t) => Poll::Ready(Ok(t)),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Poll::Pending,
+            Err(e) => Poll::Ready(Err(Error::WriteFailed(e))),
+        }
+    }
+}
+
+impl File {
+    fn metadata(&self) -> io::Result<fs::Metadata> {
+        self.fd.metadata()
+    }
+
+    fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> WriteAt {
+        WriteAt {
+            fd: self.fd.try_clone().unwrap(),
+            buf,
+            offset,
+        }
+    }
+}
+
+impl From<fs::File> for File {
+    fn from(fd: fs::File) -> Self {
+        File { fd }
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -71,7 +115,7 @@ impl Blob {
     ///
     /// [`FileName`]: struct.FileName.html
     pub fn open_new(name: FileName) -> Result<Self> {
-        let file = Self::create_file(&name.as_path())?;
+        let file = Self::create_file(&name.as_path())?.into();
         let mut blob = Self {
             header: Header::new(),
             file,
@@ -111,10 +155,9 @@ impl Blob {
     }
 
     pub fn from_file(path: PathBuf) -> Result<Self> {
-        let file = Self::open_file(&path)?;
+        let file: File = Self::open_file(&path)?.into();
         let name = FileName::from_path(&path)?;
         let len = file.metadata().map_err(Error::FromFile)?.len();
-        let _header = Header::from_reader(&file)?;
         let index = Index::from_default(&path)?;
 
         let blob = Self {
@@ -141,10 +184,7 @@ impl Blob {
         }
         let buf = record.to_raw();
         let mut offset = await!(self.current_offset.lock());
-        let bytes_written = self
-            .file
-            .write_at(&buf, *offset)
-            .map_err(Error::WriteFailed)?;
+        let bytes_written = await!(self.file.write_at(buf, *offset))?;
         let meta = RecordMetaData {
             blob_offset: *offset,
             full_len: bytes_written as u64,
@@ -159,6 +199,7 @@ impl Blob {
         let mut buf = vec![0u8; loc.size as usize];
         let bytes_read = self
             .file
+            .fd
             .read_at(&mut buf, loc.offset)
             .map_err(Error::ReadFailed)?;
         let record = Record::from_raw(&buf).map_err(Error::RecordError)?;
