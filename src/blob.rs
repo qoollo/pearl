@@ -50,6 +50,25 @@ impl Future for WriteAt {
     }
 }
 
+struct ReadAt {
+    fd: fs::File,
+    len: usize,
+    offset: u64,
+}
+
+impl Future for ReadAt {
+    type Output = Result<Vec<u8>>;
+
+    fn poll(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
+        let mut buf = vec![0; self.len];
+        match self.fd.read_at(&mut buf, self.offset) {
+            Ok(t) => Poll::Ready(Ok(buf)),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Poll::Pending,
+            Err(e) => Poll::Ready(Err(Error::ReadFailed(e))),
+        }
+    }
+}
+
 impl File {
     fn metadata(&self) -> io::Result<fs::Metadata> {
         self.fd.metadata()
@@ -59,6 +78,14 @@ impl File {
         WriteAt {
             fd: self.fd.try_clone().unwrap(),
             buf,
+            offset,
+        }
+    }
+
+    fn read_at(&self, len: usize, offset: u64) -> ReadAt {
+        ReadAt {
+            fd: self.fd.try_clone().unwrap(),
+            len,
             offset,
         }
     }
@@ -196,18 +223,9 @@ impl Blob {
 
     pub async fn read(&self, key: Vec<u8>) -> Result<Record> {
         let loc = self.lookup(&key)?;
-        let mut buf = vec![0u8; loc.size as usize];
-        let bytes_read = self
-            .file
-            .fd
-            .read_at(&mut buf, loc.offset)
-            .map_err(Error::ReadFailed)?;
+        let buf = await!(self.file.read_at(loc.size as usize, loc.offset))?;
         let record = Record::from_raw(&buf).map_err(Error::RecordError)?;
-        if record.full_len() != bytes_read as u64 {
-            Err(Error::CorruptedData)
-        } else {
-            Ok(record)
-        }
+        Ok(record)
     }
 
     fn lookup<K>(&self, key: &K) -> Result<Location>
