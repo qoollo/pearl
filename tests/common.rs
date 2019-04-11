@@ -1,3 +1,4 @@
+#![allow(unused_attributes)]
 #![feature(futures_api, async_await, await_macro)]
 
 use futures::{
