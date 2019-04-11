@@ -1,4 +1,4 @@
-use futures::{future::poll_fn, future::Future, io::AsyncWrite, lock::Mutex, task::Waker, Poll};
+use futures::{future::Future, lock::Mutex, task::Waker, Poll};
 use std::{
     collections::BTreeMap,
     fs, io,
@@ -44,7 +44,10 @@ impl Future for WriteAt {
     fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
         match self.fd.write_at(&self.buf, self.offset) {
             Ok(t) => Poll::Ready(Ok(t)),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Poll::Pending,
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                waker.wake();
+                Poll::Pending
+            }
             Err(e) => Poll::Ready(Err(Error::WriteFailed(e))),
         }
     }
@@ -59,11 +62,14 @@ struct ReadAt {
 impl Future for ReadAt {
     type Output = Result<Vec<u8>>;
 
-    fn poll(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
         let mut buf = vec![0; self.len];
         match self.fd.read_at(&mut buf, self.offset) {
-            Ok(t) => Poll::Ready(Ok(buf)),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Poll::Pending,
+            Ok(_t) => Poll::Ready(Ok(buf)),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                waker.wake();
+                Poll::Pending
+            }
             Err(e) => Poll::Ready(Err(Error::ReadFailed(e))),
         }
     }
@@ -165,7 +171,7 @@ impl Blob {
             .write(true)
             .read(true)
             .open(path)
-            .map_err(Error::OpenNew)
+            .map_err(|e| Error::OpenNew(e, path.into()))
     }
 
     fn open_file(path: &Path) -> Result<fs::File> {
@@ -205,7 +211,6 @@ impl Blob {
     }
 
     pub async fn write(&mut self, record: Record) -> Result<()> {
-        println!("write {}", String::from_utf8(record.key().to_vec()).unwrap());
         let key = record.key().to_vec();
         if self.index.contains_key(&key) {
             return Err(Error::AlreadyContainsSameKey);
@@ -240,7 +245,11 @@ impl Blob {
 
     pub fn file_size(&self) -> Result<u64> {
         // @TODO implement
-        Ok(self.file.metadata().unwrap().len())
+        Ok(self
+            .file
+            .metadata()
+            .map_err(Error::GetMetadataFailed)?
+            .len())
     }
 
     pub fn records_count(&self) -> usize {
@@ -258,7 +267,7 @@ impl Blob {
 
 #[derive(Debug)]
 pub enum Error {
-    OpenNew(io::Error),
+    OpenNew(io::Error, PathBuf),
     FromFile(io::Error),
     CloneFd(io::Error),
     NotFound,
@@ -274,6 +283,7 @@ pub enum Error {
     CloneFailed(io::Error),
     ReadFailed(io::Error),
     CorruptedData,
+    GetMetadataFailed(io::Error),
 }
 
 #[derive(Debug, Clone)]
@@ -342,14 +352,6 @@ impl Header {
             version: 0,
             flags: 0,
         }
-    }
-
-    fn from_reader<R>(_reader: R) -> Result<Self>
-    where
-        R: std::io::Read,
-    {
-        // @TODO implement
-        Ok(Self::new())
     }
 }
 

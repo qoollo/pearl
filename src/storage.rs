@@ -1,5 +1,6 @@
 use futures::{
-    future::{Future, FutureObj, TryFutureExt},
+    executor::block_on,
+    future::{FutureExt, FutureObj, TryFutureExt},
     lock::Mutex,
     stream::{futures_unordered, Stream, StreamExt},
     task::{self, Poll, Spawn, SpawnExt, Waker},
@@ -10,9 +11,10 @@ use std::{
     path::{Path, PathBuf},
     pin::Pin,
     sync::{
-        atomic::{AtomicU64, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
+    thread,
     time::{Duration, Instant},
 };
 
@@ -41,8 +43,23 @@ type Result<T> = std::result::Result<T, Error>;
 ///
 #[derive(Debug)]
 pub struct Storage {
+    twins_count: Arc<AtomicUsize>,
     shared: Arc<Shared>,
     inner: Arc<Mutex<Inner>>,
+}
+
+impl Drop for Storage {
+    fn drop(&mut self) {
+        // self.inner.
+        let twins = self.twins_count.fetch_sub(1, Ordering::Relaxed);
+        if twins == 1 {
+            self.shared.observer_state.store(false, Ordering::Relaxed);
+            trace!("stop observer thread, await 1s");
+            thread::sleep(Duration::from_millis(100));
+        } else if twins < 1 {
+            self.shared.observer_state.store(false, Ordering::Relaxed);
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -56,70 +73,114 @@ struct Inner {
 struct Shared {
     config: Config,
     next_blob_id: AtomicUsize,
+    observer_state: Arc<AtomicBool>,
 }
 
-async fn launch_observer<S>(mut spawner: S, storage: Storage)
+async fn launch_observer<S>(spawner: S, storage: Storage)
 where
-    S: SpawnExt,
+    S: SpawnExt + Send + 'static + Unpin + Sync,
 {
-    let mut observer = Observer {
+    let observer = Observer {
         storage: Arc::new(storage),
         next_update: Instant::now(),
+        spawner,
     };
-    while let Some(f) = await!(observer.next()) {
-        spawner.spawn(f).unwrap();
-    }
+    thread::spawn(move || observer.run());
 }
 
-struct Observer {
+struct Observer<S>
+where
+    S: SpawnExt + Send + 'static,
+{
+    spawner: S,
     storage: Arc<Storage>,
     next_update: Instant,
 }
 
-impl Stream for Observer {
-    type Item = FutureObj<'static, ()>;
+impl<S> Observer<S>
+where
+    S: SpawnExt + Send + 'static + Unpin + Sync,
+{
+    fn run(mut self) {
+        while let Some(f) = block_on(self.next()) {
+            let state = self.storage.shared.observer_state.clone();
+            self.spawner
+                .spawn(f.map(move |res| {
+                    if res.is_err() {
+                        state.store(false, Ordering::Relaxed);
+                        panic!("observer error, stopping: {:?}", res);
+                    }
+                }))
+                .unwrap();
+            thread::sleep(Duration::from_millis(10));
+        }
+        trace!("observer stopped");
+    }
+}
+
+impl<S> Stream for Observer<S>
+where
+    S: SpawnExt + Send + 'static + Unpin,
+{
+    type Item = FutureObj<'static, Result<()>>;
 
     fn poll_next(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Option<Self::Item>> {
         if self.next_update < Instant::now() {
-            println!("Observer update");
+            trace!("Observer update");
             self.as_mut().next_update = Instant::now() + Duration::from_millis(1000);
             let storage_cloned = self.storage.clone();
             let fut = update_active_blob(storage_cloned);
             let fut_boxed = Box::new(fut);
-            let obj = fut_boxed.into();
+            let obj = FutureObj::new(fut_boxed);
             Poll::Ready(Some(obj))
-        } else {
+        } else if self.storage.shared.observer_state.load(Ordering::Relaxed) {
             waker.wake();
             Poll::Pending
+        } else {
+            trace!("observer state: false");
+            Poll::Ready(None)
         }
     }
 }
 
-async fn update_active_blob(s: Arc<Storage>) {
-    println!("Storage update, lock");
+async fn update_active_blob(s: Arc<Storage>) -> Result<()> {
+    trace!("Storage update, lock");
     // @TODO process unwrap explicitly
     let mut inner = await!(s.inner.lock());
-    println!("lock acquired");
-    let active_size = inner.active_blob.as_ref().unwrap().file_size().unwrap();
-    let config_max = s.shared.config.max_blob_size.unwrap();
+    trace!("lock acquired");
+    let active_size = inner
+        .active_blob
+        .as_ref()
+        .ok_or(Error::ActiveBlobNotSet)?
+        .file_size()
+        .unwrap();
+    let config_max = s.shared.config.max_blob_size.ok_or(Error::Unitialized)?;
     let is_full = active_size > config_max
-        || inner.active_blob.as_ref().unwrap().records_count() as u64
-            >= s.shared.config.max_data_in_blob.unwrap();
+        || inner
+            .active_blob
+            .as_ref()
+            .ok_or(Error::ActiveBlobNotSet)?
+            .records_count() as u64
+            >= s.shared.config.max_data_in_blob.ok_or(Error::Unitialized)?;
 
     if is_full {
-        println!("is full, replace");
-        let next = s.next_blob_name().unwrap();
-        println!("next name: {:?}", next);
-        let new_active = Blob::open_new(next).unwrap().boxed();
+        trace!("is full, replace");
+        let next = s.next_blob_name()?;
+        trace!("next name: {:?}", next);
+        let new_active = Blob::open_new(next).map_err(Error::BlobError)?.boxed();
         let old_active = inner.active_blob.replace(new_active).unwrap();
         inner.blobs.push(*old_active);
     }
-    println!("not full yet, {} > {} = false", active_size, config_max);
+    trace!("not full yet, {} > {} = false", active_size, config_max);
+    Ok(())
 }
 
 impl Clone for Storage {
     fn clone(&self) -> Self {
+        self.twins_count.fetch_add(1, Ordering::Relaxed);
+        let twins_count = self.twins_count.clone();
         Self {
+            twins_count,
             shared: self.shared.clone(),
             inner: self.inner.clone(),
         }
@@ -141,10 +202,11 @@ impl Storage {
     /// creates it, otherwise tries init dir as existing storage.
     pub async fn init<S>(&mut self, mut spawner: S) -> Result<()>
     where
-        S: Spawn + Clone + Send + 'static,
+        S: Spawn + Clone + Send + 'static + Unpin + Sync,
     {
         // @TODO implement work dir validation
         await!(self.prepare_work_dir())?;
+
         let wd = Path::new(
             self.shared
                 .config
@@ -262,6 +324,7 @@ impl Storage {
 
     // @TODO specify more useful error type
     pub fn close(&mut self) -> Result<()> {
+        self.shared.observer_state.store(false, Ordering::Relaxed);
         // @TODO implement
         Ok(())
     }
@@ -386,9 +449,11 @@ impl<'a> Builder {
             Err(Error::Unitialized)
         } else {
             Ok(Storage {
+                twins_count: Arc::new(AtomicUsize::new(0)),
                 shared: Arc::new(Shared {
                     config: self.config.clone(),
                     next_blob_id: AtomicUsize::new(0),
+                    observer_state: Arc::new(AtomicBool::new(true)),
                 }),
                 inner: Arc::new(Mutex::new(Inner {
                     active_blob: None,

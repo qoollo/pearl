@@ -1,27 +1,33 @@
 #![feature(futures_api, async_await, await_macro)]
 
 use futures::{
-    executor::{block_on, ThreadPool},
+    executor::block_on,
     future::{FutureExt, FutureObj},
     stream::{futures_unordered, StreamExt},
     task::SpawnExt,
 };
-use std::{env, fs, pin::Pin};
+use std::{env, fs};
 
 use pearl::{Builder, Record, Storage};
 
-pub async fn default_test_storage_in<S: SpawnExt + Clone + Send + 'static>(
+pub async fn default_test_storage_in<S>(
     spawner: S,
     dir_name: &'static str,
-) -> Result<Storage, String> {
+) -> Result<Storage, String>
+where
+    S: SpawnExt + Clone + Send + 'static + Unpin + Sync,
+{
     await!(create_test_storage(spawner, dir_name, 1_000_000))
 }
 
-pub async fn create_test_storage<S: SpawnExt + Clone + Send + 'static>(
+pub async fn create_test_storage<S>(
     spawner: S,
     dir_name: &'static str,
     max_blob_size: u64,
-) -> Result<Storage, String> {
+) -> Result<Storage, String>
+where
+    S: SpawnExt + Clone + Send + 'static + Unpin + Sync,
+{
     let path = env::temp_dir().join(dir_name);
     let builder = Builder::new()
         .work_dir(&path)
