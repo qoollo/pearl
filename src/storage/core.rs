@@ -1,6 +1,6 @@
 use futures::{
     executor::block_on,
-    future::{FutureExt, FutureObj, TryFutureExt},
+    future::{FutureExt, FutureObj},
     lock::Mutex,
     stream::{futures_unordered, Stream, StreamExt},
     task::{self, Poll, Spawn, SpawnExt, Waker},
@@ -150,12 +150,7 @@ impl Storage {
         let mut inner = await!(self.inner.lock());
         trace!("return write future");
         // @TODO process unwrap explicitly
-        await!(inner
-            .active_blob
-            .as_mut()
-            .unwrap()
-            .write(record)
-            .map_err(Error::BlobError))
+        await!(inner.active_blob.as_mut().unwrap().write(record)).map_err(Error::BlobError)
     }
 
     async fn max_id(&self) -> Option<usize> {
@@ -198,7 +193,7 @@ impl Storage {
     pub async fn read(&self, key: Vec<u8>) -> Result<Record> {
         let inner = await!(self.inner.lock());
         if let Some(active_blob) = &inner.active_blob {
-            return await!(active_blob.read(key)).map_err(Error::BlobError);
+            await!(active_blob.read(key)).map_err(Error::BlobError)
         } else {
             let futs = inner
                 .blobs
@@ -206,9 +201,9 @@ impl Storage {
                 .map(|blob| blob.read(key.clone()))
                 .collect::<Vec<_>>();
             let mut stream = futures_unordered(futs);
-            return await!(stream.next())
+            await!(stream.next())
                 .ok_or(Error::RecordNotFound)?
-                .map_err(Error::BlobError);
+                .map_err(Error::BlobError)
         }
     }
 
@@ -356,13 +351,9 @@ where
 {
     fn run(mut self) {
         while let Some(f) = block_on(self.next()) {
-            let state = self.storage.shared.observer_state.clone();
             self.spawner
-                .spawn(f.map(move |res| {
-                    if res.is_err() {
-                        state.store(false, Ordering::Relaxed);
-                        panic!("observer error, stopping: {:?}", res);
-                    }
+                .spawn(f.map(|r| {
+                    r.unwrap();
                 }))
                 .unwrap();
             thread::sleep(self.update_interval);
@@ -409,6 +400,12 @@ pub enum Error {
     ObserverSpawnFailed(task::SpawnError),
 }
 
+impl From<blob::Error> for Error {
+    fn from(blob_error: blob::Error) -> Self {
+        Error::BlobError(blob_error)
+    }
+}
+
 /// Description
 /// Examples
 #[derive(Debug, Clone)]
@@ -450,29 +447,23 @@ async fn update_active_blob(s: Arc<Storage>) -> Result<()> {
     // @TODO process unwrap explicitly
     let mut inner = await!(s.inner.lock());
     trace!("lock acquired");
-    let active_size = inner
-        .active_blob
-        .as_ref()
-        .ok_or(Error::ActiveBlobNotSet)?
-        .file_size()
-        .unwrap();
+    let active_blob = inner.active_blob.as_ref().ok_or(Error::ActiveBlobNotSet)?;
+    let active_size = active_blob.file_size()?;
     let config_max = s.shared.config.max_blob_size.ok_or(Error::Unitialized)?;
     let is_full = active_size > config_max
-        || inner
-            .active_blob
-            .as_ref()
-            .ok_or(Error::ActiveBlobNotSet)?
-            .records_count() as u64
+        || active_blob.records_count() as u64
             >= s.shared.config.max_data_in_blob.ok_or(Error::Unitialized)?;
 
     if is_full {
         trace!("is full, replace");
         let next = s.next_blob_name()?;
         trace!("next name: {:?}", next);
-        let new_active = Blob::open_new(next).map_err(Error::BlobError)?.boxed();
-        let old_active = inner.active_blob.replace(new_active).unwrap();
+        let new_active = Blob::open_new(next)?.boxed();
+        let old_active = inner
+            .active_blob
+            .replace(new_active)
+            .ok_or(Error::ActiveBlobNotSet)?;
         inner.blobs.push(*old_active);
     }
-    trace!("not full yet, {} > {} = false", active_size, config_max);
     Ok(())
 }

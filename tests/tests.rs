@@ -242,7 +242,7 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
             let delay_futures: Vec<_> = range
                 .iter()
                 .map(|i| {
-                    Delay::new(Instant::now() + Duration::from_millis(i * 10))
+                    Delay::new(Instant::now() + Duration::from_millis(i * 100))
                         .compat()
                         .map_err(|e| {
                             println!("{:?}", e);
