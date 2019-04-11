@@ -347,6 +347,7 @@ where
     spawner: S,
     storage: Arc<Storage>,
     next_update: Instant,
+    update_interval: Duration,
 }
 
 impl<S> Observer<S>
@@ -354,7 +355,6 @@ where
     S: SpawnExt + Send + 'static + Unpin + Sync,
 {
     fn run(mut self) {
-        let update_interval = Duration::from_millis(self.storage.shared.config.update_interval_ms);
         while let Some(f) = block_on(self.next()) {
             let state = self.storage.shared.observer_state.clone();
             self.spawner
@@ -365,7 +365,7 @@ where
                     }
                 }))
                 .unwrap();
-            thread::sleep(update_interval);
+            thread::sleep(self.update_interval);
         }
         trace!("observer stopped");
     }
@@ -378,9 +378,10 @@ where
     type Item = FutureObj<'static, Result<()>>;
 
     fn poll_next(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Option<Self::Item>> {
-        if self.next_update < Instant::now() {
+        let now = Instant::now();
+        if self.next_update < now {
             trace!("Observer update");
-            self.as_mut().next_update = Instant::now() + Duration::from_millis(1000);
+            self.as_mut().next_update = now + self.update_interval;
             let storage_cloned = self.storage.clone();
             let fut = update_active_blob(storage_cloned);
             let fut_boxed = Box::new(fut);
@@ -436,6 +437,7 @@ where
     S: SpawnExt + Send + 'static + Unpin + Sync,
 {
     let observer = Observer {
+        update_interval: Duration::from_millis(storage.shared.config.update_interval_ms),
         storage: Arc::new(storage),
         next_update: Instant::now(),
         spawner,
