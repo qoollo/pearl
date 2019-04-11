@@ -354,6 +354,7 @@ where
     S: SpawnExt + Send + 'static + Unpin + Sync,
 {
     fn run(mut self) {
+        let update_interval = Duration::from_millis(self.storage.shared.config.update_interval_ms);
         while let Some(f) = block_on(self.next()) {
             let state = self.storage.shared.observer_state.clone();
             self.spawner
@@ -364,7 +365,7 @@ where
                     }
                 }))
                 .unwrap();
-            thread::sleep(Duration::from_millis(10));
+            thread::sleep(update_interval);
         }
         trace!("observer stopped");
     }
@@ -415,6 +416,7 @@ pub struct Config {
     pub max_blob_size: Option<u64>,
     pub max_data_in_blob: Option<u64>,
     pub blob_file_name_prefix: Option<String>,
+    pub update_interval_ms: u64,
 }
 
 impl Default for Config {
@@ -424,6 +426,7 @@ impl Default for Config {
             max_blob_size: None,
             max_data_in_blob: None,
             blob_file_name_prefix: None,
+            update_interval_ms: 100,
         }
     }
 }
