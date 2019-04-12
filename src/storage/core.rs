@@ -154,11 +154,9 @@ impl Storage {
     }
 
     async fn max_id(&self) -> Option<usize> {
-        let active_blob_id = await!(self.inner.lock())
-            .active_blob
-            .as_ref()
-            .map(|blob| blob.id());
-        let blobs_max_id = await!(self.inner.lock())
+        let inner = await!(self.inner.lock());
+        let active_blob_id = inner.active_blob.as_ref().map(|blob| blob.id());
+        let blobs_max_id = inner
             .blobs
             .iter()
             .max_by_key(|blob| blob.id())
@@ -260,12 +258,12 @@ impl Storage {
     }
 
     async fn init_new(&mut self) -> Result<()> {
+        let mut inner = await!(self.inner.lock());
         let next = self.next_blob_name()?;
-        await!(self.inner.lock()).active_blob =
-            Some(Blob::open_new(next).map_err(Error::InitActiveBlob)?.boxed());
+        inner.active_blob = Some(Blob::open_new(next).map_err(Error::InitActiveBlob)?.boxed());
         debug!(
             "created new active blob: {}",
-            await!(self.inner.lock()).active_blob.as_ref().unwrap().id()
+            inner.active_blob.as_ref().unwrap().id()
         );
         Ok(())
     }
@@ -291,8 +289,9 @@ impl Storage {
             .collect();
         temp_blobs.sort_by_key(Blob::id);
         let active_blob = temp_blobs.pop().unwrap().boxed();
-        await!(self.inner.lock()).active_blob = Some(active_blob);
-        await!(self.inner.lock()).blobs = temp_blobs;
+        let mut inner = await!(self.inner.lock());
+        inner.active_blob = Some(active_blob);
+        inner.blobs = temp_blobs;
         self.shared.next_blob_id.store(
             await!(self.max_id()).map(|i| i + 1).unwrap_or(0),
             Ordering::Relaxed,
