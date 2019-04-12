@@ -1,12 +1,8 @@
 language: rust
 rust:
-  # - stable
-  # - beta
   - nightly
   env: RUSTFMT=1
 matrix:
-  # allow_failures:
-  #   - rust: nightly
   fast_finish: true
 cache: cargo
 
@@ -17,3 +13,17 @@ script:
   - if [ "$RUSTFMT" = 1 ]; then cargo fmt -- --check; fi
   - cargo build --all
   - cargo test -- --nocapture
+
+after_success: |
+  [ $TRAVIS_BRANCH = feature/multithread ] &&
+  [ $TRAVIS_BRANCH = master ] &&
+  [ $TRAVIS_PULL_REQUEST = false ] &&
+  cargo doc &&
+  echo "<meta http-equiv=refresh content=0;url=`echo $TRAVIS_REPO_SLUG | cut -d '/' -f 2`/index.html>" > target/doc/index.html &&
+  sudo pip install ghp-import &&
+  ghp-import -n target/doc &&
+  git push -fq https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
+
+env:
+  global:
+    secure: bx0sogRcD0HfI88ByqhRodgkIlumbmhP1HSpZrX/wStzG309S6b6bLh+vjYuQq4NFdO0rWBJc1d5dFVWizBnIpclucv5i6oW40/eORBBbOp/V2KghCS6O8Z3wXqjyepEGZGE2XFvn6A+0n0WQZpXPswDHuvL32pZvIw+dsaWPrtqMXp4maeEMa2vYaoKiTgc+P8IH2KHI5tayoPF4Qiy5qNluOQcGKOGmu1mvMaixMYXv1kxXTl68PuekfQInTFyDiiKQ+afEKnBwXpWtqNxgpgx35AwZEMTYq/CbAm6Bg8C8cDUEAR8V3fHIYbyyKvI0kHNyNPhOhNhwTgmsj291yW39ptksjpZbW5fFcnVO3+of7gFF2jc1SNjvbJfaIij0oxRFhdaWY+tB9+e52iFjpjuBjxiMSJnti4XkAv5GNAhx7N1gAHhpmGDqcCDtbRkh+M9NBEVqSHS9Z4e8bWMEjpKexlbWEyPQsBCfWebUfYJ4UogVRb1QaBQpRp8p5AYaSX6znpLh36YJsMllpMyRICi9PZ1dInjKZIgFI2jfZxI+YJBcgg4BQXqexfZizIAYN5Gx5Qw5EzfiU7w8FKfmcCH45ztR2pliNrDv1JL5iNa/p+QYvSLnhbI41QSYNv3c1Fb7QymGDDrrXyh0VyeQUKg+FsF4ZU05/OuFyoJB5s=
