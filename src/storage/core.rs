@@ -32,15 +32,19 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// # Description
 /// Used to create a storage, configure it and manage
-/// `K` - type of storage key, must be [Sized](https://doc.rust-lang.org/std/marker/trait.Sized.html)
 /// # Examples
-/// ```no-run
+/// ```
 /// use pearl::{Storage, Builder};
 ///
-/// let mut storage = Builder::new().build::<u32>();
+/// let builder = Builder::new()
+///     .work_dir("/tmp/pearl/")
+///     .max_blob_size(1_000_000)
+///     .max_data_in_blob(1_000_000_000)
+///     .blob_file_name_prefix("enough");
+/// ```
+/// let mut storage = builder.build().unwrap();
 /// storage.init().unwrap();
 /// ```
-///
 #[derive(Debug)]
 pub struct Storage {
     twins_count: Arc<AtomicUsize>,
@@ -50,14 +54,12 @@ pub struct Storage {
 
 impl Drop for Storage {
     fn drop(&mut self) {
-        // self.inner.
         let twins = self.twins_count.fetch_sub(1, Ordering::Relaxed);
-        if twins == 1 {
+        // 1 is because twin#0 - in observer tread, twin#1 - self
+        if twins <= 1 {
             self.shared.observer_state.store(false, Ordering::Relaxed);
-            trace!("stop observer thread, await 1s");
+            trace!("stop observer thread, await a little");
             thread::sleep(Duration::from_millis(100));
-        } else if twins < 1 {
-            self.shared.observer_state.store(false, Ordering::Relaxed);
         }
     }
 }
@@ -75,7 +77,7 @@ impl Clone for Storage {
 }
 
 impl Storage {
-    /// Creates new uninitialized storage with given config
+    /// Creates new uninitialized storage with provided config
     pub fn new(config: Config) -> Self {
         Self {
             twins_count: Arc::new(AtomicUsize::new(0)),
@@ -84,15 +86,7 @@ impl Storage {
         }
     }
 
-    /// Creates a new instance of a storage with u32 key
-    /// # Examples
-    ///
-    /// ```no-run
-    /// use pearl::{Storage, Builder};
-    ///
-    /// let mut storage = Builder::new().build::<u32>();
-    /// storage.init().unwrap();
-    /// ```
+    /// `init(..)` used to prepare all environment to further work.
     ///
     /// Storage works in dir provided to builder. If dir not exist,
     /// creates it, otherwise tries init dir as existing storage.
@@ -103,6 +97,20 @@ impl Storage {
         // @TODO implement work dir validation
         await!(self.prepare_work_dir())?;
 
+        if let Some(files) = self.work_dir_content()? {
+            await!(self.init_from_existing(files))?
+        } else {
+            await!(self.init_new())?
+        };
+        let observer_fut_obj: FutureObj<_> =
+            Box::new(launch_observer(spawner.clone(), self.clone())).into();
+        spawner
+            .spawn(observer_fut_obj)
+            .map_err(Error::ObserverSpawnFailed)?;
+        Ok(())
+    }
+
+    fn work_dir_content(&self) -> Result<Option<Vec<fs::DirEntry>>> {
         let wd = Path::new(
             self.shared
                 .config
@@ -110,32 +118,22 @@ impl Storage {
                 .as_ref()
                 .ok_or(Error::Unitialized)?,
         );
-        let files_in_work_dir: Vec<_> = fs::read_dir(wd)
+        let files: Vec<_> = fs::read_dir(wd)
             .map_err(Error::IO)?
             .filter_map(|res_dir_entry| res_dir_entry.map_err(|e| error!("{}", e)).ok())
             .collect();
-        if files_in_work_dir
+        if files
             .iter()
-            .map(|file| file.file_name().as_os_str().to_str().unwrap().to_owned())
+            .filter_map(|file| Some(file.file_name().as_os_str().to_str()?.to_owned()))
             .find(|name| name.ends_with(BLOB_FILE_EXTENSION))
             .is_none()
         {
             debug!("working dir is unitialized, starting empty storage");
-            await!(self.init_new()).unwrap(); // @TODO handle unwrap explicitly
+            Ok(None)
         } else {
             debug!("working dir contains files, try init existing");
-            trace!("ls:");
-            files_in_work_dir
-                .iter()
-                .for_each(|name| trace!("{}", name.file_name().as_os_str().to_str().unwrap())); // @TODO handle unwrap explicitly
-            await!(self.init_from_existing(files_in_work_dir)).unwrap(); // @TODO handle unwrap explicitly
+            Ok(Some(files))
         }
-        spawner
-            .spawn::<FutureObj<'static, ()>>(
-                Box::new(launch_observer(spawner.clone(), self.clone())).into(),
-            )
-            .map_err(Error::ObserverSpawnFailed)?;
-        Ok(())
     }
 
     /// # Description
@@ -143,51 +141,44 @@ impl Storage {
     /// If active blob reaches it limit, create new and close old
     /// Returns number of bytes, written to blob
     /// # Examples
-
-    // @TODO specify more useful error type
     pub async fn write(self, record: Record) -> Result<()> {
         trace!("await for inner lock");
         let mut inner = await!(self.inner.lock());
         trace!("return write future");
-        // @TODO process unwrap explicitly
-        await!(inner.active_blob.as_mut().unwrap().write(record)).map_err(Error::BlobError)
-    }
-
-    async fn max_id(&self) -> Option<usize> {
-        let inner = await!(self.inner.lock());
-        let active_blob_id = inner.active_blob.as_ref().map(|blob| blob.id());
-        let blobs_max_id = inner
-            .blobs
-            .iter()
-            .max_by_key(|blob| blob.id())
-            .map(Blob::id);
-        active_blob_id.max(blobs_max_id)
+        let blob = inner.active_blob.as_mut().ok_or(Error::ActiveBlobNotSet)?;
+        await!(blob.write(record)).map_err(Error::BlobError)
     }
 
     fn next_blob_name(&self) -> Result<blob::FileName> {
         let next_id = self.shared.next_blob_id.fetch_add(1, Ordering::Relaxed);
+        let prefix = self
+            .shared
+            .config
+            .blob_file_name_prefix
+            .as_ref()
+            .ok_or(Error::Unitialized)?
+            .to_owned();
+        let dir = self
+            .shared
+            .config
+            .work_dir
+            .as_ref()
+            .ok_or(Error::Unitialized)?
+            .to_owned();
         Ok(blob::FileName::new(
-            self.shared
-                .config
-                .blob_file_name_prefix
-                .as_ref()
-                .ok_or(Error::Unitialized)?
-                .to_owned(),
+            prefix,
             next_id,
             BLOB_FILE_EXTENSION.to_owned(),
-            self.shared
-                .config
-                .work_dir
-                .as_ref()
-                .ok_or(Error::Unitialized)?
-                .to_owned(),
+            dir,
         ))
     }
 
     /// # Description
-    /// Reads data with given key to `Vec<u8>`, if error ocured or there are no
-    /// records with matching key, returns `Err(_)`
-    // @TODO specify more useful error type
+    /// Reads data with given key to [`Record`], if error ocured or there are no
+    /// records with matching key, returns [`Error::RecordNotFound`]
+    ///
+    /// [`Record`]: ../struct.Record.html
+    /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     pub async fn read(&self, key: Vec<u8>) -> Result<Record> {
         let inner = await!(self.inner.lock());
         if let Some(active_blob) = &inner.active_blob {
@@ -206,10 +197,7 @@ impl Storage {
     }
 
     /// # Description
-    /// Closes all file descriptors
-    /// # Examples
-
-    // @TODO specify more useful error type
+    /// Stop work dir observer thread
     pub fn close(&mut self) -> Result<()> {
         self.shared.observer_state.store(false, Ordering::Relaxed);
         // @TODO implement
@@ -219,9 +207,8 @@ impl Storage {
     /// # Description
     /// Blobs count contains closed blobs and one active, if is some.
     /// # Examples
-    /// ```no-run
-    /// use pearl::Builder;
-    /// // key type f64
+    /// ```
+    /// # use pearl::Builder;
     /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build::<f64>();
     /// storage.init();
     /// assert_eq!(storage.blobs_count(), 1);
@@ -238,22 +225,32 @@ impl Storage {
     }
 
     async fn prepare_work_dir(&mut self) -> Result<()> {
-        let path = Path::new(self.shared.config.work_dir.as_ref().unwrap()); // @TODO handle unwrap explicitly
-        if !path.exists() {
+        let path = Path::new(
+            self.shared
+                .config
+                .work_dir
+                .as_ref()
+                .ok_or(Error::Unitialized)?,
+        );
+        if path.exists() {
+            debug!("work dir exists: {}", path.display());
+        } else {
             debug!("creating work dir recursively: {}", path.display());
             fs::create_dir_all(path).map_err(Error::IO)?;
-        } else {
-            debug!("work dir exists: {}", path.display());
         }
-        let lock_file = path.join(LOCK_FILE);
-        debug!("try to open lock file: {}", lock_file.display());
-        await!(self.inner.lock()).lock_file = Some(
-            OpenOptions::new()
-                .create(true)
-                .write(true)
-                .open(&lock_file)
-                .map_err(Error::IO)?,
-        );
+
+        let lock_file_path = path.join(LOCK_FILE);
+        if lock_file_path.exists() {
+            return Err(Error::WorkDirInUse);
+        }
+
+        debug!("try to open lock file: {}", lock_file_path.display());
+        let lock_file = OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&lock_file_path)
+            .map_err(Error::IO)?;
+        await!(self.inner.lock()).lock_file = Some(lock_file);
         Ok(())
     }
 
@@ -269,10 +266,9 @@ impl Storage {
     }
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
-        let mut temp_blobs: Vec<_> = files
-            .iter()
-            .map(DirEntry::path)
-            .filter(|path| path.is_file())
+        let dir_content = files.iter().map(DirEntry::path);
+        let dir_files = dir_content.filter(|path| path.is_file());
+        let mut temp_blobs: Vec<_> = dir_files
             .filter(|path| {
                 path.extension()
                     .map(|os_str| os_str.to_str().unwrap())
@@ -280,7 +276,7 @@ impl Storage {
                     == BLOB_FILE_EXTENSION
             })
             .filter_map(|path| {
-                let blob = Blob::from_file(path.clone()).unwrap();
+                let blob = Blob::from_file(path.clone()).ok()?;
                 blob.check_data_consistency()
                     .map_err(|e| error!("Check data consistency failed: {:?}", e))
                     .ok()?;
@@ -293,7 +289,7 @@ impl Storage {
         inner.active_blob = Some(active_blob);
         inner.blobs = temp_blobs;
         self.shared.next_blob_id.store(
-            await!(self.max_id()).map(|i| i + 1).unwrap_or(0),
+            inner.max_id().map(|i| i + 1).unwrap_or(0),
             Ordering::Relaxed,
         );
         Ok(())
@@ -314,6 +310,12 @@ impl Inner {
             blobs: Vec::new(),
             lock_file: None,
         }
+    }
+
+    fn max_id(&self) -> Option<usize> {
+        let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
+        let blobs_max_id = self.blobs.iter().max_by_key(|blob| blob.id()).map(Blob::id);
+        active_blob_id.max(blobs_max_id)
     }
 }
 
@@ -397,6 +399,7 @@ pub enum Error {
     IO(io::Error),
     RecordNotFound,
     ObserverSpawnFailed(task::SpawnError),
+    WorkDirInUse,
 }
 
 impl From<blob::Error> for Error {

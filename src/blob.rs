@@ -27,18 +27,19 @@ pub struct Blob {
     current_offset: Arc<Mutex<u64>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct File {
-    fd: fs::File,
+    read_fd: Arc<fs::File>,
+    write_fd: Arc<Mutex<fs::File>>,
 }
 
-struct WriteAt {
-    fd: fs::File,
+struct WriteAt<'a> {
+    fd: &'a mut fs::File,
     buf: Vec<u8>,
     offset: u64,
 }
 
-impl Future for WriteAt {
+impl<'a> Future for WriteAt<'a> {
     type Output = Result<usize>;
 
     fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
@@ -54,7 +55,7 @@ impl Future for WriteAt {
 }
 
 struct ReadAt {
-    fd: fs::File,
+    fd: Arc<fs::File>,
     len: usize,
     offset: u64,
 }
@@ -77,29 +78,35 @@ impl Future for ReadAt {
 
 impl File {
     fn metadata(&self) -> io::Result<fs::Metadata> {
-        self.fd.metadata()
+        self.read_fd.metadata()
     }
 
-    fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> WriteAt {
-        WriteAt {
-            fd: self.fd.try_clone().unwrap(),
+    async fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> Result<usize> {
+        let mut fd = await!(self.write_fd.lock());
+        let write_fut = WriteAt {
+            fd: &mut fd,
             buf,
             offset,
-        }
+        };
+        await!(write_fut)
     }
 
-    fn read_at(&self, len: usize, offset: u64) -> ReadAt {
-        ReadAt {
-            fd: self.fd.try_clone().unwrap(),
+    async fn read_at(&self, len: usize, offset: u64) -> Result<Vec<u8>> {
+        let read_fut = ReadAt {
+            fd: self.read_fd.clone(),
             len,
             offset,
-        }
+        };
+        await!(read_fut)
     }
 }
 
 impl From<fs::File> for File {
     fn from(fd: fs::File) -> Self {
-        File { fd }
+        File {
+            read_fd: Arc::new(fd.try_clone().unwrap()),
+            write_fd: Arc::new(Mutex::new(fd)),
+        }
     }
 }
 
@@ -244,7 +251,6 @@ impl Blob {
     }
 
     pub fn file_size(&self) -> Result<u64> {
-        // @TODO implement
         Ok(self
             .file
             .metadata()

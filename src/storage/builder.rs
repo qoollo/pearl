@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use super::core::{Config, Error, Result, Storage};
 
 /// `Builder` used for initializing a `Storage`.
-/// Examples
 #[derive(Default, Debug)]
 pub struct Builder {
     config: Config,
@@ -11,13 +10,11 @@ pub struct Builder {
 
 impl Builder {
     /// Initializes the `Builder` with defaults
-    /// Examples
     pub fn new() -> Self {
         Default::default()
     }
 
     /// Creates `Storage` based on given configuration
-    /// Examples
     pub fn build(self) -> Result<Storage> {
         if self.config.blob_file_name_prefix.is_none()
             || self.config.max_data_in_blob.is_none()
@@ -26,21 +23,22 @@ impl Builder {
         {
             Err(Error::Unitialized)
         } else {
-            Ok(Storage::new(self.config.clone()))
+            Ok(Storage::new(self.config))
         }
     }
 
     /// # Description
     /// Sets a string with work dir as prefix for blob naming.
-    /// If path not exists, Storage will try to create at initialization stage.
+    /// If path doesn't exists, Storage will try to create it
+    /// at initialization stage.
     /// # Examples
-    /// ```no-run
+    /// ```
     /// let builder = Builder::new().work_dir("/tmp/pearl/");
     /// ```
     pub fn work_dir<S: Into<PathBuf>>(mut self, work_dir: S) -> Self {
         debug!("set work dir");
         let path: PathBuf = work_dir.into();
-        info!("work dir set to: {}", path.display());
+        debug!("work dir set to: {}", path.display());
         self.config.work_dir = Some(path);
         self
     }
@@ -48,10 +46,16 @@ impl Builder {
     /// # Description
     /// Sets blob file max size
     /// Must be greater than zero
+    /// # Examples
+    /// ```
+    /// let builder = Builder::new()
+    ///     .work_dir("/tmp/pearl/")
+    ///     .max_blob_size(1_000_000);
+    /// ```
     pub fn max_blob_size(mut self, max_blob_size: u64) -> Self {
         if max_blob_size > 0 {
             self.config.max_blob_size = Some(max_blob_size);
-            info!(
+            debug!(
                 "maximum blob size set to: {}",
                 self.config.max_blob_size.unwrap()
             );
@@ -64,6 +68,13 @@ impl Builder {
     /// # Description
     /// Sets max number of records in single blob
     /// Must be greater than zero
+    /// # Examples
+    /// ```
+    /// let builder = Builder::new()
+    ///     .work_dir("/tmp/pearl/")
+    ///     .max_blob_size(1_000_000)
+    ///     .max_data_in_blob(1_000_000_000); // 1GB
+    /// ```
     pub fn max_data_in_blob(mut self, max_data_in_blob: u64) -> Self {
         if max_data_in_blob > 0 {
             self.config.max_data_in_blob = Some(max_data_in_blob);
@@ -82,16 +93,24 @@ impl Builder {
     /// files will be named as `hellopearl.[N].blob`.
     /// Where N - index number of file
     /// Must be not empty
+    /// # Examples
+    /// ```
+    /// let builder = Builder::new()
+    ///     .work_dir("/tmp/pearl/")
+    ///     .max_blob_size(1_000_000)
+    ///     .max_data_in_blob(1_000_000_000)
+    ///     .blob_file_name_prefix("enough");
+    /// ```
     pub fn blob_file_name_prefix<U: Into<String>>(mut self, blob_file_name_prefix: U) -> Self {
         let prefix = blob_file_name_prefix.into();
-        if !prefix.is_empty() {
+        if prefix.is_empty() {
+            error!("passed empty file prefix, not set");
+        } else {
             self.config.blob_file_name_prefix = Some(prefix);
             info!(
                 "blob file format: {}.{{}}.blob",
                 self.config.blob_file_name_prefix.as_ref().unwrap()
             );
-        } else {
-            error!("passed empty file prefix, not set");
         }
         self
     }
