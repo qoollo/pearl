@@ -1,19 +1,10 @@
 language: rust
 rust:
-  - nightly
-  env: RUSTFMT=1
-matrix:
-  fast_finish: true
+- nightly
 cache: cargo
-
-before_script:
-  - if [ "$RUSTFMT" = 1 ]; then rustup component add rustfmt; fi
-
 script:
-  - if [ "$RUSTFMT" = 1 ]; then cargo fmt -- --check; fi
-  - cargo build --all
-  - cargo test -- --nocapture
-
+- cargo build --all
+- cargo test -- --nocapture
 after_success: |
   [ $TRAVIS_BRANCH = feature/multithread ] &&
   [ $TRAVIS_BRANCH = master ] &&
@@ -23,7 +14,6 @@ after_success: |
   sudo pip install ghp-import &&
   ghp-import -n target/doc &&
   git push -fq https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
-
 env:
   global:
-    secure: bx0sogRcD0HfI88ByqhRodgkIlumbmhP1HSpZrX/wStzG309S6b6bLh+vjYuQq4NFdO0rWBJc1d5dFVWizBnIpclucv5i6oW40/eORBBbOp/V2KghCS6O8Z3wXqjyepEGZGE2XFvn6A+0n0WQZpXPswDHuvL32pZvIw+dsaWPrtqMXp4maeEMa2vYaoKiTgc+P8IH2KHI5tayoPF4Qiy5qNluOQcGKOGmu1mvMaixMYXv1kxXTl68PuekfQInTFyDiiKQ+afEKnBwXpWtqNxgpgx35AwZEMTYq/CbAm6Bg8C8cDUEAR8V3fHIYbyyKvI0kHNyNPhOhNhwTgmsj291yW39ptksjpZbW5fFcnVO3+of7gFF2jc1SNjvbJfaIij0oxRFhdaWY+tB9+e52iFjpjuBjxiMSJnti4XkAv5GNAhx7N1gAHhpmGDqcCDtbRkh+M9NBEVqSHS9Z4e8bWMEjpKexlbWEyPQsBCfWebUfYJ4UogVRb1QaBQpRp8p5AYaSX6znpLh36YJsMllpMyRICi9PZ1dInjKZIgFI2jfZxI+YJBcgg4BQXqexfZizIAYN5Gx5Qw5EzfiU7w8FKfmcCH45ztR2pliNrDv1JL5iNa/p+QYvSLnhbI41QSYNv3c1Fb7QymGDDrrXyh0VyeQUKg+FsF4ZU05/OuFyoJB5s=
+    secure: s19ehcT53QCW55VNMmACXSPkvlo6rElulcXe19gUr5KrsY5JMwL3d/JWuInILkklgdooGKBExQ9MI1QAvdFY/WnK1WDSVpcylrXhjRfaJnRB16W4cbBVK6lG9CRNL65klRBPslFGpwq46Pt/E0Y9zfPGyvvpuWkghHkpVTi0MO1CMLvwpHWDHl2QLcnBK2lEw7tZ8JHJnQLR8nZKTyggR0bryDAb4TYRDrDvFUaUhagc0naewskn6AwbbNXw1hzW8hmj/KJnh9ZjDkfpoZMvZP4wrNctxQ18hviODa48eL+jRA6ie/HRe4AImEVgGACF2eBvxRqesbj3pnkIvWchcegGk7mC+xzQKrVCoJ+T413ssoXBRn9T71Ud+WBpKdxaIRLedfgSR/Gf7U9NpqjBtmfAMasBqcBbFPvhINP1YZDN9DNZYG6YLflHQtAKyGZBPZkCbZfaLd83wnhPL+VZ2zMWQ5wTAk8mIDf3QL1P3Eq7HFFfLyH7QVCa9W3kWMwqIAl95+D9wo5OyVNhE8EONB7BQqTX25EbmXOwQe40b9PizYe/pBxO3tUANsRw3rw2O7E2BfVJspI2WPaT/WEAWm//l/fEIMilr9zOeRc3/rO1UUGXYhwtAIP1WPmzY63k+s2VfqK90+AK6JzFEcGa7hlIdfewMWWKGB5ZexqSLGU=
