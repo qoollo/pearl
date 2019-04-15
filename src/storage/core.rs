@@ -57,7 +57,7 @@ impl Drop for Storage {
         let twins = self.twins_count.fetch_sub(1, Ordering::Relaxed);
         // 1 is because twin#0 - in observer tread, twin#1 - self
         if twins <= 1 {
-            self.shared.observer_state.store(false, Ordering::Relaxed);
+            self.shared.need_exit.store(false, Ordering::Relaxed);
             trace!("stop observer thread, await a little");
             thread::sleep(Duration::from_millis(100));
         }
@@ -199,7 +199,7 @@ impl Storage {
     /// # Description
     /// Stop work dir observer thread
     pub fn close(&mut self) -> Result<()> {
-        self.shared.observer_state.store(false, Ordering::Relaxed);
+        self.shared.need_exit.store(false, Ordering::Relaxed);
         // @TODO implement
         Ok(())
     }
@@ -314,7 +314,7 @@ impl Inner {
 
     fn max_id(&self) -> Option<usize> {
         let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
-        let blobs_max_id = self.blobs.iter().max_by_key(|blob| blob.id()).map(Blob::id);
+        let blobs_max_id = self.blobs.last().map(Blob::id);
         active_blob_id.max(blobs_max_id)
     }
 }
@@ -323,7 +323,7 @@ impl Inner {
 struct Shared {
     config: Config,
     next_blob_id: AtomicUsize,
-    observer_state: Arc<AtomicBool>,
+    need_exit: Arc<AtomicBool>,
 }
 
 impl Shared {
@@ -331,7 +331,7 @@ impl Shared {
         Self {
             config,
             next_blob_id: AtomicUsize::new(0),
-            observer_state: Arc::new(AtomicBool::new(true)),
+            need_exit: Arc::new(AtomicBool::new(true)),
         }
     }
 }
@@ -379,7 +379,7 @@ where
             let fut_boxed = Box::new(fut);
             let obj = FutureObj::new(fut_boxed);
             Poll::Ready(Some(obj))
-        } else if self.storage.shared.observer_state.load(Ordering::Relaxed) {
+        } else if self.storage.shared.need_exit.load(Ordering::Relaxed) {
             waker.wake();
             Poll::Pending
         } else {
