@@ -3,7 +3,7 @@
 use futures::{
     executor::ThreadPool,
     future::FutureExt,
-    stream::{futures_ordered, StreamExt, TryStreamExt},
+    stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
 };
 use pearl::{Builder, Record};
 use rand::seq::SliceRandom;
@@ -117,11 +117,10 @@ fn test_storage_multiple_read_write() {
         })
         .collect();
     records.shuffle(&mut rand::thread_rng());
-    let write_futures: Vec<_> = records
+    let write_stream: FuturesUnordered<_> = records
         .iter_mut()
         .map(|mut record| storage.write(&mut record).unwrap())
         .collect();
-    let write_stream = futures_ordered(write_futures);
     let mut pool = ThreadPool::new().unwrap();
     let now = std::time::Instant::now();
     pool.run(write_stream.map_err(|e| dbg!(e)).collect::<Vec<_>>());
@@ -129,8 +128,8 @@ fn test_storage_multiple_read_write() {
     let blob_file_path = path.join("test.0.blob");
     let written = fs::metadata(&blob_file_path).unwrap().len();
     println!("write {}B/s", written as f64 / elapsed);
-    let read_futures: Vec<_> = keys.iter().map(|key| storage.read(key).unwrap()).collect();
-    let read_stream = futures_ordered(read_futures);
+    let read_stream: FuturesUnordered<_> =
+        keys.iter().map(|key| storage.read(key).unwrap()).collect();
     let now = std::time::Instant::now();
     let mut records_from_file = pool.run(
         read_stream

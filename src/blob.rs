@@ -1,6 +1,6 @@
 use futures::{
     future::Future,
-    task::{Poll, Waker},
+    task::{Context, Poll},
 };
 use std::{
     collections::BTreeMap,
@@ -76,7 +76,7 @@ pub struct WriteFuture {
 impl Future for WriteFuture {
     type Output = Result<()>;
 
-    fn poll(mut self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Self::Output> {
         let buf = self.buf.take().unwrap();
         self.file.write_at(&buf, self.current_offset).unwrap();
         Poll::Ready(Ok(()))
@@ -93,7 +93,7 @@ pub struct ReadFuture {
 impl Future for ReadFuture {
     type Output = Result<Record>;
 
-    fn poll(self: Pin<&mut Self>, _waker: &Waker) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Self::Output> {
         let mut buf = vec![0u8; self.loc.size as usize];
         self.file.read_at(&mut buf, self.loc.offset).unwrap();
         Poll::Ready(Record::from_raw(&buf).map_err(Error::RecordError))
