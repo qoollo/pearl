@@ -1,7 +1,7 @@
 #![feature(futures_api, await_macro, async_await, arbitrary_self_types)]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
-// #![cfg_attr(test, deny(warnings))]
+#![allow(clippy::needless_lifetimes)]
 
 //! # pearl
 //!
