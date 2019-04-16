@@ -4,7 +4,7 @@
 use futures::{
     executor::block_on,
     future::{FutureExt, FutureObj},
-    stream::{futures_unordered, StreamExt},
+    stream::{futures_unordered::FuturesUnordered, StreamExt},
     task::SpawnExt,
 };
 use std::{env, fs};
@@ -61,12 +61,12 @@ pub async fn write(storage: Storage, base_number: usize) {
 
 pub fn check_all_written(storage: &Storage, nums: Vec<usize>) -> Result<(), String> {
     let keys = nums.iter().map(|n| format!("{}key", n)).collect::<Vec<_>>();
-    let read_futures = keys
+    let read_futures: FuturesUnordered<_> = keys
         .into_iter()
         .map(|key: String| storage.read(key.as_bytes().to_vec()))
-        .collect::<Vec<_>>();
+        .collect();
     println!("readed futures: {}", read_futures.len());
-    let futures = futures_unordered(read_futures).collect::<Vec<_>>();
+    let futures = read_futures.collect::<Vec<_>>();
     let expected_len = nums.len();
     let future_obj = FutureObj::new(Box::new(futures.map(move |records| {
         assert_eq!(records.len(), expected_len);

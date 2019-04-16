@@ -9,7 +9,7 @@
 use futures::{
     executor::{block_on, ThreadPool},
     future::FutureExt,
-    stream::{futures_ordered, futures_unordered, StreamExt, TryStreamExt},
+    stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
 };
 use pearl::{Builder, Record};
 use rand::seq::SliceRandom;
@@ -130,12 +130,11 @@ fn test_storage_multiple_read_write() {
         })
         .collect();
     records.shuffle(&mut rand::thread_rng());
-    let write_futures: Vec<_> = records
+    let write_stream: FuturesUnordered<_> = records
         .clone()
         .into_iter()
         .map(|record| storage.clone().write(record))
         .collect();
-    let write_stream = futures_ordered(write_futures);
     let mut pool = ThreadPool::new().unwrap();
     let now = std::time::Instant::now();
     pool.run(write_stream.map_err(|e| dbg!(e)).collect::<Vec<_>>());
@@ -143,11 +142,10 @@ fn test_storage_multiple_read_write() {
     let blob_file_path = path.join("test.0.blob");
     let written = fs::metadata(&blob_file_path).unwrap().len();
     println!("write {}B/s", written as f64 / elapsed);
-    let read_futures: Vec<_> = keys
+    let read_stream: FuturesUnordered<_> = keys
         .iter()
         .map(|key| storage.read(key.as_bytes().to_vec()))
         .collect();
-    let read_stream = futures_ordered(read_futures);
     let now = std::time::Instant::now();
     let mut records_from_file = pool.run(
         read_stream
@@ -190,9 +188,9 @@ fn test_multithread_read_write() -> Result<(), String> {
                 .name(format!("thread#{}", range[0]))
                 .spawn(move || {
                     range.shuffle(&mut rand::thread_rng());
-                    let write_futures: Vec<_> =
+                    let write_futures: FuturesUnordered<_> =
                         range.iter().map(|i| common::write(s.clone(), *i)).collect();
-                    block_on(futures_unordered(write_futures).collect::<Vec<_>>());
+                    block_on(write_futures.collect::<Vec<_>>());
                 })
                 .unwrap()
         })
@@ -249,7 +247,7 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
                         })
                 })
                 .collect();
-            let write_futures: Vec<_> = range
+            let write_futures: FuturesUnordered<_> = range
                 .iter()
                 .zip(delay_futures)
                 .map(move |(i, df)| {
@@ -263,7 +261,7 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
                     df.and_then(move |_| write_fut)
                 })
                 .collect();
-            await!(futures_unordered(write_futures).collect::<Vec<_>>());
+            await!(write_futures.collect::<Vec<_>>());
             Ok(())
         }
             .boxed(),

@@ -32,7 +32,7 @@ impl Builder {
     /// If path doesn't exists, Storage will try to create it
     /// at initialization stage.
     /// # Examples
-    /// ```
+    /// ```no-run
     /// let builder = Builder::new().work_dir("/tmp/pearl/");
     /// ```
     pub fn work_dir<S: Into<PathBuf>>(mut self, work_dir: S) -> Self {
@@ -47,7 +47,7 @@ impl Builder {
     /// Sets blob file max size
     /// Must be greater than zero
     /// # Examples
-    /// ```
+    /// ```no-run
     /// let builder = Builder::new()
     ///     .work_dir("/tmp/pearl/")
     ///     .max_blob_size(1_000_000);
@@ -69,7 +69,7 @@ impl Builder {
     /// Sets max number of records in single blob
     /// Must be greater than zero
     /// # Examples
-    /// ```
+    /// ```no-run
     /// let builder = Builder::new()
     ///     .work_dir("/tmp/pearl/")
     ///     .max_blob_size(1_000_000)
@@ -94,7 +94,7 @@ impl Builder {
     /// Where N - index number of file
     /// Must be not empty
     /// # Examples
-    /// ```
+    /// ```no-run
     /// let builder = Builder::new()
     ///     .work_dir("/tmp/pearl/")
     ///     .max_blob_size(1_000_000)

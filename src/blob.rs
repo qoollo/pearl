@@ -1,4 +1,8 @@
-use futures::{future::Future, lock::Mutex, task::Waker, Poll};
+use futures::{
+    future::Future,
+    task::{Context, Poll},
+    lock::Mutex,
+};
 use std::{
     collections::BTreeMap,
     fs, io,
@@ -42,11 +46,11 @@ struct WriteAt<'a> {
 impl<'a> Future for WriteAt<'a> {
     type Output = Result<usize>;
 
-    fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         match self.fd.write_at(&self.buf, self.offset) {
             Ok(t) => Poll::Ready(Ok(t)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                waker.wake();
+                cx.waker().wake_by_ref();
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(Error::WriteFailed(e))),
@@ -63,12 +67,12 @@ struct ReadAt {
 impl Future for ReadAt {
     type Output = Result<Vec<u8>>;
 
-    fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let mut buf = vec![0; self.len];
         match self.fd.read_at(&mut buf, self.offset) {
             Ok(_t) => Poll::Ready(Ok(buf)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                waker.wake();
+                cx.waker().wake_by_ref();
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(Error::ReadFailed(e))),

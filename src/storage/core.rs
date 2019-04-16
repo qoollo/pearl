@@ -2,8 +2,8 @@ use futures::{
     executor::block_on,
     future::{FutureExt, FutureObj},
     lock::Mutex,
-    stream::{futures_unordered, Stream, StreamExt},
-    task::{self, Poll, Spawn, SpawnExt, Waker},
+    stream::{futures_unordered::FuturesUnordered, Stream, StreamExt},
+    task::{self, Context, Poll, Spawn, SpawnExt},
 };
 use std::{
     fs::{self, DirEntry, File, OpenOptions},
@@ -184,12 +184,11 @@ impl Storage {
         if let Some(active_blob) = &inner.active_blob {
             await!(active_blob.read(key)).map_err(Error::BlobError)
         } else {
-            let futs = inner
+            let mut stream: FuturesUnordered<_> = inner
                 .blobs
                 .iter()
                 .map(|blob| blob.read(key.clone()))
-                .collect::<Vec<_>>();
-            let mut stream = futures_unordered(futs);
+                .collect();
             await!(stream.next())
                 .ok_or(Error::RecordNotFound)?
                 .map_err(Error::BlobError)
@@ -207,7 +206,7 @@ impl Storage {
     /// # Description
     /// Blobs count contains closed blobs and one active, if is some.
     /// # Examples
-    /// ```
+    /// ```no-run
     /// # use pearl::Builder;
     /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build::<f64>();
     /// storage.init();
@@ -240,13 +239,13 @@ impl Storage {
         }
 
         let lock_file_path = path.join(LOCK_FILE);
-        if lock_file_path.exists() {
-            return Err(Error::WorkDirInUse);
-        }
+        // if lock_file_path.exists() {
+        //     return Err(Error::WorkDirInUse);
+        // }
 
         debug!("try to open lock file: {}", lock_file_path.display());
         let lock_file = OpenOptions::new()
-            .create_new(true)
+            .create(true)
             .write(true)
             .open(&lock_file_path)
             .map_err(Error::IO)?;
@@ -369,7 +368,7 @@ where
 {
     type Item = FutureObj<'static, Result<()>>;
 
-    fn poll_next(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
         let now = Instant::now();
         if self.next_update < now {
             trace!("Observer update");
@@ -380,7 +379,7 @@ where
             let obj = FutureObj::new(fut_boxed);
             Poll::Ready(Some(obj))
         } else if self.storage.shared.need_exit.load(Ordering::Relaxed) {
-            waker.wake();
+            cx.waker().wake_by_ref();
             Poll::Pending
         } else {
             trace!("observer state: false");
