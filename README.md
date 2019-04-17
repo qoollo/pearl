@@ -2,7 +2,10 @@ Pearl
 =====
 [![Build Status](https://travis-ci.org/qoollo/pearl.svg?branch=master)](https://travis-ci.org/qoollo/pearl)
 
+
 Append only key-value blob storage on disk
+
+* [documentation](https://qoollo.github.io/pearl/pearl/index.html)
 
 Table of Contents
 =================

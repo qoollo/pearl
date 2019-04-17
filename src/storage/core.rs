@@ -374,9 +374,14 @@ where
             trace!("Observer update");
             self.as_mut().next_update = now + self.update_interval;
             let storage_cloned = self.storage.clone();
-            let fut = update_active_blob(storage_cloned);
-            let fut_boxed = Box::new(fut);
-            let obj = FutureObj::new(fut_boxed);
+            let res = async {
+                if let Some(s) = await!(active_blob_check(storage_cloned))? {
+                    await!(update_active_blob(s))?;
+                }
+                Ok(())
+            };
+            let res = Box::new(res);
+            let obj = FutureObj::new(res);
             Poll::Ready(Some(obj))
         } else if self.storage.shared.need_exit.load(Ordering::Relaxed) {
             cx.waker().wake_by_ref();
@@ -443,28 +448,32 @@ where
     thread::spawn(move || observer.run());
 }
 
-async fn update_active_blob(s: Arc<Storage>) -> Result<()> {
-    trace!("Storage update, lock");
-    // @TODO process unwrap explicitly
-    let mut inner = await!(s.inner.lock());
-    trace!("lock acquired");
-    let active_blob = inner.active_blob.as_ref().ok_or(Error::ActiveBlobNotSet)?;
-    let active_size = active_blob.file_size()?;
-    let config_max = s.shared.config.max_blob_size.ok_or(Error::Unitialized)?;
-    let is_full = active_size > config_max
-        || active_blob.records_count() as u64
-            >= s.shared.config.max_data_in_blob.ok_or(Error::Unitialized)?;
-
-    if is_full {
-        trace!("is full, replace");
-        let next = s.next_blob_name()?;
-        trace!("next name: {:?}", next);
-        let new_active = Blob::open_new(next)?.boxed();
-        let old_active = inner
-            .active_blob
-            .replace(new_active)
-            .ok_or(Error::ActiveBlobNotSet)?;
-        inner.blobs.push(*old_active);
+async fn active_blob_check(s: Arc<Storage>) -> Result<Option<Arc<Storage>>> {
+    let (active_size, active_count) = {
+        let inner = await!(s.inner.lock());
+        let active_blob = inner.active_blob.as_ref().ok_or(Error::ActiveBlobNotSet)?;
+        let size = active_blob.file_size()?;
+        let count = active_blob.records_count() as u64;
+        (size, count)
+    };
+    let config_max_size = s.shared.config.max_blob_size.ok_or(Error::Unitialized)?;
+    let config_max_count = s.shared.config.max_data_in_blob.ok_or(Error::Unitialized)?;
+    if active_size > config_max_size || active_count >= config_max_count {
+        Ok(Some(s))
+    } else {
+        Ok(None)
     }
+
+}
+
+async fn update_active_blob(s: Arc<Storage>) -> Result<()> {
+    let mut inner = await!(s.inner.lock());
+    let next = s.next_blob_name()?;
+    let new_active = Blob::open_new(next)?.boxed();
+    let old_active = inner
+        .active_blob
+        .replace(new_active)
+        .ok_or(Error::ActiveBlobNotSet)?;
+    inner.blobs.push(*old_active);
     Ok(())
 }
