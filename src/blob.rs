@@ -1,6 +1,7 @@
 use futures::{
     future::Future,
     task::{Context, Poll},
+    lock::Mutex,
 };
 use std::{
     collections::BTreeMap,
@@ -8,6 +9,7 @@ use std::{
     os::unix::fs::FileExt,
     path::{Path, PathBuf},
     pin::Pin,
+    sync::Arc,
 };
 
 use crate::record::{self, Record};
@@ -16,26 +18,118 @@ const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 
 type Result<T> = std::result::Result<T, Error>;
 
-/// A `Blob` struct for performing of database,
+/// A [`Blob`] struct representing file with records,
+/// provides methods for read/write access by key
+///
+/// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
 pub struct Blob {
     header: Header,
     index: Index,
     name: FileName,
-    file: fs::File,
-    current_offset: u64,
+    file: File,
+    current_offset: Arc<Mutex<u64>>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone)]
+struct File {
+    read_fd: Arc<fs::File>,
+    write_fd: Arc<Mutex<fs::File>>,
+}
+
+struct WriteAt<'a> {
+    fd: &'a mut fs::File,
+    buf: Vec<u8>,
+    offset: u64,
+}
+
+impl<'a> Future for WriteAt<'a> {
+    type Output = Result<usize>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        match self.fd.write_at(&self.buf, self.offset) {
+            Ok(t) => Poll::Ready(Ok(t)),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            }
+            Err(e) => Poll::Ready(Err(Error::WriteFailed(e))),
+        }
+    }
+}
+
+struct ReadAt {
+    fd: Arc<fs::File>,
+    len: usize,
+    offset: u64,
+}
+
+impl Future for ReadAt {
+    type Output = Result<Vec<u8>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        let mut buf = vec![0; self.len];
+        match self.fd.read_at(&mut buf, self.offset) {
+            Ok(_t) => Poll::Ready(Ok(buf)),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            }
+            Err(e) => Poll::Ready(Err(Error::ReadFailed(e))),
+        }
+    }
+}
+
+impl File {
+    fn metadata(&self) -> io::Result<fs::Metadata> {
+        self.read_fd.metadata()
+    }
+
+    async fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> Result<usize> {
+        let mut fd = await!(self.write_fd.lock());
+        let write_fut = WriteAt {
+            fd: &mut fd,
+            buf,
+            offset,
+        };
+        await!(write_fut)
+    }
+
+    async fn read_at(&self, len: usize, offset: u64) -> Result<Vec<u8>> {
+        let read_fut = ReadAt {
+            fd: self.read_fd.clone(),
+            len,
+            offset,
+        };
+        await!(read_fut)
+    }
+}
+
+impl From<fs::File> for File {
+    fn from(fd: fs::File) -> Self {
+        File {
+            read_fd: Arc::new(fd.try_clone().unwrap()),
+            write_fd: Arc::new(Mutex::new(fd)),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone)]
 struct Index {
-    headers: BTreeMap<Vec<u8>, record::Header>,
+    bunch: BTreeMap<Vec<u8>, RecordMetaData>,
+}
+
+#[derive(Debug, Default, Clone)]
+struct RecordMetaData {
+    blob_offset: u64,
+    full_len: u64,
 }
 
 impl Index {
     fn new(_path: &Path) -> Self {
         // @TODO initialize new index from file
         Self {
-            headers: BTreeMap::new(),
+            bunch: BTreeMap::new(),
         }
     }
 
@@ -44,75 +138,34 @@ impl Index {
         Ok(Default::default())
     }
 
-    fn contains_key<K>(&self, key: K) -> bool
-    where
-        K: AsRef<[u8]>,
-    {
-        self.headers.contains_key(key.as_ref())
+    fn contains_key(&self, key: &[u8]) -> bool {
+        self.bunch.contains_key(key)
     }
 
-    fn insert<K>(&mut self, key: K, header: record::Header)
-    where
-        K: AsRef<[u8]>,
-    {
-        self.headers.insert(key.as_ref().to_vec(), header);
+    fn insert(&mut self, key: Vec<u8>, meta: RecordMetaData) {
+        self.bunch.insert(key, meta);
     }
 
-    fn get<K>(&self, key: K) -> Option<&record::Header>
-    where
-        K: AsRef<[u8]>,
-    {
-        self.headers.get(key.as_ref())
-    }
-}
-
-#[derive(Debug)]
-pub struct WriteFuture {
-    file: fs::File,
-    buf: Option<Vec<u8>>,
-    current_offset: u64,
-}
-
-impl Future for WriteFuture {
-    type Output = Result<()>;
-
-    fn poll(mut self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Self::Output> {
-        let buf = self.buf.take().unwrap();
-        self.file.write_at(&buf, self.current_offset).unwrap();
-        Poll::Ready(Ok(()))
-    }
-}
-
-#[derive(Debug)]
-pub struct ReadFuture {
-    file: fs::File,
-    key: Vec<u8>,
-    loc: Location,
-}
-
-impl Future for ReadFuture {
-    type Output = Result<Record>;
-
-    fn poll(self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Self::Output> {
-        let mut buf = vec![0u8; self.loc.size as usize];
-        self.file.read_at(&mut buf, self.loc.offset).unwrap();
-        Poll::Ready(Record::from_raw(&buf).map_err(Error::RecordError))
+    fn get(&self, key: &[u8]) -> Option<&RecordMetaData> {
+        self.bunch.get(key.as_ref())
     }
 }
 
 impl Blob {
     /// # Description
-    /// Creates new blob file with given FileName
+    /// Creates new blob file with given [`FileName`]
     /// # Panic
     /// Panics if file with same path already exists
+    ///
+    /// [`FileName`]: struct.FileName.html
     pub fn open_new(name: FileName) -> Result<Self> {
-        let file = Self::create_file(&name.as_path())?;
+        let file = Self::create_file(&name.as_path())?.into();
         let mut blob = Self {
             header: Header::new(),
             file,
             index: Index::new(&name.as_path()),
             name,
-            current_offset: 0,
+            current_offset: Arc::new(Mutex::new(0)),
         };
         blob.flush()?;
         Ok(blob)
@@ -126,10 +179,10 @@ impl Blob {
     fn create_file(path: &Path) -> Result<fs::File> {
         fs::OpenOptions::new()
             .create_new(true)
-            .append(true)
+            .write(true)
             .read(true)
             .open(path)
-            .map_err(Error::OpenNew)
+            .map_err(|e| Error::OpenNew(e, path.into()))
     }
 
     fn open_file(path: &Path) -> Result<fs::File> {
@@ -146,10 +199,9 @@ impl Blob {
     }
 
     pub fn from_file(path: PathBuf) -> Result<Self> {
-        let file = Self::open_file(&path)?;
+        let file: File = Self::open_file(&path)?.into();
         let name = FileName::from_path(&path)?;
         let len = file.metadata().map_err(Error::FromFile)?.len();
-        let _header = Header::from_reader(&file)?;
         let index = Index::from_default(&path)?;
 
         let blob = Self {
@@ -157,7 +209,7 @@ impl Blob {
             file,
             name,
             index,
-            current_offset: len,
+            current_offset: Arc::new(Mutex::new(len)),
         };
 
         // @TODO Scan existing file to create index
@@ -169,62 +221,49 @@ impl Blob {
         Ok(())
     }
 
-    pub fn write(&mut self, record: &mut Record) -> Result<WriteFuture> {
-        record.set_blob_offset(self.current_offset);
+    pub async fn write(&mut self, record: Record) -> Result<()> {
         let key = record.key().to_vec();
         if self.index.contains_key(&key) {
             return Err(Error::AlreadyContainsSameKey);
         }
-        self.index.insert(key, record.header().clone());
         let buf = record.to_raw();
-        self.current_offset += buf.len() as u64;
-        Ok(WriteFuture {
-            file: self.file.try_clone().map_err(Error::CloneFd)?,
-            buf: Some(buf),
-            current_offset: self.current_offset,
-        })
+        let mut offset = await!(self.current_offset.lock());
+        let bytes_written = await!(self.file.write_at(buf, *offset))?;
+        let meta = RecordMetaData {
+            blob_offset: *offset,
+            full_len: bytes_written as u64,
+        };
+        self.index.insert(key, meta);
+        *offset += bytes_written as u64;
+        Ok(())
     }
 
-    pub fn read<K>(&self, key: &K) -> Result<ReadFuture>
-    where
-        K: AsRef<[u8]> + Ord,
-    {
-        Ok(ReadFuture {
-            file: self.file.try_clone().map_err(Error::CloneFd)?,
-            key: key.as_ref().to_vec(),
-            loc: self.lookup(&key)?,
-        })
+    pub async fn read(&self, key: Vec<u8>) -> Result<Record> {
+        let loc = self.lookup(&key)?;
+        let buf = await!(self.file.read_at(loc.size as usize, loc.offset))?;
+        let record = Record::from_raw(&buf).map_err(Error::RecordError)?;
+        Ok(record)
     }
 
     fn lookup<K>(&self, key: &K) -> Result<Location>
     where
         K: AsRef<[u8]> + Ord,
     {
-        let header = self.index.get(key.as_ref()).ok_or(Error::NotFound)?;
-        Ok(Location::new(header.blob_offset(), header.full_len()))
+        let meta = self.index.get(key.as_ref()).ok_or(Error::NotFound)?;
+        let offset = meta.blob_offset;
+        Ok(Location::new(offset as u64, meta.full_len))
     }
 
-    /// # Description
-    // @TODO more useful result
-    // pub fn flush(&mut self) -> Result<(), Error> {
-    // @TODO implement
-    //     Ok(())
-    // }
-
-    /// # Description
-    /// Returns size of file in bytes
-    // @TODO more useful result
     pub fn file_size(&self) -> Result<u64> {
-        // @TODO implement
-        Ok(0)
+        Ok(self
+            .file
+            .metadata()
+            .map_err(Error::GetMetadataFailed)?
+            .len())
     }
 
-    /// # Description
-    /// Returns number of records in current blob
-    // @TODO more useful result
-    pub fn records_count(&self) -> Result<usize> {
-        // @TODO implement
-        Ok(0usize)
+    pub fn records_count(&self) -> usize {
+        self.index.bunch.len()
     }
 
     pub fn path(&self) -> PathBuf {
@@ -238,7 +277,7 @@ impl Blob {
 
 #[derive(Debug)]
 pub enum Error {
-    OpenNew(io::Error),
+    OpenNew(io::Error, PathBuf),
     FromFile(io::Error),
     CloneFd(io::Error),
     NotFound,
@@ -250,9 +289,14 @@ pub enum Error {
     RecordError(record::Error),
     AlreadyContainsSameKey,
     DeserializationFailed(bincode::ErrorKind),
+    WriteFailed(io::Error),
+    CloneFailed(io::Error),
+    ReadFailed(io::Error),
+    CorruptedData,
+    GetMetadataFailed(io::Error),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FileName {
     name_prefix: String,
     id: usize,
@@ -304,7 +348,7 @@ impl FileName {
 
 /// # Description
 /// # Examples
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Header {
     magic_byte: u64,
     version: u32,
@@ -318,14 +362,6 @@ impl Header {
             version: 0,
             flags: 0,
         }
-    }
-
-    fn from_reader<R>(_reader: R) -> Result<Self>
-    where
-        R: std::io::Read,
-    {
-        // @TODO implement
-        Ok(Self::new())
     }
 }
 

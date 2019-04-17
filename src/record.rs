@@ -7,9 +7,10 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     FromRaw(bincode::ErrorKind),
+    WrongMagicByte(u64),
 }
 
-/// # Description
+/// [`Record`] consists of header, key and data.
 /// # Examples
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Record {
@@ -19,64 +20,83 @@ pub struct Record {
 }
 
 impl Record {
-    /// # Description
-    /// Creates new `Record`
+    /// Creates new `Record` with empty data and key.
+    /// Use [`Self::set_body`] method to initialize it.
+    ///
+    /// [`Self::set_body`]: #method.set_body
+    ///
     /// # Examples
-    /// ```no-run
-    /// use pearl::Record;
+    ///
+    /// ```rust
+    /// # use pearl::Record;
     /// let rec = Record::new();
     /// ```
-    pub fn new<T, D>(key: T, data: D) -> Self
-    where
-        T: AsRef<[u8]>,
-        D: AsRef<[u8]>,
-    {
+    pub fn new() -> Self {
         Self {
-            key: key.as_ref().to_vec(),
-            data: data.as_ref().to_vec(),
+            key: Vec::new(),
+            data: Vec::new(),
             header: Header::new(),
         }
     }
 
-    /// # Description
-    /// Get number of bytes, struct `Record` uses on disk
+    /// Returns the number of bytes, struct `Record` uses on disk.
+    /// Includes len of elements: data length, key length and header
+    /// serialized size.
+    /// # Examples
+    /// ```
+    /// # use pearl::Record;
+    /// let mut rec = Record::new();
+    /// rec.set_body("key", "data");
+    /// assert_eq!(rec.full_len(), 56);
+    /// ```
     pub fn full_len(&self) -> u64 {
         // @TODO implement
         self.header.full_len()
     }
 
-    /// # Description
-    /// Returns data size from header
+    /// Returns length of owned data buffer.
+    /// # Examples
+    /// ```
+    /// # use pearl::Record;
+    /// let data = "test";
+    /// let mut record = Record::new();
+    /// record.set_body("key", data);
+    /// assert_eq!(record.data_len(), data.len());
+    /// ```
     pub fn data_len(&self) -> usize {
-        self.data.len()
+        self.header.data_len as usize
     }
 
-    /// # Description
-    /// Returns key len from header
+    /// Returns length of key.
+    /// # Examples
+    /// ```
+    /// # use pearl::Record;
+    /// let key = "test-key";
+    /// let mut record = Record::new();
+    /// record.set_body(key, "data");
+    /// assert_eq!(record.key_len(), key.len());
+    /// ```
     pub fn key_len(&self) -> usize {
         self.header.key_len as usize
     }
 
-    /// # Description
-    /// Get  data ref
+    /// Get immutable reference to owned data buffer.
     pub fn data(&self) -> &[u8] {
         &self.data
     }
 
-    /// # Description
-    /// Get record key reference
+    /// Get immutable reference to owned key buffer.
     pub fn key(&self) -> &[u8] {
         &self.key
     }
 
-    /// # Description
-    /// Get record header reference
+    /// Get immutable reference to header.
     pub fn header(&self) -> &Header {
         &self.header
     }
 
-    /// # Description
-    /// Set data to Record, replacing if exists
+    /// Sets key and data to record. It clones provided buffers,
+    /// converting them to `Vec<u8>`.
     pub fn set_body<K, D>(&mut self, key: K, data: D) -> &mut Self
     where
         K: AsRef<[u8]>,
@@ -101,12 +121,16 @@ impl Record {
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
         // @TODO Header validation
         let header = Header::from_raw(buf)?;
+        // dbg!(&header);
         let key_offset = header.serialized_size() as usize;
         let key_len = header.key_len as usize;
         let data_offset = key_offset + key_len;
+        // dbg!(data_offset);
+        // dbg!(buf.len());
         let key = buf[key_offset..key_offset + key_len].to_vec();
         let data = buf[data_offset..].to_vec();
-        let mut rec = Record::new(key, data);
+        let mut rec = Record::new();
+        rec.set_body(key, data);
         rec.header = header;
         Ok(rec)
     }
@@ -172,7 +196,12 @@ impl Header {
     }
 
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
-        deserialize(&buf).map_err(|e| Error::FromRaw(*e))
+        let header: Self = deserialize(&buf).map_err(|e| Error::FromRaw(*e))?;
+        if header.magic_byte != RECORD_MAGIC_BYTE {
+            Err(Error::WrongMagicByte(header.magic_byte))
+        } else {
+            Ok(header)
+        }
     }
 
     pub fn to_raw(&self) -> Vec<u8> {
