@@ -373,10 +373,10 @@ where
         if self.next_update < now {
             trace!("Observer update");
             self.as_mut().next_update = now + self.update_interval;
-            let storage_cloned = self.storage.clone();
+            let storage = self.storage.clone();
             let res = async {
-                if let Some(s) = await!(active_blob_check(storage_cloned))? {
-                    await!(update_active_blob(s))?;
+                if let Some(storage) = await!(active_blob_check(storage))? {
+                    await!(update_active_blob(storage))?;
                 }
                 Ok(())
             };
@@ -452,9 +452,7 @@ async fn active_blob_check(s: Arc<Storage>) -> Result<Option<Arc<Storage>>> {
     let (active_size, active_count) = {
         let inner = await!(s.inner.lock());
         let active_blob = inner.active_blob.as_ref().ok_or(Error::ActiveBlobNotSet)?;
-        let size = active_blob.file_size()?;
-        let count = active_blob.records_count() as u64;
-        (size, count)
+        (active_blob.file_size()?, active_blob.records_count() as u64)
     };
     let config_max_size = s.shared.config.max_blob_size.ok_or(Error::Unitialized)?;
     let config_max_count = s.shared.config.max_data_in_blob.ok_or(Error::Unitialized)?;
@@ -467,9 +465,11 @@ async fn active_blob_check(s: Arc<Storage>) -> Result<Option<Arc<Storage>>> {
 }
 
 async fn update_active_blob(s: Arc<Storage>) -> Result<()> {
+    let next_name = s.next_blob_name()?;
+    // Opening a new blob may take a while
+    let new_active = Blob::open_new(next_name)?.boxed();
+
     let mut inner = await!(s.inner.lock());
-    let next = s.next_blob_name()?;
-    let new_active = Blob::open_new(next)?.boxed();
     let old_active = inner
         .active_blob
         .replace(new_active)
