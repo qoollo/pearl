@@ -16,3 +16,17 @@ serde_derive = "1.0.89"
 bincode = "1.1.2"
 rand = "0.6.5"
 tokio = "*"
+
+clap = "*"
+# clap = { version = "*", optional = true }
+
+# [features]
+# benchmark = ["clap"]
+
+[lib]
+name = "pearl"
+
+[[bin]]
+name = "benchmark"
+path = "src/benchmark/bin.rs"
+# required-features = ["benchmark"]

@@ -1,7 +1,7 @@
 use futures::{
     future::Future,
-    task::{Context, Poll},
     lock::Mutex,
+    task::{Context, Poll},
 };
 use std::{
     collections::BTreeMap,

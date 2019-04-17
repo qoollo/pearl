@@ -461,7 +461,6 @@ async fn active_blob_check(s: Arc<Storage>) -> Result<Option<Arc<Storage>>> {
     } else {
         Ok(None)
     }
-
 }
 
 async fn update_active_blob(s: Arc<Storage>) -> Result<()> {
