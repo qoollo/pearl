@@ -1,19 +1,27 @@
 #![feature(async_await, await_macro, futures_api)]
 #![allow(clippy::needless_lifetimes)]
 extern crate pearl;
+#[macro_use]
+extern crate log;
 
+use clap::{App, Arg, *};
+use futures::{executor::*, stream::*};
+use std::time::Instant;
+
+use log::LevelFilter;
+use writer::Writer;
 mod generator;
 mod statistics;
 mod writer;
 
-use clap::{App, Arg, *};
-use futures::{executor::*, stream::*};
-
 use generator::Generator;
 use statistics::Statistics;
-use writer::Writer;
 
 fn main() {
+    println!("{:_^41}", "PEARL_BENCHMARK");
+    env_logger::Builder::new()
+        .filter_module("benchmark", LevelFilter::Debug)
+        .init();
     let mut pool = ThreadPool::new().unwrap();
     let spawner = pool.clone();
     let app = start_app(spawner);
@@ -21,11 +29,11 @@ fn main() {
 }
 
 async fn start_app(spawner: ThreadPool) {
-    println!("Hello Async World");
-    println!("Prepare app matches");
+    info!("Hello Async World");
+    info!("Prepare app matches");
     let matches = prepare_matches();
 
-    println!("Create new generator");
+    info!("Create new generator");
     let mut generator = Generator::new(
         matches.value_of("value_size").unwrap().parse().unwrap(),
         matches.value_of("key_size").unwrap().parse().unwrap(),
@@ -33,18 +41,23 @@ async fn start_app(spawner: ThreadPool) {
         matches.value_of("pregen").unwrap().parse().unwrap(),
     );
 
-    println!("Create new writer");
-    let mut writer = Writer::new(matches.value_of("speed").unwrap().parse().unwrap());
+    info!("Create new writer");
+    let mut writer = Writer::new(
+        matches.value_of("speed").unwrap().parse().unwrap(),
+        matches.value_of("dst_dir").unwrap().parse().unwrap(),
+    );
 
-    println!("Init writer");
+    info!("Init writer");
     await!(writer.init(spawner));
 
-    println!("Create new statistics");
+    info!("Create new statistics");
     let mut statistics = Statistics::new(matches.value_of("max_reports").unwrap().parse().unwrap());
 
-    println!("Start write cycle");
+    info!("Start write cycle");
     while let Some((key, value)) = await!(generator.next()) {
-        let report = await!(writer.write(key, value));
+        let now = Instant::now();
+        let mut report = await!(writer.write(key, value));
+        report.set_latency(now);
         await!(statistics.add(report));
     }
     await!(statistics.display());
@@ -77,5 +90,6 @@ fn prepare_matches<'a>() -> ArgMatches<'a> {
                 .short("r")
                 .default_value("100"),
         )
+        .arg(Arg::with_name("dst_dir").long("dir").default_value("/tmp"))
         .get_matches()
 }

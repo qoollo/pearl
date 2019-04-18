@@ -6,7 +6,8 @@ use std::pin::*;
 pub struct Generator {
     config: Config,
     rng: ThreadRng,
-    written: usize,
+    written: u128,
+    value: Vec<u8>,
 }
 
 impl Generator {
@@ -16,6 +17,10 @@ impl Generator {
         limit: usize,
         num_obj_pregen: usize,
     ) -> Self {
+        let mut value = vec![0; avg_size_of_value];
+        let mut rng = ThreadRng::default();
+        rng.fill_bytes(&mut value);
+
         Self {
             config: Config {
                 avg_size_of_value,
@@ -23,8 +28,9 @@ impl Generator {
                 limit,
                 num_obj_pregen,
             },
-            rng: ThreadRng::default(),
+            rng,
             written: 0,
+            value,
         }
     }
 }
@@ -36,14 +42,11 @@ impl Stream for Generator {
         print!("\rpoll ");
         let gen = &mut self;
         print!("written: {} ", gen.written);
-        if gen.written < gen.config.limit {
-            let mut value = vec![0; gen.config.avg_size_of_value];
-            let mut key = vec![0; gen.config.avg_size_of_key];
-            gen.rng.fill_bytes(&mut value);
-            gen.rng.fill_bytes(&mut key);
-            gen.written += value.len();
-            gen.written += key.len();
-            Poll::Ready(Some((value, key)))
+        if gen.written < gen.config.limit as u128 {
+            let key = gen.written.to_be_bytes().to_vec();
+            gen.written += gen.value.len() as u128;
+            gen.written += key.len() as u128;
+            Poll::Ready(Some((key, self.value.clone())))
         } else {
             Poll::Ready(None)
         }

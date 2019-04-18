@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use crate::statistics::Report;
 
 use futures::executor::ThreadPool;
@@ -8,12 +9,12 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn new(speed: usize) -> Self {
+    pub fn new(speed: usize, tmp_dir: PathBuf) -> Self {
         let storage = Builder::new()
             .blob_file_name_prefix("benchmark")
-            .max_blob_size(10_000_000)
-            .max_data_in_blob(1000)
-            .work_dir(std::env::temp_dir().join("pearl_benchmark"))
+            .max_blob_size(100_000_000)
+            .max_data_in_blob(10000)
+            .work_dir(tmp_dir.join("pearl_benchmark"))
             .build()
             .unwrap();
         Self { speed, storage }
@@ -24,12 +25,12 @@ impl Writer {
     }
 
     pub async fn write(&self, key: Vec<u8>, value: Vec<u8>) -> Report {
-        print!("write: key {}, value: {} ", key.len(), value.len());
+        let report = Report::new(key.len(), value.len());
         let mut record = Record::new();
         record.set_body(key, value);
         print!("await storage record write ");
         await!(self.storage.clone().write(record)).unwrap();
-        Report::new()
+        report
     }
 
     pub fn close(&mut self) {
