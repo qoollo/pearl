@@ -1,4 +1,5 @@
 #![feature(async_await, await_macro, futures_api)]
+#![allow(clippy::needless_lifetimes)]
 extern crate pearl;
 
 mod generator;
@@ -8,7 +9,7 @@ mod writer;
 use clap::{App, Arg, *};
 use futures::{executor::*, stream::*};
 
-use generator::{Config as GenConfig, Generator};
+use generator::Generator;
 use statistics::Statistics;
 use writer::Writer;
 
@@ -19,7 +20,7 @@ fn main() {
     pool.run(app);
 }
 
-async fn start_app<S>(spawner: S) {
+async fn start_app(spawner: ThreadPool) {
     println!("Hello Async World");
     println!("Prepare app matches");
     let matches = prepare_matches();
@@ -33,7 +34,10 @@ async fn start_app<S>(spawner: S) {
     );
 
     println!("Create new writer");
-    let writer = Writer::new(matches.value_of("speed").unwrap().parse().unwrap());
+    let mut writer = Writer::new(matches.value_of("speed").unwrap().parse().unwrap());
+
+    println!("Init writer");
+    await!(writer.init(spawner));
 
     println!("Create new statistics");
     let statistics = Statistics::new();
