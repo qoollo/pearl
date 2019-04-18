@@ -27,4 +27,8 @@ impl Writer {
         println!("write: key {}, value: {}", key.len(), value.len());
         Report::new()
     }
+
+    pub fn close(&mut self) {
+        self.storage.close().unwrap();
+    }
 }

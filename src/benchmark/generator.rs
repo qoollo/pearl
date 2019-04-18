@@ -6,23 +6,25 @@ use std::pin::*;
 pub struct Generator {
     config: Config,
     rng: ThreadRng,
+    written: usize,
 }
 
 impl Generator {
     pub fn new(
         avg_size_of_value: usize,
         avg_size_of_key: usize,
-        memory_limit: usize,
+        limit: usize,
         num_obj_pregen: usize,
     ) -> Self {
         Self {
             config: Config {
                 avg_size_of_value,
                 avg_size_of_key,
-                memory_limit,
+                limit,
                 num_obj_pregen,
             },
             rng: ThreadRng::default(),
+            written: 0,
         }
     }
 }
@@ -32,17 +34,24 @@ impl Stream for Generator {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         println!("poll");
-        let mut value = vec![0; self.as_ref().get_ref().config.avg_size_of_value];
-        let mut key = vec![0; self.as_ref().get_ref().config.avg_size_of_key];
-        self.rng.fill_bytes(&mut value);
-        self.rng.fill_bytes(&mut key);
-        Poll::Ready(Some((value, key)))
+        let gen = &mut self;
+        if gen.written < gen.config.limit {
+            let mut value = vec![0; gen.config.avg_size_of_value];
+            let mut key = vec![0; gen.config.avg_size_of_key];
+            gen.rng.fill_bytes(&mut value);
+            gen.rng.fill_bytes(&mut key);
+            gen.written += value.len();
+            gen.written += key.len();
+            Poll::Ready(Some((value, key)))
+        } else {
+            Poll::Ready(None)
+        }
     }
 }
 
 pub struct Config {
     avg_size_of_value: usize,
     avg_size_of_key: usize,
-    memory_limit: usize,
+    limit: usize,
     num_obj_pregen: usize,
 }

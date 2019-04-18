@@ -29,7 +29,7 @@ async fn start_app(spawner: ThreadPool) {
     let mut generator = Generator::new(
         matches.value_of("value_size").unwrap().parse().unwrap(),
         matches.value_of("key_size").unwrap().parse().unwrap(),
-        matches.value_of("memory").unwrap().parse().unwrap(),
+        matches.value_of("limit").unwrap().parse().unwrap(),
         matches.value_of("pregen").unwrap().parse().unwrap(),
     );
 
@@ -40,13 +40,15 @@ async fn start_app(spawner: ThreadPool) {
     await!(writer.init(spawner));
 
     println!("Create new statistics");
-    let statistics = Statistics::new();
+    let mut statistics = Statistics::new(matches.value_of("max_reports").unwrap().parse().unwrap());
 
     println!("Start write cycle");
     while let Some((key, value)) = await!(generator.next()) {
         let report = await!(writer.write(key, value));
         await!(statistics.add(report));
     }
+    await!(statistics.display());
+    writer.close();
 }
 
 fn prepare_matches<'a>() -> ArgMatches<'a> {
@@ -58,9 +60,10 @@ fn prepare_matches<'a>() -> ArgMatches<'a> {
         )
         .arg(Arg::with_name("key_size").short("k").default_value("100"))
         .arg(
-            Arg::with_name("memory")
-                .short("m")
-                .default_value("1000000000"),
+            Arg::with_name("limit")
+                .short("l")
+                .default_value("100000000")
+                .help("by default 100MB"),
         )
         .arg(Arg::with_name("pregen").short("p").default_value("0"))
         .arg(
@@ -68,6 +71,11 @@ fn prepare_matches<'a>() -> ArgMatches<'a> {
                 .short("s")
                 .default_value("0")
                 .help("0 - unlimited"),
+        )
+        .arg(
+            Arg::with_name("max_reports")
+                .short("r")
+                .default_value("100"),
         )
         .get_matches()
 }
