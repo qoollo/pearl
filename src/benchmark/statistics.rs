@@ -12,7 +12,7 @@ impl Statistics {
     }
 
     pub async fn add(&mut self, report: Report) {
-        println!("add");
+        print!("add ");
         self.pile.push(report);
         if self.pile.len() >= self.max_reports {
             await!(self.merge());
@@ -21,22 +21,45 @@ impl Statistics {
     }
 
     pub async fn merge(&mut self) {
-        println!("merge");
+        let new_pile: Vec<_> = self
+            .pile
+            .chunks(2)
+            .map(|pair| pair.iter().fold(Report::new(), |ra, rb| ra + *rb))
+            .collect();
+        print!(
+            "merge: before {}, after {} ",
+            self.pile.len(),
+            new_pile.len()
+        );
+        self.pile = new_pile;
     }
 
     pub async fn display_rt(&mut self) {
-        println!("display real time");
+        print!("[{}] display real time                ", self.pile.len());
     }
 
     pub async fn display(&mut self) {
-        println!("display current");
+        println!("\n - - - - - - - - - - - - - - - -");
+        println!("display final: {}", self.pile.len());
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Report;
 
 impl Report {
     pub fn new() -> Self {
         Self
     }
+}
+
+use std::ops::Add;
+
+impl Add for Report {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        Self {}
+    }
+
 }

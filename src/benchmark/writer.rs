@@ -24,7 +24,11 @@ impl Writer {
     }
 
     pub async fn write(&self, key: Vec<u8>, value: Vec<u8>) -> Report {
-        println!("write: key {}, value: {}", key.len(), value.len());
+        print!("write: key {}, value: {} ", key.len(), value.len());
+        let mut record = Record::new();
+        record.set_body(key, value);
+        print!("await storage record write ");
+        await!(self.storage.clone().write(record)).unwrap();
         Report::new()
     }
 

@@ -33,8 +33,9 @@ impl Stream for Generator {
     type Item = (Vec<u8>, Vec<u8>);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        println!("poll");
+        print!("\rpoll ");
         let gen = &mut self;
+        print!("written: {} ", gen.written);
         if gen.written < gen.config.limit {
             let mut value = vec![0; gen.config.avg_size_of_value];
             let mut key = vec![0; gen.config.avg_size_of_key];
