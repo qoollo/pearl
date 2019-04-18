@@ -33,12 +33,14 @@ async fn start_app<S>(spawner: S) {
     );
 
     println!("Create new writer");
-    let writer = Writer::new();
+    let writer = Writer::new(matches.value_of("speed").unwrap().parse().unwrap());
+
     println!("Create new statistics");
     let statistics = Statistics::new();
+
     println!("Start write cycle");
     while let Some((key, value)) = await!(generator.next()) {
-        let report = await!(writer.write());
+        let report = await!(writer.write(key, value));
         await!(statistics.add(report));
     }
 }
@@ -57,5 +59,11 @@ fn prepare_matches<'a>() -> ArgMatches<'a> {
                 .default_value("1000000000"),
         )
         .arg(Arg::with_name("pregen").short("p").default_value("0"))
+        .arg(
+            Arg::with_name("speed")
+                .short("s")
+                .default_value("0")
+                .help("0 - unlimited"),
+        )
         .get_matches()
 }

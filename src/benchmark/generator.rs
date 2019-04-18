@@ -1,9 +1,11 @@
 use futures::stream::Stream;
 use futures::task::*;
+use rand::{rngs::*, RngCore};
 use std::pin::*;
 
 pub struct Generator {
     config: Config,
+    rng: ThreadRng,
 }
 
 impl Generator {
@@ -20,6 +22,7 @@ impl Generator {
                 memory_limit,
                 num_obj_pregen,
             },
+            rng: ThreadRng::default(),
         }
     }
 }
@@ -27,9 +30,13 @@ impl Generator {
 impl Stream for Generator {
     type Item = (Vec<u8>, Vec<u8>);
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         println!("poll");
-        Poll::Ready(Some((Vec::new(), Vec::new())))
+        let mut value = vec![0; self.as_ref().get_ref().config.avg_size_of_value];
+        let mut key = vec![0; self.as_ref().get_ref().config.avg_size_of_key];
+        self.rng.fill_bytes(&mut value);
+        self.rng.fill_bytes(&mut key);
+        Poll::Ready(Some((value, key)))
     }
 }
 
