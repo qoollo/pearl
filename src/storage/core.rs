@@ -469,10 +469,11 @@ async fn update_active_blob(s: Arc<Storage>) -> Result<()> {
     let new_active = Blob::open_new(next_name)?.boxed();
 
     let mut inner = await!(s.inner.lock());
-    let old_active = inner
+    let mut old_active = inner
         .active_blob
         .replace(new_active)
         .ok_or(Error::ActiveBlobNotSet)?;
+    old_active.flush();
     inner.blobs.push(*old_active);
     Ok(())
 }

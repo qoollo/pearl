@@ -1,3 +1,4 @@
+use bincode::*;
 use futures::{
     future::Future,
     lock::Mutex,
@@ -5,7 +6,8 @@ use futures::{
 };
 use std::{
     collections::BTreeMap,
-    fs, io,
+    fs,
+    io::{self, Write},
     os::unix::fs::FileExt,
     path::{Path, PathBuf},
     pin::Pin,
@@ -114,23 +116,29 @@ impl From<fs::File> for File {
     }
 }
 
-#[derive(Debug, Default, Clone)]
-struct Index {
-    bunch: BTreeMap<Vec<u8>, RecordMetaData>,
+#[derive(Debug, Clone)]
+enum Index {
+    InMemory(IndexInner),
+    OnDisk(IndexInner),
 }
 
+
 #[derive(Debug, Default, Clone)]
+struct IndexInner {
+    bunch: Vec<RecordMetaData>,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct RecordMetaData {
+    key: Vec<u8>,
     blob_offset: u64,
     full_len: u64,
 }
 
-impl Index {
+impl IndexInner {
     fn new(_path: &Path) -> Self {
         // @TODO initialize new index from file
-        Self {
-            bunch: BTreeMap::new(),
-        }
+        Self { bunch: Vec::new() }
     }
 
     fn from_default(_path: &Path) -> Result<Self> {
@@ -139,15 +147,29 @@ impl Index {
     }
 
     fn contains_key(&self, key: &[u8]) -> bool {
-        self.bunch.contains_key(key)
+        self.get(key).is_some()
     }
 
-    fn insert(&mut self, key: Vec<u8>, meta: RecordMetaData) {
-        self.bunch.insert(key, meta);
+    fn push(&mut self, meta: RecordMetaData) {
+        self.bunch.push(meta);
     }
 
     fn get(&self, key: &[u8]) -> Option<&RecordMetaData> {
-        self.bunch.get(key.as_ref())
+        self.bunch.iter().find(|meta| meta.key == key)
+    }
+
+    fn flush(&mut self) {
+        let fd = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open("blob.index")
+            .unwrap();
+        self.bunch.sort_by_key(|meta| meta.key.clone());
+        let errors: Vec<_> = self
+            .bunch
+            .iter()
+            .map(|meta| serialize_into(&fd, meta).unwrap())
+            .collect();
     }
 }
 
@@ -160,20 +182,18 @@ impl Blob {
     /// [`FileName`]: struct.FileName.html
     pub fn open_new(name: FileName) -> Result<Self> {
         let file = Self::create_file(&name.as_path())?.into();
-        let mut blob = Self {
+        let blob = Self {
             header: Header::new(),
             file,
             index: Index::new(&name.as_path()),
             name,
             current_offset: Arc::new(Mutex::new(0)),
         };
-        blob.flush()?;
         Ok(blob)
     }
 
-    fn flush(&mut self) -> Result<()> {
-        // @TODO implement
-        Ok(())
+    pub fn flush(&mut self) {
+        self.index.flush();
     }
 
     fn create_file(path: &Path) -> Result<fs::File> {
@@ -230,10 +250,11 @@ impl Blob {
         let mut offset = await!(self.current_offset.lock());
         let bytes_written = await!(self.file.write_at(buf, *offset))?;
         let meta = RecordMetaData {
+            key,
             blob_offset: *offset,
             full_len: bytes_written as u64,
         };
-        self.index.insert(key, meta);
+        self.index.push(meta);
         *offset += bytes_written as u64;
         Ok(())
     }
