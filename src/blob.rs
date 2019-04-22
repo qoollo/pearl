@@ -116,16 +116,21 @@ impl From<fs::File> for File {
     }
 }
 
-#[derive(Debug, Clone)]
-enum Index {
-    InMemory(IndexInner),
-    OnDisk(IndexInner),
+#[derive(Debug, Default, Clone)]
+struct Index {
+    inner: IndexInner,
 }
 
+#[derive(Debug, Clone)]
+enum IndexInner {
+    InMemory(Vec<RecordMetaData>),
+    OnDisk(File),
+}
 
-#[derive(Debug, Default, Clone)]
-struct IndexInner {
-    bunch: Vec<RecordMetaData>,
+impl Default for IndexInner {
+    fn default() -> Self {
+        IndexInner::InMemory(Default::default())
+    }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -135,10 +140,12 @@ struct RecordMetaData {
     full_len: u64,
 }
 
-impl IndexInner {
+impl Index {
     fn new(_path: &Path) -> Self {
         // @TODO initialize new index from file
-        Self { bunch: Vec::new() }
+        Self {
+            inner: IndexInner::InMemory(Default::default()),
+        }
     }
 
     fn from_default(_path: &Path) -> Result<Self> {
@@ -151,25 +158,46 @@ impl IndexInner {
     }
 
     fn push(&mut self, meta: RecordMetaData) {
-        self.bunch.push(meta);
+        match &mut self.inner {
+            IndexInner::InMemory(bunch) => {
+                bunch.push(meta);
+            }
+            IndexInner::OnDisk(f) => unimplemented!(),
+        }
     }
 
     fn get(&self, key: &[u8]) -> Option<&RecordMetaData> {
-        self.bunch.iter().find(|meta| meta.key == key)
+        match &self.inner {
+            IndexInner::InMemory(bunch) => bunch.iter().find(|meta| meta.key == key),
+            IndexInner::OnDisk(f) => unimplemented!(),
+        }
+
     }
 
     fn flush(&mut self) {
-        let fd = fs::OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open("blob.index")
-            .unwrap();
-        self.bunch.sort_by_key(|meta| meta.key.clone());
-        let errors: Vec<_> = self
-            .bunch
-            .iter()
-            .map(|meta| serialize_into(&fd, meta).unwrap())
-            .collect();
+        match &mut self.inner {
+            IndexInner::InMemory(bunch) => {
+                let fd = fs::OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .open("blob.index")
+                    .unwrap();
+                bunch.sort_by_key(|meta| meta.key.clone());
+                let errors: Vec<_> = bunch
+                    .iter()
+                    .map(|meta| serialize_into(&fd, meta).unwrap())
+                    .collect();
+            }
+            IndexInner::OnDisk(f) => unimplemented!(),
+        }
+
+    }
+
+    fn len(&self) -> usize {
+        match &self.inner {
+            IndexInner::InMemory(bunch) => bunch.len(),
+            IndexInner::OnDisk(f) => unimplemented!(),
+        }
     }
 }
 
@@ -284,7 +312,7 @@ impl Blob {
     }
 
     pub fn records_count(&self) -> usize {
-        self.index.bunch.len()
+        self.index.len()
     }
 
     pub fn path(&self) -> PathBuf {
