@@ -11,16 +11,14 @@ impl Statistics {
         }
     }
 
-    pub async fn add(&mut self, report: Report) {
-        print!("add ");
+    pub fn add(&mut self, report: Report) {
         self.pile.push(report);
-        if self.pile.len() >= self.max_reports {
-            await!(self.merge());
+        if self.pile.len() >= self.max_reports && self.max_reports != 0 {
+            self.merge();
         }
-        await!(self.display_rt());
     }
 
-    pub async fn merge(&mut self) {
+    pub fn merge(&mut self) {
         let new_pile: Vec<_> = self
             .pile
             .chunks(2)
@@ -40,10 +38,6 @@ impl Statistics {
         self.pile = new_pile;
     }
 
-    pub async fn display_rt(&mut self) {
-        print!("[{}] display real time                ", self.pile.len());
-    }
-
     pub async fn display(&mut self) {
         println!("\n\n{:-^40}", "RESULTS");
         let total_count = self.pile.iter().fold(0, |acc, r| acc + r.count);
@@ -53,12 +47,13 @@ impl Statistics {
             - self.pile.first().unwrap().timestamp)
             .as_millis() as f64;
         Self::print("test duration:", test_duration_ms / 1000.0);
-        let speed = self
+        let total_size = self
             .pile
             .iter()
-            .fold(0, |acc, rec| acc + rec.key_len + rec.value_len) as f64
-            / test_duration_ms;
-        Self::print("speed, MB/s:", speed / 1_000.0);
+            .fold(0, |acc, rec| acc + rec.key_len + rec.value_len) as f64;
+        Self::print("written total, MB:", total_size / 1_000_000.0);
+        let rate = total_size / test_duration_ms;
+        Self::print("rate, MB/s:", rate / 1_000.0);
         Self::print(
             "rate, recs/s",
             total_count as f64 * 1_000.0 / test_duration_ms,
@@ -108,7 +103,6 @@ impl Report {
     }
 }
 
-
 impl Add for Report {
     type Output = Self;
 
@@ -122,5 +116,4 @@ impl Add for Report {
                 / (self.count + rhs.count) as u32,
         }
     }
-
 }

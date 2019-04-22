@@ -197,7 +197,7 @@ impl Storage {
 
     /// # Description
     /// Stop work dir observer thread
-    pub fn close(&mut self) -> Result<()> {
+    pub fn close(&self) -> Result<()> {
         self.shared.need_exit.store(false, Ordering::Relaxed);
         // @TODO implement
         Ok(())
