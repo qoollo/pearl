@@ -14,7 +14,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::record::{self, Record};
+use crate::record::{self, Header as RecordHeader, Record};
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 
@@ -135,9 +135,15 @@ impl Default for IndexInner {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct RecordMetaData {
+    header: RecordHeader,
     key: Vec<u8>,
-    blob_offset: u64,
-    full_len: u64,
+}
+
+impl RecordMetaData {
+    #[inline]
+    fn header(&self) -> &RecordHeader {
+        &self.header
+    }
 }
 
 impl Index {
@@ -269,18 +275,18 @@ impl Blob {
         Ok(())
     }
 
-    pub async fn write(&mut self, record: Record) -> Result<()> {
+    pub async fn write(&mut self, mut record: Record) -> Result<()> {
         let key = record.key().to_vec();
         if self.index.contains_key(&key) {
             return Err(Error::AlreadyContainsSameKey);
         }
-        let buf = record.to_raw();
         let mut offset = await!(self.current_offset.lock());
+        record.set_offset(*offset);
+        let buf = record.to_raw();
         let bytes_written = await!(self.file.write_at(buf, *offset))?;
         let meta = RecordMetaData {
             key,
-            blob_offset: *offset,
-            full_len: bytes_written as u64,
+            header: record.header().clone(),
         };
         self.index.push(meta);
         *offset += bytes_written as u64;
@@ -299,8 +305,8 @@ impl Blob {
         K: AsRef<[u8]> + Ord,
     {
         let meta = self.index.get(key.as_ref()).ok_or(Error::NotFound)?;
-        let offset = meta.blob_offset;
-        Ok(Location::new(offset as u64, meta.full_len))
+        let offset = meta.header().blob_offset();
+        Ok(Location::new(offset as u64, meta.header().full_len()))
     }
 
     pub fn file_size(&self) -> Result<u64> {

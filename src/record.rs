@@ -145,6 +145,10 @@ impl Record {
         buf.extend_from_slice(&self.data);
         buf
     }
+
+    pub(crate) fn set_offset(&mut self, offset: u64) {
+        self.header.blob_offset = offset;
+    }
 }
 
 impl Record {
