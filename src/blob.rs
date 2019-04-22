@@ -177,7 +177,6 @@ impl Index {
             IndexInner::InMemory(bunch) => bunch.iter().find(|meta| meta.key == key),
             IndexInner::OnDisk(f) => unimplemented!(),
         }
-
     }
 
     fn flush(&mut self) {
@@ -193,10 +192,10 @@ impl Index {
                     .iter()
                     .map(|meta| serialize_into(&fd, meta).unwrap())
                     .collect();
+                self.inner = IndexInner::OnDisk(unimplemented!());
             }
             IndexInner::OnDisk(f) => unimplemented!(),
         }
-
     }
 
     fn len(&self) -> usize {

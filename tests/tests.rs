@@ -232,7 +232,7 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
     use tokio::timer::Delay;
 
     let dir = "pearl_overflow/";
-    let mut pool = Builder::new().core_threads(1).build().unwrap();
+    let pool = Builder::new().core_threads(1).build().unwrap();
     let storage = block_on(common::create_test_storage(
         pool.executor().clone().compat(),
         dir,
@@ -240,7 +240,7 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
     ))
     .unwrap();
 
-    let mut cloned_storage = storage.clone();
+    let cloned_storage = storage.clone();
     let fut = Compat::new(
         async {
             let mut range: Vec<u64> = (0..100).map(|i| i).collect();
@@ -271,15 +271,21 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
                     df.and_then(move |_| write_fut)
                 })
                 .collect();
-            await!(write_futures.collect::<Vec<_>>());
-            Ok(())
+            if await!(write_futures.collect::<Vec<_>>())
+                .iter()
+                .any(Result::is_err)
+            {
+                Err(())
+            } else {
+                Ok(())
+            }
         }
             .boxed(),
     );
-    pool.spawn(fut.map(move |_| {
+    pool.block_on_all(fut.map(move |_| {
         cloned_storage.close().unwrap();
-    }));
-    pool.shutdown_on_idle().wait().unwrap();
+    }))
+    .unwrap();
     let path = env::temp_dir().join(dir);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
