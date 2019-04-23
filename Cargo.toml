@@ -16,6 +16,8 @@ serde_derive = "1.0.89"
 bincode = "1.1.2"
 rand = "0.6.5"
 tokio = "*"
+color-backtrace = "*"
+sha3 = "*"
 
 runtime = { git = "https://github.com/rustasync/runtime", optional = true }
 clap = { version = "*", optional = true }

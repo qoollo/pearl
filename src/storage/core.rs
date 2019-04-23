@@ -1,6 +1,6 @@
 use futures::{
     executor::block_on,
-    future::{FutureExt, FutureObj},
+    future::{self, FutureExt, FutureObj},
     lock::Mutex,
     stream::{futures_unordered::FuturesUnordered, Stream, StreamExt},
     task::{self, Context, Poll, Spawn, SpawnExt},
@@ -181,17 +181,23 @@ impl Storage {
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     pub async fn read(&self, key: Vec<u8>) -> Result<Record> {
         let inner = await!(self.inner.lock());
-        if let Some(active_blob) = &inner.active_blob {
-            await!(active_blob.read(key)).map_err(Error::BlobError)
-        } else {
+        let active_blob_read_res = await!(inner
+            .active_blob
+            .as_ref()
+            .ok_or(Error::ActiveBlobNotSet)?
+            .read(key.clone()));
+        if active_blob_read_res.is_err() {
             let mut stream: FuturesUnordered<_> = inner
                 .blobs
                 .iter()
                 .map(|blob| blob.read(key.clone()))
                 .collect();
-            await!(stream.next())
+            let mut task = stream.skip_while(|res| future::ready(res.is_err()));
+            await!(task.next())
                 .ok_or(Error::RecordNotFound)?
                 .map_err(Error::BlobError)
+        } else {
+            Ok(active_blob_read_res.unwrap())
         }
     }
 

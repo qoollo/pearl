@@ -314,9 +314,10 @@ fn test_storage_close() {
 
 #[test]
 fn test_on_disk_index() {
+    color_backtrace::install();
     let data_size = 500;
     let max_blob_size = 1500;
-    let num_records_to_write = 4usize;
+    let num_records_to_write = 5usize;
     let read_key = 3usize;
 
     let pool = ThreadPool::new().unwrap();

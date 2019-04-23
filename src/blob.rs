@@ -4,10 +4,10 @@ use futures::{
     lock::Mutex,
     task::{Context, Poll},
 };
+use sha3::Digest;
 use std::{
-    collections::BTreeMap,
     fs,
-    io::{self, Write},
+    io::{self, Read, Seek, SeekFrom},
     os::unix::fs::FileExt,
     path::{Path, PathBuf},
     pin::Pin,
@@ -136,7 +136,7 @@ impl Default for IndexInner {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct RecordMetaData {
     header: RecordHeader,
-    key: Vec<u8>,
+    key_hash: Vec<u8>,
 }
 
 impl RecordMetaData {
@@ -172,10 +172,24 @@ impl Index {
         }
     }
 
-    fn get(&self, key: &[u8]) -> Option<&RecordMetaData> {
+    fn get(&self, key: &[u8]) -> Option<RecordMetaData> {
+        let key_hash = Self::hash(key);
         match &self.inner {
-            IndexInner::InMemory(bunch) => bunch.iter().find(|meta| meta.key == key),
-            IndexInner::OnDisk(f) => unimplemented!(),
+            IndexInner::InMemory(bunch) => {
+                bunch.iter().find(|meta| meta.key_hash == key_hash).cloned()
+            }
+            IndexInner::OnDisk(f) => {
+                println!("get fd: {:?}", *f.read_fd);
+                let mut meta = Vec::new();
+                f.read_fd.as_ref().seek(SeekFrom::Start(0)).unwrap();
+                f.read_fd.as_ref().read_to_end(&mut meta).unwrap();
+                println!("read: '{:?}'", meta);
+                let meta: Vec<RecordMetaData> = deserialize(meta.as_slice()).unwrap();
+                let i = meta
+                    .binary_search_by_key(&key_hash.as_slice(), |m| m.key_hash.as_slice())
+                    .ok()?;
+                meta.get(i).cloned()
+            }
         }
     }
 
@@ -184,14 +198,13 @@ impl Index {
             IndexInner::InMemory(bunch) => {
                 let fd = fs::OpenOptions::new()
                     .create(true)
+                    .read(true)
                     .write(true)
                     .open("blob.index")
                     .unwrap();
-                bunch.sort_by_key(|meta| meta.key.clone());
-                let errors: Vec<_> = bunch
-                    .iter()
-                    .map(|meta| serialize_into(&fd, meta).unwrap())
-                    .collect();
+                bunch.sort_by_key(|meta| meta.key_hash.clone());
+                serialize_into(&fd, bunch).unwrap();
+                println!("index fd: {:?}", fd);
                 self.inner = IndexInner::OnDisk(File::from(fd));
             }
             IndexInner::OnDisk(f) => unimplemented!(),
@@ -203,6 +216,10 @@ impl Index {
             IndexInner::InMemory(bunch) => bunch.len(),
             IndexInner::OnDisk(f) => unimplemented!(),
         }
+    }
+
+    pub fn hash(key: &[u8]) -> Vec<u8> {
+        sha3::Sha3_512::default().chain(key).result()[..].to_vec()
     }
 }
 
@@ -283,8 +300,9 @@ impl Blob {
         record.set_offset(*offset);
         let buf = record.to_raw();
         let bytes_written = await!(self.file.write_at(buf, *offset))?;
+        let key_hash = Index::hash(&key);
         let meta = RecordMetaData {
-            key,
+            key_hash,
             header: record.header().clone(),
         };
         self.index.push(meta);
