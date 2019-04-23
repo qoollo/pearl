@@ -18,7 +18,7 @@ pub async fn default_test_storage_in<S>(
 where
     S: SpawnExt + Clone + Send + 'static + Unpin + Sync,
 {
-    await!(create_test_storage(spawner, dir_name, 1_000_000))
+    await!(create_test_storage(spawner, dir_name, 10_000))
 }
 
 pub async fn create_test_storage<S>(

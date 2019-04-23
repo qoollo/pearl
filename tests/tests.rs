@@ -311,3 +311,49 @@ fn test_storage_close() {
     fs::remove_file(path.join("pearl.lock")).unwrap();
     fs::remove_dir(&path).unwrap();
 }
+
+#[test]
+fn test_on_disk_index() {
+    let data_size = 500;
+    let max_blob_size = 1500;
+    let num_records_to_write = 4usize;
+    let read_key = 3usize;
+
+    let pool = ThreadPool::new().unwrap();
+    let path = env::temp_dir().join("pearl_index");
+    let mut storage = Builder::new()
+        .work_dir(&path)
+        .blob_file_name_prefix("test")
+        .max_blob_size(max_blob_size)
+        .max_data_in_blob(1_000)
+        .build()
+        .unwrap();
+    let slice = [17, 40, 29, 7, 75];
+    let data: Vec<u8> = slice.repeat(data_size / slice.len());
+    let test_task = async {
+        await!(storage.init(pool)).unwrap();
+        let write_results: FuturesUnordered<_> = (0..num_records_to_write)
+            .map(|key| {
+                let mut record = Record::new();
+                record.set_body(key.to_be_bytes().to_vec(), data.clone());
+                storage.clone().write(record)
+            })
+            .collect();
+        await!(write_results.for_each(|res| {
+            res.unwrap();
+            futures::future::ready(())
+        }));
+        let mut count = 0;
+        while count < 2 {
+            count = await!(storage.blobs_count());
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        assert!(path.join("test.1.blob").exists());
+        await!(storage.read(read_key.to_be_bytes().to_vec())).unwrap()
+    };
+
+    let read_record = block_on(test_task);
+
+    assert_eq!(read_record.key(), read_key.to_be_bytes());
+    assert_eq!(read_record.data(), data.as_slice());
+}

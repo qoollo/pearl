@@ -192,7 +192,7 @@ impl Index {
                     .iter()
                     .map(|meta| serialize_into(&fd, meta).unwrap())
                     .collect();
-                self.inner = IndexInner::OnDisk(unimplemented!());
+                self.inner = IndexInner::OnDisk(File::from(fd));
             }
             IndexInner::OnDisk(f) => unimplemented!(),
         }
