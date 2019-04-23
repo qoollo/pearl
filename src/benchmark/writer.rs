@@ -10,11 +10,11 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn new(tmp_dir: PathBuf) -> Self {
+    pub fn new(tmp_dir: PathBuf, max_blob_size: u64, max_data_in_blob: u64) -> Self {
         let storage = Builder::new()
             .blob_file_name_prefix("benchmark")
-            .max_blob_size(100_000_000)
-            .max_data_in_blob(10000)
+            .max_blob_size(max_blob_size)
+            .max_data_in_blob(max_data_in_blob)
             .work_dir(tmp_dir.join("pearl_benchmark"))
             .build()
             .unwrap();

@@ -230,7 +230,7 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
     ))
     .unwrap();
 
-    let mut cloned_storage = storage.clone();
+    let cloned_storage = storage.clone();
     let fut = Compat::new(
         async {
             let mut range: Vec<u64> = (0..100).map(|i| i).collect();

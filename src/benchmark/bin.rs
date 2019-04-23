@@ -45,7 +45,11 @@ async fn start_app(spawner: ThreadPool) {
     let mut generator = Generator::new(value_size_kb * 1000, limit);
 
     info!("Create new writer");
-    let mut writer = Writer::new(matches.value_of("dst_dir").unwrap().parse().unwrap());
+    let mut writer = Writer::new(
+        matches.value_of("dst_dir").unwrap().parse().unwrap(),
+        matches.value_of("max_size").unwrap().parse().unwrap(),
+        matches.value_of("max_data").unwrap().parse().unwrap(),
+    );
 
     info!("Init writer");
     await!(writer.init(spawner.clone()));
@@ -145,7 +149,19 @@ fn prepare_matches<'a>() -> ArgMatches<'a> {
                 .default_value("0")
                 .help("0 - unlimited"),
         )
-        .arg(Arg::with_name("dst_dir").long("dir").default_value("/tmp"))
+        .arg(Arg::with_name("dst_dir").short("d").default_value("/tmp"))
+        .arg(
+            Arg::with_name("max_size")
+                .short("s")
+                .default_value("1000")
+                .help("MB, limit of the blob file size"),
+        )
+        .arg(
+            Arg::with_name("max_data")
+                .short("x")
+                .default_value("1000")
+                .help("MB, limit of the records number in blob"),
+        )
         .arg(
             Arg::with_name("futures_limit")
                 .long("futures")
