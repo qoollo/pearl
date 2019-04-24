@@ -4,7 +4,6 @@ use futures::{
     lock::Mutex,
     task::{Context, Poll},
 };
-use sha3::Digest;
 use std::{
     fs,
     io::{self, Read, Seek, SeekFrom},
@@ -123,26 +122,13 @@ struct Index {
 
 #[derive(Debug, Clone)]
 enum IndexInner {
-    InMemory(Vec<RecordMetaData>),
+    InMemory(Vec<RecordHeader>),
     OnDisk(File),
 }
 
 impl Default for IndexInner {
     fn default() -> Self {
         IndexInner::InMemory(Default::default())
-    }
-}
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-struct RecordMetaData {
-    header: RecordHeader,
-    key_hash: Vec<u8>,
-}
-
-impl RecordMetaData {
-    #[inline]
-    fn header(&self) -> &RecordHeader {
-        &self.header
     }
 }
 
@@ -163,31 +149,24 @@ impl Index {
         self.get(key).is_some()
     }
 
-    fn push(&mut self, meta: RecordMetaData) {
+    fn push(&mut self, h: RecordHeader) {
         match &mut self.inner {
             IndexInner::InMemory(bunch) => {
-                bunch.push(meta);
+                bunch.push(h);
             }
-            IndexInner::OnDisk(f) => unimplemented!(),
+            IndexInner::OnDisk(_) => unimplemented!(),
         }
     }
 
-    fn get(&self, key: &[u8]) -> Option<RecordMetaData> {
-        let key_hash = Self::hash(key);
+    fn get(&self, key: &[u8]) -> Option<RecordHeader> {
         match &self.inner {
-            IndexInner::InMemory(bunch) => {
-                bunch.iter().find(|meta| meta.key_hash == key_hash).cloned()
-            }
+            IndexInner::InMemory(bunch) => bunch.iter().find(|h| h.key() == key).cloned(),
             IndexInner::OnDisk(f) => {
-                println!("get fd: {:?}", *f.read_fd);
                 let mut meta = Vec::new();
                 f.read_fd.as_ref().seek(SeekFrom::Start(0)).unwrap();
                 f.read_fd.as_ref().read_to_end(&mut meta).unwrap();
-                println!("read: '{:?}'", meta);
-                let meta: Vec<RecordMetaData> = deserialize(meta.as_slice()).unwrap();
-                let i = meta
-                    .binary_search_by_key(&key_hash.as_slice(), |m| m.key_hash.as_slice())
-                    .ok()?;
+                let meta: Vec<RecordHeader> = deserialize(meta.as_slice()).unwrap();
+                let i = meta.binary_search_by_key(&key, |h| h.key()).ok()?;
                 meta.get(i).cloned()
             }
         }
@@ -202,24 +181,20 @@ impl Index {
                     .write(true)
                     .open("blob.index")
                     .unwrap();
-                bunch.sort_by_key(|meta| meta.key_hash.clone());
+                bunch.sort_by_key(|h| h.key().to_vec());
                 serialize_into(&fd, bunch).unwrap();
                 println!("index fd: {:?}", fd);
                 self.inner = IndexInner::OnDisk(File::from(fd));
             }
-            IndexInner::OnDisk(f) => unimplemented!(),
+            IndexInner::OnDisk(_) => unimplemented!(),
         }
     }
 
     fn len(&self) -> usize {
         match &self.inner {
             IndexInner::InMemory(bunch) => bunch.len(),
-            IndexInner::OnDisk(f) => unimplemented!(),
+            IndexInner::OnDisk(_) => unimplemented!(),
         }
-    }
-
-    pub fn hash(key: &[u8]) -> Vec<u8> {
-        sha3::Sha3_512::default().chain(key).result()[..].to_vec()
     }
 }
 
@@ -300,12 +275,7 @@ impl Blob {
         record.set_offset(*offset);
         let buf = record.to_raw();
         let bytes_written = await!(self.file.write_at(buf, *offset))?;
-        let key_hash = Index::hash(&key);
-        let meta = RecordMetaData {
-            key_hash,
-            header: record.header().clone(),
-        };
-        self.index.push(meta);
+        self.index.push(record.header().clone());
         *offset += bytes_written as u64;
         Ok(())
     }
@@ -321,9 +291,9 @@ impl Blob {
     where
         K: AsRef<[u8]> + Ord,
     {
-        let meta = self.index.get(key.as_ref()).ok_or(Error::NotFound)?;
-        let offset = meta.header().blob_offset();
-        Ok(Location::new(offset as u64, meta.header().full_len()))
+        let h = self.index.get(key.as_ref()).ok_or(Error::NotFound)?;
+        let offset = h.blob_offset();
+        Ok(Location::new(offset as u64, h.full_len()))
     }
 
     pub fn file_size(&self) -> Result<u64> {

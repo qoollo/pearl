@@ -1,7 +1,5 @@
 use rand::{rngs::*, RngCore};
 
-use pearl::Record;
-
 pub struct Generator {
     config: Config,
     written: u128,
@@ -21,13 +19,12 @@ impl Generator {
         }
     }
 
-    pub fn next(&mut self) -> Option<Record> {
+    pub fn next(&mut self) -> Option<(Vec<u8>, Vec<u8>)> {
         if self.written < self.config.limit as u128 * 1_000_000 {
             let key = self.written.to_be_bytes().to_vec();
-            let mut record = Record::new();
-            record.set_body(key, self.value.clone());
-            self.written += u128::from(record.full_len());
-            Some(record)
+            let data = self.value.clone();
+            self.written += (key.len() + data.len()) as u128;
+            Some((key, data))
         } else {
             None
         }

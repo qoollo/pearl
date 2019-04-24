@@ -68,23 +68,22 @@ async fn start_app(spawner: ThreadPool) {
         .map(|_| generator.next().unwrap())
         .collect();
 
-    use pearl::Record;
     use statistics::Report;
 
-    async fn write(lawriter: Arc<Writer>, record: Record, mut ltx: Sender<Report>) {
+    async fn write(lawriter: Arc<Writer>, key: Vec<u8>, data: Vec<u8>, mut ltx: Sender<Report>) {
         let now = Instant::now();
-        let mut report = await!(lawriter.write(record));
+        let mut report = await!(lawriter.write(key, data));
         report.set_latency(now);
         ltx.try_send(report).unwrap();
     }
 
     let mut futures_pool: FuturesUnordered<_> = prepared
         .into_iter()
-        .map(|record| {
+        .map(|(key, data)| {
             let lawriter = awriter.clone();
             let ltx = tx.clone();
             counter += 1;
-            write(lawriter, record, ltx)
+            write(lawriter, key, data, ltx)
         })
         .collect();
     println!(
@@ -110,11 +109,11 @@ async fn start_app(spawner: ThreadPool) {
         }
         prev_p = percent;
         if futures_pool.len() < futures_limit as usize {
-            if let Some(record) = generator.next() {
+            if let Some((key, data)) = generator.next() {
                 let lawriter = awriter.clone();
                 let ltx = tx.clone();
                 counter += 1;
-                futures_pool.push(write(lawriter, record, ltx));
+                futures_pool.push(write(lawriter, key, data, ltx));
             }
         }
     }

@@ -1,6 +1,5 @@
-use std::path::PathBuf;
-
 use super::core::{Config, Error, Result, Storage};
+use std::path::PathBuf;
 
 /// `Builder` used for initializing a `Storage`.
 #[derive(Default, Debug)]
@@ -20,6 +19,7 @@ impl Builder {
             || self.config.max_data_in_blob.is_none()
             || self.config.max_blob_size.is_none()
             || self.config.blob_file_name_prefix.is_none()
+            || self.config.key_size.is_none()
         {
             Err(Error::Unitialized)
         } else {
@@ -112,6 +112,12 @@ impl Builder {
                 self.config.blob_file_name_prefix.as_ref().unwrap()
             );
         }
+        self
+    }
+
+    /// # Description
+    pub fn key_size(mut self, key_size: u64) -> Self {
+        self.config.key_size = if key_size > 0 { Some(key_size) } else { None };
         self
     }
 }

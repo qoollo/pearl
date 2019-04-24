@@ -19,5 +19,4 @@ mod blob;
 mod record;
 mod storage;
 
-pub use record::Record;
 pub use storage::{Builder, Storage};

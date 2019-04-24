@@ -25,10 +25,10 @@ impl Writer {
         await!(self.storage.init(spawner)).unwrap();
     }
 
-    pub async fn write(self: Arc<Self>, record: Record) -> Report {
-        let report = Report::new(record.key_len(), record.data_len());
-        await!(self.storage.clone().write(record)).unwrap();
-        report
+    pub async fn write(self: Arc<Self>, key: Vec<u8>, data: Vec<u8>) -> Report {
+        let record = Report::new(key.len(), data.len());
+        await!(self.storage.clone().write(key, data)).unwrap();
+        record
     }
 
     pub fn close(&self) {

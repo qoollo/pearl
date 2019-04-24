@@ -141,7 +141,11 @@ impl Storage {
     /// If active blob reaches it limit, create new and close old
     /// Returns number of bytes, written to blob
     /// # Examples
-    pub async fn write(self, record: Record) -> Result<()> {
+    pub async fn write(self, key: Vec<u8>, data: Vec<u8>) -> Result<()> {
+        if key.len() as u64 != self.shared.config.key_size.ok_or(Error::Unitialized)? {
+            return Err(Error::KeySizeMismatch(key.len()));
+        }
+        let record = Record::new(key, data);
         trace!("await for inner lock");
         let mut inner = await!(self.inner.lock());
         trace!("return write future");
@@ -179,26 +183,29 @@ impl Storage {
     ///
     /// [`Record`]: ../struct.Record.html
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
-    pub async fn read(&self, key: Vec<u8>) -> Result<Record> {
+    pub async fn read(&self, key: Vec<u8>) -> Result<Vec<u8>> {
         let inner = await!(self.inner.lock());
         let active_blob_read_res = await!(inner
             .active_blob
             .as_ref()
             .ok_or(Error::ActiveBlobNotSet)?
             .read(key.clone()));
-        if active_blob_read_res.is_err() {
-            let mut stream: FuturesUnordered<_> = inner
+        let record = if active_blob_read_res.is_err() {
+            let stream: FuturesUnordered<_> = inner
                 .blobs
                 .iter()
                 .map(|blob| blob.read(key.clone()))
                 .collect();
-            let mut task = stream.skip_while(|res| future::ready(res.is_err()));
+            let mut task = stream.skip_while(|res| {
+                future::ready(res.is_err())
+            });
             await!(task.next())
                 .ok_or(Error::RecordNotFound)?
-                .map_err(Error::BlobError)
+                .map_err(Error::BlobError)?
         } else {
-            Ok(active_blob_read_res.unwrap())
-        }
+            active_blob_read_res.unwrap()
+        };
+        Ok(record.get_data())
     }
 
     /// # Description
@@ -357,11 +364,12 @@ where
 {
     fn run(mut self) {
         while let Some(f) = block_on(self.next()) {
-            self.spawner
-                .spawn(f.map(|r| {
-                    r.unwrap();
-                }))
-                .unwrap();
+            if let Err(e) = self.spawner.spawn(f.map(|r| {
+                r.unwrap();
+            })) {
+                error!("{:?}", e);
+                return;
+            }
             thread::sleep(self.update_interval);
         }
         trace!("observer stopped");
@@ -410,6 +418,7 @@ pub enum Error {
     RecordNotFound,
     ObserverSpawnFailed(task::SpawnError),
     WorkDirInUse,
+    KeySizeMismatch(usize),
 }
 
 impl From<blob::Error> for Error {
@@ -422,6 +431,7 @@ impl From<blob::Error> for Error {
 /// Examples
 #[derive(Debug, Clone)]
 pub struct Config {
+    pub key_size: Option<u64>,
     pub work_dir: Option<PathBuf>,
     pub max_blob_size: Option<u64>,
     pub max_data_in_blob: Option<u64>,
@@ -432,6 +442,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            key_size: None,
             work_dir: None,
             max_blob_size: None,
             max_data_in_blob: None,

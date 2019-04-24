@@ -9,7 +9,7 @@ use futures::{
 };
 use std::{env, fs};
 
-use pearl::{Builder, Record, Storage};
+use pearl::{Builder, Storage};
 
 pub async fn default_test_storage_in<S>(
     spawner: S,
@@ -34,7 +34,8 @@ where
         .work_dir(&path)
         .blob_file_name_prefix("test")
         .max_blob_size(max_blob_size)
-        .max_data_in_blob(1_000);
+        .max_data_in_blob(1_000)
+        .key_size(8);
     let mut storage = builder.build().unwrap();
     await!(storage.init(spawner)).unwrap();
     Ok(storage)
@@ -46,17 +47,17 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-pub fn clean(dir: &str) {
+pub fn clean(storage: Storage, dir: &str) {
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    storage.close().unwrap();
     let path = env::temp_dir().join(dir);
     fs::remove_dir_all(path).unwrap();
 }
 
-pub async fn write(storage: Storage, base_number: usize) {
-    let key = format!("{}key", base_number);
-    let data = "omn".repeat(base_number);
-    let mut record = Record::new();
-    record.set_body(key, data);
-    await!(storage.write(record)).unwrap()
+pub async fn write(storage: Storage, base_number: u64) {
+    let key = base_number.to_be_bytes().to_vec();
+    let data = "omn".repeat(base_number as usize % 1_000_000);
+    await!(storage.write(key, data.as_bytes().to_vec())).unwrap()
 }
 
 pub fn check_all_written(storage: &Storage, nums: Vec<usize>) -> Result<(), String> {
