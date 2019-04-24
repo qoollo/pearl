@@ -197,7 +197,7 @@ impl Storage {
 
     /// # Description
     /// Stop work dir observer thread
-    pub fn close(&mut self) -> Result<()> {
+    pub fn close(&self) -> Result<()> {
         self.shared.need_exit.store(false, Ordering::Relaxed);
         // @TODO implement
         Ok(())
@@ -461,7 +461,6 @@ async fn active_blob_check(s: Arc<Storage>) -> Result<Option<Arc<Storage>>> {
     } else {
         Ok(None)
     }
-
 }
 
 async fn update_active_blob(s: Arc<Storage>) -> Result<()> {

@@ -10,9 +10,23 @@ readme = "README.md"
 [dependencies]
 env_logger = "0.6.0"
 log = "0.4.6"
-futures-preview = {version = "0.3.0-alpha.14", features = ["compat"]}
+futures-preview = { version = "0.3.0-alpha.14", features = ["compat"] }
 serde = "1.0.89"
 serde_derive = "1.0.89"
 bincode = "1.1.2"
 rand = "0.6.5"
 tokio = "*"
+
+runtime = { git = "https://github.com/rustasync/runtime", optional = true }
+clap = { version = "*", optional = true }
+
+[features]
+benchmark = ["clap", "runtime"]
+
+[lib]
+name = "pearl"
+
+[[bin]]
+name = "benchmark"
+path = "src/benchmark/bin.rs"
+required-features = ["benchmark"]
