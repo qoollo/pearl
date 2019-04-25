@@ -16,6 +16,7 @@ use std::{
 use crate::record::{self, Header as RecordHeader, Record};
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
+const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -24,7 +25,7 @@ type Result<T> = std::result::Result<T, Error>;
 ///
 /// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
-pub struct Blob<I> {
+pub(crate) struct Blob<I> where I: Index {
     header: Header,
     index: I,
     name: FileName,
@@ -115,55 +116,58 @@ impl From<fs::File> for File {
     }
 }
 
-pub trait Index: Default {
-    fn new(_path: &Path) -> Self;
-    fn from_file(path: PathBuf) -> Self;
+pub(crate) trait Index {
+    fn new(name: FileName) -> Self;
+    fn from_file(name: FileName) -> Self;
     fn get(&self, key: &[u8]) -> Option<RecordHeader>;
     fn push(&mut self, h: RecordHeader);
     fn contains_key(&self, key: &[u8]) -> bool;
     fn count(&self) -> usize;
     fn flush(&mut self);
-    
+}
+
+#[derive(Debug)]
+pub(crate) struct SimpleIndex {
+    inner: State,
+    name: FileName,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum SimpleIndex {
+enum State {
     InMemory(Vec<RecordHeader>),
     OnDisk(File),
 }
 
-impl Default for SimpleIndex {
-    fn default() -> Self {
-        SimpleIndex::InMemory(Default::default())
-    }
-}
-
 impl Index for SimpleIndex {
-    fn new(_path: &Path) -> Self {
-        SimpleIndex::InMemory(Default::default())
+    fn new(name: FileName) -> Self {
+        Self{
+        inner: State::InMemory(Vec::new()),
+        name,
+        }
     }
 
-    fn from_file(path: PathBuf) -> Self {
+    fn from_file(name: FileName) -> Self {
         // @TODO initialize new index from file
-        Self::new(&path)
+        Self::new(name)
     }
+
     fn contains_key(&self, key: &[u8]) -> bool {
         self.get(key).is_some()
     }
 
     fn push(&mut self, h: RecordHeader) {
-        match self {
-            SimpleIndex::InMemory(bunch) => {
+        match &mut self.inner {
+            State::InMemory(bunch) => {
                 bunch.push(h);
             }
-            SimpleIndex::OnDisk(_) => unimplemented!(),
+            State::OnDisk(_) => unimplemented!(),
         }
     }
 
     fn get(&self, key: &[u8]) -> Option<RecordHeader> {
-        match &self {
-            SimpleIndex::InMemory(bunch) => bunch.iter().find(|h| h.key() == key).cloned(),
-            SimpleIndex::OnDisk(f) => {
+        match &self.inner {
+            State::InMemory(bunch) => bunch.iter().find(|h| h.key() == key).cloned(),
+            State::OnDisk(f) => {
                 let mut meta = Vec::new();
                 f.read_fd.as_ref().seek(SeekFrom::Start(0)).unwrap();
                 f.read_fd.as_ref().read_to_end(&mut meta).unwrap();
@@ -175,27 +179,26 @@ impl Index for SimpleIndex {
     }
 
     fn flush(&mut self) {
-        match self {
-            SimpleIndex::InMemory(bunch) => {
+        match &mut self.inner {
+            State::InMemory(bunch) => {
                 let fd = fs::OpenOptions::new()
                     .create(true)
                     .read(true)
                     .write(true)
-                    .open("blob.index")
+                    .open(self.name.as_path())
                     .unwrap();
                 bunch.sort_by_key(|h| h.key().to_vec());
                 serialize_into(&fd, bunch).unwrap();
-                println!("index fd: {:?}", fd);
-                *self = SimpleIndex::OnDisk(File::from(fd));
+                self.inner = State::OnDisk(File::from(fd));
             }
-            SimpleIndex::OnDisk(_) => unimplemented!(),
+            State::OnDisk(_) => unimplemented!(),
         }
     }
 
     fn count(&self) -> usize {
-        match &self {
-            SimpleIndex::InMemory(bunch) => bunch.len(),
-            SimpleIndex::OnDisk(_) => unimplemented!(),
+        match &self.inner {
+            State::InMemory(bunch) => bunch.len(),
+            State::OnDisk(_) => unimplemented!(),
         }
     }
 }
@@ -207,19 +210,21 @@ impl<I> Blob<I> where I: Index {
     /// Panics if file with same path already exists
     ///
     /// [`FileName`]: struct.FileName.html
-    pub fn open_new(name: FileName) -> Result<Self> {
+    pub(crate) fn open_new(name: FileName) -> Result<Self> {
         let file = Self::create_file(&name.as_path())?.into();
+        let mut index_name = name.clone();
+        index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         let blob = Self {
             header: Header::new(),
             file,
-            index: Index::new(&name.as_path()),
+            index: Index::new(index_name),
             name,
             current_offset: Arc::new(Mutex::new(0)),
         };
         Ok(blob)
     }
 
-    pub fn flush(&mut self) {
+    pub(crate) fn flush(&mut self) {
         self.index.flush();
     }
 
@@ -241,15 +246,17 @@ impl<I> Blob<I> where I: Index {
             .map_err(Error::FromFile)
     }
 
-    pub fn boxed(self) -> Box<Self> {
+    pub(crate) fn boxed(self) -> Box<Self> {
         Box::new(self)
     }
 
-    pub fn from_file(path: PathBuf) -> Result<Self> {
+    pub(crate) fn from_file(path: PathBuf) -> Result<Self> {
         let file: File = Self::open_file(&path)?.into();
         let name = FileName::from_path(&path)?;
         let len = file.metadata().map_err(Error::FromFile)?.len();
-        let index = Index::from_file(path);
+        let mut index_name = name.clone();
+        index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
+        let index = Index::from_file(index_name);
 
         let blob = Self {
             header: Header::new(),
@@ -263,12 +270,12 @@ impl<I> Blob<I> where I: Index {
         Ok(blob)
     }
 
-    pub fn check_data_consistency(&self) -> Result<()> {
+    pub(crate) fn check_data_consistency(&self) -> Result<()> {
         // @TODO implement
         Ok(())
     }
 
-    pub async fn write(&mut self, mut record: Record) -> Result<()> {
+    pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
         let key = record.key().to_vec();
         if self.index.contains_key(&key) {
             return Err(Error::AlreadyContainsSameKey);
@@ -282,7 +289,7 @@ impl<I> Blob<I> where I: Index {
         Ok(())
     }
 
-    pub async fn read(&self, key: Vec<u8>) -> Result<Record> {
+    pub(crate) async fn read(&self, key: Vec<u8>) -> Result<Record> {
         let loc = self.lookup(&key)?;
         let buf = await!(self.file.read_at(loc.size as usize, loc.offset))?;
         let record = Record::from_raw(&buf).map_err(Error::RecordError)?;
@@ -298,7 +305,7 @@ impl<I> Blob<I> where I: Index {
         Ok(Location::new(offset as u64, h.full_len()))
     }
 
-    pub fn file_size(&self) -> Result<u64> {
+    pub(crate) fn file_size(&self) -> Result<u64> {
         Ok(self
             .file
             .metadata()
@@ -306,15 +313,15 @@ impl<I> Blob<I> where I: Index {
             .len())
     }
 
-    pub fn records_count(&self) -> usize {
+    pub(crate) fn records_count(&self) -> usize {
         self.index.count()
     }
 
-    pub fn path(&self) -> PathBuf {
+    pub(crate) fn path(&self) -> PathBuf {
         self.name.as_path()
     }
 
-    pub fn id(&self) -> usize {
+    pub(crate) fn id(&self) -> usize {
         self.name.id
     }
 }

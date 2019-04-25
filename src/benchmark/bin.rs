@@ -1,4 +1,4 @@
-#![feature(async_await, await_macro, futures_api)]
+#![feature(async_await, await_macro)]
 #![allow(clippy::needless_lifetimes)]
 extern crate pearl;
 #[macro_use]
@@ -12,6 +12,7 @@ use clap::{App, Arg, ArgMatches};
 use futures::{
     executor::ThreadPool,
     stream::{FuturesUnordered, StreamExt},
+    channel::mpsc::*,
 };
 use log::LevelFilter;
 use std::sync::Arc;
@@ -20,6 +21,7 @@ use std::time::Instant;
 use generator::Generator;
 use statistics::Statistics;
 use writer::Writer;
+
 fn main() {
     println!("{:_^41}", "PEARL_BENCHMARK");
     env_logger::Builder::new()
@@ -31,8 +33,6 @@ fn main() {
     let app = start_app(spawner);
     pool.run(app);
 }
-
-use futures::channel::mpsc::*;
 
 async fn start_app(spawner: ThreadPool) {
     info!("Hello Async World");
