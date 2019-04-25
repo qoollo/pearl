@@ -27,11 +27,12 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
 
 /// # Description
-/// A specialized Result type
+/// A specialized storage result type
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// # Description
-/// Used to create a storage, configure it and manage
+/// A main storage struct. This type is clonable, cloning it will only create a new reference,
+/// not a new storage.
 /// # Examples
 /// ```
 /// use pearl::{Storage, Builder};
@@ -40,8 +41,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 ///     .work_dir("/tmp/pearl/")
 ///     .max_blob_size(1_000_000)
 ///     .max_data_in_blob(1_000_000_000)
-///     .blob_file_name_prefix("enough");
-/// ```
+///     .blob_file_name_prefix("pearl-test");
 /// let mut storage = builder.build().unwrap();
 /// storage.init().unwrap();
 /// ```
@@ -77,8 +77,7 @@ impl Clone for Storage {
 }
 
 impl Storage {
-    /// Creates new uninitialized storage with provided config
-    pub fn new(config: Config) -> Self {
+    pub(crate) fn new(config: Config) -> Self {
         Self {
             twins_count: Arc::new(AtomicUsize::new(0)),
             shared: Arc::new(Shared::new(config)),
@@ -86,10 +85,12 @@ impl Storage {
         }
     }
 
-    /// `init(..)` used to prepare all environment to further work.
+    /// [`init()`] used to prepare all environment to further work.
     ///
-    /// Storage works in dir provided to builder. If dir not exist,
-    /// creates it, otherwise tries init dir as existing storage.
+    /// Storage works in directory provided to builder. If directory don't exist,
+    /// storage creates it, otherwise tries to init existing storage.
+    /// 
+    /// [`init()`]: struct.Storage.html#method.init
     pub async fn init<S>(&mut self, mut spawner: S) -> Result<()>
     where
         S: Spawn + Clone + Send + 'static + Unpin + Sync,
@@ -137,10 +138,16 @@ impl Storage {
     }
 
     /// # Description
-    /// Writes bytes `value` to active blob
-    /// If active blob reaches it limit, create new and close old
-    /// Returns number of bytes, written to blob
+    /// Writes `data` to active blob asyncronously. If active blob reaches it limit, creates new 
+    /// and closes old.
     /// # Examples
+    /// ```no-run
+    /// block_on(async {
+    ///     let key = 42u64.to_be_bytes().to_vec();
+    ///     let data = b"async written to blob".to_vec();
+    ///     await!(storage.write(key, data))
+    /// )};
+    /// ```
     pub async fn write(self, key: Vec<u8>, data: Vec<u8>) -> Result<()> {
         if key.len() as u64 != self.shared.config.key_size.ok_or(Error::Unitialized)? {
             return Err(Error::KeySizeMismatch(key.len()));
@@ -178,10 +185,16 @@ impl Storage {
     }
 
     /// # Description
-    /// Reads data with given key to [`Record`], if error ocured or there are no
-    /// records with matching key, returns [`Error::RecordNotFound`]
+    /// Reads data with given key, if error ocured or there are no records with matching 
+    /// key, returns [`Error::RecordNotFound`]
+    /// # Examples
+    /// ```no-run
+    /// let data = block_on(async {
+    ///     let key = 42u64.to_be_bytes().to_vec();
+    ///     await!(storage.read(key))
+    /// )};
+    /// ```
     ///
-    /// [`Record`]: ../struct.Record.html
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     pub async fn read(&self, key: Vec<u8>) -> Result<Vec<u8>> {
         let inner = await!(self.inner.lock());
@@ -196,9 +209,7 @@ impl Storage {
                 .iter()
                 .map(|blob| blob.read(key.clone()))
                 .collect();
-            let mut task = stream.skip_while(|res| {
-                future::ready(res.is_err())
-            });
+            let mut task = stream.skip_while(|res| future::ready(res.is_err()));
             await!(task.next())
                 .ok_or(Error::RecordNotFound)?
                 .map_err(Error::BlobError)?
@@ -214,26 +225,6 @@ impl Storage {
         self.shared.need_exit.store(false, Ordering::Relaxed);
         // @TODO implement
         Ok(())
-    }
-
-    /// # Description
-    /// Blobs count contains closed blobs and one active, if is some.
-    /// # Examples
-    /// ```no-run
-    /// # use pearl::Builder;
-    /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build::<f64>();
-    /// storage.init();
-    /// assert_eq!(storage.blobs_count(), 1);
-    /// ```
-    pub async fn blobs_count(&self) -> usize {
-        let inner = await!(self.inner.lock());
-        inner.blobs.len() + if inner.active_blob.is_some() { 1 } else { 0 }
-    }
-
-    /// # Description
-    /// Returns active blob file path, if active blob unitialized - None
-    pub async fn active_blob_path(&self) -> Option<PathBuf> {
-        Some(await!(self.inner.lock()).active_blob.as_ref()?.path())
     }
 
     async fn prepare_work_dir(&mut self) -> Result<()> {
@@ -252,6 +243,7 @@ impl Storage {
         }
 
         let lock_file_path = path.join(LOCK_FILE);
+        // @TODO check if dir is locked
         // if lock_file_path.exists() {
         //     return Err(Error::WorkDirInUse);
         // }
@@ -427,10 +419,8 @@ impl From<blob::Error> for Error {
     }
 }
 
-/// Description
-/// Examples
 #[derive(Debug, Clone)]
-pub struct Config {
+pub(crate) struct Config {
     pub key_size: Option<u64>,
     pub work_dir: Option<PathBuf>,
     pub max_blob_size: Option<u64>,

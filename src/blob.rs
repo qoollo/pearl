@@ -25,7 +25,10 @@ type Result<T> = std::result::Result<T, Error>;
 ///
 /// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
-pub(crate) struct Blob<I> where I: Index {
+pub(crate) struct Blob<I>
+where
+    I: Index,
+{
     header: Header,
     index: I,
     name: FileName,
@@ -140,9 +143,9 @@ enum State {
 
 impl Index for SimpleIndex {
     fn new(name: FileName) -> Self {
-        Self{
-        inner: State::InMemory(Vec::new()),
-        name,
+        Self {
+            inner: State::InMemory(Vec::new()),
+            name,
         }
     }
 
@@ -165,6 +168,7 @@ impl Index for SimpleIndex {
     }
 
     fn get(&self, key: &[u8]) -> Option<RecordHeader> {
+        // @TODO implement binary search
         match &self.inner {
             State::InMemory(bunch) => bunch.iter().find(|h| h.key() == key).cloned(),
             State::OnDisk(f) => {
@@ -203,7 +207,10 @@ impl Index for SimpleIndex {
     }
 }
 
-impl<I> Blob<I> where I: Index {
+impl<I> Blob<I>
+where
+    I: Index,
+{
     /// # Description
     /// Creates new blob file with given [`FileName`]
     /// # Panic
@@ -317,10 +324,6 @@ impl<I> Blob<I> where I: Index {
         self.index.count()
     }
 
-    pub(crate) fn path(&self) -> PathBuf {
-        self.name.as_path()
-    }
-
     pub(crate) fn id(&self) -> usize {
         self.name.id
     }
@@ -397,8 +400,6 @@ impl FileName {
     }
 }
 
-/// # Description
-/// # Examples
 #[derive(Debug, Clone)]
 struct Header {
     magic_byte: u64,

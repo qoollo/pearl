@@ -10,8 +10,7 @@ pub enum Error {
     WrongMagicByte(u64),
 }
 
-/// [`Record`] consists of header, key and data.
-/// # Examples
+/// [`Record`] consists of header and data.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Record {
     header: Header,
@@ -19,10 +18,7 @@ pub struct Record {
 }
 
 impl Record {
-    /// Creates new `Record` with empty data and key.
-    /// Use [`Self::set_body`] method to initialize it.
-    ///
-    /// [`Self::set_body`]: #method.set_body
+    /// Creates new `Record` with provided data and key.
     ///
     /// # Examples
     ///
@@ -56,7 +52,7 @@ impl Record {
     }
 
     /// # Description
-    /// Serialize header to `Vec<u8>` bytes
+    /// Serialize record to bytes
     pub fn to_raw(&self) -> Vec<u8> {
         let raw_header = self.header.to_raw();
         let mut buf = Vec::with_capacity(self.header.full_len() as usize);
@@ -74,12 +70,9 @@ impl Record {
     }
 }
 
-/// # Description
-/// # Examples
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Header {
     magic_byte: u64,
-    // key_len: u64,
     key: Vec<u8>,
     data_len: u64,
     flags: u8,
@@ -94,7 +87,6 @@ impl Header {
         // @TODO calculate check sums
         Self {
             magic_byte: RECORD_MAGIC_BYTE,
-            // key_len: 0,
             key,
             data_len,
             flags: 0,

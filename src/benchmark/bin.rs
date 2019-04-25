@@ -10,9 +10,9 @@ mod writer;
 
 use clap::{App, Arg, ArgMatches};
 use futures::{
+    channel::mpsc::*,
     executor::ThreadPool,
     stream::{FuturesUnordered, StreamExt},
-    channel::mpsc::*,
 };
 use log::LevelFilter;
 use std::sync::Arc;

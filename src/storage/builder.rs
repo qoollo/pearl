@@ -2,18 +2,43 @@ use super::core::{Config, Error, Result, Storage};
 use std::path::PathBuf;
 
 /// `Builder` used for initializing a `Storage`.
+/// Required params: 
+///  - [`work_dir`] - where `Storage` will keep blob and index files
+///  - [`max_blob_size`] - upper limit of blob file size
+///  - [`max_data_in_blob`] - maximum number of records in one blob
+///  - [`blob_file_name_prefix`] - blob file name pattern: {prefix}.{id}.{ext}
+///  - [`key_size`] - const key size in bytes
+///         
+/// # Example
+/// ```
+/// let storage = Builder::new()
+///         .blob_file_name_prefix("benchmark")
+///         .max_blob_size(max_blob_size)
+///         .max_data_in_blob(max_data_in_blob)
+///         .work_dir(tmp_dir.join("pearl_benchmark"))
+///         .key_size(8)
+///         .build()
+///         .unwrap();
+/// ```
+/// 
+/// [`work_dir`]: struct.Builder.html#method.work_dir
+/// [`max_blob_size`]: struct.Builder.html#method.max_blob_size
+/// [`max_data_in_blob`]: struct.Builder.html#method.max_data_in_blob
+/// [`blob_file_name_prefix`]: struct.Builder.html#method.blob_file_name_prefix
+/// [`key_size`]: struct.Builder.html#method.key_size
 #[derive(Default, Debug)]
 pub struct Builder {
     config: Config,
 }
 
 impl Builder {
-    /// Initializes the `Builder` with defaults
+    /// Create new unitialized `Builder`
     pub fn new() -> Self {
         Default::default()
     }
 
-    /// Creates `Storage` based on given configuration
+    /// Creates `Storage` based on given configuration,
+    /// returns error if not all params are set.
     pub fn build(self) -> Result<Storage> {
         if self.config.blob_file_name_prefix.is_none()
             || self.config.max_data_in_blob.is_none()
@@ -28,13 +53,8 @@ impl Builder {
     }
 
     /// # Description
-    /// Sets a string with work dir as prefix for blob naming.
-    /// If path doesn't exists, Storage will try to create it
+    /// Sets working directory. If path doesn't exists, Storage will try to create it 
     /// at initialization stage.
-    /// # Examples
-    /// ```no-run
-    /// let builder = Builder::new().work_dir("/tmp/pearl/");
-    /// ```
     pub fn work_dir<S: Into<PathBuf>>(mut self, work_dir: S) -> Self {
         debug!("set work dir");
         let path: PathBuf = work_dir.into();
@@ -44,14 +64,9 @@ impl Builder {
     }
 
     /// # Description
-    /// Sets blob file max size
+    /// Sets blob file size approximate limit. When the file size exceeds it,
+    /// active blob update is activated.
     /// Must be greater than zero
-    /// # Examples
-    /// ```no-run
-    /// let builder = Builder::new()
-    ///     .work_dir("/tmp/pearl/")
-    ///     .max_blob_size(1_000_000);
-    /// ```
     pub fn max_blob_size(mut self, max_blob_size: u64) -> Self {
         if max_blob_size > 0 {
             self.config.max_blob_size = Some(max_blob_size);
@@ -66,15 +81,8 @@ impl Builder {
     }
 
     /// # Description
-    /// Sets max number of records in single blob
+    /// Limits max number of records in a single blob.
     /// Must be greater than zero
-    /// # Examples
-    /// ```no-run
-    /// let builder = Builder::new()
-    ///     .work_dir("/tmp/pearl/")
-    ///     .max_blob_size(1_000_000)
-    ///     .max_data_in_blob(1_000_000_000); // 1GB
-    /// ```
     pub fn max_data_in_blob(mut self, max_data_in_blob: u64) -> Self {
         if max_data_in_blob > 0 {
             self.config.max_data_in_blob = Some(max_data_in_blob);
@@ -92,15 +100,7 @@ impl Builder {
     /// Sets blob file name prefix, e.g. if prefix set to `hellopearl`,
     /// files will be named as `hellopearl.[N].blob`.
     /// Where N - index number of file
-    /// Must be not empty
-    /// # Examples
-    /// ```no-run
-    /// let builder = Builder::new()
-    ///     .work_dir("/tmp/pearl/")
-    ///     .max_blob_size(1_000_000)
-    ///     .max_data_in_blob(1_000_000_000)
-    ///     .blob_file_name_prefix("enough");
-    /// ```
+    /// If the prefix is empty, param won't be set.
     pub fn blob_file_name_prefix<U: Into<String>>(mut self, blob_file_name_prefix: U) -> Self {
         let prefix = blob_file_name_prefix.into();
         if prefix.is_empty() {
@@ -116,6 +116,7 @@ impl Builder {
     }
 
     /// # Description
+    /// Sets key size limit
     pub fn key_size(mut self, key_size: u64) -> Self {
         self.config.key_size = if key_size > 0 { Some(key_size) } else { None };
         self

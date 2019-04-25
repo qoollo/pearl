@@ -1,9 +1,4 @@
-#![feature(
-    async_await,
-    await_macro,
-    repeat_generic_slice,
-    duration_float
-)]
+#![feature(async_await, await_macro, repeat_generic_slice, duration_float)]
 
 use futures::{
     executor::{block_on, ThreadPool},
