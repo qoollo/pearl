@@ -2,7 +2,7 @@ use super::core::{Config, Error, Result, Storage};
 use std::path::PathBuf;
 
 /// `Builder` used for initializing a `Storage`.
-/// Required params: 
+/// Required params:
 ///  - [`work_dir`] - where `Storage` will keep blob and index files
 ///  - [`max_blob_size`] - upper limit of blob file size
 ///  - [`max_data_in_blob`] - maximum number of records in one blob
@@ -20,7 +20,7 @@ use std::path::PathBuf;
 ///         .build()
 ///         .unwrap();
 /// ```
-/// 
+///
 /// [`work_dir`]: struct.Builder.html#method.work_dir
 /// [`max_blob_size`]: struct.Builder.html#method.max_blob_size
 /// [`max_data_in_blob`]: struct.Builder.html#method.max_data_in_blob
@@ -53,7 +53,7 @@ impl Builder {
     }
 
     /// # Description
-    /// Sets working directory. If path doesn't exists, Storage will try to create it 
+    /// Sets working directory. If path doesn't exists, Storage will try to create it
     /// at initialization stage.
     pub fn work_dir<S: Into<PathBuf>>(mut self, work_dir: S) -> Self {
         debug!("set work dir");
@@ -70,10 +70,6 @@ impl Builder {
     pub fn max_blob_size(mut self, max_blob_size: u64) -> Self {
         if max_blob_size > 0 {
             self.config.max_blob_size = Some(max_blob_size);
-            debug!(
-                "maximum blob size set to: {}",
-                self.config.max_blob_size.unwrap()
-            );
         } else {
             error!("zero size blobs is useless, not set");
         }
@@ -86,10 +82,6 @@ impl Builder {
     pub fn max_data_in_blob(mut self, max_data_in_blob: u64) -> Self {
         if max_data_in_blob > 0 {
             self.config.max_data_in_blob = Some(max_data_in_blob);
-            info!(
-                "max number of records in blob set to: {}",
-                self.config.max_data_in_blob.unwrap()
-            );
         } else {
             error!("zero size blobs is useless, not set");
         }
@@ -107,10 +99,6 @@ impl Builder {
             error!("passed empty file prefix, not set");
         } else {
             self.config.blob_file_name_prefix = Some(prefix);
-            info!(
-                "blob file format: {}.{{}}.blob",
-                self.config.blob_file_name_prefix.as_ref().unwrap()
-            );
         }
         self
     }

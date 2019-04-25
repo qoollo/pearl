@@ -8,6 +8,7 @@ type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     FromRaw(bincode::ErrorKind),
     WrongMagicByte(u64),
+    Serialization(Box<bincode::ErrorKind>),
 }
 
 /// [`Record`] consists of header and data.
@@ -53,12 +54,12 @@ impl Record {
 
     /// # Description
     /// Serialize record to bytes
-    pub fn to_raw(&self) -> Vec<u8> {
-        let raw_header = self.header.to_raw();
-        let mut buf = Vec::with_capacity(self.header.full_len() as usize);
+    pub fn to_raw(&self) -> Result<Vec<u8>> {
+        let raw_header = self.header.to_raw()?;
+        let mut buf = Vec::with_capacity(self.header.full_len()? as usize);
         buf.extend(raw_header.iter());
         buf.extend_from_slice(&self.data);
-        buf
+        Ok(buf)
     }
 
     pub(crate) fn set_offset(&mut self, offset: u64) {
@@ -112,23 +113,23 @@ impl Header {
         }
     }
 
-    pub fn to_raw(&self) -> Vec<u8> {
-        serialize(&self).unwrap()
+    pub fn to_raw(&self) -> Result<Vec<u8>> {
+        serialize(&self).map_err(Error::Serialization)
     }
 
     pub fn blob_offset(&self) -> u64 {
         self.blob_offset
     }
 
-    pub fn full_len(&self) -> u64 {
-        self.data_len + self.serialized_size()
+    pub fn full_len(&self) -> Result<u64> {
+        Ok(self.data_len + self.serialized_size()?)
     }
 
     pub fn key(&self) -> &[u8] {
         &self.key
     }
 
-    fn serialized_size(&self) -> u64 {
-        bincode::serialized_size(&self).unwrap()
+    fn serialized_size(&self) -> Result<u64> {
+        bincode::serialized_size(&self).map_err(Error::Serialization)
     }
 }

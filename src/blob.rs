@@ -58,7 +58,7 @@ impl<'a> Future for WriteAt<'a> {
                 cx.waker().wake_by_ref();
                 Poll::Pending
             }
-            Err(e) => Poll::Ready(Err(Error::WriteFailed(e))),
+            Err(e) => Poll::Ready(Err(Error::IO(e))),
         }
     }
 }
@@ -80,7 +80,7 @@ impl Future for ReadAt {
                 cx.waker().wake_by_ref();
                 Poll::Pending
             }
-            Err(e) => Poll::Ready(Err(Error::ReadFailed(e))),
+            Err(e) => Poll::Ready(Err(Error::IO(e))),
         }
     }
 }
@@ -108,25 +108,23 @@ impl File {
         };
         await!(read_fut)
     }
-}
 
-impl From<fs::File> for File {
-    fn from(fd: fs::File) -> Self {
-        File {
-            read_fd: Arc::new(fd.try_clone().unwrap()),
+    fn from_std_file(fd: fs::File) -> Result<Self> {
+        Ok(File {
+            read_fd: Arc::new(fd.try_clone()?),
             write_fd: Arc::new(Mutex::new(fd)),
-        }
+        })
     }
 }
 
 pub(crate) trait Index {
     fn new(name: FileName) -> Self;
     fn from_file(name: FileName) -> Self;
-    fn get(&self, key: &[u8]) -> Option<RecordHeader>;
+    fn get(&self, key: &[u8]) -> Result<RecordHeader>;
     fn push(&mut self, h: RecordHeader);
     fn contains_key(&self, key: &[u8]) -> bool;
     fn count(&self) -> usize;
-    fn flush(&mut self);
+    fn flush(&mut self) -> Result<()>;
 }
 
 #[derive(Debug)]
@@ -155,7 +153,7 @@ impl Index for SimpleIndex {
     }
 
     fn contains_key(&self, key: &[u8]) -> bool {
-        self.get(key).is_some()
+        self.get(key).is_ok()
     }
 
     fn push(&mut self, h: RecordHeader) {
@@ -167,36 +165,42 @@ impl Index for SimpleIndex {
         }
     }
 
-    fn get(&self, key: &[u8]) -> Option<RecordHeader> {
+    fn get(&self, key: &[u8]) -> Result<RecordHeader> {
         // @TODO implement binary search
         match &self.inner {
-            State::InMemory(bunch) => bunch.iter().find(|h| h.key() == key).cloned(),
+            State::InMemory(bunch) => bunch
+                .iter()
+                .find(|h| h.key() == key)
+                .cloned()
+                .ok_or(Error::NotFound),
             State::OnDisk(f) => {
                 let mut meta = Vec::new();
                 f.read_fd.as_ref().seek(SeekFrom::Start(0)).unwrap();
                 f.read_fd.as_ref().read_to_end(&mut meta).unwrap();
                 let meta: Vec<RecordHeader> = deserialize(meta.as_slice()).unwrap();
-                let i = meta.binary_search_by_key(&key, |h| h.key()).ok()?;
-                meta.get(i).cloned()
+                let i = meta
+                    .binary_search_by_key(&key, |h| h.key())
+                    .map_err(|_| Error::NotFound)?;
+                meta.get(i).cloned().ok_or(Error::NotFound)
             }
         }
     }
 
-    fn flush(&mut self) {
+    fn flush(&mut self) -> Result<()> {
         match &mut self.inner {
             State::InMemory(bunch) => {
                 let fd = fs::OpenOptions::new()
                     .create(true)
                     .read(true)
                     .write(true)
-                    .open(self.name.as_path())
-                    .unwrap();
+                    .open(self.name.as_path())?;
                 bunch.sort_by_key(|h| h.key().to_vec());
-                serialize_into(&fd, bunch).unwrap();
-                self.inner = State::OnDisk(File::from(fd));
+                serialize_into(&fd, bunch)?;
+                self.inner = State::OnDisk(File::from_std_file(fd)?);
             }
             State::OnDisk(_) => unimplemented!(),
         }
+        Ok(())
     }
 
     fn count(&self) -> usize {
@@ -218,7 +222,7 @@ where
     ///
     /// [`FileName`]: struct.FileName.html
     pub(crate) fn open_new(name: FileName) -> Result<Self> {
-        let file = Self::create_file(&name.as_path())?.into();
+        let file = File::from_std_file(Self::create_file(&name.as_path())?)?;
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         let blob = Self {
@@ -231,8 +235,8 @@ where
         Ok(blob)
     }
 
-    pub(crate) fn flush(&mut self) {
-        self.index.flush();
+    pub(crate) fn flush(&mut self) -> Result<()> {
+        self.index.flush()
     }
 
     fn create_file(path: &Path) -> Result<fs::File> {
@@ -245,12 +249,11 @@ where
     }
 
     fn open_file(path: &Path) -> Result<fs::File> {
-        fs::OpenOptions::new()
+        Ok(fs::OpenOptions::new()
             .create(false)
             .append(true)
             .read(true)
-            .open(path)
-            .map_err(Error::FromFile)
+            .open(path)?)
     }
 
     pub(crate) fn boxed(self) -> Box<Self> {
@@ -258,9 +261,9 @@ where
     }
 
     pub(crate) fn from_file(path: PathBuf) -> Result<Self> {
-        let file: File = Self::open_file(&path)?.into();
+        let file: File = File::from_std_file(Self::open_file(&path)?)?;
         let name = FileName::from_path(&path)?;
-        let len = file.metadata().map_err(Error::FromFile)?.len();
+        let len = file.metadata()?.len();
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         let index = Index::from_file(index_name);
@@ -289,7 +292,7 @@ where
         }
         let mut offset = await!(self.current_offset.lock());
         record.set_offset(*offset);
-        let buf = record.to_raw();
+        let buf = record.to_raw()?;
         let bytes_written = await!(self.file.write_at(buf, *offset))?;
         self.index.push(record.header().clone());
         *offset += bytes_written as u64;
@@ -299,7 +302,7 @@ where
     pub(crate) async fn read(&self, key: Vec<u8>) -> Result<Record> {
         let loc = self.lookup(&key)?;
         let buf = await!(self.file.read_at(loc.size as usize, loc.offset))?;
-        let record = Record::from_raw(&buf).map_err(Error::RecordError)?;
+        let record = Record::from_raw(&buf)?;
         Ok(record)
     }
 
@@ -307,17 +310,13 @@ where
     where
         K: AsRef<[u8]> + Ord,
     {
-        let h = self.index.get(key.as_ref()).ok_or(Error::NotFound)?;
+        let h = self.index.get(key.as_ref())?;
         let offset = h.blob_offset();
-        Ok(Location::new(offset as u64, h.full_len()))
+        Ok(Location::new(offset as u64, h.full_len()?))
     }
 
     pub(crate) fn file_size(&self) -> Result<u64> {
-        Ok(self
-            .file
-            .metadata()
-            .map_err(Error::GetMetadataFailed)?
-            .len())
+        Ok(self.file.metadata()?.len())
     }
 
     pub(crate) fn records_count(&self) -> usize {
@@ -332,8 +331,6 @@ where
 #[derive(Debug)]
 pub enum Error {
     OpenNew(io::Error, PathBuf),
-    FromFile(io::Error),
-    CloneFd(io::Error),
     NotFound,
     RecordFromRawFailed,
     PathWithoutFileName(PathBuf),
@@ -342,12 +339,26 @@ pub enum Error {
     IndexParseFailed(String),
     RecordError(record::Error),
     AlreadyContainsSameKey,
-    DeserializationFailed(bincode::ErrorKind),
-    WriteFailed(io::Error),
-    CloneFailed(io::Error),
-    ReadFailed(io::Error),
-    CorruptedData,
-    GetMetadataFailed(io::Error),
+    IO(io::Error),
+    SerDe(bincode::Error),
+}
+
+impl From<bincode::Error> for Error {
+    fn from(bincode_error: bincode::Error) -> Self {
+        Error::SerDe(bincode_error)
+    }
+}
+
+impl From<record::Error> for Error {
+    fn from(record_error: record::Error) -> Self {
+        Error::RecordError(record_error)
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(io_error: io::Error) -> Self {
+        Error::IO(io_error)
+    }
 }
 
 #[derive(Debug, Clone)]

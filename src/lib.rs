@@ -9,11 +9,11 @@
 //! Crate `pearl` provides [`Futures 0.3`] interface.
 //!
 //! [`Futures 0.3`]: https://rust-lang-nursery.github.io/futures-api-docs#latest
-//! 
+//!
 //! # Examples
 //! The following example shows a storage building and initialization.
 //! For more advanced usage see the benchmark tool as the example
-//! 
+//!
 //! ```
 //! // Initialize new builder and set required params
 //! let storage = Builder::new()
@@ -27,7 +27,7 @@
 //! // Init storage
 //! storage.init().unwrap();
 //! ```
- 
+
 #[macro_use]
 extern crate log;
 #[macro_use]

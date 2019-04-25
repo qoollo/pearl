@@ -89,7 +89,7 @@ impl Storage {
     ///
     /// Storage works in directory provided to builder. If directory don't exist,
     /// storage creates it, otherwise tries to init existing storage.
-    /// 
+    ///
     /// [`init()`]: struct.Storage.html#method.init
     pub async fn init<S>(&mut self, mut spawner: S) -> Result<()>
     where
@@ -138,7 +138,7 @@ impl Storage {
     }
 
     /// # Description
-    /// Writes `data` to active blob asyncronously. If active blob reaches it limit, creates new 
+    /// Writes `data` to active blob asyncronously. If active blob reaches it limit, creates new
     /// and closes old.
     /// # Examples
     /// ```no-run
@@ -185,7 +185,7 @@ impl Storage {
     }
 
     /// # Description
-    /// Reads data with given key, if error ocured or there are no records with matching 
+    /// Reads data with given key, if error ocured or there are no records with matching
     /// key, returns [`Error::RecordNotFound`]
     /// # Examples
     /// ```no-run
@@ -203,7 +203,9 @@ impl Storage {
             .as_ref()
             .ok_or(Error::ActiveBlobNotSet)?
             .read(key.clone()));
-        let record = if active_blob_read_res.is_err() {
+        Ok(if let Ok(record) = active_blob_read_res {
+            record
+        } else {
             let stream: FuturesUnordered<_> = inner
                 .blobs
                 .iter()
@@ -213,10 +215,8 @@ impl Storage {
             await!(task.next())
                 .ok_or(Error::RecordNotFound)?
                 .map_err(Error::BlobError)?
-        } else {
-            active_blob_read_res.unwrap()
-        };
-        Ok(record.get_data())
+        }
+        .get_data())
     }
 
     /// # Description
@@ -262,33 +262,30 @@ impl Storage {
         let mut inner = await!(self.inner.lock());
         let next = self.next_blob_name()?;
         inner.active_blob = Some(Blob::open_new(next).map_err(Error::InitActiveBlob)?.boxed());
-        debug!(
-            "created new active blob: {}",
-            inner.active_blob.as_ref().unwrap().id()
-        );
         Ok(())
     }
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         let dir_content = files.iter().map(DirEntry::path);
         let dir_files = dir_content.filter(|path| path.is_file());
-        let mut temp_blobs: Vec<_> = dir_files
-            .filter(|path| {
-                path.extension()
-                    .map(|os_str| os_str.to_str().unwrap())
-                    .unwrap_or("")
-                    == BLOB_FILE_EXTENSION
-            })
-            .filter_map(|path| {
-                let blob = Blob::from_file(path.clone()).ok()?;
-                blob.check_data_consistency()
-                    .map_err(|e| error!("Check data consistency failed: {:?}", e))
-                    .ok()?;
-                Some(blob)
-            })
-            .collect();
+        let mut blob_files = dir_files.filter_map(|path| {
+            if path.extension()?.to_str()? == BLOB_FILE_EXTENSION {
+                Some(path)
+            } else {
+                None
+            }
+        });
+        let mut temp_blobs = blob_files.try_fold(
+            Vec::new(),
+            |mut temp_blobs, path| -> Result<Vec<Blob<SimpleIndex>>> {
+                let blob = Blob::from_file(path)?;
+                blob.check_data_consistency()?;
+                temp_blobs.push(blob);
+                Ok(temp_blobs)
+            },
+        )?;
         temp_blobs.sort_by_key(Blob::id);
-        let active_blob = temp_blobs.pop().unwrap().boxed();
+        let active_blob = temp_blobs.pop().ok_or(Error::Unitialized)?.boxed();
         let mut inner = await!(self.inner.lock());
         inner.active_blob = Some(active_blob);
         inner.blobs = temp_blobs;
@@ -357,10 +354,10 @@ where
     fn run(mut self) {
         while let Some(f) = block_on(self.next()) {
             if let Err(e) = self.spawner.spawn(f.map(|r| {
-                r.unwrap();
+                r.expect("active blob update future paniced");
             })) {
                 error!("{:?}", e);
-                return;
+                break;
             }
             thread::sleep(self.update_interval);
         }
@@ -480,7 +477,7 @@ async fn update_active_blob(s: Arc<Storage>) -> Result<()> {
         .active_blob
         .replace(new_active)
         .ok_or(Error::ActiveBlobNotSet)?;
-    old_active.flush();
+    old_active.flush()?;
     inner.blobs.push(*old_active);
     Ok(())
 }
