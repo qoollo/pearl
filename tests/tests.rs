@@ -1,5 +1,4 @@
 #![feature(
-    futures_api,
     async_await,
     await_macro,
     repeat_generic_slice,

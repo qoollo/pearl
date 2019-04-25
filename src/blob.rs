@@ -24,16 +24,16 @@ type Result<T> = std::result::Result<T, Error>;
 ///
 /// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
-pub struct Blob {
+pub struct Blob<I> {
     header: Header,
-    index: Index,
+    index: I,
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
 }
 
 #[derive(Debug, Clone)]
-struct File {
+pub(crate) struct File {
     read_fd: Arc<fs::File>,
     write_fd: Arc<Mutex<fs::File>>,
 }
@@ -115,53 +115,55 @@ impl From<fs::File> for File {
     }
 }
 
-#[derive(Debug, Default, Clone)]
-struct Index {
-    inner: IndexInner,
+pub trait Index: Default {
+    fn new(_path: &Path) -> Self;
+    fn from_file(path: PathBuf) -> Self;
+    fn get(&self, key: &[u8]) -> Option<RecordHeader>;
+    fn push(&mut self, h: RecordHeader);
+    fn contains_key(&self, key: &[u8]) -> bool;
+    fn count(&self) -> usize;
+    fn flush(&mut self);
+    
 }
 
 #[derive(Debug, Clone)]
-enum IndexInner {
+pub(crate) enum SimpleIndex {
     InMemory(Vec<RecordHeader>),
     OnDisk(File),
 }
 
-impl Default for IndexInner {
+impl Default for SimpleIndex {
     fn default() -> Self {
-        IndexInner::InMemory(Default::default())
+        SimpleIndex::InMemory(Default::default())
     }
 }
 
-impl Index {
+impl Index for SimpleIndex {
     fn new(_path: &Path) -> Self {
+        SimpleIndex::InMemory(Default::default())
+    }
+
+    fn from_file(path: PathBuf) -> Self {
         // @TODO initialize new index from file
-        Self {
-            inner: IndexInner::InMemory(Default::default()),
-        }
+        Self::new(&path)
     }
-
-    fn from_default(_path: &Path) -> Result<Self> {
-        // @TODO implement
-        Ok(Default::default())
-    }
-
     fn contains_key(&self, key: &[u8]) -> bool {
         self.get(key).is_some()
     }
 
     fn push(&mut self, h: RecordHeader) {
-        match &mut self.inner {
-            IndexInner::InMemory(bunch) => {
+        match self {
+            SimpleIndex::InMemory(bunch) => {
                 bunch.push(h);
             }
-            IndexInner::OnDisk(_) => unimplemented!(),
+            SimpleIndex::OnDisk(_) => unimplemented!(),
         }
     }
 
     fn get(&self, key: &[u8]) -> Option<RecordHeader> {
-        match &self.inner {
-            IndexInner::InMemory(bunch) => bunch.iter().find(|h| h.key() == key).cloned(),
-            IndexInner::OnDisk(f) => {
+        match &self {
+            SimpleIndex::InMemory(bunch) => bunch.iter().find(|h| h.key() == key).cloned(),
+            SimpleIndex::OnDisk(f) => {
                 let mut meta = Vec::new();
                 f.read_fd.as_ref().seek(SeekFrom::Start(0)).unwrap();
                 f.read_fd.as_ref().read_to_end(&mut meta).unwrap();
@@ -173,8 +175,8 @@ impl Index {
     }
 
     fn flush(&mut self) {
-        match &mut self.inner {
-            IndexInner::InMemory(bunch) => {
+        match self {
+            SimpleIndex::InMemory(bunch) => {
                 let fd = fs::OpenOptions::new()
                     .create(true)
                     .read(true)
@@ -184,21 +186,21 @@ impl Index {
                 bunch.sort_by_key(|h| h.key().to_vec());
                 serialize_into(&fd, bunch).unwrap();
                 println!("index fd: {:?}", fd);
-                self.inner = IndexInner::OnDisk(File::from(fd));
+                *self = SimpleIndex::OnDisk(File::from(fd));
             }
-            IndexInner::OnDisk(_) => unimplemented!(),
+            SimpleIndex::OnDisk(_) => unimplemented!(),
         }
     }
 
-    fn len(&self) -> usize {
-        match &self.inner {
-            IndexInner::InMemory(bunch) => bunch.len(),
-            IndexInner::OnDisk(_) => unimplemented!(),
+    fn count(&self) -> usize {
+        match &self {
+            SimpleIndex::InMemory(bunch) => bunch.len(),
+            SimpleIndex::OnDisk(_) => unimplemented!(),
         }
     }
 }
 
-impl Blob {
+impl<I> Blob<I> where I: Index {
     /// # Description
     /// Creates new blob file with given [`FileName`]
     /// # Panic
@@ -247,7 +249,7 @@ impl Blob {
         let file: File = Self::open_file(&path)?.into();
         let name = FileName::from_path(&path)?;
         let len = file.metadata().map_err(Error::FromFile)?.len();
-        let index = Index::from_default(&path)?;
+        let index = Index::from_file(path);
 
         let blob = Self {
             header: Header::new(),
@@ -305,7 +307,7 @@ impl Blob {
     }
 
     pub fn records_count(&self) -> usize {
-        self.index.len()
+        self.index.count()
     }
 
     pub fn path(&self) -> PathBuf {

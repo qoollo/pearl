@@ -19,7 +19,7 @@ use std::{
 };
 
 use crate::{
-    blob::{self, Blob},
+    blob::{self, Blob, SimpleIndex},
     record::Record,
 };
 
@@ -310,8 +310,8 @@ impl Storage {
 
 #[derive(Debug)]
 struct Inner {
-    active_blob: Option<Box<Blob>>,
-    blobs: Vec<Blob>,
+    active_blob: Option<Box<Blob<SimpleIndex>>>,
+    blobs: Vec<Blob<SimpleIndex>>,
     lock_file: Option<File>,
 }
 
