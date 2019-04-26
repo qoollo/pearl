@@ -46,7 +46,7 @@ impl Builder {
             || self.config.blob_file_name_prefix.is_none()
             || self.config.key_size.is_none()
         {
-            Err(Error::Unitialized)
+            Err(Error::Uninitialized)
         } else {
             Ok(Storage::new(self.config))
         }
@@ -105,7 +105,7 @@ impl Builder {
 
     /// # Description
     /// Sets key size limit
-    pub fn key_size(mut self, key_size: u64) -> Self {
+    pub fn key_size(mut self, key_size: u16) -> Self {
         self.config.key_size = if key_size > 0 { Some(key_size) } else { None };
         self
     }

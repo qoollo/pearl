@@ -117,7 +117,7 @@ impl Storage {
                 .config
                 .work_dir
                 .as_ref()
-                .ok_or(Error::Unitialized)?,
+                .ok_or(Error::Uninitialized)?,
         );
         let files: Vec<_> = fs::read_dir(wd)
             .map_err(Error::IO)?
@@ -149,7 +149,7 @@ impl Storage {
     /// )};
     /// ```
     pub async fn write(self, key: Vec<u8>, data: Vec<u8>) -> Result<()> {
-        if key.len() as u64 != self.shared.config.key_size.ok_or(Error::Unitialized)? {
+        if key.len() != self.shared.config.key_size.ok_or(Error::Uninitialized)? as usize {
             return Err(Error::KeySizeMismatch(key.len()));
         }
         let record = Record::new(key, data);
@@ -167,14 +167,14 @@ impl Storage {
             .config
             .blob_file_name_prefix
             .as_ref()
-            .ok_or(Error::Unitialized)?
+            .ok_or(Error::Uninitialized)?
             .to_owned();
         let dir = self
             .shared
             .config
             .work_dir
             .as_ref()
-            .ok_or(Error::Unitialized)?
+            .ok_or(Error::Uninitialized)?
             .to_owned();
         Ok(blob::FileName::new(
             prefix,
@@ -233,7 +233,7 @@ impl Storage {
                 .config
                 .work_dir
                 .as_ref()
-                .ok_or(Error::Unitialized)?,
+                .ok_or(Error::Uninitialized)?,
         );
         if path.exists() {
             debug!("work dir exists: {}", path.display());
@@ -285,7 +285,7 @@ impl Storage {
             },
         )?;
         temp_blobs.sort_by_key(Blob::id);
-        let active_blob = temp_blobs.pop().ok_or(Error::Unitialized)?.boxed();
+        let active_blob = temp_blobs.pop().ok_or(Error::Uninitialized)?.boxed();
         let mut inner = await!(self.inner.lock());
         inner.active_blob = Some(active_blob);
         inner.blobs = temp_blobs;
@@ -402,7 +402,7 @@ pub enum Error {
     InitActiveBlob(blob::Error),
     BlobError(blob::Error),
     WrongConfig,
-    Unitialized,
+    Uninitialized,
     IO(io::Error),
     RecordNotFound,
     ObserverSpawnFailed(task::SpawnError),
@@ -418,7 +418,7 @@ impl From<blob::Error> for Error {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Config {
-    pub key_size: Option<u64>,
+    pub key_size: Option<u16>,
     pub work_dir: Option<PathBuf>,
     pub max_blob_size: Option<u64>,
     pub max_data_in_blob: Option<u64>,
@@ -458,8 +458,8 @@ async fn active_blob_check(s: Arc<Storage>) -> Result<Option<Arc<Storage>>> {
         let active_blob = inner.active_blob.as_ref().ok_or(Error::ActiveBlobNotSet)?;
         (active_blob.file_size()?, active_blob.records_count() as u64)
     };
-    let config_max_size = s.shared.config.max_blob_size.ok_or(Error::Unitialized)?;
-    let config_max_count = s.shared.config.max_data_in_blob.ok_or(Error::Unitialized)?;
+    let config_max_size = s.shared.config.max_blob_size.ok_or(Error::Uninitialized)?;
+    let config_max_count = s.shared.config.max_data_in_blob.ok_or(Error::Uninitialized)?;
     if active_size > config_max_size || active_count >= config_max_count {
         Ok(Some(s))
     } else {
