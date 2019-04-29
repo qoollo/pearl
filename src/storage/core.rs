@@ -45,14 +45,26 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// let mut storage = builder.build().unwrap();
 /// storage.init().unwrap();
 /// ```
-#[derive(Debug)]
-pub struct Storage {
-    twins_count: Arc<AtomicUsize>,
-    shared: Arc<Shared>,
-    inner: Arc<Mutex<Inner>>,
+#[derive(Debug, Clone)]
+pub struct Storage<K, V> {
+    inner: Inner,
 }
 
-impl Drop for Storage {
+struct Inner {
+    config: Config,
+    safe: Arc<Mutex<Safe>>,
+    next_blob_id: AtomicUsize,
+    need_exit: Arc<AtomicBool>,
+    twins_count: Arc<AtomicUsize>,
+}
+
+struct Safe {
+    active_blob: Option<Box<Blob<SimpleIndex>>>,
+    blobs: Vec<Blob<SimpleIndex>>,
+    lock_file: Option<File>,
+}
+
+impl<K, V> Drop for Storage<K, V> {
     fn drop(&mut self) {
         let twins = self.twins_count.fetch_sub(1, Ordering::Relaxed);
         // 1 is because twin#0 - in observer tread, twin#1 - self
@@ -64,24 +76,18 @@ impl Drop for Storage {
     }
 }
 
-impl Clone for Storage {
+impl<K, V> Clone for Storage<K, V> {
     fn clone(&self) -> Self {
-        self.twins_count.fetch_add(1, Ordering::Relaxed);
-        let twins_count = self.twins_count.clone();
         Self {
-            twins_count,
-            shared: self.shared.clone(),
             inner: self.inner.clone(),
         }
     }
 }
 
-impl Storage {
+impl<K, V> Storage<K, V> {
     pub(crate) fn new(config: Config) -> Self {
         Self {
-            twins_count: Arc::new(AtomicUsize::new(0)),
-            shared: Arc::new(Shared::new(config)),
-            inner: Arc::new(Mutex::new(Inner::new())),
+            inner: Inner::new(config),
         }
     }
 
@@ -104,7 +110,7 @@ impl Storage {
             await!(self.init_new())?
         };
         let observer_fut_obj: FutureObj<_> =
-            Box::new(launch_observer(spawner.clone(), self.clone())).into();
+            Box::new(launch_observer(spawner.clone(), self.inner.clone())).into();
         spawner
             .spawn(observer_fut_obj)
             .map_err(Error::ObserverSpawnFailed)?;
@@ -148,40 +154,13 @@ impl Storage {
     ///     await!(storage.write(key, data))
     /// )};
     /// ```
-    pub async fn write(self, key: Vec<u8>, data: Vec<u8>) -> Result<()> {
-        if key.len() != self.shared.config.key_size.ok_or(Error::Uninitialized)? as usize {
-            return Err(Error::KeySizeMismatch(key.len()));
-        }
-        let record = Record::new(key, data);
+    pub async fn write(self, key: impl Key, value: impl Value) -> Result<()> {
+        let record = Record::new(key, value);
         trace!("await for inner lock");
-        let mut inner = await!(self.inner.lock());
+        let mut safe = await!(self.inner.safe.lock());
         trace!("return write future");
-        let blob = inner.active_blob.as_mut().ok_or(Error::ActiveBlobNotSet)?;
+        let blob = safe.active_blob.as_mut().ok_or(Error::ActiveBlobNotSet)?;
         await!(blob.write(record)).map_err(Error::BlobError)
-    }
-
-    fn next_blob_name(&self) -> Result<blob::FileName> {
-        let next_id = self.shared.next_blob_id.fetch_add(1, Ordering::Relaxed);
-        let prefix = self
-            .shared
-            .config
-            .blob_file_name_prefix
-            .as_ref()
-            .ok_or(Error::Uninitialized)?
-            .to_owned();
-        let dir = self
-            .shared
-            .config
-            .work_dir
-            .as_ref()
-            .ok_or(Error::Uninitialized)?
-            .to_owned();
-        Ok(blob::FileName::new(
-            prefix,
-            next_id,
-            BLOB_FILE_EXTENSION.to_owned(),
-            dir,
-        ))
     }
 
     /// # Description
@@ -197,7 +176,7 @@ impl Storage {
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     pub async fn read(&self, key: Vec<u8>) -> Result<Vec<u8>> {
-        let inner = await!(self.inner.lock());
+        let inner = await!(self.inner.safe.lock());
         let active_blob_read_res = await!(inner
             .active_blob
             .as_ref()
@@ -229,7 +208,7 @@ impl Storage {
 
     async fn prepare_work_dir(&mut self) -> Result<()> {
         let path = Path::new(
-            self.shared
+            self.inner
                 .config
                 .work_dir
                 .as_ref()
@@ -254,14 +233,14 @@ impl Storage {
             .write(true)
             .open(&lock_file_path)
             .map_err(Error::IO)?;
-        await!(self.inner.lock()).lock_file = Some(lock_file);
+        await!(self.inner.safe.lock()).lock_file = Some(lock_file);
         Ok(())
     }
 
     async fn init_new(&mut self) -> Result<()> {
-        let mut inner = await!(self.inner.lock());
-        let next = self.next_blob_name()?;
-        inner.active_blob = Some(Blob::open_new(next).map_err(Error::InitActiveBlob)?.boxed());
+        let mut safe_locked = await!(self.inner.safe.lock());
+        let next = self.inner.next_blob_name()?;
+        safe_locked.active_blob = Some(Blob::open_new(next).map_err(Error::InitActiveBlob)?.boxed());
         Ok(())
     }
 
@@ -286,54 +265,60 @@ impl Storage {
         )?;
         temp_blobs.sort_by_key(Blob::id);
         let active_blob = temp_blobs.pop().ok_or(Error::Uninitialized)?.boxed();
-        let mut inner = await!(self.inner.lock());
-        inner.active_blob = Some(active_blob);
-        inner.blobs = temp_blobs;
-        self.shared.next_blob_id.store(
-            inner.max_id().map(|i| i + 1).unwrap_or(0),
+        let mut safe_locked = await!(self.inner.safe.lock());
+        safe_locked.active_blob = Some(active_blob);
+        safe_locked.blobs = temp_blobs;
+        self.inner.next_blob_id.store(
+            safe_locked.max_id().map(|i| i + 1).unwrap_or(0),
             Ordering::Relaxed,
         );
         Ok(())
     }
 }
 
-#[derive(Debug)]
-struct Inner {
-    active_blob: Option<Box<Blob<SimpleIndex>>>,
-    blobs: Vec<Blob<SimpleIndex>>,
-    lock_file: Option<File>,
+impl Clone for Inner {
+    fn clone(&self) -> Self {
+        self.twins_count.fetch_add(1, Ordering::Relaxed);
+        let twins_count = self.twins_count.clone();
+        Self {
+            twins_count,
+            shared: self.shared.clone(),
+            inner: self.inner.clone(),
+        }
+    }
 }
 
 impl Inner {
-    fn new() -> Self {
-        Self {
-            active_blob: None,
-            blobs: Vec::new(),
-            lock_file: None,
-        }
+    fn next_blob_name(&self) -> Result<blob::FileName> {
+        let next_id = self.shared.next_blob_id.fetch_add(1, Ordering::Relaxed);
+        let prefix = self
+            .shared
+            .config
+            .blob_file_name_prefix
+            .as_ref()
+            .ok_or(Error::Uninitialized)?
+            .to_owned();
+        let dir = self
+            .shared
+            .config
+            .work_dir
+            .as_ref()
+            .ok_or(Error::Uninitialized)?
+            .to_owned();
+        Ok(blob::FileName::new(
+            prefix,
+            next_id,
+            BLOB_FILE_EXTENSION.to_owned(),
+            dir,
+        ))
     }
+}
 
+impl Safe {
     fn max_id(&self) -> Option<usize> {
         let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
         let blobs_max_id = self.blobs.last().map(Blob::id);
         active_blob_id.max(blobs_max_id)
-    }
-}
-
-#[derive(Debug)]
-struct Shared {
-    config: Config,
-    next_blob_id: AtomicUsize,
-    need_exit: Arc<AtomicBool>,
-}
-
-impl Shared {
-    fn new(config: Config) -> Self {
-        Self {
-            config,
-            next_blob_id: AtomicUsize::new(0),
-            need_exit: Arc::new(AtomicBool::new(true)),
-        }
     }
 }
 
@@ -342,7 +327,7 @@ where
     S: SpawnExt + Send + 'static,
 {
     spawner: S,
-    storage: Arc<Storage>,
+    inner: Inner,
     next_update: Instant,
     update_interval: Duration,
 }
@@ -351,6 +336,19 @@ impl<S> Observer<S>
 where
     S: SpawnExt + Send + 'static + Unpin + Sync,
 {
+    fn new(
+        update_interval: Duration,
+        inner: Inner,        
+        next_update: Instant,
+        spawner: S,
+    ) -> Self {
+        Self {
+        update_interval,
+        inner,
+        next_update,
+        spawner,
+        }
+    }
     fn run(mut self) {
         while let Some(f) = block_on(self.next()) {
             if let Err(e) = self.spawner.spawn(f.map(|r| {
@@ -376,17 +374,17 @@ where
         if self.next_update < now {
             trace!("Observer update");
             self.as_mut().next_update = now + self.update_interval;
-            let storage = self.storage.clone();
+            let inner_cloned = self.inner.clone();
             let res = async {
-                if let Some(storage) = await!(active_blob_check(storage))? {
-                    await!(update_active_blob(storage))?;
+                if let Some(inner) = await!(active_blob_check(inner_cloned))? {
+                    await!(update_active_blob(inner))?;
                 }
                 Ok(())
             };
             let res = Box::new(res);
             let obj = FutureObj::new(res);
             Poll::Ready(Some(obj))
-        } else if self.storage.shared.need_exit.load(Ordering::Relaxed) {
+        } else if self.inner.need_exit.load(Ordering::Relaxed) {
             cx.waker().wake_by_ref();
             Poll::Pending
         } else {
@@ -439,45 +437,58 @@ impl Default for Config {
     }
 }
 
-async fn launch_observer<S>(spawner: S, storage: Storage)
+async fn launch_observer<S, K, V>(spawner: S, inner: Inner)
 where
     S: SpawnExt + Send + 'static + Unpin + Sync,
 {
-    let observer = Observer {
-        update_interval: Duration::from_millis(storage.shared.config.update_interval_ms),
-        storage: Arc::new(storage),
-        next_update: Instant::now(),
+    let observer = Observer::new(
+        Duration::from_millis(inner.config.update_interval_ms),
+        inner,
+        Instant::now(),
         spawner,
-    };
+    );
     thread::spawn(move || observer.run());
 }
 
-async fn active_blob_check(s: Arc<Storage>) -> Result<Option<Arc<Storage>>> {
+async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
     let (active_size, active_count) = {
-        let inner = await!(s.inner.lock());
-        let active_blob = inner.active_blob.as_ref().ok_or(Error::ActiveBlobNotSet)?;
+        let safe_locked = await!(inner.safe.lock());
+        let active_blob = safe_locked.active_blob.as_ref().ok_or(Error::ActiveBlobNotSet)?;
         (active_blob.file_size()?, active_blob.records_count() as u64)
     };
-    let config_max_size = s.shared.config.max_blob_size.ok_or(Error::Uninitialized)?;
-    let config_max_count = s.shared.config.max_data_in_blob.ok_or(Error::Uninitialized)?;
+    let config_max_size = inner.config.max_blob_size.ok_or(Error::Uninitialized)?;
+    let config_max_count = inner.config.max_data_in_blob.ok_or(Error::Uninitialized)?;
     if active_size > config_max_size || active_count >= config_max_count {
-        Ok(Some(s))
+        Ok(Some(inner))
     } else {
         Ok(None)
     }
 }
 
-async fn update_active_blob(s: Arc<Storage>) -> Result<()> {
-    let next_name = s.next_blob_name()?;
+async fn update_active_blob(inner: Inner) -> Result<()> {
+    let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
     let new_active = Blob::open_new(next_name)?.boxed();
 
-    let mut inner = await!(s.inner.lock());
-    let mut old_active = inner
+    let mut safe_locked = await!(inner.safe.lock());
+    let mut old_active = safe_locked
         .active_blob
         .replace(new_active)
         .ok_or(Error::ActiveBlobNotSet)?;
     old_active.flush()?;
-    inner.blobs.push(*old_active);
+    safe_locked.blobs.push(*old_active);
     Ok(())
+}
+
+
+/// Trait `Key` 
+pub trait Key {
+    const LEN: u16;
+    
+    fn as_bytes(&self) -> &[u8];
+}
+
+/// Trait `Value` 
+pub trait Value {    
+    fn as_bytes(&self) -> &[u8];
 }

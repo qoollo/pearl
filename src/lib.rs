@@ -37,4 +37,4 @@ mod blob;
 mod record;
 mod storage;
 
-pub use storage::{Builder, Storage};
+pub use storage::{Builder, Storage, Key};

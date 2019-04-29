@@ -39,7 +39,7 @@ impl Builder {
 
     /// Creates `Storage` based on given configuration,
     /// returns error if not all params are set.
-    pub fn build(self) -> Result<Storage> {
+    pub fn build<K, V>(self) -> Result<Storage<K, V>> {
         if self.config.blob_file_name_prefix.is_none()
             || self.config.max_data_in_blob.is_none()
             || self.config.max_blob_size.is_none()
