@@ -1,5 +1,6 @@
 #![feature(async_await, await_macro)]
 #![allow(clippy::needless_lifetimes)]
+
 extern crate pearl;
 #[macro_use]
 extern crate log;
@@ -15,8 +16,8 @@ use futures::{
     stream::{FuturesUnordered, StreamExt},
 };
 use log::LevelFilter;
-use std::sync::Arc;
-use std::time::Instant;
+use pearl::Key;
+use std::{sync::Arc, time::Instant};
 
 use generator::Generator;
 use statistics::Statistics;
@@ -70,7 +71,12 @@ async fn start_app(spawner: ThreadPool) {
 
     use statistics::Report;
 
-    async fn write(lawriter: Arc<Writer>, key: Vec<u8>, data: Vec<u8>, mut ltx: Sender<Report>) {
+    async fn write(
+        lawriter: Arc<Writer<Key128>>,
+        key: Key128,
+        data: Vec<u8>,
+        mut ltx: Sender<Report>,
+    ) {
         let now = Instant::now();
         let mut report = await!(lawriter.write(key, data));
         report.set_latency(now);
@@ -83,7 +89,7 @@ async fn start_app(spawner: ThreadPool) {
             let lawriter = awriter.clone();
             let ltx = tx.clone();
             counter += 1;
-            write(lawriter, key, data, ltx)
+            write(lawriter, key.into(), data, ltx)
         })
         .collect();
     println!(
@@ -113,7 +119,7 @@ async fn start_app(spawner: ThreadPool) {
                 let lawriter = awriter.clone();
                 let ltx = tx.clone();
                 counter += 1;
-                futures_pool.push(write(lawriter, key, data, ltx));
+                futures_pool.push(write(lawriter, key.into(), data, ltx));
             }
         }
     }
@@ -167,4 +173,23 @@ fn prepare_matches<'a>() -> ArgMatches<'a> {
                 .default_value("10"),
         )
         .get_matches()
+}
+
+struct Key128(Vec<u8>);
+
+impl Key for Key128 {
+    const LEN: u16 = 8;
+}
+
+impl From<Vec<u8>> for Key128 {
+    fn from(v: Vec<u8>) -> Self {
+        assert_eq!(Self::LEN as usize, v.len());
+        Self(v)
+    }
+}
+
+impl AsRef<[u8]> for Key128 {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
 }

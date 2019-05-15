@@ -1,6 +1,6 @@
 use bincode::{deserialize, serialize};
 
-use crate::storage::{Key, Value};
+use crate::storage::{Key};
 
 const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
@@ -29,8 +29,8 @@ impl Record {
     /// # use pearl::Record;
     /// let rec = Record::new();
     /// ```
-    pub fn new(key: impl Key, data: impl Value) -> Self {
-        let header = Header::new(key, data.len() as u64);
+    pub fn new(key: impl Key, data: Vec<u8>) -> Self {
+        let header = Header::new(key.as_ref().to_vec(), data.len() as u64);
         Self { header, data }
     }
 

@@ -8,13 +8,13 @@ repository = "https://lab.qoollo.com/py/pearl"
 readme = "README.md"
 
 [dependencies]
-env_logger = "0.6.0"
-log = "0.4.6"
-futures-preview = { version = "0.3.0-alpha.14", features = ["compat"] }
-serde = "1.0.89"
-serde_derive = "1.0.89"
-bincode = "1.1.2"
-rand = "0.6.5"
+env_logger = "*"
+log = "*"
+futures-preview = { version = "0.3.0-alpha.16", features = ["compat"] }
+serde = "*"
+serde_derive = "*"
+bincode = "*"
+rand = "*"
 tokio = "*"
 color-backtrace = "*"
 
@@ -27,7 +27,7 @@ benchmark = ["clap", "runtime"]
 [lib]
 name = "pearl"
 
-[[bin]]
-name = "benchmark"
-path = "src/benchmark/bin.rs"
-required-features = ["benchmark"]
+# [[bin]]
+# name = "benchmark"
+# path = "src/benchmark/bin.rs"
+# required-features = ["benchmark"]

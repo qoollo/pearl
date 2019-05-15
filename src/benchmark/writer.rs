@@ -5,11 +5,11 @@ use std::sync::Arc;
 use futures::executor::ThreadPool;
 use pearl::*;
 
-pub struct Writer {
-    storage: Storage,
+pub struct Writer<K> {
+    storage: Storage<K>,
 }
 
-impl Writer {
+impl<K> Writer<K> {
     pub fn new(tmp_dir: PathBuf, max_blob_size: u64, max_data_in_blob: u64) -> Self {
         let storage = Builder::new()
             .blob_file_name_prefix("benchmark")
@@ -26,8 +26,8 @@ impl Writer {
         await!(self.storage.init(spawner)).unwrap();
     }
 
-    pub async fn write(self: Arc<Self>, key: Vec<u8>, data: Vec<u8>) -> Report {
-        let record = Report::new(key.len(), data.len());
+    pub async fn write(self: Arc<Self>, key: K, data: Vec<u8>) -> Report where K: Key {
+        let record = Report::new(key.as_ref().len(), data.len());
         await!(self.storage.clone().write(key, data)).unwrap();
         record
     }
