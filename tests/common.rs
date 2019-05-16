@@ -9,12 +9,24 @@ use futures::{
 };
 use std::{env, fs};
 
-use pearl::{Builder, Storage};
+use pearl::{Builder, Key, Storage};
+
+pub struct KeyTest(pub Vec<u8>);
+
+impl AsRef<[u8]> for KeyTest {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl Key for KeyTest {
+    const LEN: u16 = 4;
+}
 
 pub async fn default_test_storage_in<S>(
     spawner: S,
     dir_name: &'static str,
-) -> Result<Storage, String>
+) -> Result<Storage<KeyTest>, String>
 where
     S: SpawnExt + Clone + Send + 'static + Unpin + Sync,
 {
@@ -25,7 +37,7 @@ pub async fn create_test_storage<S>(
     spawner: S,
     dir_name: &'static str,
     max_blob_size: u64,
-) -> Result<Storage, String>
+) -> Result<Storage<KeyTest>, String>
 where
     S: SpawnExt + Clone + Send + 'static + Unpin + Sync,
 {
@@ -34,8 +46,7 @@ where
         .work_dir(&path)
         .blob_file_name_prefix("test")
         .max_blob_size(max_blob_size)
-        .max_data_in_blob(1_000)
-        .key_size(8);
+        .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
     await!(storage.init(spawner)).unwrap();
     Ok(storage)
@@ -47,24 +58,24 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-pub fn clean(storage: Storage, dir: &str) {
+pub fn clean(storage: Storage<KeyTest>, dir: &str) {
     std::thread::sleep(std::time::Duration::from_millis(100));
     storage.close().unwrap();
     let path = env::temp_dir().join(dir);
     fs::remove_dir_all(path).unwrap();
 }
 
-pub async fn write(storage: Storage, base_number: u64) {
-    let key = base_number.to_be_bytes().to_vec();
+pub async fn write(storage: Storage<KeyTest>, base_number: u64) {
+    let key = KeyTest(base_number.to_be_bytes().to_vec());
     let data = "omn".repeat(base_number as usize % 1_000_000);
     await!(storage.write(key, data.as_bytes().to_vec())).unwrap()
 }
 
-pub fn check_all_written(storage: &Storage, nums: Vec<usize>) -> Result<(), String> {
+pub fn check_all_written(storage: &Storage<KeyTest>, nums: Vec<usize>) -> Result<(), String> {
     let keys = nums.iter().map(|n| format!("{}key", n)).collect::<Vec<_>>();
     let read_futures: FuturesUnordered<_> = keys
         .into_iter()
-        .map(|key: String| storage.read(key.as_bytes().to_vec()))
+        .map(|key: String| storage.read(KeyTest(key.as_bytes().to_vec())))
         .collect();
     println!("readed futures: {}", read_futures.len());
     let futures = read_futures.collect::<Vec<_>>();

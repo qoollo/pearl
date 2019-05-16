@@ -3,5 +3,5 @@ mod core;
 
 pub use self::{
     builder::Builder,
-    core::{Storage, Key},
+    core::{Key, Storage},
 };

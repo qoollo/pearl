@@ -9,6 +9,7 @@ use std::{
     fs::{self, DirEntry, File, OpenOptions},
     io,
     marker::PhantomData,
+    path::{Path, PathBuf},
     pin::Pin,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -16,7 +17,6 @@ use std::{
     },
     thread,
     time::{Duration, Instant},
-
 };
 
 use crate::{
@@ -34,18 +34,25 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// # Description
 /// A main storage struct. This type is clonable, cloning it will only create a new reference,
 /// not a new storage.
+/// Storage has a type parameter K.
+/// To perform read/write operations K must implement [`Key`] trait.
+///
 /// # Examples
 /// ```
-/// use pearl::{Storage, Builder};
+/// use pearl::{Storage, Builder, Key};
+/// use futures::executor::ThreadPool;
 ///
-/// let builder = Builder::new()
+/// let mut pool = ThreadPool::new().unwrap();
+/// let mut storage: Storage<String> = Builder::new()
 ///     .work_dir("/tmp/pearl/")
 ///     .max_blob_size(1_000_000)
 ///     .max_data_in_blob(1_000_000_000)
-///     .blob_file_name_prefix("pearl-test");
-/// let mut storage = builder.build().unwrap();
-/// storage.init().unwrap();
+///     .blob_file_name_prefix("pearl-test")
+///     .build()
+///     .unwrap();
+/// pool.run(storage.init(pool.clone())).unwrap();
 /// ```
+/// [`Key`]: trait.Key.html
 #[derive(Debug)]
 pub struct Storage<K> {
     inner: Inner,
@@ -180,20 +187,20 @@ impl<K> Storage<K> {
     /// ```
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
-    pub async fn read(&self, key: Vec<u8>) -> Result<Vec<u8>> {
+    pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
         let inner = await!(self.inner.safe.lock());
         let active_blob_read_res = await!(inner
             .active_blob
             .as_ref()
             .ok_or(Error::ActiveBlobNotSet)?
-            .read(key.clone()));
+            .read(key.as_ref().to_vec()));
         Ok(if let Ok(record) = active_blob_read_res {
             record
         } else {
             let stream: FuturesUnordered<_> = inner
                 .blobs
                 .iter()
-                .map(|blob| blob.read(key.clone()))
+                .map(|blob| blob.read(key.as_ref().to_vec()))
                 .collect();
             let mut task = stream.skip_while(|res| future::ready(res.is_err()));
             await!(task.next())
@@ -209,6 +216,19 @@ impl<K> Storage<K> {
         self.inner.need_exit.store(false, Ordering::Relaxed);
         // @TODO implement
         Ok(())
+    }
+
+    /// # Description
+    /// Blobs count contains closed blobs and one active, if is some.
+    /// # Examples
+    /// ```no-run
+    /// # use pearl::Builder;
+    /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build::<f64>();
+    /// storage.init();
+    /// assert_eq!(storage.blobs_count(), 1);
+    /// ```
+    pub fn blobs_count(&self) -> usize {
+        self.inner.next_blob_id.load(Ordering::Relaxed)
     }
 
     async fn prepare_work_dir(&mut self) -> Result<()> {
@@ -434,7 +454,7 @@ impl From<blob::Error> for Error {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Config {
-    pub key_size: Option<u16>,
+    // pub key_size: Option<u16>,
     pub work_dir: Option<PathBuf>,
     pub max_blob_size: Option<u64>,
     pub max_data_in_blob: Option<u64>,
@@ -445,7 +465,6 @@ pub(crate) struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            key_size: None,
             work_dir: None,
             max_blob_size: None,
             max_data_in_blob: None,
@@ -505,4 +524,9 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
 pub trait Key: AsRef<[u8]> {
     /// Key must have fixed length
     const LEN: u16;
+
+    /// Convert `Self` into `Vec<u8>`
+    fn to_vec(&self) -> Vec<u8> {
+        self.as_ref().to_vec()
+    }
 }

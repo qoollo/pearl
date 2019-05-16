@@ -1,6 +1,6 @@
 use bincode::{deserialize, serialize};
 
-use crate::storage::{Key};
+use crate::storage::Key;
 
 const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
@@ -15,20 +15,13 @@ pub enum Error {
 
 /// [`Record`] consists of header and data.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-pub struct Record {
+pub(crate) struct Record {
     header: Header,
     data: Vec<u8>,
 }
 
 impl Record {
     /// Creates new `Record` with provided data and key.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use pearl::Record;
-    /// let rec = Record::new();
-    /// ```
     pub fn new(key: impl Key, data: Vec<u8>) -> Self {
         let header = Header::new(key.as_ref().to_vec(), data.len() as u64);
         Self { header, data }

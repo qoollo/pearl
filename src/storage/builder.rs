@@ -11,12 +11,15 @@ use std::path::PathBuf;
 ///         
 /// # Example
 /// ```
-/// let storage = Builder::new()
+/// use pearl::{Builder, Storage, Key};
+///
+/// struct Id;
+///
+/// let storage: Storage<Id> = Builder::new()
 ///         .blob_file_name_prefix("benchmark")
-///         .max_blob_size(max_blob_size)
-///         .max_data_in_blob(max_data_in_blob)
-///         .work_dir(tmp_dir.join("pearl_benchmark"))
-///         .key_size(8)
+///         .max_blob_size(10_000_000)
+///         .max_data_in_blob(1_000)
+///         .work_dir(std::env::temp_dir().join("pearl_benchmark"))
 ///         .build()
 ///         .unwrap();
 /// ```
@@ -44,7 +47,6 @@ impl Builder {
             || self.config.max_data_in_blob.is_none()
             || self.config.max_blob_size.is_none()
             || self.config.blob_file_name_prefix.is_none()
-            || self.config.key_size.is_none()
         {
             Err(Error::Uninitialized)
         } else {
@@ -100,13 +102,6 @@ impl Builder {
         } else {
             self.config.blob_file_name_prefix = Some(prefix);
         }
-        self
-    }
-
-    /// # Description
-    /// Sets key size limit
-    pub fn key_size(mut self, key_size: u16) -> Self {
-        self.config.key_size = if key_size > 0 { Some(key_size) } else { None };
         self
     }
 }

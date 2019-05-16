@@ -15,17 +15,38 @@
 //! For more advanced usage see the benchmark tool as the example
 //!
 //! ```
-//! // Initialize new builder and set required params
-//! let storage = Builder::new()
-//!         .blob_file_name_prefix("benchmark")
-//!         .max_blob_size(max_blob_size)
-//!         .max_data_in_blob(max_data_in_blob)
-//!         .work_dir(tmp_dir.join("pearl_benchmark"))
-//!         .key_size(8)
+//! #![feature(async_await, await_macro)]
+//! use pearl::{Storage, Builder, Key};
+//! use futures::executor::ThreadPool;
+//!
+//! struct Id(String);
+//!
+//! impl AsRef<[u8]> for Id {
+//!     fn as_ref(&self) -> &[u8] {
+//!         self.0.as_bytes()
+//!     }
+//! }
+//!
+//! impl Key for Id {
+//!     const LEN: u16 = 4;
+//! }
+//!
+//! let mut pool = ThreadPool::new().unwrap();
+//! let spawner = pool.clone();
+//! let task = async {
+//!     let mut storage: Storage<Id> = Builder::new()
+//!         .work_dir("/tmp/pearl/")
+//!         .max_blob_size(1_000_000)
+//!         .max_data_in_blob(1_000_000_000)
+//!         .blob_file_name_prefix("pearl-test")
 //!         .build()
 //!         .unwrap();
-//! // Init storage
-//! storage.init().unwrap();
+//!     await!(storage.init(spawner)).unwrap();
+//!     let key = Id("test".to_string());
+//!     let data = b"Hello World!".to_vec();
+//!     await!(storage.write(key, data)).unwrap();
+//! };
+//! pool.run(task);
 //! ```
 
 #[macro_use]
@@ -37,4 +58,4 @@ mod blob;
 mod record;
 mod storage;
 
-pub use storage::{Builder, Storage, Key};
+pub use storage::{Builder, Key, Storage};
