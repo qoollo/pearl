@@ -1,4 +1,4 @@
-use bincode::*;
+use bincode::{deserialize, serialize_into};
 use futures::{
     future::Future,
     lock::Mutex,
@@ -7,11 +7,11 @@ use futures::{
 use std::{
     fs,
     io::{self, Read, Seek, SeekFrom},
-    os::unix::fs::FileExt,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
 };
+use std::os::unix::fs::FileExt;
 
 use crate::record::{self, Header as RecordHeader, Record};
 
@@ -119,7 +119,9 @@ impl File {
 
 pub(crate) trait Index {
     fn new(name: FileName) -> Self;
-    fn from_file(name: FileName) -> Self;
+    fn from_file(name: FileName) -> Result<Self>
+    where
+        Self: Sized;
     fn get(&self, key: &[u8]) -> Result<RecordHeader>;
     fn push(&mut self, h: RecordHeader);
     fn contains_key(&self, key: &[u8]) -> bool;
@@ -139,6 +141,15 @@ enum State {
     OnDisk(File),
 }
 
+impl SimpleIndex {
+    fn load(mut file: &fs::File) -> Vec<RecordHeader> {
+        let mut meta = Vec::new();
+        file.seek(SeekFrom::Start(0)).unwrap();
+        file.read_to_end(&mut meta).unwrap();
+        deserialize(meta.as_slice()).unwrap()
+    }
+}
+
 impl Index for SimpleIndex {
     fn new(name: FileName) -> Self {
         Self {
@@ -147,9 +158,17 @@ impl Index for SimpleIndex {
         }
     }
 
-    fn from_file(name: FileName) -> Self {
-        // @TODO initialize new index from file
-        Self::new(name)
+    fn from_file(name: FileName) -> Result<Self> {
+        let file = fs::OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)
+            .open(name.as_path())?;
+        let meta = Self::load(&file);
+        Ok(Self {
+            inner: State::InMemory(meta),
+            name,
+        })
     }
 
     fn contains_key(&self, key: &[u8]) -> bool {
@@ -174,14 +193,11 @@ impl Index for SimpleIndex {
                 .cloned()
                 .ok_or(Error::NotFound),
             State::OnDisk(f) => {
-                let mut meta = Vec::new();
-                f.read_fd.as_ref().seek(SeekFrom::Start(0)).unwrap();
-                f.read_fd.as_ref().read_to_end(&mut meta).unwrap();
-                let meta: Vec<RecordHeader> = deserialize(meta.as_slice()).unwrap();
-                let i = meta
+                let index = Self::load(&f.read_fd);
+                let i = index
                     .binary_search_by_key(&key, |h| h.key())
                     .map_err(|_| Error::NotFound)?;
-                meta.get(i).cloned().ok_or(Error::NotFound)
+                index.get(i).cloned().ok_or(Error::NotFound)
             }
         }
     }
@@ -266,7 +282,7 @@ where
         let len = file.metadata()?.len();
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        let index = Index::from_file(index_name);
+        let index = Index::from_file(index_name)?;
 
         let blob = Self {
             header: Header::new(),

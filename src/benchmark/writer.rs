@@ -16,7 +16,6 @@ impl<K> Writer<K> {
             .max_blob_size(max_blob_size)
             .max_data_in_blob(max_data_in_blob)
             .work_dir(tmp_dir.join("pearl_benchmark"))
-            .key_size(8)
             .build()
             .unwrap();
         Self { storage }

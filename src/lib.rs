@@ -1,7 +1,6 @@
 #![feature(await_macro, async_await, arbitrary_self_types)]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
-#![allow(clippy::needless_lifetimes)]
 
 //! # pearl
 //!

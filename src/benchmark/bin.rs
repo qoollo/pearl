@@ -11,7 +11,7 @@ mod writer;
 
 use clap::{App, Arg, ArgMatches};
 use futures::{
-    channel::mpsc::*,
+    channel::mpsc::{channel, Sender},
     executor::ThreadPool,
     stream::{FuturesUnordered, StreamExt},
 };
