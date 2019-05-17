@@ -1,6 +1,6 @@
 use futures::{
     executor::block_on,
-    future::{self, FutureExt, FutureObj},
+    future::{self, FutureExt, FutureObj, TryFutureExt},
     lock::Mutex,
     stream::{futures_unordered::FuturesUnordered, Stream, StreamExt},
     task::{self, Context, Poll, Spawn, SpawnExt},
@@ -273,27 +273,23 @@ impl<K> Storage<K> {
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         let dir_content = files.iter().map(DirEntry::path);
         let dir_files = dir_content.filter(|path| path.is_file());
-        let mut blob_files = dir_files.filter_map(|path| {
+        let blob_files = dir_files.filter_map(|path| {
             if path.extension()?.to_str()? == BLOB_FILE_EXTENSION {
                 Some(path)
             } else {
                 None
             }
         });
-        let mut temp_blobs = blob_files.try_fold(
-            Vec::new(),
-            |mut temp_blobs, path| -> Result<Vec<Blob<SimpleIndex>>> {
-                let blob = Blob::from_file(path)?;
-                blob.check_data_consistency()?;
-                temp_blobs.push(blob);
-                Ok(temp_blobs)
-            },
-        )?;
-        temp_blobs.sort_by_key(Blob::id);
-        let active_blob = temp_blobs.pop().ok_or(Error::Uninitialized)?.boxed();
+        let futures: FuturesUnordered<_> = blob_files
+            .map(|path| Blob::<SimpleIndex>::from_file(path))
+            .collect();
+        let blob_res: Vec<_> = await!(futures.collect());
+        let mut blobs: Vec<_> = blob_res.into_iter().filter_map(|res| res.ok()).collect();
+        blobs.sort_by_key(Blob::id);
+        let active_blob = blobs.pop().ok_or(Error::Uninitialized)?.boxed();
         let mut safe_locked = await!(self.inner.safe.lock());
         safe_locked.active_blob = Some(active_blob);
-        safe_locked.blobs = temp_blobs;
+        safe_locked.blobs = blobs;
         self.inner.next_blob_id.store(
             safe_locked.max_id().map(|i| i + 1).unwrap_or(0),
             Ordering::Relaxed,
@@ -494,7 +490,10 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
             .active_blob
             .as_ref()
             .ok_or(Error::ActiveBlobNotSet)?;
-        (active_blob.file_size()?, active_blob.records_count() as u64)
+        (
+            active_blob.file_size()?,
+            await!(active_blob.records_count())? as u64,
+        )
     };
     let config_max_size = inner.config.max_blob_size.ok_or(Error::Uninitialized)?;
     let config_max_count = inner.config.max_data_in_blob.ok_or(Error::Uninitialized)?;

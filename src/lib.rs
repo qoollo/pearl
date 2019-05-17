@@ -57,4 +57,5 @@ mod blob;
 mod record;
 mod storage;
 
+pub(crate) use record::Header as RecordHeader;
 pub use storage::{Builder, Key, Storage};

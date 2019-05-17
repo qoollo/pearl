@@ -25,7 +25,10 @@ impl<K> Writer<K> {
         await!(self.storage.init(spawner)).unwrap();
     }
 
-    pub async fn write(self: Arc<Self>, key: K, data: Vec<u8>) -> Report where K: Key {
+    pub async fn write(self: Arc<Self>, key: K, data: Vec<u8>) -> Report
+    where
+        K: Key,
+    {
         let record = Report::new(key.as_ref().len(), data.len());
         await!(self.storage.clone().write(key, data)).unwrap();
         record
