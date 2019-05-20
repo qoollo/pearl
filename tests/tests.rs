@@ -30,6 +30,10 @@ fn test_storage_init_new() {
 
 #[test]
 fn test_storage_init_from_existing() {
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Trace)
+        .try_init()
+        .unwrap();
     let dir = "pearl_existing/";
     let pool = ThreadPool::new().unwrap();
     let path = env::temp_dir().join(dir);

@@ -5,7 +5,7 @@ use futures::{
     lock::Mutex,
     task::{Context, Poll},
 };
-use std::io::{self, SeekFrom};
+use std::io::{self, Read, Seek as StdSeek, SeekFrom};
 use std::os::unix::fs::FileExt;
 use std::{
     fs,
@@ -48,7 +48,15 @@ impl AsyncRead for File {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<StdResult<usize, io::Error>> {
-        unimplemented!()
+        let mut file = self.read_fd.as_ref();
+        match file.read(buf) {
+            Ok(t) => Poll::Ready(Ok(t)),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            }
+            Err(e) => Poll::Ready(Err(e)),
+        }
     }
 }
 
@@ -76,7 +84,15 @@ impl AsyncSeek for File {
         cx: &mut Context<'_>,
         pos: SeekFrom,
     ) -> Poll<StdResult<u64, io::Error>> {
-        unimplemented!()
+        let mut file = self.read_fd.as_ref();
+        match file.seek(pos) {
+            Ok(t) => Poll::Ready(Ok(t)),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            }
+            Err(e) => Poll::Ready(Err(e)),
+        }
     }
 }
 
@@ -212,10 +228,14 @@ enum State {
 
 impl SimpleIndex {
     async fn load(mut file: File) -> Result<Vec<RecordHeader>> {
+        debug!("seek to file start");
         await!(file.seek(SeekFrom::Start(0)))?;
         let mut buf = Vec::new();
+        debug!("read to end index");
         await!(file.read_to_end(&mut buf))?;
-        deserialize(&buf).map_err(Error::SerDe)
+        let res = deserialize(&buf).map_err(Error::SerDe);
+        debug!("index deserialized");
+        res
     }
 }
 
@@ -228,6 +248,7 @@ impl SimpleIndex {
     }
 
     async fn from_file(name: FileName) -> Result<Self> {
+        debug!("opening index file");
         let fd = fs::OpenOptions::new()
             .create(true)
             .read(true)
@@ -366,13 +387,25 @@ impl Blob {
     }
 
     pub(crate) async fn from_file(path: PathBuf) -> Result<Self> {
+        debug!("create file instance");
         let file: File = File::from_std_file(Self::open_file(&path)?)?;
         let name = FileName::from_path(&path)?;
         let len = file.metadata()?.len();
-        let mut index_name = name.clone();
+        debug!("    blob file size: {:.1} MB", len as f64 / 1_000_000.0);
+        let mut index_name: FileName = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        let from_file_fut = SimpleIndex::from_file(index_name);
-        let index = await!(from_file_fut)?;
+        debug!(
+            "    looking for index file: [{}]",
+            index_name.name_to_string()
+        );
+        let index = if index_name.exists() {
+            debug!("        file exists");
+            await!(SimpleIndex::from_file(index_name))?
+        } else {
+            debug!("        file not found, create new");
+            SimpleIndex::new(index_name)
+        };
+        debug!("    index initialized");
 
         let blob = Self {
             header: Header::new(),
@@ -393,10 +426,9 @@ impl Blob {
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
         let key = record.key().to_vec();
-        unimplemented!();
-        // if self.index.contains_key(&key) {
-        //     return Err(Error::AlreadyContainsSameKey);
-        // }
+        if await!(self.index.contains_key(&key))? {
+            return Err(Error::AlreadyContainsSameKey);
+        }
         let mut offset = await!(self.current_offset.lock());
         record.set_offset(*offset);
         let buf = record.to_raw()?;
@@ -516,6 +548,10 @@ impl FileName {
             extension,
             dir,
         })
+    }
+
+    fn exists(&self) -> bool {
+        self.as_path().exists()
     }
 }
 

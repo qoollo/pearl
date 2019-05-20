@@ -139,14 +139,15 @@ impl<K> Storage<K> {
                 .config
                 .work_dir
                 .as_ref()
-                .ok_or(Error::Uninitialized)?,
+                .ok_or(Error::Uninitialized(format!("work_dir not set")))?,
         );
-
+        println!("files");
         if let Some(files) = cont_res? {
             await!(self.init_from_existing(files))?
         } else {
             await!(self.init_new())?
         };
+        println!("obs fut obj");
         let observer_fut_obj: FutureObj<_> =
             Box::new(launch_observer(spawner.clone(), self.inner.clone())).into();
         spawner
@@ -237,7 +238,7 @@ impl<K> Storage<K> {
                 .config
                 .work_dir
                 .as_ref()
-                .ok_or(Error::Uninitialized)?,
+                .ok_or(Error::Uninitialized(format!("work_dir not set")))?,
         );
         if path.exists() {
             debug!("work dir exists: {}", path.display());
@@ -271,8 +272,11 @@ impl<K> Storage<K> {
     }
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
+        debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
+        debug!("read {} entities", dir_content.len());
         let dir_files = dir_content.filter(|path| path.is_file());
+        debug!("filter potential blob files");
         let blob_files = dir_files.filter_map(|path| {
             if path.extension()?.to_str()? == BLOB_FILE_EXTENSION {
                 Some(path)
@@ -280,11 +284,26 @@ impl<K> Storage<K> {
                 None
             }
         });
-        let futures: FuturesUnordered<_> = blob_files.map(|path| Blob::from_file(path)).collect();
+        debug!("init blobs from found files");
+        let futures: FuturesUnordered<_> = blob_files.map(Blob::from_file).collect();
+        debug!("async init blobs from file");
         let blob_res: Vec<_> = await!(futures.collect());
-        let mut blobs: Vec<_> = blob_res.into_iter().filter_map(|res| res.ok()).collect();
+        debug!("all {} futures finished", blob_res.len());
+        let mut blobs: Vec<_> = blob_res
+            .into_iter()
+            .filter_map(|res| {
+                if let Err(ref e) = res {
+                    error!("{:?}", e);
+                }
+                res.ok()
+            })
+            .collect();
+        debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
-        let active_blob = blobs.pop().ok_or(Error::Uninitialized)?.boxed();
+        let active_blob = blobs
+            .pop()
+            .ok_or_else(|| Error::Uninitialized("blobs initialization failed".to_string()))?
+            .boxed();
         let mut safe_locked = await!(self.inner.safe.lock());
         safe_locked.active_blob = Some(active_blob);
         safe_locked.blobs = blobs;
@@ -326,13 +345,15 @@ impl Inner {
             .config
             .blob_file_name_prefix
             .as_ref()
-            .ok_or(Error::Uninitialized)?
+            .ok_or(Error::Uninitialized(format!(
+                "blob_file_name_prefix not set"
+            )))?
             .to_owned();
         let dir = self
             .config
             .work_dir
             .as_ref()
-            .ok_or(Error::Uninitialized)?
+            .ok_or(Error::Uninitialized(format!("work_dir not set")))?
             .to_owned();
         Ok(blob::FileName::new(
             prefix,
@@ -432,7 +453,7 @@ pub enum Error {
     InitActiveBlob(blob::Error),
     BlobError(blob::Error),
     WrongConfig,
-    Uninitialized,
+    Uninitialized(String),
     IO(io::Error),
     RecordNotFound,
     ObserverSpawnFailed(task::SpawnError),
@@ -493,8 +514,14 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
             await!(active_blob.records_count())? as u64,
         )
     };
-    let config_max_size = inner.config.max_blob_size.ok_or(Error::Uninitialized)?;
-    let config_max_count = inner.config.max_data_in_blob.ok_or(Error::Uninitialized)?;
+    let config_max_size = inner
+        .config
+        .max_blob_size
+        .ok_or_else(|| Error::Uninitialized("max_blob_size not set".to_string()))?;
+    let config_max_count = inner
+        .config
+        .max_data_in_blob
+        .ok_or_else(|| Error::Uninitialized("max_data_in_blob not set".to_string()))?;
     if active_size > config_max_size || active_count >= config_max_count {
         Ok(Some(inner))
     } else {

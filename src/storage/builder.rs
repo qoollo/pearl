@@ -43,14 +43,23 @@ impl Builder {
     /// Creates `Storage` based on given configuration,
     /// returns error if not all params are set.
     pub fn build<K>(self) -> Result<Storage<K>> {
-        if self.config.blob_file_name_prefix.is_none()
-            || self.config.max_data_in_blob.is_none()
-            || self.config.max_blob_size.is_none()
-            || self.config.blob_file_name_prefix.is_none()
-        {
-            Err(Error::Uninitialized)
-        } else {
+        let mut missed_params = String::new();
+        if self.config.work_dir.is_none() {
+            missed_params.push_str("> work_dir\n");
+        } else if self.config.max_data_in_blob.is_none() {
+            missed_params.push_str("> max_data_in_blob\n");
+        } else if self.config.max_blob_size.is_none() {
+            missed_params.push_str("> max_blob_size\n");
+        } else if self.config.blob_file_name_prefix.is_none() {
+            missed_params.push_str("> blob_file_name_prefix\n");
+        }
+        if missed_params.is_empty() {
             Ok(Storage::new(self.config))
+        } else {
+            Err(Error::Uninitialized(format!(
+                "Required parameters are missed:\n{}",
+                missed_params
+            )))
         }
     }
 

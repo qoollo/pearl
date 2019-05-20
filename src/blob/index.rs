@@ -19,7 +19,7 @@ pub(crate) struct Get(pub(crate) Pin<Box<dyn Future<Output = Result<()>> + Send>
 
 pub(crate) struct Push(pub(crate) Pin<Box<dyn Future<Output = Result<()>> + Send>>);
 
-pub(crate) struct ContainsKey(pub(crate) Pin<Box<dyn Future<Output = Result<()>> + Send>>);
+pub(crate) struct ContainsKey(pub(crate) Pin<Box<dyn Future<Output = Result<bool>> + Send>>);
 
 pub(crate) struct Count(pub(crate) Pin<Box<dyn Future<Output = Result<usize>> + Send>>);
 
@@ -27,6 +27,14 @@ pub(crate) struct Flush(pub(crate) Pin<Box<dyn Future<Output = Result<()>> + Sen
 
 impl Future for Count {
     type Output = Result<usize>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        Future::poll(self.0.as_mut(), cx)
+    }
+}
+
+impl Future for ContainsKey {
+    type Output = Result<bool>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         Future::poll(self.0.as_mut(), cx)
