@@ -40,3 +40,11 @@ impl Future for ContainsKey {
         Future::poll(self.0.as_mut(), cx)
     }
 }
+
+impl Future for Get {
+    type Output = Result<RecordHeader>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        Future::poll(self.0.as_mut(), cx)
+    }
+}

@@ -269,18 +269,28 @@ impl SimpleIndex {
 
 impl Index for SimpleIndex {
     fn contains_key(&self, key: &[u8]) -> ContainsKey {
-        self.get(key);
-        unimplemented!()
+        ContainsKey(
+            self.get(key)
+                .then(|res| match res {
+                    Ok(_) => future::ok(true),
+                    Err(Error::NotFound) => future::ok(false),
+                    Err(e) => {
+                        error!("{:?}", e);
+                        future::err(e)
+                    }
+                })
+                .boxed(),
+        )
     }
 
     fn push(&mut self, h: RecordHeader) -> Push {
         match &mut self.inner {
             State::InMemory(bunch) => {
                 bunch.push(h);
+                Push(future::ok(()).boxed())
             }
             State::OnDisk(_) => unimplemented!(),
         }
-        unimplemented!()
     }
 
     fn get(&self, key: &[u8]) -> Get {
@@ -449,20 +459,19 @@ impl Blob {
     }
 
     pub(crate) async fn read(&self, key: Vec<u8>) -> Result<Record> {
-        let loc = self.lookup(&key)?;
+        let loc = await!(self.lookup(&key))?;
         let buf = await!(self.file.read_at(loc.size as usize, loc.offset))?;
         let record = Record::from_raw(&buf)?;
         Ok(record)
     }
 
-    fn lookup<K>(&self, key: &K) -> Result<Location>
+    async fn lookup<K>(&self, key: K) -> Result<Location>
     where
         K: AsRef<[u8]> + Ord,
     {
-        unimplemented!();
-        // let h = self.index.get(key.as_ref())?;
-        // let offset = h.blob_offset();
-        // Ok(Location::new(offset as u64, h.full_len()?))
+        let h = await!(self.index.get(key.as_ref()))?;
+        let offset = h.blob_offset();
+        Ok(Location::new(offset as u64, h.full_len()?))
     }
 
     pub(crate) fn file_size(&self) -> Result<u64> {
