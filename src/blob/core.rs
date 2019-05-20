@@ -1,11 +1,11 @@
-use bincode::{deserialize, serialize_into};
+use bincode::deserialize;
 use futures::{
-    future::{self, Future, FutureExt, TryFuture, TryFutureExt},
+    future::{self, Future, FutureExt, TryFutureExt},
     io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt, AsyncWrite},
     lock::Mutex,
     task::{Context, Poll},
 };
-use std::io::{self, Read, Seek as SeekTrait, SeekFrom};
+use std::io::{self, SeekFrom};
 use std::os::unix::fs::FileExt;
 use std::{
     fs,
@@ -28,12 +28,9 @@ type Result<T> = std::result::Result<T, Error>;
 ///
 /// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
-pub(crate) struct Blob<I>
-where
-    I: Index,
-{
+pub(crate) struct Blob {
     header: Header,
-    index: I,
+    index: SimpleIndex,
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
@@ -215,14 +212,14 @@ enum State {
 
 impl SimpleIndex {
     async fn load(mut file: File) -> Result<Vec<RecordHeader>> {
-        await!(file.seek(SeekFrom::Start(0)));
+        await!(file.seek(SeekFrom::Start(0)))?;
         let mut buf = Vec::new();
         await!(file.read_to_end(&mut buf))?;
         deserialize(&buf).map_err(Error::SerDe)
     }
 }
 
-impl Index for SimpleIndex {
+impl SimpleIndex {
     fn new(name: FileName) -> Self {
         Self {
             inner: State::InMemory(Vec::new()),
@@ -230,7 +227,7 @@ impl Index for SimpleIndex {
         }
     }
 
-    fn from_file<SimpleIndex>(name: FileName) -> FromFile<Self> {
+    async fn from_file(name: FileName) -> Result<Self> {
         let fd = fs::OpenOptions::new()
             .create(true)
             .read(true)
@@ -238,7 +235,7 @@ impl Index for SimpleIndex {
             .open(name.as_path())
             .unwrap();
         let file = File::from_std_file(fd).unwrap();
-        FromFile(Self::load(file)
+        await!(Self::load(file)
             .and_then(|index| {
                 future::ok(Self {
                     inner: State::InMemory(index),
@@ -247,7 +244,9 @@ impl Index for SimpleIndex {
             })
             .boxed())
     }
+}
 
+impl Index for SimpleIndex {
     fn contains_key(&self, key: &[u8]) -> ContainsKey {
         self.get(key);
         unimplemented!()
@@ -306,7 +305,7 @@ impl Index for SimpleIndex {
     fn count(&self) -> Count {
         Count(match &self.inner {
             State::InMemory(bunch) => future::ok(bunch.len()).boxed(),
-            State::OnDisk(_) => Self::from_file::<SimpleIndex>(self.name.clone())
+            State::OnDisk(_) => Self::from_file(self.name.clone())
                 .map_ok(|st| {
                     if let State::InMemory(index) = st.inner {
                         index.len()
@@ -319,10 +318,7 @@ impl Index for SimpleIndex {
     }
 }
 
-impl<I> Blob<I>
-where
-    I: Index,
-{
+impl Blob {
     /// # Description
     /// Creates new blob file with given [`FileName`]
     /// # Panic
@@ -336,7 +332,7 @@ where
         let blob = Self {
             header: Header::new(),
             file,
-            index: Index::new(index_name),
+            index: SimpleIndex::new(index_name),
             name,
             current_offset: Arc::new(Mutex::new(0)),
         };
@@ -375,7 +371,8 @@ where
         let len = file.metadata()?.len();
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        let index = await!(SimpleIndex::from_file(index_name))?;
+        let from_file_fut = SimpleIndex::from_file(index_name);
+        let index = await!(from_file_fut)?;
 
         let blob = Self {
             header: Header::new(),

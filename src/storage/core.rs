@@ -69,8 +69,8 @@ struct Inner {
 }
 
 struct Safe {
-    active_blob: Option<Box<Blob<SimpleIndex>>>,
-    blobs: Vec<Blob<SimpleIndex>>,
+    active_blob: Option<Box<Blob>>,
+    blobs: Vec<Blob>,
     lock_file: Option<File>,
 }
 
@@ -280,9 +280,7 @@ impl<K> Storage<K> {
                 None
             }
         });
-        let futures: FuturesUnordered<_> = blob_files
-            .map(|path| Blob::<SimpleIndex>::from_file(path))
-            .collect();
+        let futures: FuturesUnordered<_> = blob_files.map(|path| Blob::from_file(path)).collect();
         let blob_res: Vec<_> = await!(futures.collect());
         let mut blobs: Vec<_> = blob_res.into_iter().filter_map(|res| res.ok()).collect();
         blobs.sort_by_key(Blob::id);
