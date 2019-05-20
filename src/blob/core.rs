@@ -284,25 +284,35 @@ impl Index for SimpleIndex {
     }
 
     fn get(&self, key: &[u8]) -> Get {
+        let cloned_key = key.to_vec();
         // @TODO implement binary search
         match &self.inner {
-            State::InMemory(bunch) => {
-                bunch
-                    .iter()
-                    .find(|h| h.key() == key)
-                    .cloned()
-                    .ok_or(Error::NotFound);
+            State::InMemory(bunch) => Get(if let Some(res) =
+                bunch.iter().find(|h| h.key() == key).cloned()
+            {
+                future::ok(res)
+            } else {
+                future::err(Error::NotFound)
             }
-            State::OnDisk(f) => {
-                // Self::load(&f.read_fd).and_then(|index| {
-                // let i = index
-                //     .binary_search_by_key(&key, |h| h.key())
-                //     .map_err(|_| Error::NotFound)?;
-                // index.get(i).cloned().ok_or(Error::NotFound)
-                // });
-            }
+            .boxed()),
+            State::OnDisk(f) => Get(Self::load(f.clone())
+                .and_then(move |index| {
+                    let res = if let Ok(i) =
+                        index.binary_search_by_key(&cloned_key.as_slice(), |h| h.key())
+                    {
+                        if let Some(res) = index.get(i).cloned() {
+                            future::ok(res)
+                        } else {
+                            future::err(Error::NotFound)
+                        }
+                    } else {
+                        future::err(Error::NotFound)
+                    }
+                    .boxed();
+                    res
+                })
+                .boxed()),
         }
-        unimplemented!()
     }
 
     fn flush(&mut self) -> Flush {

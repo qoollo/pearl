@@ -15,7 +15,7 @@ pub(crate) trait Index {
     fn flush(&mut self) -> Flush;
 }
 
-pub(crate) struct Get(pub(crate) Pin<Box<dyn Future<Output = Result<()>> + Send>>);
+pub(crate) struct Get(pub(crate) Pin<Box<dyn Future<Output = Result<RecordHeader>> + Send>>);
 
 pub(crate) struct Push(pub(crate) Pin<Box<dyn Future<Output = Result<()>> + Send>>);
 
