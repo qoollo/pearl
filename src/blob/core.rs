@@ -218,9 +218,8 @@ impl SimpleIndex {
             .create(true)
             .read(true)
             .write(true)
-            .open(name.as_path())
-            .unwrap();
-        let file = File::from_std_file(fd).unwrap();
+            .open(name.as_path())?;
+        let file = File::from_std_file(fd)?;
         await!(Self::load(file)
             .and_then(|index| {
                 future::ok(Self {
@@ -290,18 +289,28 @@ impl Index for SimpleIndex {
     fn flush(&mut self) -> Flush {
         match &mut self.inner {
             State::InMemory(bunch) => {
-                let fd = fs::OpenOptions::new()
+                let fd_res = fs::OpenOptions::new()
                     .create(true)
                     .read(true)
                     .write(true)
                     .open(self.name.as_path())
-                    .unwrap();
+                    .map_err(Error::IO);
                 bunch.sort_by_key(|h| h.key().to_vec());
-                let buf = serialize(&bunch).unwrap();
-                let mut file = File::from_std_file(fd).unwrap();
-                self.inner = State::OnDisk(file.clone());
-                let fut = async move { await!(file.write_all(&buf).map_err(Error::IO)) };
-                Flush(fut.boxed())
+                let buf_res = serialize(&bunch);
+                let file_res = fd_res.and_then(File::from_std_file);
+                let mut file = match file_res {
+                    Ok(file) => file,
+                    Err(e) => return Flush(future::err(e).boxed()),
+                };
+                let inner = State::OnDisk(file.clone());
+                self.inner = inner;
+                let fut = match buf_res.map_err(Error::SerDe) {
+                    Ok(buf) => {
+                        async move { await!(file.write_all(&buf).map_err(Error::IO)) }.boxed()
+                    }
+                    Err(e) => future::err(e).boxed(),
+                };
+                Flush(fut)
             }
             State::OnDisk(_) => unimplemented!(),
         }
