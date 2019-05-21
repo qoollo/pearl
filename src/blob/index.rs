@@ -2,7 +2,7 @@ use futures::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use super::core::{Error, FileName, SimpleIndex};
+use super::core::Error;
 use crate::record::Header as RecordHeader;
 
 type Result<T> = std::result::Result<T, Error>;
@@ -43,6 +43,14 @@ impl Future for ContainsKey {
 
 impl Future for Get {
     type Output = Result<RecordHeader>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        Future::poll(self.0.as_mut(), cx)
+    }
+}
+
+impl Future for Flush {
+    type Output = Result<()>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         Future::poll(self.0.as_mut(), cx)

@@ -31,7 +31,7 @@ fn test_storage_init_new() {
 #[test]
 fn test_storage_init_from_existing() {
     env_logger::builder()
-        .filter_level(log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Error)
         .try_init()
         .unwrap();
     let dir = "pearl_existing/";

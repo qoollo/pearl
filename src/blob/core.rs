@@ -1,11 +1,11 @@
-use bincode::deserialize;
+use bincode::{deserialize, serialize};
 use futures::{
     future::{self, Future, FutureExt, TryFutureExt},
-    io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt, AsyncWrite},
+    io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt, AsyncWrite, AsyncWriteExt},
     lock::Mutex,
     task::{Context, Poll},
 };
-use std::io::{self, Read, Seek as StdSeek, SeekFrom};
+use std::io::{self, Read, Seek as StdSeek, SeekFrom, Write as StdWrite};
 use std::os::unix::fs::FileExt;
 use std::{
     fs,
@@ -66,14 +66,22 @@ impl AsyncWrite for File {
         cx: &mut Context<'_>,
         buf: &[u8],
     ) -> Poll<StdResult<usize, io::Error>> {
+        let mut file = self.read_fd.as_ref();
+        match file.write_all(buf) {
+            Ok(_) => Poll::Ready(Ok(buf.len())),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            }
+            Err(e) => Poll::Ready(Err(e)),
+        }
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<StdResult<(), io::Error>> {
         unimplemented!()
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<StdResult<(), io::Error>> {
-        unimplemented!()
-    }
-
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<StdResult<(), io::Error>> {
+    fn poll_close(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<StdResult<(), io::Error>> {
         unimplemented!()
     }
 }
@@ -136,49 +144,6 @@ impl Future for ReadAt {
             }
             Err(e) => Poll::Ready(Err(Error::IO(e))),
         }
-    }
-}
-/*
-struct ReadToEnd {
-    fd: Arc<fs::File>,
-}
-
-impl Future for ReadToEnd {
-    type Output = Result<Vec<u8>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        let mut buf = Vec::new();
-        let mut file = self.fd.as_ref();
-        match file.read_to_end(&mut buf) {
-            Ok(_t) => Poll::Ready(Ok(buf)),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                cx.waker().wake_by_ref();
-                Poll::Pending
-            }
-            Err(e) => Poll::Ready(Err(Error::IO(e))),
-        }
-    }
-}
-*/
-
-struct Seek {
-    fd: Arc<fs::File>,
-    from: SeekFrom,
-}
-
-impl Future for Seek {
-    type Output = Result<()>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        unimplemented!()
-        // match self.fd.seek(self.from) {
-        //     Ok(_t) => Poll::Ready(Ok(())),
-        //     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-        //         cx.waker().wake_by_ref();
-        //         Poll::Pending
-        //     }
-        //     Err(e) => Poll::Ready(Err(Error::IO(e))),
-        // }
     }
 }
 
@@ -307,9 +272,7 @@ impl Index for SimpleIndex {
             .boxed()),
             State::OnDisk(f) => Get(Self::load(f.clone())
                 .and_then(move |index| {
-                    let res = if let Ok(i) =
-                        index.binary_search_by_key(&cloned_key.as_slice(), |h| h.key())
-                    {
+                    if let Ok(i) = index.binary_search_by_key(&cloned_key.as_slice(), |h| h.key()) {
                         if let Some(res) = index.get(i).cloned() {
                             future::ok(res)
                         } else {
@@ -318,8 +281,7 @@ impl Index for SimpleIndex {
                     } else {
                         future::err(Error::NotFound)
                     }
-                    .boxed();
-                    res
+                    .boxed()
                 })
                 .boxed()),
         }
@@ -328,19 +290,21 @@ impl Index for SimpleIndex {
     fn flush(&mut self) -> Flush {
         match &mut self.inner {
             State::InMemory(bunch) => {
-                // let fd = fs::OpenOptions::new()
-                //     .create(true)
-                //     .read(true)
-                //     .write(true)
-                //     .open(self.name.as_path())?;
-                // bunch.sort_by_key(|h| h.key().to_vec());
-                // serialize_into(&fd, bunch)?;
-                // self.inner = State::OnDisk(File::from_std_file(fd)?);
+                let fd = fs::OpenOptions::new()
+                    .create(true)
+                    .read(true)
+                    .write(true)
+                    .open(self.name.as_path())
+                    .unwrap();
+                bunch.sort_by_key(|h| h.key().to_vec());
+                let buf = serialize(&bunch).unwrap();
+                let mut file = File::from_std_file(fd).unwrap();
+                self.inner = State::OnDisk(file.clone());
+                let fut = async move { await!(file.write_all(&buf).map_err(Error::IO)) };
+                Flush(fut.boxed())
             }
             State::OnDisk(_) => unimplemented!(),
         }
-        // Ok(());
-        unimplemented!()
     }
 
     fn count(&self) -> Count {
@@ -380,9 +344,8 @@ impl Blob {
         Ok(blob)
     }
 
-    pub(crate) fn flush(&mut self) -> Result<()> {
-        self.index.flush();
-        unimplemented!()
+    pub(crate) async fn flush(&mut self) -> Result<()> {
+        await!(self.index.flush())
     }
 
     fn create_file(path: &Path) -> Result<fs::File> {
@@ -434,6 +397,7 @@ impl Blob {
             index,
             current_offset: Arc::new(Mutex::new(len)),
         };
+        blob.check_data_consistency()?;
 
         // @TODO Scan existing file to create index
         Ok(blob)

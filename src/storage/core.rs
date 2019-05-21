@@ -1,6 +1,6 @@
 use futures::{
     executor::block_on,
-    future::{self, FutureExt, FutureObj, TryFutureExt},
+    future::{self, FutureExt, FutureObj},
     lock::Mutex,
     stream::{futures_unordered::FuturesUnordered, Stream, StreamExt},
     task::{self, Context, Poll, Spawn, SpawnExt},
@@ -20,7 +20,7 @@ use std::{
 };
 
 use crate::{
-    blob::{self, Blob, SimpleIndex},
+    blob::{self, Blob},
     record::Record,
 };
 
@@ -139,7 +139,7 @@ impl<K> Storage<K> {
                 .config
                 .work_dir
                 .as_ref()
-                .ok_or(Error::Uninitialized(format!("work_dir not set")))?,
+                .ok_or_else(|| Error::Uninitialized("work_dir not set".to_string()))?,
         );
         println!("files");
         if let Some(files) = cont_res? {
@@ -238,7 +238,7 @@ impl<K> Storage<K> {
                 .config
                 .work_dir
                 .as_ref()
-                .ok_or(Error::Uninitialized(format!("work_dir not set")))?,
+                .ok_or_else(|| Error::Uninitialized("work_dir not set".to_string()))?,
         );
         if path.exists() {
             debug!("work dir exists: {}", path.display());
@@ -345,15 +345,13 @@ impl Inner {
             .config
             .blob_file_name_prefix
             .as_ref()
-            .ok_or(Error::Uninitialized(format!(
-                "blob_file_name_prefix not set"
-            )))?
+            .ok_or_else(|| Error::Uninitialized("blob_file_name_prefix not set".to_string()))?
             .to_owned();
         let dir = self
             .config
             .work_dir
             .as_ref()
-            .ok_or(Error::Uninitialized(format!("work_dir not set")))?
+            .ok_or_else(|| Error::Uninitialized("work_dir not set".to_string()))?
             .to_owned();
         Ok(blob::FileName::new(
             prefix,
@@ -539,7 +537,7 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
         .active_blob
         .replace(new_active)
         .ok_or(Error::ActiveBlobNotSet)?;
-    old_active.flush()?;
+    await!(old_active.flush())?;
     safe_locked.blobs.push(*old_active);
     Ok(())
 }
