@@ -537,7 +537,7 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
         .active_blob
         .replace(new_active)
         .ok_or(Error::ActiveBlobNotSet)?;
-    await!(old_active.flush())?;
+    await!(old_active.dump())?;
     safe_locked.blobs.push(*old_active);
     Ok(())
 }

@@ -15,7 +15,7 @@ use std::{
     sync::Arc,
 };
 
-use super::index::*;
+use super::index::{ContainsKey, Count, Dump, Get, Index, Push};
 use crate::record::{self, Header as RecordHeader, Record};
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
@@ -286,7 +286,7 @@ impl Index for SimpleIndex {
         }
     }
 
-    fn flush(&mut self) -> Flush {
+    fn dump(&mut self) -> Dump {
         match &mut self.inner {
             State::InMemory(bunch) => {
                 let fd_res = fs::OpenOptions::new()
@@ -300,7 +300,7 @@ impl Index for SimpleIndex {
                 let file_res = fd_res.and_then(File::from_std_file);
                 let mut file = match file_res {
                     Ok(file) => file,
-                    Err(e) => return Flush(future::err(e).boxed()),
+                    Err(e) => return Dump(future::err(e).boxed()),
                 };
                 let inner = State::OnDisk(file.clone());
                 self.inner = inner;
@@ -310,7 +310,7 @@ impl Index for SimpleIndex {
                     }
                     Err(e) => future::err(e).boxed(),
                 };
-                Flush(fut)
+                Dump(fut)
             }
             State::OnDisk(_) => unimplemented!(),
         }
@@ -353,8 +353,8 @@ impl Blob {
         Ok(blob)
     }
 
-    pub(crate) async fn flush(&mut self) -> Result<()> {
-        await!(self.index.flush())
+    pub(crate) async fn dump(&mut self) -> Result<()> {
+        await!(self.index.dump())
     }
 
     fn create_file(path: &Path) -> Result<fs::File> {
