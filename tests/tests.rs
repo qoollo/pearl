@@ -1,21 +1,17 @@
-#![feature(
-    futures_api,
-    async_await,
-    await_macro,
-    repeat_generic_slice,
-    duration_float
-)]
+#![feature(async_await, await_macro, repeat_generic_slice, duration_float)]
 
 use futures::{
     executor::{block_on, ThreadPool},
     future::FutureExt,
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
 };
-use pearl::{Builder, Record};
+use pearl::{Builder, Storage};
 use rand::seq::SliceRandom;
 use std::{env, fs};
 
 mod common;
+
+use common::KeyTest;
 
 #[test]
 fn test_storage_init_new() {
@@ -24,16 +20,20 @@ fn test_storage_init_new() {
     println!("storage init");
     let storage = block_on(common::default_test_storage_in(spawner, dir)).unwrap();
     println!("blobs count");
-    assert_eq!(block_on(storage.blobs_count()), 1);
+    assert_eq!(storage.blobs_count(), 1);
     let path = env::temp_dir().join(dir);
     let blob_file_path = path.join("test.0.blob");
     println!("check path exists");
     assert!(blob_file_path.exists());
-    common::clean(dir);
+    common::clean(storage, dir);
 }
 
 #[test]
 fn test_storage_init_from_existing() {
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Error)
+        .try_init()
+        .unwrap();
     let dir = "pearl_existing/";
     let pool = ThreadPool::new().unwrap();
     let path = env::temp_dir().join(dir);
@@ -43,7 +43,7 @@ fn test_storage_init_from_existing() {
             .blob_file_name_prefix("test")
             .max_blob_size(1_000_000)
             .max_data_in_blob(1_000);
-        let mut temp_storage = builder.build().unwrap();
+        let mut temp_storage: Storage<KeyTest> = builder.build().unwrap();
         block_on(temp_storage.init(pool.clone())).unwrap();
         fs::OpenOptions::new()
             .write(true)
@@ -64,14 +64,10 @@ fn test_storage_init_from_existing() {
     assert!(block_on(storage.init(pool))
         .map_err(|e| eprintln!("{:?}", e))
         .is_ok());
-    assert_eq!(block_on(storage.blobs_count()), 2);
+    assert_eq!(storage.blobs_count(), 2);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
-    assert_eq!(
-        path.join("test.1.blob"),
-        block_on(storage.active_blob_path()).unwrap(),
-    );
-    common::clean(dir);
+    common::clean(storage, dir);
 }
 
 #[test]
@@ -82,26 +78,25 @@ fn test_storage_read_write() {
     let storage = block_on(common::default_test_storage_in(pool, dir)).unwrap();
 
     println!("create key/data");
-    let key = "test-test".to_owned();
+    let key = "testtest".to_owned();
     let data = b"test data string".to_vec();
-    println!("new record");
-    let mut record = Record::new();
-    println!("set record body");
-    record.set_body(key.clone(), data.clone());
     println!("init thread pool");
     let mut pool = ThreadPool::new().unwrap();
     println!("block on write");
-    block_on(storage.clone().write(record)).unwrap();
+    block_on(
+        storage
+            .clone()
+            .write(KeyTest(key.as_bytes().to_vec()), data.clone()),
+    )
+    .unwrap();
     println!("block on read");
-    let r = storage.read(key.as_bytes().to_vec());
+    let r = storage.read(KeyTest(key.as_bytes().to_vec()));
     println!("run write->read futures");
-    let rec = pool.run(r).unwrap();
+    let new_data = pool.run(r).unwrap();
     println!("check record data len");
-    assert_eq!(rec.data().len(), data.len());
+    assert_eq!(new_data.len(), data.len());
     println!("clean test dir");
-    common::clean(dir);
-    println!("check record key");
-    assert_eq!(rec.key(), key.as_bytes());
+    common::clean(storage, dir);
 }
 
 #[test]
@@ -119,21 +114,23 @@ fn test_storage_multiple_read_write() {
     block_on(storage.init(pool)).unwrap();
 
     let mut keys = Vec::new();
-    let mut records: Vec<_> = (0..1000)
+    let mut records: Vec<_> = (0..100)
         .map(|i| {
-            let data = b"viva".repeat(i + 1);
-            let key = format!("key{}", i);
-            let mut rec = Record::new();
-            rec.set_body(&key, &data);
+            let data = b"viva";
+            let key = format!("key{:5}", i);
             keys.push(key.clone());
-            rec
+            (key, data)
         })
         .collect();
     records.shuffle(&mut rand::thread_rng());
     let write_stream: FuturesUnordered<_> = records
         .clone()
         .into_iter()
-        .map(|record| storage.clone().write(record))
+        .map(|(key, data)| {
+            storage
+                .clone()
+                .write(KeyTest(key.as_bytes().to_vec()), data.to_vec())
+        })
         .collect();
     let mut pool = ThreadPool::new().unwrap();
     let now = std::time::Instant::now();
@@ -144,23 +141,21 @@ fn test_storage_multiple_read_write() {
     println!("write {}B/s", written as f64 / elapsed);
     let read_stream: FuturesUnordered<_> = keys
         .iter()
-        .map(|key| storage.read(key.as_bytes().to_vec()))
+        .map(|key| storage.read(KeyTest(key.as_bytes().to_vec())))
         .collect();
     let now = std::time::Instant::now();
-    let mut records_from_file = pool.run(
+    let data_from_file = pool.run(
         read_stream
             .map_err(|e| dbg!(e))
             .map(Result::unwrap)
             .collect::<Vec<_>>(),
     );
     let elapsed = now.elapsed().as_secs_f64();
-    records.sort_by_key(|record| record.key().to_owned());
-    records_from_file.sort_by_key(|record| record.key().to_owned());
+    records.sort_by_key(|(key, _)| key.clone());
     let written = fs::metadata(&blob_file_path).unwrap().len();
     println!("read {}B/s", written as f64 / elapsed);
-    common::clean(dir);
-    assert_eq!(records.len(), records_from_file.len());
-    assert_eq!(records, records_from_file);
+    common::clean(storage, dir);
+    assert_eq!(records.len(), data_from_file.len());
 }
 
 #[test]
@@ -188,8 +183,10 @@ fn test_multithread_read_write() -> Result<(), String> {
                 .name(format!("thread#{}", range[0]))
                 .spawn(move || {
                     range.shuffle(&mut rand::thread_rng());
-                    let write_futures: FuturesUnordered<_> =
-                        range.iter().map(|i| common::write(s.clone(), *i)).collect();
+                    let write_futures: FuturesUnordered<_> = range
+                        .iter()
+                        .map(|i| common::write(s.clone(), *i as u64))
+                        .collect();
                     block_on(write_futures.collect::<Vec<_>>());
                 })
                 .unwrap()
@@ -206,7 +203,7 @@ fn test_multithread_read_write() -> Result<(), String> {
     let keys = indexes.iter().flatten().cloned().collect::<Vec<_>>();
     println!("check result");
     common::check_all_written(&storage, keys)?;
-    common::clean(dir);
+    common::clean(storage, dir);
     println!("done");
     Ok(())
 }
@@ -217,12 +214,11 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
     use futures::compat::{Executor01CompatExt, Future01CompatExt};
     use futures::future::TryFutureExt;
     use std::time::{Duration, Instant};
-    use tokio::prelude::Future as OldFuture;
     use tokio::runtime::Builder;
     use tokio::timer::Delay;
 
     let dir = "pearl_overflow/";
-    let mut pool = Builder::new().core_threads(1).build().unwrap();
+    let pool = Builder::new().core_threads(1).build().unwrap();
     let storage = block_on(common::create_test_storage(
         pool.executor().clone().compat(),
         dir,
@@ -236,7 +232,7 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
             let mut range: Vec<u64> = (0..100).map(|i| i).collect();
             range.shuffle(&mut rand::thread_rng());
             let mut next_write = Instant::now();
-            let data = "omn".repeat(150);
+            let data = "omn".repeat(150).as_bytes().to_vec();
             let delay_futures: Vec<_> = range
                 .iter()
                 .map(|i| {
@@ -252,28 +248,31 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
                 .zip(delay_futures)
                 .map(move |(i, df)| {
                     next_write += Duration::from_millis(500);
-                    let key = format!("{}key", i);
-                    let mut record = Record::new();
-                    record.set_body(key, &data);
-                    let write_fut = storage.clone().write(record).map_err(|e| {
-                        println!("{:?}", e);
-                    });
+                    let write_fut = cloned_storage
+                        .clone()
+                        .write(KeyTest(i.to_be_bytes().to_vec()), data.clone())
+                        .map_err(|e| {
+                            println!("{:?}", e);
+                        });
                     df.and_then(move |_| write_fut)
                 })
                 .collect();
-            await!(write_futures.collect::<Vec<_>>());
-            Ok(())
+            if await!(write_futures.collect::<Vec<_>>())
+                .iter()
+                .any(Result::is_err)
+            {
+                Err(())
+            } else {
+                Ok(())
+            }
         }
             .boxed(),
     );
-    pool.spawn(fut.map(move |_| {
-        cloned_storage.close().unwrap();
-    }));
-    pool.shutdown_on_idle().wait().unwrap();
+    pool.block_on_all(fut).unwrap();
     let path = env::temp_dir().join(dir);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
-    common::clean(dir);
+    common::clean(storage, dir);
     Ok(())
 }
 
@@ -286,7 +285,7 @@ fn test_storage_close() {
         .blob_file_name_prefix("test")
         .max_blob_size(1_000_000)
         .max_data_in_blob(1_000);
-    let mut storage = builder.build().unwrap();
+    let mut storage: Storage<KeyTest> = builder.build().unwrap();
     assert!(block_on(storage.init(pool))
         .map_err(|e| eprintln!("{:?}", e))
         .is_ok());
@@ -294,4 +293,51 @@ fn test_storage_close() {
     fs::remove_file(blob_file_path).unwrap();
     fs::remove_file(path.join("pearl.lock")).unwrap();
     fs::remove_dir(&path).unwrap();
+}
+
+#[test]
+fn test_on_disk_index() {
+    let data_size = 500;
+    let max_blob_size = 1500;
+    let num_records_to_write = 5usize;
+    let read_key = 3usize;
+
+    let pool = ThreadPool::new().unwrap();
+    let dir = "pearl_index";
+    let path = env::temp_dir().join(dir);
+    let mut storage = Builder::new()
+        .work_dir(&path)
+        .blob_file_name_prefix("test")
+        .max_blob_size(max_blob_size)
+        .max_data_in_blob(1_000)
+        .build()
+        .unwrap();
+    let slice = [17, 40, 29, 7, 75];
+    let data: Vec<u8> = slice.repeat(data_size / slice.len());
+    let test_task = async {
+        await!(storage.init(pool)).unwrap();
+        let write_results: FuturesUnordered<_> = (0..num_records_to_write)
+            .map(|key| {
+                storage
+                    .clone()
+                    .write(KeyTest(key.to_be_bytes().to_vec()), data.clone())
+            })
+            .collect();
+        await!(write_results.for_each(|res| {
+            res.unwrap();
+            futures::future::ready(())
+        }));
+        let mut count = 0;
+        while count < 2 {
+            count = storage.blobs_count();
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        assert!(path.join("test.1.blob").exists());
+        await!(storage.read(KeyTest(read_key.to_be_bytes().to_vec()))).unwrap()
+    };
+
+    let new_data = block_on(test_task);
+
+    assert_eq!(new_data, data);
+    common::clean(storage, dir);
 }

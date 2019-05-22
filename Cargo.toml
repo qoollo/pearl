@@ -8,20 +8,19 @@ repository = "https://lab.qoollo.com/py/pearl"
 readme = "README.md"
 
 [dependencies]
-env_logger = "0.6.0"
-log = "0.4.6"
-futures-preview = { version = "0.3.0-alpha.14", features = ["compat"] }
-serde = "1.0.89"
-serde_derive = "1.0.89"
-bincode = "1.1.2"
-rand = "0.6.5"
-tokio = "*"
+bincode = "1.1"
+env_logger = "0.6"
+futures-preview = { version = "0.3.0-alpha.16", features = ["compat"] }
+log = "0.4"
+rand = "0.6"
+serde = "1.0"
+serde_derive = "1.0"
+tokio = "0.1"
 
-runtime = { git = "https://github.com/rustasync/runtime", optional = true }
-clap = { version = "*", optional = true }
+clap = { version = "2.33", optional = true }
 
 [features]
-benchmark = ["clap", "runtime"]
+benchmark = ["clap"]
 
 [lib]
 name = "pearl"

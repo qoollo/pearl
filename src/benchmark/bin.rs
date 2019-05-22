@@ -1,5 +1,6 @@
-#![feature(async_await, await_macro, futures_api)]
+#![feature(async_await, await_macro)]
 #![allow(clippy::needless_lifetimes)]
+
 extern crate pearl;
 #[macro_use]
 extern crate log;
@@ -10,16 +11,18 @@ mod writer;
 
 use clap::{App, Arg, ArgMatches};
 use futures::{
+    channel::mpsc::{channel, Sender},
     executor::ThreadPool,
     stream::{FuturesUnordered, StreamExt},
 };
 use log::LevelFilter;
-use std::sync::Arc;
-use std::time::Instant;
+use pearl::Key;
+use std::{sync::Arc, time::Instant};
 
 use generator::Generator;
 use statistics::Statistics;
 use writer::Writer;
+
 fn main() {
     println!("{:_^41}", "PEARL_BENCHMARK");
     env_logger::Builder::new()
@@ -31,8 +34,6 @@ fn main() {
     let app = start_app(spawner);
     pool.run(app);
 }
-
-use futures::channel::mpsc::*;
 
 async fn start_app(spawner: ThreadPool) {
     info!("Hello Async World");
@@ -68,23 +69,27 @@ async fn start_app(spawner: ThreadPool) {
         .map(|_| generator.next().unwrap())
         .collect();
 
-    use pearl::Record;
     use statistics::Report;
 
-    async fn write(lawriter: Arc<Writer>, record: Record, mut ltx: Sender<Report>) {
+    async fn write(
+        lawriter: Arc<Writer<Key128>>,
+        key: Key128,
+        data: Vec<u8>,
+        mut ltx: Sender<Report>,
+    ) {
         let now = Instant::now();
-        let mut report = await!(lawriter.write(record));
+        let mut report = await!(lawriter.write(key, data));
         report.set_latency(now);
         ltx.try_send(report).unwrap();
     }
 
     let mut futures_pool: FuturesUnordered<_> = prepared
         .into_iter()
-        .map(|record| {
+        .map(|(key, data)| {
             let lawriter = awriter.clone();
             let ltx = tx.clone();
             counter += 1;
-            write(lawriter, record, ltx)
+            write(lawriter, key.into(), data, ltx)
         })
         .collect();
     println!(
@@ -110,11 +115,11 @@ async fn start_app(spawner: ThreadPool) {
         }
         prev_p = percent;
         if futures_pool.len() < futures_limit as usize {
-            if let Some(record) = generator.next() {
+            if let Some((key, data)) = generator.next() {
                 let lawriter = awriter.clone();
                 let ltx = tx.clone();
                 counter += 1;
-                futures_pool.push(write(lawriter, record, ltx));
+                futures_pool.push(write(lawriter, key.into(), data, ltx));
             }
         }
     }
@@ -168,4 +173,23 @@ fn prepare_matches<'a>() -> ArgMatches<'a> {
                 .default_value("10"),
         )
         .get_matches()
+}
+
+struct Key128(Vec<u8>);
+
+impl Key for Key128 {
+    const LEN: u16 = 8;
+}
+
+impl From<Vec<u8>> for Key128 {
+    fn from(v: Vec<u8>) -> Self {
+        assert_eq!(Self::LEN as usize, v.len());
+        Self(v)
+    }
+}
+
+impl AsRef<[u8]> for Key128 {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
 }
