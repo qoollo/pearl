@@ -297,6 +297,10 @@ fn test_storage_close() {
 
 #[test]
 fn test_on_disk_index() {
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Debug)
+        .try_init()
+        .unwrap();
     let data_size = 500;
     let max_blob_size = 1500;
     let num_records_to_write = 5usize;
@@ -314,7 +318,7 @@ fn test_on_disk_index() {
         .unwrap();
     let slice = [17, 40, 29, 7, 75];
     let data: Vec<u8> = slice.repeat(data_size / slice.len());
-    let test_task = async {
+    let prepare_task = async {
         await!(storage.init(pool)).unwrap();
         let write_results: FuturesUnordered<_> = (0..num_records_to_write)
             .map(|key| {
@@ -332,11 +336,14 @@ fn test_on_disk_index() {
             count = storage.blobs_count();
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
+    };
+    block_on(prepare_task);
+    let read_task = async {
         assert!(path.join("test.1.blob").exists());
         await!(storage.read(KeyTest(read_key.to_be_bytes().to_vec()))).unwrap()
     };
 
-    let new_data = block_on(test_task);
+    let new_data = block_on(read_task);
 
     assert_eq!(new_data, data);
     common::clean(storage, dir);

@@ -141,13 +141,11 @@ impl<K> Storage<K> {
                 .as_ref()
                 .ok_or_else(|| Error::Uninitialized("work_dir not set".to_string()))?,
         );
-        println!("files");
         if let Some(files) = cont_res? {
             await!(self.init_from_existing(files))?
         } else {
             await!(self.init_new())?
         };
-        println!("obs fut obj");
         let observer_fut_obj: FutureObj<_> =
             Box::new(launch_observer(spawner.clone(), self.inner.clone())).into();
         spawner
@@ -204,6 +202,7 @@ impl<K> Storage<K> {
                 .map(|blob| blob.read(key.as_ref().to_vec()))
                 .collect();
             let mut task = stream.skip_while(|res| future::ready(res.is_err()));
+            debug!("await for stream of read futures");
             await!(task.next())
                 .ok_or(Error::RecordNotFound)?
                 .map_err(Error::BlobError)?

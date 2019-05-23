@@ -279,9 +279,13 @@ impl Blob {
     }
 
     pub(crate) async fn read(&self, key: Vec<u8>) -> Result<Record> {
+        debug!("lookup key");
         let loc = await!(self.lookup(&key))?;
+        debug!("read at");
         let buf = await!(self.file.read_at(loc.size as usize, loc.offset))?;
+        debug!("record from raw");
         let record = Record::from_raw(&buf)?;
+        debug!("return result");
         Ok(record)
     }
 
@@ -289,7 +293,9 @@ impl Blob {
     where
         K: AsRef<[u8]> + Ord,
     {
+        debug!("index get");
         let h = await!(self.index.get(key.as_ref()))?;
+        debug!("blob offset");
         let offset = h.blob_offset();
         Ok(Location::new(offset as u64, h.full_len()?))
     }
