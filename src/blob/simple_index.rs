@@ -1,5 +1,6 @@
 use bincode::{deserialize, serialize};
 use futures::{future, AsyncReadExt, AsyncSeekExt, AsyncWriteExt, Future, FutureExt, TryFutureExt};
+use serde::Deserialize;
 use std::fs;
 use std::io::SeekFrom;
 use std::pin::Pin;
@@ -10,8 +11,15 @@ use crate::record::Header as RecordHeader;
 
 #[derive(Debug)]
 pub(crate) struct SimpleIndex {
+    header: Header,
     inner: State,
     name: FileName,
+}
+
+#[derive(Debug, Deserialize)]
+struct Header {
+    records_count: usize,
+    header_size: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -36,6 +44,10 @@ impl SimpleIndex {
 impl SimpleIndex {
     pub(crate) fn new(name: FileName) -> Self {
         Self {
+            header: Header {
+                records_count: 0,
+                header_size: 0,
+            },
             inner: State::InMemory(Vec::new()),
             name,
         }
@@ -52,6 +64,10 @@ impl SimpleIndex {
         await!(Self::load(file)
             .and_then(|index| {
                 future::ok(Self {
+                    header: Header {
+                        records_count: index.len(),
+                        header_size: index[0].serialized_size().unwrap() as usize,
+                    },
                     inner: State::InMemory(index),
                     name,
                 })
@@ -60,18 +76,25 @@ impl SimpleIndex {
     }
 
     async fn binary_search(mut file: File, key: Vec<u8>) -> Result<RecordHeader> {
+        let recs_num = await!(Self::read_index_header(&file))?;
         let usize_len = std::mem::size_of::<usize>();
         debug!("seek to file start");
         await!(file.seek(SeekFrom::Start(0)))?;
         debug!("read to end");
         let mut num_buf = vec![0; usize_len];
-        dbg!(await!(file.read(&mut num_buf))?);
+        dbg!(await!(file.read(&mut num_buf)).unwrap());
+        debug!("deserialize number of records");
         let num: usize = deserialize(&num_buf).unwrap();
-        dbg!(num);
-        // debug!("deserialize number of records");
-        // let num: usize = deserialize(&buf[..usize_len]).unwrap();
-        // let raw_headers: Vec<RecordHeader> = deserialize(&buf).unwrap();
-        // dbg!(raw_headers.len());
+        debug!("records num: {}", num);
+        let mut buf = Vec::new();
+        await!(file.read_to_end(&mut buf)).unwrap();
+        debug!("read buf len: {}", buf.len());
+        let raw_headers: Box<[RecordHeader]> = deserialize(&buf).unwrap();
+        dbg!(raw_headers.len());
+        unimplemented!()
+    }
+
+    async fn read_index_header(mut file: &File) -> Result<Header> {
         unimplemented!()
     }
 }
@@ -107,6 +130,7 @@ impl Index for SimpleIndex {
             State::InMemory(bunch) => Get(if let Some(res) =
                 bunch.iter().find(|h| h.key() == key).cloned()
             {
+                debug!("found in memory");
                 future::ok(res)
             } else {
                 future::err(Error::NotFound)
@@ -116,19 +140,7 @@ impl Index for SimpleIndex {
                 debug!("index state on disk");
                 let cloned_key = key.to_vec();
                 Get(Self::binary_search(f.clone(), cloned_key).boxed())
-            } // Self::load(f.clone())
-              // .and_then(move |index| {
-              //     if let Ok(i) = index.binary_search_by_key(&cloned_key.as_slice(), |h| h.key()) {
-              //         if let Some(res) = index.get(i).cloned() {
-              //             future::ok(res)
-              //         } else {
-              //             future::err(Error::NotFound)
-              //         }
-              //     } else {
-              //         future::err(Error::NotFound)
-              //     }
-              //     .boxed()
-              // })
+            }
         }
     }
 
