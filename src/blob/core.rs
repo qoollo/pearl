@@ -148,11 +148,11 @@ impl Future for ReadAt {
 }
 
 impl File {
-    fn metadata(&self) -> io::Result<fs::Metadata> {
+    pub(crate) fn metadata(&self) -> io::Result<fs::Metadata> {
         self.read_fd.metadata()
     }
 
-    async fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> Result<usize> {
+    pub(crate) async fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> Result<usize> {
         let mut fd = await!(self.write_fd.lock());
         let write_fut = WriteAt {
             fd: &mut fd,
@@ -162,7 +162,7 @@ impl File {
         await!(write_fut)
     }
 
-    async fn read_at(&self, len: usize, offset: u64) -> Result<Vec<u8>> {
+    pub(crate) async fn read_at(&self, len: usize, offset: u64) -> Result<Vec<u8>> {
         let read_fut = ReadAt {
             fd: self.read_fd.clone(),
             len,

@@ -1,6 +1,7 @@
 use bincode::{deserialize, serialize};
 use futures::{future, AsyncReadExt, AsyncSeekExt, AsyncWriteExt, Future, FutureExt, TryFutureExt};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::cmp::Ordering::{Greater, Equal};
 use std::fs;
 use std::io::SeekFrom;
 use std::pin::Pin;
@@ -16,10 +17,17 @@ pub(crate) struct SimpleIndex {
     name: FileName,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default, Serialize, Copy, Clone)]
 struct Header {
     records_count: usize,
-    header_size: usize,
+    record_header_size: usize,
+}
+
+impl Header {
+    fn serialized_size() -> u64 {
+        let header = Header::default();
+        bincode::serialized_size(&header).unwrap()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -46,7 +54,7 @@ impl SimpleIndex {
         Self {
             header: Header {
                 records_count: 0,
-                header_size: 0,
+                record_header_size: 0,
             },
             inner: State::InMemory(Vec::new()),
             name,
@@ -66,7 +74,7 @@ impl SimpleIndex {
                 future::ok(Self {
                     header: Header {
                         records_count: index.len(),
-                        header_size: index[0].serialized_size().unwrap() as usize,
+                        record_header_size: index[0].serialized_size().unwrap() as usize,
                     },
                     inner: State::InMemory(index),
                     name,
@@ -76,26 +84,45 @@ impl SimpleIndex {
     }
 
     async fn binary_search(mut file: File, key: Vec<u8>) -> Result<RecordHeader> {
-        let recs_num = await!(Self::read_index_header(&file))?;
-        let usize_len = std::mem::size_of::<usize>();
-        debug!("seek to file start");
-        await!(file.seek(SeekFrom::Start(0)))?;
-        debug!("read to end");
-        let mut num_buf = vec![0; usize_len];
-        dbg!(await!(file.read(&mut num_buf)).unwrap());
-        debug!("deserialize number of records");
-        let num: usize = deserialize(&num_buf).unwrap();
-        debug!("records num: {}", num);
-        let mut buf = Vec::new();
-        await!(file.read_to_end(&mut buf)).unwrap();
-        debug!("read buf len: {}", buf.len());
-        let raw_headers: Box<[RecordHeader]> = deserialize(&buf).unwrap();
-        dbg!(raw_headers.len());
-        unimplemented!()
+        let header: Header = await!(Self::read_index_header(&mut file))?;
+
+        let mut size = header.records_count;
+        if size == 0 {
+            unimplemented!();
+        }
+
+        let mut start = 0;
+
+        while size > 1 {
+            let half = size / 2;
+            let mid = start + half;
+            let mid_record_header = await!(Self::read_at(&mut file, mid, header)).unwrap();
+            let cmp = mid_record_header.key().cmp(&key);
+            start = if cmp == Greater { start } else { mid };
+
+            size -= half;
+        }
+        let record_header = await!(Self::read_at(&mut file, start, header)).unwrap();
+        let cmp = record_header.key().cmp(&key);
+        if cmp == Equal {Ok(record_header)} else {Err(Error::NotFound)}
     }
 
-    async fn read_index_header(mut file: &File) -> Result<Header> {
-        unimplemented!()
+    async fn read_at(file: &mut File, index: usize, header: Header) -> Result<RecordHeader> {
+        let header_size = bincode::serialized_size(&header).unwrap();
+        let offset = header_size + (header.record_header_size * index) as u64;
+        let buf = await!(file.read_at(header.record_header_size, offset)).unwrap();
+        let record_header: RecordHeader = deserialize(&buf).unwrap();
+        Ok(record_header)
+    }
+
+    async fn read_index_header(file: &mut File) -> Result<Header> {
+        let header_size = Header::serialized_size() as usize;
+        let mut buf = vec![0; header_size];
+        debug!("seek to file start");
+        await!(file.seek(SeekFrom::Start(0)))?;
+        await!(file.read(&mut buf)).unwrap();
+        let header = deserialize(&buf).unwrap();
+        Ok(header)
     }
 }
 
