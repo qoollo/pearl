@@ -1,7 +1,7 @@
 use bincode::{deserialize, serialize};
 use futures::{future, AsyncReadExt, AsyncSeekExt, AsyncWriteExt, Future, FutureExt, TryFutureExt};
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering::{Greater, Equal};
+use std::cmp::Ordering::{Equal, Greater};
 use std::fs;
 use std::io::SeekFrom;
 use std::pin::Pin;
@@ -98,13 +98,19 @@ impl SimpleIndex {
             let mid = start + half;
             let mid_record_header = await!(Self::read_at(&mut file, mid, header)).unwrap();
             let cmp = mid_record_header.key().cmp(&key);
-            start = if cmp == Greater { start } else { mid };
+            debug!("mid read: {:?}", mid_record_header.key());
+            start = if cmp == Greater {
+                start
+            } else if cmp == Equal {
+                return Ok(mid_record_header);
+            } else {
+                mid
+            };
 
             size -= half;
         }
-        let record_header = await!(Self::read_at(&mut file, start, header)).unwrap();
-        let cmp = record_header.key().cmp(&key);
-        if cmp == Equal {Ok(record_header)} else {Err(Error::NotFound)}
+        debug!("binary search not found");
+        Err(Error::NotFound)
     }
 
     async fn read_at(file: &mut File, index: usize, header: Header) -> Result<RecordHeader> {
@@ -117,6 +123,7 @@ impl SimpleIndex {
 
     async fn read_index_header(file: &mut File) -> Result<Header> {
         let header_size = Header::serialized_size() as usize;
+        debug!("header s: {}", header_size);
         let mut buf = vec![0; header_size];
         debug!("seek to file start");
         await!(file.seek(SeekFrom::Start(0)))?;
@@ -181,20 +188,29 @@ impl Index for SimpleIndex {
                     .open(self.name.as_path())
                     .map_err(Error::IO);
                 bunch.sort_by_key(|h| h.key().to_vec());
-                let buf_res = serialize(&bunch);
+                let buf = bunch.iter().fold(Vec::new(), |mut acc, h| {
+                    debug!("write ke: {:?}", h.key());
+                    acc.extend_from_slice(&serialize(&h).unwrap());
+                    acc
+                });
                 let file_res = fd_res.and_then(File::from_std_file);
                 let mut file = match file_res {
                     Ok(file) => file,
                     Err(e) => return Dump(future::err(e).boxed()),
                 };
                 let inner = State::OnDisk(file.clone());
-                self.inner = inner;
-                let fut = match buf_res.map_err(Error::SerDe) {
-                    Ok(buf) => {
-                        async move { await!(file.write_all(&buf).map_err(Error::IO)) }.boxed()
-                    }
-                    Err(e) => future::err(e).boxed(),
+                let header = Header {
+                    record_header_size: bunch.first().unwrap().serialized_size().unwrap() as usize,
+                    records_count: bunch.len(),
                 };
+                let header_raw = serialize(&header).unwrap();
+                debug!("hdr r ln: {}", header_raw.len());
+                self.inner = inner;
+                let fut = async move {
+                    await!(file.write_all(&header_raw).map_err(Error::IO)).unwrap();
+                    await!(file.write_all(&buf).map_err(Error::IO))
+                }
+                    .boxed();
                 Dump(fut)
             }
             State::OnDisk(_) => unimplemented!(),
