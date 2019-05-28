@@ -326,6 +326,7 @@ pub enum Error {
     AlreadyContainsSameKey,
     IO(io::Error),
     SerDe(bincode::Error),
+    EmptyIndexFile,
 }
 
 impl From<bincode::Error> for Error {
