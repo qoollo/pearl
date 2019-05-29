@@ -38,7 +38,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// To perform read/write operations K must implement [`Key`] trait.
 ///
 /// # Examples
-/// ```
+/// ```no-run
 /// use pearl::{Storage, Builder, Key};
 /// use futures::executor::ThreadPool;
 ///
@@ -201,8 +201,8 @@ impl<K> Storage<K> {
                 .iter()
                 .map(|blob| blob.read(key.as_ref().to_vec()))
                 .collect();
+            debug!("await for stream of read futures: {}", stream.len());
             let mut task = stream.skip_while(|res| future::ready(res.is_err()));
-            debug!("await for stream of read futures");
             await!(task.next())
                 .ok_or(Error::RecordNotFound)?
                 .map_err(Error::BlobError)?
