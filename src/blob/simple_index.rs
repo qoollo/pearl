@@ -1,7 +1,7 @@
-use bincode::{deserialize, serialize};
+use bincode::{deserialize, serialize, serialize_into};
 use futures::{future, AsyncReadExt, AsyncSeekExt, AsyncWriteExt, Future, FutureExt, TryFutureExt};
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering::{Equal, Greater};
+use std::cmp::Ordering;
 use std::fs;
 use std::io::SeekFrom;
 use std::pin::Pin;
@@ -89,7 +89,7 @@ impl SimpleIndex {
 
         let mut size = header.records_count;
         if size == 0 {
-            unimplemented!();
+            error!("provided empty key");
         }
 
         let mut start = 0;
@@ -100,14 +100,13 @@ impl SimpleIndex {
             let mid_record_header = await!(Self::read_at(&mut file, mid, header))?;
             let cmp = mid_record_header.key().cmp(&key);
             debug!("mid read: {:?}", mid_record_header.key());
-            start = if cmp == Greater {
-                start
-            } else if cmp == Equal {
-                return Ok(mid_record_header);
-            } else {
-                mid
+            start = match cmp {
+                Ordering::Greater => start,
+                Ordering::Equal => {
+                    return Ok(mid_record_header);
+                }
+                Ordering::Less => mid,
             };
-
             size -= half;
         }
         debug!("binary search not found");
@@ -129,6 +128,28 @@ impl SimpleIndex {
         await!(file.seek(SeekFrom::Start(0)))?;
         await!(file.read(&mut buf)).map_err(Error::IO)?;
         deserialize(&buf).map_err(Error::SerDe)
+    }
+
+    fn serialize_bunch(bunch: &mut [RecordHeader]) -> Result<Vec<u8>> {
+        let record_header_size = bunch.first().unwrap().serialized_size().unwrap() as usize;
+        bunch.sort_by_key(|h| h.key().to_vec());
+        let header = Header {
+            record_header_size,
+            records_count: bunch.len(),
+        };
+        let mut buf = Vec::new();
+        serialize_into(&mut buf, &header).unwrap();
+        bunch
+            .iter()
+            .filter_map(|h| {
+                debug!("write key: {:?}", h.key());
+                serialize(&h).ok()
+            })
+            .fold(&mut buf, |acc, h_buf| {
+                acc.extend_from_slice(&h_buf);
+                acc
+            });
+        Ok(buf)
     }
 }
 
@@ -186,45 +207,17 @@ impl Index for SimpleIndex {
                     .write(true)
                     .open(self.name.as_path())
                     .map_err(Error::IO);
-                bunch.sort_by_key(|h| h.key().to_vec());
-                let mut record_header_size = 0;
-                let buf = bunch
-                    .iter()
-                    .filter_map(|h| {
-                        debug!("write ke: {:?}", h.key());
-                        serialize(&h).ok()
-                    })
-                    .fold(Vec::new(), |mut acc, h_buf| {
-                        record_header_size = h_buf.len();
-                        acc.extend_from_slice(&h_buf);
-                        acc
-                    });
+                let buf = Self::serialize_bunch(bunch).unwrap();
                 let file_res = fd_res.and_then(File::from_std_file);
-                let mut file = match file_res {
-                    Ok(file) => file,
-                    Err(e) => return Dump(future::err(e).boxed()),
-                };
-                let inner = State::OnDisk(file.clone());
-                let header = Header {
-                    record_header_size,
-                    records_count: bunch.len(),
-                };
-                let raw_header_res = serialize(&header);
-                self.inner = inner;
-                match raw_header_res {
-                    Ok(raw_header) => {
-                        debug!("hdr r ln: {}", raw_header.len());
-                        let fut = async move {
-                            await!(file.write_all(&raw_header).map_err(Error::IO))?;
-                            await!(file.write_all(&buf).map_err(Error::IO))
-                        }
-                            .boxed();
+                match file_res {
+                    Ok(mut file) => {
+                        let inner = State::OnDisk(file.clone());
+                        self.inner = inner;
+                        let fut =
+                            async move { await!(file.write_all(&buf).map_err(Error::IO)) }.boxed();
                         Dump(fut)
                     }
-                    Err(e) => {
-                        let fut = future::err(Error::SerDe(e)).boxed();
-                        Dump(fut)
-                    }
+                    Err(e) => Dump(future::err(e).boxed()),
                 }
             }
             State::OnDisk(_) => unimplemented!(),
