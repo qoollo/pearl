@@ -14,7 +14,7 @@
 //! The following example shows a storage building and initialization.
 //! For more advanced usage see the benchmark tool as the example
 //!
-//! ```
+//! ```no-run
 //! #![feature(async_await, await_macro)]
 //! use pearl::{Storage, Builder, Key};
 //! use futures::executor::ThreadPool;

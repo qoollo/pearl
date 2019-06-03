@@ -38,7 +38,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// To perform read/write operations K must implement [`Key`] trait.
 ///
 /// # Examples
-/// ```
+/// ```no-run
 /// use pearl::{Storage, Builder, Key};
 /// use futures::executor::ThreadPool;
 ///
@@ -141,13 +141,11 @@ impl<K> Storage<K> {
                 .as_ref()
                 .ok_or_else(|| Error::Uninitialized("work_dir not set".to_string()))?,
         );
-        println!("files");
         if let Some(files) = cont_res? {
             await!(self.init_from_existing(files))?
         } else {
             await!(self.init_new())?
         };
-        println!("obs fut obj");
         let observer_fut_obj: FutureObj<_> =
             Box::new(launch_observer(spawner.clone(), self.inner.clone())).into();
         spawner
@@ -203,6 +201,7 @@ impl<K> Storage<K> {
                 .iter()
                 .map(|blob| blob.read(key.as_ref().to_vec()))
                 .collect();
+            debug!("await for stream of read futures: {}", stream.len());
             let mut task = stream.skip_while(|res| future::ready(res.is_err()));
             await!(task.next())
                 .ok_or(Error::RecordNotFound)?

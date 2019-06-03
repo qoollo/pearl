@@ -10,7 +10,7 @@ use std::path::PathBuf;
 ///  - [`key_size`] - const key size in bytes
 ///         
 /// # Example
-/// ```
+/// ```no-run
 /// use pearl::{Builder, Storage, Key};
 ///
 /// struct Id;

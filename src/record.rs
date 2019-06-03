@@ -124,7 +124,7 @@ impl Header {
         &self.key
     }
 
-    fn serialized_size(&self) -> Result<u64> {
+    pub(crate) fn serialized_size(&self) -> Result<u64> {
         bincode::serialized_size(&self).map_err(Error::Serialization)
     }
 }
