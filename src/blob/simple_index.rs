@@ -177,7 +177,12 @@ impl Index for SimpleIndex {
                 bunch.push(h);
                 Push(future::ok(()).boxed())
             }
-            State::OnDisk(_) => unimplemented!(),
+            State::OnDisk(_) => Push(
+                future::err(Error::Index(
+                    "Index is closed and dumped, push is unavalaible".to_string(),
+                ))
+                .boxed(),
+            ),
         }
     }
 
@@ -225,7 +230,9 @@ impl Index for SimpleIndex {
                     Err(e) => Dump(future::err(e).boxed()),
                 }
             }
-            State::OnDisk(_) => unimplemented!(),
+            State::OnDisk(_) => {
+                Dump(future::err(Error::Index("Index is dumped already".to_string())).boxed())
+            }
         }
     }
 

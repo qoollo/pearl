@@ -327,6 +327,7 @@ pub enum Error {
     IO(io::Error),
     SerDe(bincode::Error),
     EmptyIndexFile,
+    Index(String),
 }
 
 impl From<bincode::Error> for Error {
