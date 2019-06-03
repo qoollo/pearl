@@ -89,7 +89,7 @@ impl SimpleIndex {
 
         let mut size = header.records_count;
         if size == 0 {
-            error!("provided empty key");
+            error!("empty key was provided");
         }
 
         let mut start = 0;
@@ -137,7 +137,9 @@ impl SimpleIndex {
             record_header_size,
             records_count: bunch.len(),
         };
-        let mut buf = Vec::new();
+        let mut buf = Vec::with_capacity(
+            Header::serialized_size()? as usize + bunch.len() * record_header_size,
+        );
         serialize_into(&mut buf, &header)?;
         bunch
             .iter()
