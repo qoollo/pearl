@@ -131,14 +131,14 @@ impl SimpleIndex {
     }
 
     fn serialize_bunch(bunch: &mut [RecordHeader]) -> Result<Vec<u8>> {
-        let record_header_size = bunch.first().unwrap().serialized_size().unwrap() as usize;
+        let record_header_size = bunch.first().ok_or(Error::NotFound)?.serialized_size()? as usize;
         bunch.sort_by_key(|h| h.key().to_vec());
         let header = Header {
             record_header_size,
             records_count: bunch.len(),
         };
         let mut buf = Vec::new();
-        serialize_into(&mut buf, &header).unwrap();
+        serialize_into(&mut buf, &header)?;
         bunch
             .iter()
             .filter_map(|h| {
@@ -207,14 +207,17 @@ impl Index for SimpleIndex {
                     .write(true)
                     .open(self.name.as_path())
                     .map_err(Error::IO);
-                let buf = Self::serialize_bunch(bunch).unwrap();
+                let buf = Self::serialize_bunch(bunch);
                 let file_res = fd_res.and_then(File::from_std_file);
                 match file_res {
                     Ok(mut file) => {
                         let inner = State::OnDisk(file.clone());
                         self.inner = inner;
-                        let fut =
-                            async move { await!(file.write_all(&buf).map_err(Error::IO)) }.boxed();
+                        let fut = async move {
+                            let buf = buf?;
+                            await!(file.write_all(&buf).map_err(Error::IO))
+                        }
+                            .boxed();
                         Dump(fut)
                     }
                     Err(e) => Dump(future::err(e).boxed()),
