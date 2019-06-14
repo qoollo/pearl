@@ -20,7 +20,7 @@ use pearl::Key;
 use std::{sync::Arc, time::Instant};
 
 use generator::Generator;
-use statistics::Statistics;
+use statistics::{Report, Statistics};
 use writer::Writer;
 
 fn main() {
@@ -33,6 +33,13 @@ fn main() {
     let spawner = pool.clone();
     let app = start_app(spawner);
     pool.run(app);
+}
+
+async fn write(lawriter: Arc<Writer<Key128>>, key: Key128, data: Vec<u8>, mut ltx: Sender<Report>) {
+    let now = Instant::now();
+    let mut report = lawriter.write(key, data).await;
+    report.set_latency(now);
+    ltx.try_send(report).unwrap();
 }
 
 async fn start_app(spawner: ThreadPool) {
@@ -53,7 +60,7 @@ async fn start_app(spawner: ThreadPool) {
     );
 
     info!("Init writer");
-    await!(writer.init(spawner.clone()));
+    writer.init(spawner.clone()).await;
 
     info!("Create new statistics");
     let mut statistics = Statistics::new(matches.value_of("max_reports").unwrap().parse().unwrap());
@@ -68,20 +75,6 @@ async fn start_app(spawner: ThreadPool) {
     let prepared: Vec<_> = (0..futures_limit)
         .map(|_| generator.next().unwrap())
         .collect();
-
-    use statistics::Report;
-
-    async fn write(
-        lawriter: Arc<Writer<Key128>>,
-        key: Key128,
-        data: Vec<u8>,
-        mut ltx: Sender<Report>,
-    ) {
-        let now = Instant::now();
-        let mut report = await!(lawriter.write(key, data));
-        report.set_latency(now);
-        ltx.try_send(report).unwrap();
-    }
 
     let mut futures_pool: FuturesUnordered<_> = prepared
         .into_iter()
@@ -98,7 +91,7 @@ async fn start_app(spawner: ThreadPool) {
     );
     let write_limit = limit * 1000 / value_size_kb;
     let mut prev_p = 0;
-    while let Some(_) = await!(futures_pool.next()) {
+    while let Some(_) = futures_pool.next().await {
         let percent = counter * 1000 / write_limit;
         if prev_p != percent {
             print!(
@@ -125,12 +118,13 @@ async fn start_app(spawner: ThreadPool) {
     }
 
     info!("start await ");
-    await!(rx
+    let _ = rx
         .take(counter as u64)
         .map(|r| statistics.add(r))
-        .collect::<Vec<_>>());
+        .collect::<Vec<_>>()
+        .await;
     info!("end await ");
-    await!(statistics.display());
+    statistics.display().await;
     awriter.close();
 }
 

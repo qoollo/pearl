@@ -153,13 +153,13 @@ impl File {
     }
 
     pub(crate) async fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> Result<usize> {
-        let mut fd = await!(self.write_fd.lock());
+        let mut fd = self.write_fd.lock().await;
         let write_fut = WriteAt {
             fd: &mut fd,
             buf,
             offset,
         };
-        await!(write_fut)
+        write_fut.await
     }
 
     pub(crate) async fn read_at(&self, len: usize, offset: u64) -> Result<Vec<u8>> {
@@ -168,7 +168,7 @@ impl File {
             len,
             offset,
         };
-        await!(read_fut)
+        read_fut.await
     }
 
     pub(crate) fn from_std_file(fd: fs::File) -> Result<Self> {
@@ -201,7 +201,7 @@ impl Blob {
     }
 
     pub(crate) async fn dump(&mut self) -> Result<()> {
-        await!(self.index.dump())
+        self.index.dump().await
     }
 
     fn create_file(path: &Path) -> Result<fs::File> {
@@ -239,7 +239,7 @@ impl Blob {
         );
         let index = if index_name.exists() {
             debug!("        file exists");
-            await!(SimpleIndex::from_file(index_name))?
+            SimpleIndex::from_file(index_name).await?
         } else {
             debug!("        file not found, create new");
             SimpleIndex::new(index_name)
@@ -266,13 +266,13 @@ impl Blob {
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
         let key = record.key().to_vec();
-        if await!(self.index.contains_key(&key))? {
+        if self.index.contains_key(&key).await? {
             return Err(Error::AlreadyContainsSameKey);
         }
-        let mut offset = await!(self.current_offset.lock());
+        let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset);
         let buf = record.to_raw()?;
-        let bytes_written = await!(self.file.write_at(buf, *offset))?;
+        let bytes_written = self.file.write_at(buf, *offset).await?;
         self.index.push(record.header().clone());
         *offset += bytes_written as u64;
         Ok(())
@@ -280,9 +280,9 @@ impl Blob {
 
     pub(crate) async fn read(&self, key: Vec<u8>) -> Result<Record> {
         debug!("lookup key");
-        let loc = await!(self.lookup(&key))?;
+        let loc = self.lookup(&key).await?;
         debug!("read at");
-        let buf = await!(self.file.read_at(loc.size as usize, loc.offset))?;
+        let buf = self.file.read_at(loc.size as usize, loc.offset).await?;
         debug!("record from raw");
         let record = Record::from_raw(&buf)?;
         debug!("return result");
@@ -294,7 +294,7 @@ impl Blob {
         K: AsRef<[u8]> + Ord,
     {
         debug!("index get");
-        let h = await!(self.index.get(key.as_ref()))?;
+        let h = self.index.get(key.as_ref()).await?;
         debug!("blob offset");
         let offset = h.blob_offset();
         Ok(Location::new(offset as u64, h.full_len()?))
@@ -305,7 +305,7 @@ impl Blob {
     }
 
     pub(crate) async fn records_count(&self) -> Result<usize> {
-        await!(self.index.count())
+        self.index.count().await
     }
 
     pub(crate) fn id(&self) -> usize {

@@ -271,7 +271,9 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
                     df.and_then(move |_| write_fut)
                 })
                 .collect();
-            if await!(write_futures.collect::<Vec<_>>())
+            if write_futures
+                .collect::<Vec<_>>()
+                .await
                 .iter()
                 .any(Result::is_err)
             {
@@ -326,7 +328,6 @@ fn test_on_disk_index() {
 
     let mut pool = ThreadPool::new().unwrap();
     warn!("pool created");
-    // return;
     let dir = "pearl_index";
     let path = env::temp_dir().join(dir);
     let mut storage = Builder::new()
@@ -337,12 +338,11 @@ fn test_on_disk_index() {
         .build()
         .unwrap();
     warn!("storage built");
-    return;
     let slice = [17, 40, 29, 7, 75];
     let data: Vec<u8> = slice.repeat(data_size / slice.len());
     let cloned_pool = pool.clone();
     let prepare_task = async {
-        await!(storage.init(cloned_pool)).unwrap();
+        storage.init(cloned_pool).await.unwrap();
         let write_results: FuturesUnordered<_> = (0..num_records_to_write)
             .map(|key| {
                 storage
@@ -350,10 +350,12 @@ fn test_on_disk_index() {
                     .write(KeyTest(key.to_be_bytes().to_vec()), data.clone())
             })
             .collect();
-        await!(write_results.for_each(|res| {
-            res.unwrap();
-            futures::future::ready(())
-        }));
+        write_results
+            .for_each(|res| {
+                res.unwrap();
+                futures::future::ready(())
+            })
+            .await;
         let mut count = 0;
         while count < 2 {
             count = storage.blobs_count();
@@ -363,7 +365,10 @@ fn test_on_disk_index() {
     pool.run(prepare_task);
     let read_task = async {
         assert!(path.join("test.1.blob").exists());
-        await!(storage.read(KeyTest(read_key.to_be_bytes().to_vec()))).unwrap()
+        storage
+            .read(KeyTest(read_key.to_be_bytes().to_vec()))
+            .await
+            .unwrap()
     };
 
     let new_data = pool.run(read_task);
