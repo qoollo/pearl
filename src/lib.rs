@@ -41,10 +41,10 @@
 //!         .blob_file_name_prefix("pearl-test")
 //!         .build()
 //!         .unwrap();
-//!     await!(storage.init(spawner)).unwrap();
+//!     storage.init(spawner).await.unwrap();
 //!     let key = Id("test".to_string());
 //!     let data = b"Hello World!".to_vec();
-//!     await!(storage.write(key, data)).unwrap();
+//!     storage.write(key, data).await.unwrap();
 //! };
 //! pool.run(task);
 //! ```

@@ -1,10 +1,8 @@
 use bincode::{deserialize, serialize, serialize_into};
-use futures::{future, AsyncReadExt, AsyncSeekExt, AsyncWriteExt, Future, FutureExt, TryFutureExt};
-use serde::{Deserialize, Serialize};
+use futures::{future, AsyncReadExt, AsyncSeekExt, AsyncWriteExt, FutureExt, TryFutureExt};
 use std::cmp::Ordering;
 use std::fs;
 use std::io::SeekFrom;
-use std::pin::Pin;
 
 use super::core::{Error, File, FileName, Result};
 use super::index::{ContainsKey, Count, Dump, Get, Index, Push};
@@ -39,10 +37,10 @@ enum State {
 impl SimpleIndex {
     pub(crate) async fn load(mut file: File) -> Result<Vec<RecordHeader>> {
         debug!("seek to file start");
-        await!(file.seek(SeekFrom::Start(0)))?;
+        file.seek(SeekFrom::Start(0)).await?;
         let mut buf = Vec::new();
         debug!("read to end index");
-        await!(file.read_to_end(&mut buf))?;
+        file.read_to_end(&mut buf).await?;
         let res = deserialize(&buf).map_err(Error::SerDe);
         debug!("index deserialized");
         res
@@ -69,7 +67,7 @@ impl SimpleIndex {
             .write(true)
             .open(name.as_path())?;
         let file = File::from_std_file(fd)?;
-        let index = await!(Self::load(file))?;
+        let index = Self::load(file).await?;
         let header = Header {
             records_count: index.len(),
             record_header_size: index
@@ -85,7 +83,7 @@ impl SimpleIndex {
     }
 
     async fn binary_search(mut file: File, key: Vec<u8>) -> Result<RecordHeader> {
-        let header: Header = await!(Self::read_index_header(&mut file))?;
+        let header: Header = Self::read_index_header(&mut file).await?;
 
         let mut size = header.records_count;
         if size == 0 {
@@ -97,7 +95,7 @@ impl SimpleIndex {
         while size > 1 {
             let half = size / 2;
             let mid = start + half;
-            let mid_record_header = await!(Self::read_at(&mut file, mid, header))?;
+            let mid_record_header = Self::read_at(&mut file, mid, header).await?;
             let cmp = mid_record_header.key().cmp(&key);
             debug!("mid read: {:?}", mid_record_header.key());
             start = match cmp {
@@ -116,7 +114,7 @@ impl SimpleIndex {
     async fn read_at(file: &mut File, index: usize, header: Header) -> Result<RecordHeader> {
         let header_size = bincode::serialized_size(&header).map_err(Error::SerDe)?;
         let offset = header_size + (header.record_header_size * index) as u64;
-        let buf = await!(file.read_at(header.record_header_size, offset))?;
+        let buf = file.read_at(header.record_header_size, offset).await?;
         deserialize(&buf).map_err(Error::SerDe)
     }
 
@@ -125,8 +123,8 @@ impl SimpleIndex {
         debug!("header s: {}", header_size);
         let mut buf = vec![0; header_size];
         debug!("seek to file start");
-        await!(file.seek(SeekFrom::Start(0)))?;
-        await!(file.read(&mut buf)).map_err(Error::IO)?;
+        file.seek(SeekFrom::Start(0)).await?;
+        file.read(&mut buf).map_err(Error::IO).await?;
         deserialize(&buf).map_err(Error::SerDe)
     }
 
@@ -222,7 +220,7 @@ impl Index for SimpleIndex {
                         self.inner = inner;
                         let fut = async move {
                             let buf = buf?;
-                            await!(file.write_all(&buf).map_err(Error::IO))
+                            file.write_all(&buf).map_err(Error::IO).await
                         }
                             .boxed();
                         Dump(fut)

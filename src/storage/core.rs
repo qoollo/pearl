@@ -132,7 +132,7 @@ impl<K> Storage<K> {
         S: Spawn + Clone + Send + 'static + Unpin + Sync,
     {
         // @TODO implement work dir validation
-        await!(self.prepare_work_dir())?;
+        self.prepare_work_dir().await?;
 
         let cont_res = work_dir_content(
             self.inner
@@ -142,9 +142,9 @@ impl<K> Storage<K> {
                 .ok_or_else(|| Error::Uninitialized("work_dir not set".to_string()))?,
         );
         if let Some(files) = cont_res? {
-            await!(self.init_from_existing(files))?
+            self.init_from_existing(files).await?
         } else {
-            await!(self.init_new())?
+            self.init_new().await?
         };
         let observer_fut_obj: FutureObj<_> =
             Box::new(launch_observer(spawner.clone(), self.inner.clone())).into();
@@ -162,16 +162,16 @@ impl<K> Storage<K> {
     /// block_on(async {
     ///     let key = 42u64.to_be_bytes().to_vec();
     ///     let data = b"async written to blob".to_vec();
-    ///     await!(storage.write(key, data))
+    ///     storage.write(key, data).await
     /// )};
     /// ```
     pub async fn write(self, key: impl Key, value: Vec<u8>) -> Result<()> {
         let record = Record::new(key, value);
         trace!("await for inner lock");
-        let mut safe = await!(self.inner.safe.lock());
+        let mut safe = self.inner.safe.lock().await;
         trace!("return write future");
         let blob = safe.active_blob.as_mut().ok_or(Error::ActiveBlobNotSet)?;
-        await!(blob.write(record)).map_err(Error::BlobError)
+        blob.write(record).await.map_err(Error::BlobError)
     }
 
     /// # Description
@@ -181,18 +181,19 @@ impl<K> Storage<K> {
     /// ```no-run
     /// let data = block_on(async {
     ///     let key = 42u64.to_be_bytes().to_vec();
-    ///     await!(storage.read(key))
+    ///     storage.read(key).await
     /// )};
     /// ```
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
-        let inner = await!(self.inner.safe.lock());
-        let active_blob_read_res = await!(inner
+        let inner = self.inner.safe.lock().await;
+        let active_blob_read_res = inner
             .active_blob
             .as_ref()
             .ok_or(Error::ActiveBlobNotSet)?
-            .read(key.as_ref().to_vec()));
+            .read(key.as_ref().to_vec())
+            .await;
         Ok(if let Ok(record) = active_blob_read_res {
             record
         } else {
@@ -203,7 +204,8 @@ impl<K> Storage<K> {
                 .collect();
             debug!("await for stream of read futures: {}", stream.len());
             let mut task = stream.skip_while(|res| future::ready(res.is_err()));
-            await!(task.next())
+            task.next()
+                .await
                 .ok_or(Error::RecordNotFound)?
                 .map_err(Error::BlobError)?
         }
@@ -258,14 +260,14 @@ impl<K> Storage<K> {
             .write(true)
             .open(&lock_file_path)
             .map_err(Error::IO)?;
-        await!(self.inner.safe.lock()).lock_file = Some(lock_file);
+        self.inner.safe.lock().await.lock_file = Some(lock_file);
         Ok(())
     }
 
     async fn init_new(&mut self) -> Result<()> {
-        let mut safe_locked = await!(self.inner.safe.lock());
+        let safe_locked = self.inner.safe.lock();
         let next = self.inner.next_blob_name()?;
-        safe_locked.active_blob =
+        safe_locked.await.active_blob =
             Some(Blob::open_new(next).map_err(Error::InitActiveBlob)?.boxed());
         Ok(())
     }
@@ -286,7 +288,7 @@ impl<K> Storage<K> {
         debug!("init blobs from found files");
         let futures: FuturesUnordered<_> = blob_files.map(Blob::from_file).collect();
         debug!("async init blobs from file");
-        let blob_res: Vec<_> = await!(futures.collect());
+        let blob_res: Vec<_> = futures.collect().await;
         debug!("all {} futures finished", blob_res.len());
         let mut blobs: Vec<_> = blob_res
             .into_iter()
@@ -303,7 +305,7 @@ impl<K> Storage<K> {
             .pop()
             .ok_or_else(|| Error::Uninitialized("blobs initialization failed".to_string()))?
             .boxed();
-        let mut safe_locked = await!(self.inner.safe.lock());
+        let mut safe_locked = self.inner.safe.lock().await;
         safe_locked.active_blob = Some(active_blob);
         safe_locked.blobs = blobs;
         self.inner.next_blob_id.store(
@@ -426,8 +428,8 @@ where
             self.as_mut().next_update = now + self.update_interval;
             let inner_cloned = self.inner.clone();
             let res = async {
-                if let Some(inner) = await!(active_blob_check(inner_cloned))? {
-                    await!(update_active_blob(inner))?;
+                if let Some(inner) = active_blob_check(inner_cloned).await? {
+                    update_active_blob(inner).await?;
                 }
                 Ok(())
             };
@@ -501,14 +503,14 @@ where
 
 async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
     let (active_size, active_count) = {
-        let safe_locked = await!(inner.safe.lock());
+        let safe_locked = inner.safe.lock().await;
         let active_blob = safe_locked
             .active_blob
             .as_ref()
             .ok_or(Error::ActiveBlobNotSet)?;
         (
             active_blob.file_size()?,
-            await!(active_blob.records_count())? as u64,
+            active_blob.records_count().await? as u64,
         )
     };
     let config_max_size = inner
@@ -531,12 +533,12 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
     // Opening a new blob may take a while
     let new_active = Blob::open_new(next_name)?.boxed();
 
-    let mut safe_locked = await!(inner.safe.lock());
+    let mut safe_locked = inner.safe.lock().await;
     let mut old_active = safe_locked
         .active_blob
         .replace(new_active)
         .ok_or(Error::ActiveBlobNotSet)?;
-    await!(old_active.dump())?;
+    old_active.dump().await?;
     safe_locked.blobs.push(*old_active);
     Ok(())
 }

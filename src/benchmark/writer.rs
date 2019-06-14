@@ -22,7 +22,7 @@ impl<K> Writer<K> {
     }
 
     pub async fn init(&mut self, spawner: ThreadPool) {
-        await!(self.storage.init(spawner)).unwrap();
+        self.storage.init(spawner).await.unwrap()
     }
 
     pub async fn write(self: Arc<Self>, key: K, data: Vec<u8>) -> Report
@@ -30,7 +30,7 @@ impl<K> Writer<K> {
         K: Key,
     {
         let record = Report::new(key.as_ref().len(), data.len());
-        await!(self.storage.clone().write(key, data)).unwrap();
+        self.storage.clone().write(key, data).await.unwrap();
         record
     }
 

@@ -30,7 +30,7 @@ pub async fn default_test_storage_in<S>(
 where
     S: SpawnExt + Clone + Send + 'static + Unpin + Sync,
 {
-    await!(create_test_storage(spawner, dir_name, 10_000))
+    create_test_storage(spawner, dir_name, 10_000).await
 }
 
 pub async fn create_test_storage<S>(
@@ -48,7 +48,7 @@ where
         .max_blob_size(max_blob_size)
         .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
-    await!(storage.init(spawner)).unwrap();
+    storage.init(spawner).await.unwrap();
     Ok(storage)
 }
 
@@ -68,7 +68,7 @@ pub fn clean(storage: Storage<KeyTest>, dir: &str) {
 pub async fn write(storage: Storage<KeyTest>, base_number: u64) {
     let key = KeyTest(base_number.to_be_bytes().to_vec());
     let data = "omn".repeat(base_number as usize % 1_000_000);
-    await!(storage.write(key, data.as_bytes().to_vec())).unwrap()
+    storage.write(key, data.as_bytes().to_vec()).await.unwrap()
 }
 
 pub fn check_all_written(storage: &Storage<KeyTest>, nums: Vec<usize>) -> Result<(), String> {
