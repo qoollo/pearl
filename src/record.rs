@@ -146,7 +146,7 @@ impl Header {
     }
 
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
-        deserialize(&buf).map_err(|e| Error::Serialization(Box::new(*e)))
+        deserialize(&buf).map_err(Error::Serialization)
     }
 
     pub fn to_raw(&self) -> Result<Vec<u8>> {
