@@ -11,6 +11,7 @@ use std::{env, fs};
 
 use pearl::{Builder, Key, Storage};
 
+#[derive(Debug)]
 pub struct KeyTest(pub Vec<u8>);
 
 impl AsRef<[u8]> for KeyTest {
@@ -21,6 +22,13 @@ impl AsRef<[u8]> for KeyTest {
 
 impl Key for KeyTest {
     const LEN: u16 = 4;
+}
+
+pub fn init_logger() {
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .try_init()
+        .unwrap_or(());
 }
 
 pub async fn default_test_storage_in<S>(
@@ -48,7 +56,10 @@ where
         .max_blob_size(max_blob_size)
         .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
-    storage.init(spawner).await.unwrap();
+    storage
+        .init(spawner)
+        .await
+        .map_err(|e| format!("{:?}", e))?;
     Ok(storage)
 }
 
@@ -58,11 +69,11 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-pub fn clean(storage: Storage<KeyTest>, dir: &str) {
+pub async fn clean(storage: Storage<KeyTest>, dir: &str) -> Result<(), String> {
     std::thread::sleep(std::time::Duration::from_millis(100));
-    storage.close().unwrap();
+    storage.close().await.map_err(|e| format!("{:?}", e))?;
     let path = env::temp_dir().join(dir);
-    fs::remove_dir_all(path).unwrap();
+    fs::remove_dir_all(path).map_err(|e| format!("{:?}", e))
 }
 
 pub async fn write(storage: Storage<KeyTest>, base_number: u64) {
