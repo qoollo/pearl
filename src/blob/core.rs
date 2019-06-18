@@ -271,6 +271,7 @@ impl Blob {
         }
         let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset);
+        record.update_checksum()?;
         let buf = record.to_raw()?;
         let bytes_written = self.file.write_at(buf, *offset).await?;
         self.index.push(record.header().clone());

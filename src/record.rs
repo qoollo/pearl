@@ -1,4 +1,5 @@
 use bincode::{deserialize, serialize};
+use crc::crc32::checksum_castagnoli as crc32;
 
 use crate::storage::Key;
 
@@ -8,9 +9,8 @@ type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
-    FromRaw(bincode::ErrorKind),
-    WrongMagicByte(u64),
     Serialization(Box<bincode::ErrorKind>),
+    Validation(String),
 }
 
 /// [`Record`] consists of header and data.
@@ -23,7 +23,7 @@ pub(crate) struct Record {
 impl Record {
     /// Creates new `Record` with provided data and key.
     pub fn new(key: impl Key, data: Vec<u8>) -> Self {
-        let header = Header::new(key.as_ref().to_vec(), data.len() as u64);
+        let header = Header::new(key.as_ref().to_vec(), data.len() as u64, crc32(&data));
         Self { header, data }
     }
 
@@ -44,7 +44,8 @@ impl Record {
         let header = Header::from_raw(buf)?;
         let data_offset = buf.len() - header.data_len as usize;
         let data = buf[data_offset..].to_vec();
-        Ok(Self { header, data })
+        let record = Self { header, data };
+        record.validate()
     }
 
     /// # Description
@@ -64,6 +65,55 @@ impl Record {
     pub(crate) fn get_data(self) -> Vec<u8> {
         self.data
     }
+
+    fn validate(self) -> Result<Self> {
+        self.check_magic_byte()?;
+        self.check_data_checksum()?;
+        self.check_header_checksum()?;
+        Ok(self)
+    }
+
+    fn check_magic_byte(&self) -> Result<()> {
+        if self.header().magic_byte == RECORD_MAGIC_BYTE {
+            Ok(())
+        } else {
+            Err(Error::Validation("wrong magic byte".to_owned()))
+        }
+    }
+
+    fn check_data_checksum(&self) -> Result<()> {
+        let calc_crc = crc32(&self.data);
+        if calc_crc == self.header.data_checksum {
+            Ok(())
+        } else {
+            let e = Error::Validation(format!(
+                "wrong data checksum {} vs {}",
+                calc_crc, self.header.data_checksum
+            ));
+            error!("{:?}", e);
+            Err(e)
+        }
+    }
+
+    fn check_header_checksum(&self) -> Result<()> {
+        let mut header = self.header.clone();
+        header.header_checksum = 0;
+        let calc_crc = crc32(&header.to_raw()?);
+        if calc_crc == self.header.header_checksum {
+            Ok(())
+        } else {
+            let e = Error::Validation(format!(
+                "wrong header checksum {} vs {}",
+                calc_crc, self.header.header_checksum
+            ));
+            error!("{:?}", e);
+            Err(e)
+        }
+    }
+
+    pub fn update_checksum(&mut self) -> Result<()> {
+        self.header.update_checksum()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
@@ -79,8 +129,7 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn new(key: Vec<u8>, data_len: u64) -> Self {
-        // @TODO calculate check sums
+    pub fn new(key: Vec<u8>, data_len: u64, data_checksum: u32) -> Self {
         Self {
             magic_byte: RECORD_MAGIC_BYTE,
             key,
@@ -94,18 +143,13 @@ impl Header {
                     error!("{}", e);
                     0
                 }),
-            data_checksum: 0,
+            data_checksum,
             header_checksum: 0,
         }
     }
 
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
-        let header: Self = deserialize(&buf).map_err(|e| Error::FromRaw(*e))?;
-        if header.magic_byte != RECORD_MAGIC_BYTE {
-            Err(Error::WrongMagicByte(header.magic_byte))
-        } else {
-            Ok(header)
-        }
+        deserialize(&buf).map_err(|e| Error::Serialization(Box::new(*e)))
     }
 
     pub fn to_raw(&self) -> Result<Vec<u8>> {
@@ -126,5 +170,12 @@ impl Header {
 
     pub(crate) fn serialized_size(&self) -> Result<u64> {
         bincode::serialized_size(&self).map_err(Error::Serialization)
+    }
+
+    fn update_checksum(&mut self) -> Result<()> {
+        self.header_checksum = 0;
+        let calc_crc = crc32(&self.to_raw()?);
+        self.header_checksum = calc_crc;
+        Ok(())
     }
 }

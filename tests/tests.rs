@@ -114,6 +114,12 @@ fn test_storage_read_write() {
 
 #[test]
 fn test_storage_multiple_read_write() {
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Error)
+        .try_init()
+        .unwrap_or_else(|_| {
+            debug!("logger already initialized");
+        });
     let dir = "pearl_multiple/";
     let mut pool = ThreadPool::new().unwrap();
     let path = env::temp_dir().join(dir);
@@ -151,7 +157,7 @@ fn test_storage_multiple_read_write() {
     let elapsed = now.elapsed().as_secs_f64();
     let blob_file_path = path.join("test.0.blob");
     let written = fs::metadata(&blob_file_path).unwrap().len();
-    println!("write {}B/s", written as f64 / elapsed);
+    println!("write {:.0}B/s", written as f64 / elapsed);
     let read_stream: FuturesUnordered<_> = keys
         .iter()
         .map(|key| storage.read(KeyTest(key.as_bytes().to_vec())))
