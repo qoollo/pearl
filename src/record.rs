@@ -58,8 +58,9 @@ impl Record {
         Ok(buf)
     }
 
-    pub(crate) fn set_offset(&mut self, offset: u64) {
+    pub(crate) fn set_offset(&mut self, offset: u64) -> Result<()> {
         self.header.blob_offset = offset;
+        self.header.update_checksum()
     }
 
     pub(crate) fn get_data(self) -> Vec<u8> {
@@ -109,10 +110,6 @@ impl Record {
             error!("{:?}", e);
             Err(e)
         }
-    }
-
-    pub fn update_checksum(&mut self) -> Result<()> {
-        self.header.update_checksum()
     }
 }
 
