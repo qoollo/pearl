@@ -125,7 +125,7 @@ async fn start_app(spawner: ThreadPool) {
         .await;
     info!("end await ");
     statistics.display().await;
-    awriter.close();
+    awriter.close().await;
 }
 
 fn prepare_matches<'a>() -> ArgMatches<'a> {
