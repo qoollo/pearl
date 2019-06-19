@@ -3,12 +3,10 @@ use futures::{
     future::{self, FutureExt, FutureObj},
     lock::Mutex,
     stream::{futures_unordered::FuturesUnordered, Stream, StreamExt},
-    task::{self, Context, Poll, Spawn, SpawnExt},
+    task::{Context, Poll, Spawn, SpawnExt},
 };
-use std::{error, fmt, result};
 use std::{
     fs::{self, DirEntry, File, OpenOptions},
-    io,
     marker::PhantomData,
     path::{Path, PathBuf},
     pin::Pin,
@@ -20,6 +18,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use super::error::{Error, ErrorKind};
 use crate::{
     blob::{self, Blob},
     record::Record,
@@ -139,7 +138,8 @@ impl<K> Storage<K> {
             self.inner
                 .config
                 .work_dir
-                .as_ref().ok_or(ErrorKind::Uninitialized)?,
+                .as_ref()
+                .ok_or(ErrorKind::Uninitialized)?,
         );
         if let Some(files) = cont_res? {
             self.init_from_existing(files).await?
@@ -170,7 +170,10 @@ impl<K> Storage<K> {
         trace!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
         trace!("return write future");
-        let blob = safe.active_blob.as_mut().ok_or(ErrorKind::ActiveBlobNotSet)?;
+        let blob = safe
+            .active_blob
+            .as_mut()
+            .ok_or(ErrorKind::ActiveBlobNotSet)?;
         blob.write(record).await.map_err(Error::new)
     }
 
@@ -267,8 +270,7 @@ impl<K> Storage<K> {
     async fn init_new(&mut self) -> Result<()> {
         let safe_locked = self.inner.safe.lock();
         let next = self.inner.next_blob_name()?;
-        safe_locked.await.active_blob =
-            Some(Blob::open_new(next).map_err(ErrorKind::InitActiveBlob)?.boxed());
+        safe_locked.await.active_blob = Some(Blob::open_new(next).map_err(Error::new)?.boxed());
         Ok(())
     }
 
@@ -303,7 +305,7 @@ impl<K> Storage<K> {
         blobs.sort_by_key(Blob::id);
         let active_blob = blobs
             .pop()
-            .ok_or_else(ErrorKind::Uninitialized)?
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?
             .boxed();
         let mut safe_locked = self.inner.safe.lock().await;
         safe_locked.active_blob = Some(active_blob);
@@ -446,80 +448,6 @@ where
     }
 }
 
-#[derive(Debug)]
-pub struct Error {
-    repr: Repr
-}
-
-impl Error {
-    fn new<E>(error: E) -> Self where E: Into<Box<dyn error::Error + Send + Sync>>, {
-        Self {
-            repr: Repr::Other(error.into())
-        }
-    }
-
-    fn raw<M>(msg: M) -> Self where M: AsRef<str> {
-        Self {
-            repr: Repr::Raw(msg.as_ref().to_owned())
-        }
-    }
-}
-
-impl error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
-        self.repr.fmt(f)
-    }
-}
-
-impl From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Self {
-        Self {
-            repr: Repr::Inner(kind)
-        }
-    }
-}
-
-#[derive(Debug)]
-enum Repr {
-    Inner(ErrorKind),
-    Other(Box<dyn error::Error + 'static>),
-    Raw(String),
-}
-
-impl fmt::Display for Repr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
-        match self {
-            Repr::Inner(kind) => write!(f, "{}", kind.as_str()),
-            Repr::Other(e) => e.fmt(f),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) enum ErrorKind {
-    ActiveBlobNotSet,
-    WrongConfig,
-    Uninitialized,
-    RecordNotFound,
-    WorkDirInUse,
-    KeySizeMismatch,
-}
-
-impl ErrorKind {
-    fn as_str(&self) -> &'static str {
-        match *self {
-            ErrorKind::ActiveBlobNotSet => "active blob not set",
-            ErrorKind::WrongConfig => "wrong config",
-            ErrorKind::Uninitialized => "storage unitialized",
-            ErrorKind::RecordNotFound => "record not found",
-            ErrorKind::WorkDirInUse => "work dir in use",
-            ErrorKind::KeySizeMismatch => "key size mismatch",
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub(crate) struct Config {
     // pub key_size: Option<u16>,
@@ -563,18 +491,18 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
             .as_ref()
             .ok_or(ErrorKind::ActiveBlobNotSet)?;
         (
-            active_blob.file_size()?,
-            active_blob.records_count().await? as u64,
+            active_blob.file_size().map_err(Error::new)?,
+            active_blob.records_count().await.map_err(Error::new)? as u64,
         )
     };
     let config_max_size = inner
         .config
         .max_blob_size
-        .ok_or(|| ErrorKind::Uninitialized)?;
+        .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
     let config_max_count = inner
         .config
         .max_data_in_blob
-        .ok_or(|| Error::Uninitialized)?;
+        .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
     if active_size > config_max_size || active_count >= config_max_count {
         Ok(Some(inner))
     } else {
@@ -585,14 +513,14 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
 async fn update_active_blob(inner: Inner) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
-    let new_active = Blob::open_new(next_name)?.boxed();
+    let new_active = Blob::open_new(next_name).map_err(Error::new)?.boxed();
 
     let mut safe_locked = inner.safe.lock().await;
     let mut old_active = safe_locked
         .active_blob
         .replace(new_active)
         .ok_or(ErrorKind::ActiveBlobNotSet)?;
-    old_active.dump().await?;
+    old_active.dump().await.map_err(Error::new)?;
     safe_locked.blobs.push(*old_active);
     Ok(())
 }

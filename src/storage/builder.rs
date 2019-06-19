@@ -1,5 +1,7 @@
-use super::core::{Config, ErrorKind, Result, Storage};
 use std::path::PathBuf;
+
+use super::core::{Config, Result, Storage};
+use super::error::ErrorKind;
 
 /// `Builder` used for initializing a `Storage`.
 /// Required params:
@@ -53,10 +55,10 @@ impl Builder {
         } else if self.config.blob_file_name_prefix.is_none() {
             missed_params.push_str("> blob_file_name_prefix\n");
         }
-        error!("{}", missed_params);
         if missed_params.is_empty() {
             Ok(Storage::new(self.config))
         } else {
+            error!("{}", missed_params);
             Err(ErrorKind::Uninitialized.into())
         }
     }

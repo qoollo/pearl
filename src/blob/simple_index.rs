@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::fs;
 use std::io::SeekFrom;
 
-use super::core::{Error, File, FileName, Result};
+use super::core::{Error, ErrorKind, File, FileName, Result};
 use super::index::{ContainsKey, Count, Dump, Get, Index, Push};
 use crate::record::Header as RecordHeader;
 
@@ -24,7 +24,7 @@ struct Header {
 impl Header {
     fn serialized_size() -> Result<u64> {
         let header = Header::default();
-        bincode::serialized_size(&header).map_err(Error::SerDe)
+        bincode::serialized_size(&header).map_err(Error::new)
     }
 }
 
@@ -37,13 +37,11 @@ enum State {
 impl SimpleIndex {
     pub(crate) async fn load(mut file: File) -> Result<Vec<RecordHeader>> {
         debug!("seek to file start");
-        file.seek(SeekFrom::Start(0)).await?;
+        file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
         let mut buf = Vec::new();
         debug!("read to end index");
-        file.read_to_end(&mut buf).await?;
-        let res = deserialize(&buf).map_err(Error::SerDe);
-        debug!("index deserialized");
-        res
+        file.read_to_end(&mut buf).await.map_err(Error::new)?;
+        deserialize(&buf).map_err(Error::new)
     }
 }
 
@@ -65,15 +63,18 @@ impl SimpleIndex {
             .create(true)
             .read(true)
             .write(true)
-            .open(name.as_path())?;
+            .open(name.as_path())
+            .map_err(Error::new)?;
         let file = File::from_std_file(fd)?;
         let index = Self::load(file).await?;
+        let record_header_size = index
+            .first()
+            .ok_or_else(|| Error::from(ErrorKind::EmptyIndexFile))?
+            .serialized_size()
+            .map_err(Error::new)? as usize;
         let header = Header {
             records_count: index.len(),
-            record_header_size: index
-                .first()
-                .ok_or(Error::EmptyIndexFile)?
-                .serialized_size()? as usize,
+            record_header_size,
         };
         Ok(Self {
             header,
@@ -108,14 +109,14 @@ impl SimpleIndex {
             size -= half;
         }
         debug!("binary search not found");
-        Err(Error::NotFound)
+        Err(ErrorKind::NotFound.into())
     }
 
     async fn read_at(file: &mut File, index: usize, header: Header) -> Result<RecordHeader> {
-        let header_size = bincode::serialized_size(&header).map_err(Error::SerDe)?;
+        let header_size = bincode::serialized_size(&header).map_err(Error::new)?;
         let offset = header_size + (header.record_header_size * index) as u64;
         let buf = file.read_at(header.record_header_size, offset).await?;
-        deserialize(&buf).map_err(Error::SerDe)
+        deserialize(&buf).map_err(Error::new)
     }
 
     async fn read_index_header(file: &mut File) -> Result<Header> {
@@ -123,13 +124,17 @@ impl SimpleIndex {
         debug!("header s: {}", header_size);
         let mut buf = vec![0; header_size];
         debug!("seek to file start");
-        file.seek(SeekFrom::Start(0)).await?;
-        file.read(&mut buf).map_err(Error::IO).await?;
-        deserialize(&buf).map_err(Error::SerDe)
+        file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
+        file.read(&mut buf).map_err(Error::new).await?;
+        deserialize(&buf).map_err(Error::new)
     }
 
     fn serialize_bunch(bunch: &mut [RecordHeader]) -> Result<Vec<u8>> {
-        let record_header_size = bunch.first().ok_or(Error::NotFound)?.serialized_size()? as usize;
+        let record_header_size = bunch
+            .first()
+            .ok_or_else(|| Error::from(ErrorKind::NotFound))?
+            .serialized_size()
+            .map_err(Error::new)? as usize;
         bunch.sort_by_key(|h| h.key().to_vec());
         let header = Header {
             record_header_size,
@@ -138,7 +143,7 @@ impl SimpleIndex {
         let mut buf = Vec::with_capacity(
             Header::serialized_size()? as usize + bunch.len() * record_header_size,
         );
-        serialize_into(&mut buf, &header)?;
+        serialize_into(&mut buf, &header).map_err(Error::new)?;
         bunch
             .iter()
             .filter_map(|h| {
@@ -159,7 +164,7 @@ impl Index for SimpleIndex {
             self.get(key)
                 .then(|res| match res {
                     Ok(_) => future::ok(true),
-                    Err(Error::NotFound) => future::ok(false),
+                    Err(ref e) if e.is(&ErrorKind::NotFound) => future::ok(false),
                     Err(e) => {
                         error!("{:?}", e);
                         future::err(e)
@@ -176,9 +181,10 @@ impl Index for SimpleIndex {
                 Push(future::ok(()).boxed())
             }
             State::OnDisk(_) => Push(
-                future::err(Error::Index(
-                    "Index is closed and dumped, push is unavalaible".to_string(),
-                ))
+                future::err(
+                    ErrorKind::Index("Index is closed and dumped, push is unavalaible".to_string())
+                        .into(),
+                )
                 .boxed(),
             ),
         }
@@ -192,7 +198,7 @@ impl Index for SimpleIndex {
                 debug!("found in memory");
                 future::ok(res)
             } else {
-                future::err(Error::NotFound)
+                future::err(ErrorKind::NotFound.into())
             }
             .boxed()),
             State::OnDisk(f) => {
@@ -211,7 +217,7 @@ impl Index for SimpleIndex {
                     .read(true)
                     .write(true)
                     .open(self.name.as_path())
-                    .map_err(Error::IO);
+                    .map_err(Error::new);
                 let buf = Self::serialize_bunch(bunch);
                 let file_res = fd_res.and_then(File::from_std_file);
                 match file_res {
@@ -220,7 +226,7 @@ impl Index for SimpleIndex {
                         self.inner = inner;
                         let fut = async move {
                             let buf = buf?;
-                            file.write_all(&buf).map_err(Error::IO).await
+                            file.write_all(&buf).map_err(Error::new).await
                         }
                             .boxed();
                         Dump(fut)
@@ -228,9 +234,9 @@ impl Index for SimpleIndex {
                     Err(e) => Dump(future::err(e).boxed()),
                 }
             }
-            State::OnDisk(_) => {
-                Dump(future::err(Error::Index("Index is dumped already".to_string())).boxed())
-            }
+            State::OnDisk(_) => Dump(
+                future::err(ErrorKind::Index("Index is dumped already".to_string()).into()).boxed(),
+            ),
         }
     }
 

@@ -1,5 +1,6 @@
 use bincode::{deserialize, serialize};
 use crc::crc32::checksum_castagnoli as crc32;
+use std::{error, fmt, result};
 
 use crate::storage::Key;
 
@@ -8,9 +9,52 @@ const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
-pub enum Error {
-    Serialization(Box<bincode::ErrorKind>),
+pub(crate) struct Error {
+    repr: Repr,
+}
+
+impl Error {
+    pub(crate) fn new<E>(error: E) -> Self where E: Into<Box<dyn error::Error + Send + Sync>>, {
+        Self {
+            repr: Repr::Other(error.into())
+        }
+    }
+}
+
+impl error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+        self.repr.fmt(f)
+    }
+}
+
+#[derive(Debug)]
+enum Repr {
+    Inner(ErrorKind),
+    Other(Box<dyn error::Error + 'static + Send + Sync>),
+}
+
+impl fmt::Display for Repr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+        match self {
+            Repr::Inner(kind) => write!(f, "{:?}", kind),
+            Repr::Other(e) => e.fmt(f),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ErrorKind {
     Validation(String),
+}
+
+impl From<ErrorKind> for Error {
+    fn from(kind: ErrorKind) -> Self {
+        Self {
+            repr: Repr::Inner(kind)
+        }
+    }
 }
 
 /// [`Record`] consists of header and data.
@@ -78,7 +122,7 @@ impl Record {
         if self.header().magic_byte == RECORD_MAGIC_BYTE {
             Ok(())
         } else {
-            Err(Error::Validation("wrong magic byte".to_owned()))
+            Err(ErrorKind::Validation("wrong magic byte".to_owned()).into())
         }
     }
 
@@ -87,12 +131,12 @@ impl Record {
         if calc_crc == self.header.data_checksum {
             Ok(())
         } else {
-            let e = Error::Validation(format!(
+            let e = ErrorKind::Validation(format!(
                 "wrong data checksum {} vs {}",
                 calc_crc, self.header.data_checksum
             ));
             error!("{:?}", e);
-            Err(e)
+            Err(e.into())
         }
     }
 
@@ -103,12 +147,12 @@ impl Record {
         if calc_crc == self.header.header_checksum {
             Ok(())
         } else {
-            let e = Error::Validation(format!(
+            let e = ErrorKind::Validation(format!(
                 "wrong header checksum {} vs {}",
                 calc_crc, self.header.header_checksum
             ));
             error!("{:?}", e);
-            Err(e)
+            Err(e.into())
         }
     }
 }
@@ -145,19 +189,19 @@ impl Header {
         }
     }
 
-    pub fn from_raw(buf: &[u8]) -> Result<Self> {
-        deserialize(&buf).map_err(Error::Serialization)
+    pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
+        deserialize(&buf).map_err(Error::new)
     }
 
-    pub fn to_raw(&self) -> Result<Vec<u8>> {
-        serialize(&self).map_err(Error::Serialization)
+    pub(crate) fn to_raw(&self) -> Result<Vec<u8>> {
+        serialize(&self).map_err(Error::new)
     }
 
     pub fn blob_offset(&self) -> u64 {
         self.blob_offset
     }
 
-    pub fn full_len(&self) -> Result<u64> {
+    pub(crate) fn full_len(&self) -> Result<u64> {
         Ok(self.data_len + self.serialized_size()?)
     }
 
@@ -166,7 +210,7 @@ impl Header {
     }
 
     pub(crate) fn serialized_size(&self) -> Result<u64> {
-        bincode::serialized_size(&self).map_err(Error::Serialization)
+        bincode::serialized_size(&self).map_err(Error::new)
     }
 
     fn update_checksum(&mut self) -> Result<()> {
