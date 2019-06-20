@@ -323,7 +323,14 @@ pub(crate) struct Error {
     repr: Repr,
 }
 
-impl error::Error for Error {}
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match &self.repr {
+            Repr::Inner(_) => None,
+            Repr::Other(src) => Some(src.as_ref()),
+        }
+    }
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {

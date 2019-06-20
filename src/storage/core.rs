@@ -5,6 +5,7 @@ use futures::{
     stream::{futures_unordered::FuturesUnordered, Stream, StreamExt},
     task::{Context, Poll, Spawn, SpawnExt},
 };
+use std::os::unix::fs::OpenOptionsExt;
 use std::{
     fs::{self, DirEntry, File, OpenOptions},
     marker::PhantomData,
@@ -26,6 +27,8 @@ use crate::{
 
 const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
+// For now it is only constant from libc,
+const O_EXCL: i32 = 128;
 
 /// # Description
 /// A specialized storage result type
@@ -217,8 +220,12 @@ impl<K> Storage<K> {
 
     /// # Description
     /// Stop work dir observer thread
-    pub fn close(&self) -> Result<()> {
+    pub async fn close(&self) -> Result<()> {
         self.inner.need_exit.store(false, Ordering::Relaxed);
+        self.inner.safe.lock().await.lock_file = None;
+        if let Some(ref work_dir) = self.inner.config.work_dir {
+            fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
+        };
         // @TODO implement
         Ok(())
     }
@@ -250,19 +257,19 @@ impl<K> Storage<K> {
             debug!("creating work dir recursively: {}", path.display());
             fs::create_dir_all(path).map_err(Error::new)?;
         }
+        self.try_lock_dir(path).await
+    }
 
+    async fn try_lock_dir<'a>(&'a self, path: &'a Path) -> Result<()> {
         let lock_file_path = path.join(LOCK_FILE);
-        // @TODO check if dir is locked
-        // if lock_file_path.exists() {
-        //     return Err(Error::WorkDirInUse);
-        // }
-
         debug!("try to open lock file: {}", lock_file_path.display());
         let lock_file = OpenOptions::new()
             .create(true)
             .write(true)
+            .custom_flags(O_EXCL)
             .open(&lock_file_path)
             .map_err(Error::new)?;
+        debug!("{} not locked", path.display());
         self.inner.safe.lock().await.lock_file = Some(lock_file);
         Ok(())
     }

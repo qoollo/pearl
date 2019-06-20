@@ -34,7 +34,7 @@ impl<K> Writer<K> {
         record
     }
 
-    pub fn close(&self) {
-        self.storage.close().unwrap();
+    pub async fn close(&self) {
+        self.storage.close().await.unwrap();
     }
 }

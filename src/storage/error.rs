@@ -2,24 +2,38 @@ use std::{error, fmt, result};
 
 #[derive(Debug)]
 pub struct Error {
-    repr: Repr
+    repr: Repr,
 }
 
 impl Error {
-    pub(crate) fn new<E>(error: E) -> Self where E: Into<Box<dyn error::Error + Send + Sync>>, {
+    pub(crate) fn new<E>(error: E) -> Self
+    where
+        E: Into<Box<dyn error::Error + Send + Sync>>,
+    {
         Self {
-            repr: Repr::Other(error.into())
+            repr: Repr::Other(error.into()),
         }
     }
 
-    pub(crate) fn raw<M>(msg: M) -> Self where M: AsRef<str> {
+    pub(crate) fn raw<M>(msg: M) -> Self
+    where
+        M: AsRef<str>,
+    {
         Self {
-            repr: Repr::Raw(msg.as_ref().to_owned())
+            repr: Repr::Raw(msg.as_ref().to_owned()),
         }
     }
 }
 
-impl error::Error for Error {}
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match &self.repr {
+            Repr::Inner(_) => None,
+            Repr::Other(src) => Some(src.as_ref()),
+            Repr::Raw(_) => None,
+        }
+    }
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
@@ -30,7 +44,7 @@ impl fmt::Display for Error {
 impl From<ErrorKind> for Error {
     fn from(kind: ErrorKind) -> Self {
         Self {
-            repr: Repr::Inner(kind)
+            repr: Repr::Inner(kind),
         }
     }
 }

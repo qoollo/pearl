@@ -14,14 +14,24 @@ pub(crate) struct Error {
 }
 
 impl Error {
-    pub(crate) fn new<E>(error: E) -> Self where E: Into<Box<dyn error::Error + Send + Sync>>, {
+    pub(crate) fn new<E>(error: E) -> Self
+    where
+        E: Into<Box<dyn error::Error + Send + Sync>>,
+    {
         Self {
-            repr: Repr::Other(error.into())
+            repr: Repr::Other(error.into()),
         }
     }
 }
 
-impl error::Error for Error {}
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match &self.repr {
+            Repr::Inner(_) => None,
+            Repr::Other(src) => Some(src.as_ref()),
+        }
+    }
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
@@ -52,7 +62,7 @@ pub enum ErrorKind {
 impl From<ErrorKind> for Error {
     fn from(kind: ErrorKind) -> Self {
         Self {
-            repr: Repr::Inner(kind)
+            repr: Repr::Inner(kind),
         }
     }
 }
