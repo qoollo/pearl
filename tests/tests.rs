@@ -7,6 +7,7 @@ use futures::{
     executor::{block_on, ThreadPool},
     future::FutureExt,
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
+    task::SpawnExt,
 };
 use pearl::{Builder, Storage};
 use rand::seq::SliceRandom;
@@ -394,5 +395,6 @@ async fn test_work_dir_lock_async(mut pool: ThreadPool) {
     let res_two = storage_two.await;
     dbg!(&res_two);
     assert!(res_two.is_err());
-    // pool.run(common::clean(storage, dir)).unwrap();
+    pool.spawn(common::clean(storage, dir).map(|res| res.expect("work dir clean failed")))
+        .unwrap();
 }

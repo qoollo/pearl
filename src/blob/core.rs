@@ -6,6 +6,7 @@ use futures::{
 };
 use std::io::{self, Read, Seek as StdSeek, SeekFrom, Write as StdWrite};
 use std::os::unix::fs::FileExt;
+use std::{error, fmt, result};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -16,7 +17,7 @@ use std::{
 
 use super::index::Index;
 use super::simple_index::SimpleIndex;
-use crate::record::{self, Record};
+use crate::record::Record;
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
@@ -120,7 +121,7 @@ impl<'a> Future for WriteAt<'a> {
                 cx.waker().wake_by_ref();
                 Poll::Pending
             }
-            Err(e) => Poll::Ready(Err(Error::IO(e))),
+            Err(e) => Poll::Ready(Err(Error::new(e))),
         }
     }
 }
@@ -142,7 +143,7 @@ impl Future for ReadAt {
                 cx.waker().wake_by_ref();
                 Poll::Pending
             }
-            Err(e) => Poll::Ready(Err(Error::IO(e))),
+            Err(e) => Poll::Ready(Err(Error::new(e))),
         }
     }
 }
@@ -173,7 +174,7 @@ impl File {
 
     pub(crate) fn from_std_file(fd: fs::File) -> Result<Self> {
         Ok(File {
-            read_fd: Arc::new(fd.try_clone()?),
+            read_fd: Arc::new(fd.try_clone().map_err(Error::new)?),
             write_fd: Arc::new(Mutex::new(fd)),
         })
     }
@@ -210,15 +211,16 @@ impl Blob {
             .write(true)
             .read(true)
             .open(path)
-            .map_err(|e| Error::OpenNew(e, path.into()))
+            .map_err(Error::new)
     }
 
     fn open_file(path: &Path) -> Result<fs::File> {
-        Ok(fs::OpenOptions::new()
+        fs::OpenOptions::new()
             .create(false)
             .append(true)
             .read(true)
-            .open(path)?)
+            .open(path)
+            .map_err(Error::new)
     }
 
     pub(crate) fn boxed(self) -> Box<Self> {
@@ -229,7 +231,7 @@ impl Blob {
         debug!("create file instance");
         let file: File = File::from_std_file(Self::open_file(&path)?)?;
         let name = FileName::from_path(&path)?;
-        let len = file.metadata()?.len();
+        let len = file.metadata().map_err(Error::new)?.len();
         debug!("    blob file size: {:.1} MB", len as f64 / 1_000_000.0);
         let mut index_name: FileName = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
@@ -267,12 +269,12 @@ impl Blob {
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
         let key = record.key().to_vec();
         if self.index.contains_key(&key).await? {
-            return Err(Error::AlreadyContainsSameKey);
+            return Err(ErrorKind::KeyExists.into());
         }
         let mut offset = self.current_offset.lock().await;
-        record.set_offset(*offset)?;
-        let buf = record.to_raw()?;
-        let bytes_written = self.file.write_at(buf, *offset).await?;
+        record.set_offset(*offset).map_err(Error::new)?;
+        let buf = record.to_raw().map_err(Error::new)?;
+        let bytes_written = self.file.write_at(buf, *offset).await.map_err(Error::new)?;
         self.index.push(record.header().clone());
         *offset += bytes_written as u64;
         Ok(())
@@ -284,7 +286,7 @@ impl Blob {
         debug!("read at");
         let buf = self.file.read_at(loc.size as usize, loc.offset).await?;
         debug!("record from raw");
-        let record = Record::from_raw(&buf)?;
+        let record = Record::from_raw(&buf).map_err(Error::new)?;
         debug!("return result");
         Ok(record)
     }
@@ -297,11 +299,14 @@ impl Blob {
         let h = self.index.get(key.as_ref()).await?;
         debug!("blob offset");
         let offset = h.blob_offset();
-        Ok(Location::new(offset as u64, h.full_len()?))
+        Ok(Location::new(
+            offset as u64,
+            h.full_len().map_err(Error::new)?,
+        ))
     }
 
     pub(crate) fn file_size(&self) -> Result<u64> {
-        Ok(self.file.metadata()?.len())
+        Ok(self.file.metadata().map_err(Error::new)?.len())
     }
 
     pub(crate) async fn records_count(&self) -> Result<usize> {
@@ -314,38 +319,74 @@ impl Blob {
 }
 
 #[derive(Debug)]
-pub enum Error {
-    OpenNew(io::Error, PathBuf),
+pub(crate) struct Error {
+    repr: Repr,
+}
+
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match &self.repr {
+            Repr::Inner(_) => None,
+            Repr::Other(src) => Some(src.as_ref()),
+        }
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+        self.repr.fmt(f)
+    }
+}
+
+impl Error {
+    pub(crate) fn new<E>(error: E) -> Self
+    where
+        E: Into<Box<dyn error::Error + Send + Sync>>,
+    {
+        Self {
+            repr: Repr::Other(error.into()),
+        }
+    }
+
+    pub(crate) fn is(&self, othr_kind: &ErrorKind) -> bool {
+        if let Repr::Inner(kind) = &self.repr {
+            kind == othr_kind
+        } else {
+            false
+        }
+    }
+}
+
+impl From<ErrorKind> for Error {
+    fn from(kind: ErrorKind) -> Self {
+        Self {
+            repr: Repr::Inner(kind),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum Repr {
+    Inner(ErrorKind),
+    Other(Box<dyn error::Error + 'static + Send + Sync>),
+}
+
+impl fmt::Display for Repr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+        match self {
+            Repr::Inner(kind) => write!(f, "{:?}", kind),
+            Repr::Other(e) => e.fmt(f),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub(crate) enum ErrorKind {
+    KeyExists,
     NotFound,
-    RecordFromRawFailed,
-    PathWithoutFileName(PathBuf),
-    NonUnicode(std::ffi::OsString),
     WrongFileNamePattern(PathBuf),
-    IndexParseFailed(String),
-    RecordError(record::Error),
-    AlreadyContainsSameKey,
-    IO(io::Error),
-    SerDe(bincode::Error),
     EmptyIndexFile,
     Index(String),
-}
-
-impl From<bincode::Error> for Error {
-    fn from(bincode_error: bincode::Error) -> Self {
-        Error::SerDe(bincode_error)
-    }
-}
-
-impl From<record::Error> for Error {
-    fn from(record_error: record::Error) -> Self {
-        Error::RecordError(record_error)
-    }
-}
-
-impl From<io::Error> for Error {
-    fn from(io_error: io::Error) -> Self {
-        Error::IO(io_error)
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -366,8 +407,9 @@ impl FileName {
         }
     }
 
-    pub fn from_path(path: &Path) -> Result<Self> {
-        Self::try_from_path(path).ok_or_else(|| Error::WrongFileNamePattern(path.to_owned()))
+    pub(crate) fn from_path(path: &Path) -> Result<Self> {
+        Self::try_from_path(path)
+            .ok_or_else(|| ErrorKind::WrongFileNamePattern(path.to_owned()).into())
     }
 
     pub fn as_path(&self) -> PathBuf {

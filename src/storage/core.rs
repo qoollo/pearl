@@ -3,12 +3,11 @@ use futures::{
     future::{self, FutureExt, FutureObj},
     lock::Mutex,
     stream::{futures_unordered::FuturesUnordered, Stream, StreamExt},
-    task::{self, Context, Poll, Spawn, SpawnExt},
+    task::{Context, Poll, Spawn, SpawnExt},
 };
 use std::os::unix::fs::OpenOptionsExt;
 use std::{
     fs::{self, DirEntry, File, OpenOptions},
-    io,
     marker::PhantomData,
     path::{Path, PathBuf},
     pin::Pin,
@@ -20,6 +19,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use super::error::{Error, ErrorKind};
 use crate::{
     blob::{self, Blob},
     record::Record,
@@ -100,7 +100,7 @@ impl<K> Clone for Storage<K> {
 
 fn work_dir_content(wd: &Path) -> Result<Option<Vec<fs::DirEntry>>> {
     let files: Vec<_> = fs::read_dir(wd)
-        .map_err(Error::IO)?
+        .map_err(Error::new)?
         .filter_map(|res_dir_entry| res_dir_entry.map_err(|e| error!("{}", e)).ok())
         .collect();
     if files
@@ -142,7 +142,7 @@ impl<K> Storage<K> {
                 .config
                 .work_dir
                 .as_ref()
-                .ok_or_else(|| Error::Uninitialized("work_dir not set".to_string()))?,
+                .ok_or(ErrorKind::Uninitialized)?,
         );
         if let Some(files) = cont_res? {
             self.init_from_existing(files).await?
@@ -153,7 +153,7 @@ impl<K> Storage<K> {
             Box::new(launch_observer(spawner.clone(), self.inner.clone())).into();
         spawner
             .spawn(observer_fut_obj)
-            .map_err(Error::ObserverSpawnFailed)?;
+            .map_err(|e| Error::raw(format!("{:?}", e)))?;
         Ok(())
     }
 
@@ -173,8 +173,11 @@ impl<K> Storage<K> {
         trace!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
         trace!("return write future");
-        let blob = safe.active_blob.as_mut().ok_or(Error::ActiveBlobNotSet)?;
-        blob.write(record).await.map_err(Error::BlobError)
+        let blob = safe
+            .active_blob
+            .as_mut()
+            .ok_or(ErrorKind::ActiveBlobNotSet)?;
+        blob.write(record).await.map_err(Error::new)
     }
 
     /// # Description
@@ -194,7 +197,7 @@ impl<K> Storage<K> {
         let active_blob_read_res = inner
             .active_blob
             .as_ref()
-            .ok_or(Error::ActiveBlobNotSet)?
+            .ok_or(ErrorKind::ActiveBlobNotSet)?
             .read(key.as_ref().to_vec())
             .await;
         Ok(if let Ok(record) = active_blob_read_res {
@@ -209,8 +212,8 @@ impl<K> Storage<K> {
             let mut task = stream.skip_while(|res| future::ready(res.is_err()));
             task.next()
                 .await
-                .ok_or(Error::RecordNotFound)?
-                .map_err(Error::BlobError)?
+                .ok_or(ErrorKind::RecordNotFound)?
+                .map_err(Error::new)?
         }
         .get_data())
     }
@@ -221,7 +224,7 @@ impl<K> Storage<K> {
         self.inner.need_exit.store(false, Ordering::Relaxed);
         self.inner.safe.lock().await.lock_file = None;
         if let Some(ref work_dir) = self.inner.config.work_dir {
-            fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::IO)?;
+            fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
         };
         // @TODO implement
         Ok(())
@@ -246,13 +249,13 @@ impl<K> Storage<K> {
                 .config
                 .work_dir
                 .as_ref()
-                .ok_or_else(|| Error::Uninitialized("work_dir not set".to_string()))?,
+                .ok_or(ErrorKind::Uninitialized)?,
         );
         if path.exists() {
             debug!("work dir exists: {}", path.display());
         } else {
             debug!("creating work dir recursively: {}", path.display());
-            fs::create_dir_all(path).map_err(Error::IO)?;
+            fs::create_dir_all(path).map_err(Error::new)?;
         }
         self.try_lock_dir(path).await
     }
@@ -265,7 +268,7 @@ impl<K> Storage<K> {
             .write(true)
             .custom_flags(O_EXCL)
             .open(&lock_file_path)
-            .map_err(|_| Error::WorkDirInUse)?;
+            .map_err(Error::new)?;
         debug!("{} not locked", path.display());
         self.inner.safe.lock().await.lock_file = Some(lock_file);
         Ok(())
@@ -274,8 +277,7 @@ impl<K> Storage<K> {
     async fn init_new(&mut self) -> Result<()> {
         let safe_locked = self.inner.safe.lock();
         let next = self.inner.next_blob_name()?;
-        safe_locked.await.active_blob =
-            Some(Blob::open_new(next).map_err(Error::InitActiveBlob)?.boxed());
+        safe_locked.await.active_blob = Some(Blob::open_new(next).map_err(Error::new)?.boxed());
         Ok(())
     }
 
@@ -310,7 +312,7 @@ impl<K> Storage<K> {
         blobs.sort_by_key(Blob::id);
         let active_blob = blobs
             .pop()
-            .ok_or_else(|| Error::Uninitialized("blobs initialization failed".to_string()))?
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?
             .boxed();
         let mut safe_locked = self.inner.safe.lock().await;
         safe_locked.active_blob = Some(active_blob);
@@ -353,13 +355,13 @@ impl Inner {
             .config
             .blob_file_name_prefix
             .as_ref()
-            .ok_or_else(|| Error::Uninitialized("blob_file_name_prefix not set".to_string()))?
+            .ok_or(ErrorKind::Uninitialized)?
             .to_owned();
         let dir = self
             .config
             .work_dir
             .as_ref()
-            .ok_or_else(|| Error::Uninitialized("work_dir not set".to_string()))?
+            .ok_or(ErrorKind::Uninitialized)?
             .to_owned();
         Ok(blob::FileName::new(
             prefix,
@@ -453,26 +455,6 @@ where
     }
 }
 
-#[derive(Debug)]
-pub enum Error {
-    ActiveBlobNotSet,
-    InitActiveBlob(blob::Error),
-    BlobError(blob::Error),
-    WrongConfig,
-    Uninitialized(String),
-    IO(io::Error),
-    RecordNotFound,
-    ObserverSpawnFailed(task::SpawnError),
-    WorkDirInUse,
-    KeySizeMismatch(usize),
-}
-
-impl From<blob::Error> for Error {
-    fn from(blob_error: blob::Error) -> Self {
-        Error::BlobError(blob_error)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub(crate) struct Config {
     // pub key_size: Option<u16>,
@@ -514,20 +496,20 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
         let active_blob = safe_locked
             .active_blob
             .as_ref()
-            .ok_or(Error::ActiveBlobNotSet)?;
+            .ok_or(ErrorKind::ActiveBlobNotSet)?;
         (
-            active_blob.file_size()?,
-            active_blob.records_count().await? as u64,
+            active_blob.file_size().map_err(Error::new)?,
+            active_blob.records_count().await.map_err(Error::new)? as u64,
         )
     };
     let config_max_size = inner
         .config
         .max_blob_size
-        .ok_or_else(|| Error::Uninitialized("max_blob_size not set".to_string()))?;
+        .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
     let config_max_count = inner
         .config
         .max_data_in_blob
-        .ok_or_else(|| Error::Uninitialized("max_data_in_blob not set".to_string()))?;
+        .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
     if active_size > config_max_size || active_count >= config_max_count {
         Ok(Some(inner))
     } else {
@@ -538,14 +520,14 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
 async fn update_active_blob(inner: Inner) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
-    let new_active = Blob::open_new(next_name)?.boxed();
+    let new_active = Blob::open_new(next_name).map_err(Error::new)?.boxed();
 
     let mut safe_locked = inner.safe.lock().await;
     let mut old_active = safe_locked
         .active_blob
         .replace(new_active)
-        .ok_or(Error::ActiveBlobNotSet)?;
-    old_active.dump().await?;
+        .ok_or(ErrorKind::ActiveBlobNotSet)?;
+    old_active.dump().await.map_err(Error::new)?;
     safe_locked.blobs.push(*old_active);
     Ok(())
 }

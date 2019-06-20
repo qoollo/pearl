@@ -1,5 +1,7 @@
-use super::core::{Config, Error, Result, Storage};
 use std::path::PathBuf;
+
+use super::core::{Config, Result, Storage};
+use super::error::ErrorKind;
 
 /// `Builder` used for initializing a `Storage`.
 /// Required params:
@@ -56,10 +58,8 @@ impl Builder {
         if missed_params.is_empty() {
             Ok(Storage::new(self.config))
         } else {
-            Err(Error::Uninitialized(format!(
-                "Required parameters are missed:\n{}",
-                missed_params
-            )))
+            error!("{}", missed_params);
+            Err(ErrorKind::Uninitialized.into())
         }
     }
 
