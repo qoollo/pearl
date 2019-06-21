@@ -5,7 +5,7 @@ extern crate log;
 
 use futures::{
     executor::{block_on, ThreadPool},
-    future::FutureExt,
+    future::{FutureExt, TryFutureExt},
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
     task::SpawnExt,
 };
@@ -225,21 +225,15 @@ fn test_multithread_read_write() -> Result<(), String> {
 
 #[test]
 fn test_storage_multithread_blob_overflow() -> Result<(), String> {
-    common::init_logger();
-    use futures::compat::{Executor01CompatExt, Future01CompatExt};
-    use futures::future::TryFutureExt;
+    use futures::executor::ThreadPool;
+    use futures_timer::Delay;
     use std::time::{Duration, Instant};
-    use tokio::runtime::Builder;
-    use tokio::timer::Delay;
+
+    common::init_logger();
 
     let dir = "pearl_overflow/";
-    let mut pool = Builder::new().core_threads(1).build().unwrap();
-    let storage = block_on(common::create_test_storage(
-        pool.executor().clone().compat(),
-        dir,
-        10_000,
-    ))
-    .unwrap();
+    let mut pool = ThreadPool::new().map_err(|e| format!("{}", e))?;
+    let storage = block_on(common::create_test_storage(pool.clone(), dir, 10_000)).unwrap();
 
     let cloned_storage = storage.clone();
     let fut = async {
@@ -250,10 +244,10 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
         let delay_futures: Vec<_> = range
             .iter()
             .map(|i| {
-                Delay::new(Instant::now() + Duration::from_millis(i * 100))
-                    .compat()
+                Delay::new(Duration::from_millis(i * 100))
+                    .map_ok(move |_| println!("{}", i))
                     .map_err(|e| {
-                        println!("{:?}", e);
+                        println!("{}", e);
                     })
             })
             .collect();
@@ -281,18 +275,14 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
         } else {
             Ok(())
         }
-    }
-        .boxed()
-        .compat();
-    pool.block_on(fut).unwrap();
+    };
+    futures::executor::block_on(fut.map(|res| res.unwrap()));
     let path = env::temp_dir().join(dir);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
     let dir_owned = dir.to_owned();
-    let task = async move { common::clean(storage, &dir_owned).await }
-        .boxed()
-        .compat();
-    pool.block_on(task).unwrap();
+    let task = async move { common::clean(storage, &dir_owned).await };
+    pool.run(task).unwrap();
     Ok(())
 }
 
