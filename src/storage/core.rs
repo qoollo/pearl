@@ -34,8 +34,9 @@ const O_EXCL: i32 = 128;
 /// A specialized storage result type
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// A main storage struct.
 /// # Description
-/// A main storage struct. This type is clonable, cloning it will only create a new reference,
+/// This type is clonable, cloning it will only create a new reference,
 /// not a new storage.
 /// Storage has a type parameter K.
 /// To perform read/write operations K must implement [`Key`] trait.
