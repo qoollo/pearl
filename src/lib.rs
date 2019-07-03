@@ -58,4 +58,4 @@ mod blob;
 mod record;
 mod storage;
 
-pub use storage::{Builder, Key, Storage};
+pub use storage::{Builder, Error, ErrorKind, Key, Storage};
