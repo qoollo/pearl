@@ -2,6 +2,7 @@ use futures::{
     future::Future,
     io::{AsyncRead, AsyncSeek, AsyncWrite},
     lock::Mutex,
+    stream::{Stream, TryStreamExt},
     task::{Context, Poll},
 };
 use std::io::{self, Read, Seek as StdSeek, SeekFrom, Write as StdWrite};
@@ -17,7 +18,7 @@ use std::{
 
 use super::index::Index;
 use super::simple_index::SimpleIndex;
-use crate::record::Record;
+use crate::record::{Header as RecordHeader, Record};
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
@@ -248,17 +249,34 @@ impl Blob {
         };
         debug!("    index initialized");
 
-        let blob = Self {
+        let mut blob = Self {
             header: Header::new(),
             file,
             name,
             index,
             current_offset: Arc::new(Mutex::new(len)),
         };
+        blob.update_index().await?;
         blob.check_data_consistency()?;
 
         // @TODO Scan existing file to create index
         Ok(blob)
+    }
+
+    fn raw_records(&mut self) -> RawRecords {
+        unimplemented!();
+        RawRecords {
+            // current_offset: bincode::serialized_size(&self.header).unwrap(),
+            current_offset: 0,
+        }
+    }
+
+    pub(crate) async fn update_index(&mut self) -> Result<()> {
+        if self.index.in_memory() {
+            return Ok(());
+        }
+        let raw_r = self.raw_records();
+        raw_r.try_for_each(|h| self.index.push(h)).await
     }
 
     pub(crate) fn check_data_consistency(&self) -> Result<()> {
@@ -470,5 +488,16 @@ struct Location {
 impl Location {
     fn new(offset: u64, size: u64) -> Self {
         Self { offset, size }
+    }
+}
+
+struct RawRecords {
+    current_offset: usize,
+}
+
+impl Stream for RawRecords {
+    type Item = Result<RecordHeader>;
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        unimplemented!()
     }
 }

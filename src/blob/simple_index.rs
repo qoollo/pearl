@@ -35,17 +35,6 @@ enum State {
 }
 
 impl SimpleIndex {
-    pub(crate) async fn load(mut file: File) -> Result<Vec<RecordHeader>> {
-        debug!("seek to file start");
-        file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
-        let mut buf = Vec::new();
-        debug!("read to end index");
-        file.read_to_end(&mut buf).await.map_err(Error::new)?;
-        deserialize(&buf).map_err(Error::new)
-    }
-}
-
-impl SimpleIndex {
     pub(crate) fn new(name: FileName) -> Self {
         Self {
             header: Header {
@@ -55,6 +44,15 @@ impl SimpleIndex {
             inner: State::InMemory(Vec::new()),
             name,
         }
+    }
+
+    pub(crate) async fn load(mut file: File) -> Result<Vec<RecordHeader>> {
+        debug!("seek to file start");
+        file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
+        let mut buf = Vec::new();
+        debug!("read to end index");
+        file.read_to_end(&mut buf).await.map_err(Error::new)?;
+        deserialize(&buf).map_err(Error::new)
     }
 
     pub(crate) async fn from_file(name: FileName) -> Result<Self> {
@@ -81,6 +79,18 @@ impl SimpleIndex {
             inner: State::InMemory(index),
             name,
         })
+    }
+
+    pub(crate) async fn update<'a>(&'a mut self, blob_file: &'a File) -> Result<()> {
+        if let State::OnDisk(file) = &self.inner {
+            Self::generate(file, blob_file).await
+        } else {
+            Ok(())
+        }
+    }
+
+    pub(crate) async fn generate<'a>(index_file: &'a File, blob_file: &'a File) -> Result<()> {
+        unimplemented!()
     }
 
     async fn binary_search(mut file: File, key: Vec<u8>) -> Result<RecordHeader> {
@@ -155,6 +165,13 @@ impl SimpleIndex {
                 acc
             });
         Ok(buf)
+    }
+
+    pub fn in_memory(&self) -> bool {
+        match self.inner {
+            State::InMemory(_) => true,
+            _ => false,
+        }
     }
 }
 

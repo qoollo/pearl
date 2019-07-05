@@ -56,3 +56,11 @@ impl Future for Dump {
         Future::poll(self.0.as_mut(), cx)
     }
 }
+
+impl Future for Push {
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        Future::poll(self.0.as_mut(), cx)
+    }
+}

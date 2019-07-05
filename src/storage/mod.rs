@@ -1,6 +1,6 @@
-mod error;
 mod builder;
 mod core;
+mod error;
 
 pub use self::{
     builder::Builder,
