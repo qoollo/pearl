@@ -1,18 +1,21 @@
-use futures::{
-    future::Future,
-    io::{AsyncRead, AsyncSeek, AsyncWrite},
-    lock::Mutex,
-    task::{Context, Poll},
-};
 use std::io::{self, Read, Seek as StdSeek, SeekFrom, Write as StdWrite};
 use std::os::unix::fs::FileExt;
-use std::{error, fmt, result};
 use std::{
+    convert::TryInto,
     fs,
     path::{Path, PathBuf},
     pin::Pin,
     result::Result as StdResult,
     sync::Arc,
+};
+use std::{error, fmt, result};
+
+use bincode::serialize;
+use futures::{
+    future::Future,
+    io::{AsyncRead, AsyncSeek, AsyncWrite, AsyncWriteExt},
+    lock::Mutex,
+    task::{Context, Poll},
 };
 
 use super::index::Index;
@@ -182,23 +185,56 @@ impl File {
 
 impl Blob {
     /// # Description
-    /// Creates new blob file with given [`FileName`]
+    /// Creates new blob file with given [`FileName`].
+    /// And creates index from existing `.index` file or scans corresponding blob.
     /// # Panic
     /// Panics if file with same path already exists
     ///
     /// [`FileName`]: struct.FileName.html
-    pub(crate) fn open_new(name: FileName) -> Result<Self> {
-        let file = File::from_std_file(Self::create_file(&name.as_path())?)?;
+    pub(crate) async fn open_new(name: FileName) -> Result<Self> {
+        let file = Self::prepare_file(&name)?;
+        let index = Self::create_index(&name);
+        let current_offset = Self::new_offset();
+        let header = Header::new();
+        let mut blob = Self {
+            header,
+            file,
+            index,
+            name,
+            current_offset,
+        };
+        blob.write_header().await?;
+        Ok(blob)
+    }
+
+    #[inline]
+    fn new_offset() -> Arc<Mutex<u64>> {
+        Arc::new(Mutex::new(0))
+    }
+
+    async fn write_header(&mut self) -> Result<()> {
+        let buf = serialize(&self.header).map_err(Error::new)?;
+        let offset = self.file.write(&buf).await.map_err(Error::new)?;
+        self.update_offset(offset).await?;
+        Ok(())
+    }
+
+    async fn update_offset(&self, offset: usize) -> Result<()> {
+        let mut current_offset = self.current_offset.lock().await;
+        *current_offset = offset.try_into().map_err(Error::new)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn create_index(name: &FileName) -> SimpleIndex {
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        let blob = Self {
-            header: Header::new(),
-            file,
-            index: SimpleIndex::new(index_name),
-            name,
-            current_offset: Arc::new(Mutex::new(0)),
-        };
-        Ok(blob)
+        SimpleIndex::new(index_name)
+    }
+
+    #[inline]
+    fn prepare_file(name: &FileName) -> Result<File> {
+        File::from_std_file(Self::create_file(&name.as_path())?)
     }
 
     pub(crate) async fn dump(&mut self) -> Result<()> {
@@ -444,7 +480,7 @@ impl FileName {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Header {
     magic_byte: u64,
     version: u32,

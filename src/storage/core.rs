@@ -278,7 +278,8 @@ impl<K> Storage<K> {
     async fn init_new(&mut self) -> Result<()> {
         let safe_locked = self.inner.safe.lock();
         let next = self.inner.next_blob_name()?;
-        safe_locked.await.active_blob = Some(Blob::open_new(next).map_err(Error::new)?.boxed());
+        safe_locked.await.active_blob =
+            Some(Blob::open_new(next).await.map_err(Error::new)?.boxed());
         Ok(())
     }
 
@@ -521,7 +522,7 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
 async fn update_active_blob(inner: Inner) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
-    let new_active = Blob::open_new(next_name).map_err(Error::new)?.boxed();
+    let new_active = Blob::open_new(next_name).await.map_err(Error::new)?.boxed();
 
     let mut safe_locked = inner.safe.lock().await;
     let mut old_active = safe_locked

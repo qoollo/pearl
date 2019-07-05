@@ -7,6 +7,7 @@ use futures::{
     stream::{futures_unordered::FuturesUnordered, StreamExt},
     task::SpawnExt,
 };
+use std::error::Error;
 use std::{env, fs};
 
 use pearl::{Builder, Key, Storage};
@@ -56,10 +57,10 @@ where
         .max_blob_size(max_blob_size)
         .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
-    storage
-        .init(spawner)
-        .await
-        .map_err(|e| format!("{:?}", e))?;
+    storage.init(spawner).await.map_err(|e| {
+        dbg!(e.source());
+        format!("{:?}", e)
+    })?;
     Ok(storage)
 }
 

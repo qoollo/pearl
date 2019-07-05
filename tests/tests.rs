@@ -378,7 +378,6 @@ async fn test_work_dir_lock_async(mut pool: ThreadPool) {
     let dir = "pearl_work_dir";
     let storage_one = common::create_test_storage(pool.clone(), dir, 1_000_000);
     let res_one = storage_one.await;
-    dbg!(&res_one);
     assert!(res_one.is_ok());
     let storage = res_one.unwrap();
     let storage_two = common::create_test_storage(pool.clone(), dir, 1_000_000);
