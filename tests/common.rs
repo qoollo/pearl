@@ -1,3 +1,4 @@
+#![allow(clippy::needless_lifetimes)]
 #![allow(unused_attributes)]
 #![feature(async_await, await_macro)]
 
@@ -34,7 +35,7 @@ pub fn init_logger() {
 
 pub async fn default_test_storage_in<S>(
     spawner: S,
-    dir_name: &'static str,
+    dir_name: &str,
 ) -> Result<Storage<KeyTest>, String>
 where
     S: SpawnExt + Clone + Send + 'static + Unpin + Sync,
@@ -44,7 +45,7 @@ where
 
 pub async fn create_test_storage<S>(
     spawner: S,
-    dir_name: &'static str,
+    dir_name: &str,
     max_blob_size: u64,
 ) -> Result<Storage<KeyTest>, String>
 where
@@ -70,7 +71,7 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-pub async fn clean(storage: Storage<KeyTest>, dir: &str) -> Result<(), String> {
+pub async fn clean(storage: Storage<KeyTest>, dir: String) -> Result<(), String> {
     std::thread::sleep(std::time::Duration::from_millis(100));
     storage.close().await.map_err(|e| format!("{:?}", e))?;
     let path = env::temp_dir().join(dir);
