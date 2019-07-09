@@ -1,3 +1,4 @@
+#![allow(clippy::needless_lifetimes)]
 #![allow(unused_attributes)]
 #![feature(async_await, await_macro)]
 
@@ -7,6 +8,7 @@ use futures::{
     stream::{futures_unordered::FuturesUnordered, StreamExt},
     task::SpawnExt,
 };
+use std::error::Error;
 use std::{env, fs};
 
 use pearl::{Builder, Key, Storage};
@@ -33,7 +35,7 @@ pub fn init_logger() {
 
 pub async fn default_test_storage_in<S>(
     spawner: S,
-    dir_name: &'static str,
+    dir_name: &str,
 ) -> Result<Storage<KeyTest>, String>
 where
     S: SpawnExt + Clone + Send + 'static + Unpin + Sync,
@@ -43,7 +45,7 @@ where
 
 pub async fn create_test_storage<S>(
     spawner: S,
-    dir_name: &'static str,
+    dir_name: &str,
     max_blob_size: u64,
 ) -> Result<Storage<KeyTest>, String>
 where
@@ -56,10 +58,10 @@ where
         .max_blob_size(max_blob_size)
         .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
-    storage
-        .init(spawner)
-        .await
-        .map_err(|e| format!("{:?}", e))?;
+    storage.init(spawner).await.map_err(|e| {
+        dbg!(e.source());
+        format!("{:?}", e)
+    })?;
     Ok(storage)
 }
 
@@ -69,7 +71,7 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-pub async fn clean(storage: Storage<KeyTest>, dir: &str) -> Result<(), String> {
+pub async fn clean(storage: Storage<KeyTest>, dir: String) -> Result<(), String> {
     std::thread::sleep(std::time::Duration::from_millis(100));
     storage.close().await.map_err(|e| format!("{:?}", e))?;
     let path = env::temp_dir().join(dir);

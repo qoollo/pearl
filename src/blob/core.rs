@@ -1,23 +1,14 @@
-use futures::{
-    future::Future,
-    io::{AsyncRead, AsyncSeek, AsyncWrite},
-    lock::Mutex,
-    stream::{Stream, TryStreamExt},
-    task::{Context, Poll},
-};
-use std::io::{self, Read, Seek as StdSeek, SeekFrom, Write as StdWrite};
-use std::os::unix::fs::FileExt;
-use std::{error, fmt, result};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    pin::Pin,
-    result::Result as StdResult,
-    sync::Arc,
-};
+use std::path::{Path, PathBuf};
+use std::task::{Context, Poll};
+use std::{convert::TryInto, error, fmt, fs, pin::Pin, result, sync::Arc};
 
+use bincode::serialize;
+use futures::{io::AsyncWriteExt, lock::Mutex, Stream, TryStreamExt};
+
+use super::file::File;
 use super::index::Index;
 use super::simple_index::SimpleIndex;
+
 use crate::record::{Header as RecordHeader, Record};
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
@@ -38,168 +29,58 @@ pub(crate) struct Blob {
     current_offset: Arc<Mutex<u64>>,
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct File {
-    read_fd: Arc<fs::File>,
-    write_fd: Arc<Mutex<fs::File>>,
-}
-
-impl AsyncRead for File {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut [u8],
-    ) -> Poll<StdResult<usize, io::Error>> {
-        let mut file = self.read_fd.as_ref();
-        match file.read(buf) {
-            Ok(t) => Poll::Ready(Ok(t)),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                cx.waker().wake_by_ref();
-                Poll::Pending
-            }
-            Err(e) => Poll::Ready(Err(e)),
-        }
-    }
-}
-
-impl AsyncWrite for File {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<StdResult<usize, io::Error>> {
-        let mut file = self.read_fd.as_ref();
-        match file.write_all(buf) {
-            Ok(_) => Poll::Ready(Ok(buf.len())),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                cx.waker().wake_by_ref();
-                Poll::Pending
-            }
-            Err(e) => Poll::Ready(Err(e)),
-        }
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<StdResult<(), io::Error>> {
-        unimplemented!()
-    }
-
-    fn poll_close(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<StdResult<(), io::Error>> {
-        unimplemented!()
-    }
-}
-
-impl AsyncSeek for File {
-    fn poll_seek(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        pos: SeekFrom,
-    ) -> Poll<StdResult<u64, io::Error>> {
-        let mut file = self.read_fd.as_ref();
-        match file.seek(pos) {
-            Ok(t) => Poll::Ready(Ok(t)),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                cx.waker().wake_by_ref();
-                Poll::Pending
-            }
-            Err(e) => Poll::Ready(Err(e)),
-        }
-    }
-}
-
-struct WriteAt<'a> {
-    fd: &'a mut fs::File,
-    buf: Vec<u8>,
-    offset: u64,
-}
-
-impl<'a> Future for WriteAt<'a> {
-    type Output = Result<usize>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        match self.fd.write_at(&self.buf, self.offset) {
-            Ok(t) => Poll::Ready(Ok(t)),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                cx.waker().wake_by_ref();
-                Poll::Pending
-            }
-            Err(e) => Poll::Ready(Err(Error::new(e))),
-        }
-    }
-}
-
-struct ReadAt {
-    fd: Arc<fs::File>,
-    len: usize,
-    offset: u64,
-}
-
-impl Future for ReadAt {
-    type Output = Result<Vec<u8>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        let mut buf = vec![0; self.len];
-        match self.fd.read_at(&mut buf, self.offset) {
-            Ok(_t) => Poll::Ready(Ok(buf)),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                cx.waker().wake_by_ref();
-                Poll::Pending
-            }
-            Err(e) => Poll::Ready(Err(Error::new(e))),
-        }
-    }
-}
-
-impl File {
-    pub(crate) fn metadata(&self) -> io::Result<fs::Metadata> {
-        self.read_fd.metadata()
-    }
-
-    pub(crate) async fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> Result<usize> {
-        let mut fd = self.write_fd.lock().await;
-        let write_fut = WriteAt {
-            fd: &mut fd,
-            buf,
-            offset,
-        };
-        write_fut.await
-    }
-
-    pub(crate) async fn read_at(&self, len: usize, offset: u64) -> Result<Vec<u8>> {
-        let read_fut = ReadAt {
-            fd: self.read_fd.clone(),
-            len,
-            offset,
-        };
-        read_fut.await
-    }
-
-    pub(crate) fn from_std_file(fd: fs::File) -> Result<Self> {
-        Ok(File {
-            read_fd: Arc::new(fd.try_clone().map_err(Error::new)?),
-            write_fd: Arc::new(Mutex::new(fd)),
-        })
-    }
-}
-
 impl Blob {
     /// # Description
-    /// Creates new blob file with given [`FileName`]
+    /// Creates new blob file with given [`FileName`].
+    /// And creates index from existing `.index` file or scans corresponding blob.
     /// # Panic
     /// Panics if file with same path already exists
     ///
     /// [`FileName`]: struct.FileName.html
-    pub(crate) fn open_new(name: FileName) -> Result<Self> {
-        let file = File::from_std_file(Self::create_file(&name.as_path())?)?;
+    pub(crate) async fn open_new(name: FileName) -> Result<Self> {
+        let file = Self::prepare_file(&name)?;
+        let index = Self::create_index(&name);
+        let current_offset = Self::new_offset();
+        let header = Header::new();
+        let mut blob = Self {
+            header,
+            file,
+            index,
+            name,
+            current_offset,
+        };
+        blob.write_header().await?;
+        Ok(blob)
+    }
+
+    #[inline]
+    fn new_offset() -> Arc<Mutex<u64>> {
+        Arc::new(Mutex::new(0))
+    }
+
+    async fn write_header(&mut self) -> Result<()> {
+        let buf = serialize(&self.header).map_err(Error::new)?;
+        let offset = self.file.write(&buf).await.map_err(Error::new)?;
+        self.update_offset(offset).await?;
+        Ok(())
+    }
+
+    async fn update_offset(&self, offset: usize) -> Result<()> {
+        let mut current_offset = self.current_offset.lock().await;
+        *current_offset = offset.try_into().map_err(Error::new)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn create_index(name: &FileName) -> SimpleIndex {
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        let blob = Self {
-            header: Header::new(),
-            file,
-            index: SimpleIndex::new(index_name),
-            name,
-            current_offset: Arc::new(Mutex::new(0)),
-        };
-        Ok(blob)
+        SimpleIndex::new(index_name)
+    }
+
+    #[inline]
+    fn prepare_file(name: &FileName) -> Result<File> {
+        File::from_std_file(Self::create_file(&name.as_path())?)
     }
 
     pub(crate) async fn dump(&mut self) -> Result<()> {
@@ -462,7 +343,7 @@ impl FileName {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Header {
     magic_byte: u64,
     version: u32,

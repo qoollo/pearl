@@ -4,8 +4,10 @@ use std::cmp::Ordering;
 use std::fs;
 use std::io::SeekFrom;
 
-use super::core::{Error, ErrorKind, File, FileName, Result};
+use super::core::{Error, ErrorKind, FileName, Result};
+use super::file::File;
 use super::index::{ContainsKey, Count, Dump, Get, Index, Push};
+
 use crate::record::Header as RecordHeader;
 
 #[derive(Debug)]
