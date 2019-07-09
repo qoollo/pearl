@@ -20,15 +20,18 @@ use common::KeyTest;
 #[test]
 fn test_storage_init_new() {
     common::init_logger();
-    let dir = "pearl_new/";
+    let dir = format!(
+        "pearl-test/{}/new/",
+        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
+    );
     let mut pool = ThreadPool::new().unwrap();
     println!("storage init");
     let storage = pool
-        .run(common::default_test_storage_in(pool.clone(), dir))
+        .run(common::default_test_storage_in(pool.clone(), &dir))
         .unwrap();
     println!("blobs count");
     assert_eq!(storage.blobs_count(), 1);
-    let path = env::temp_dir().join(dir);
+    let path = env::temp_dir().join(&dir);
     let blob_file_path = path.join("test.0.blob");
     println!("check path exists");
     assert!(blob_file_path.exists());
@@ -38,9 +41,12 @@ fn test_storage_init_new() {
 #[test]
 fn test_storage_init_from_existing() {
     common::init_logger();
-    let dir = "pearl_existing/";
+    let dir = format!(
+        "pearl-test/{}/existing/",
+        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
+    );
     let mut pool = ThreadPool::new().unwrap();
-    let path = env::temp_dir().join(dir);
+    let path = env::temp_dir().join(&dir);
     let mut cloned_pool = pool.clone();
     {
         let builder = Builder::new()
@@ -82,11 +88,14 @@ fn test_storage_init_from_existing() {
 #[test]
 fn test_storage_read_write() {
     common::init_logger();
-    let dir = "pearl_read_wirte/";
+    let dir = format!(
+        "pearl-test/{}/read_wirte/",
+        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
+    );
     let mut pool = ThreadPool::new().unwrap();
     println!("create default test storage");
     let storage = pool
-        .run(common::default_test_storage_in(pool.clone(), dir))
+        .run(common::default_test_storage_in(pool.clone(), &dir))
         .unwrap();
 
     println!("create key/data");
@@ -114,9 +123,12 @@ fn test_storage_read_write() {
 #[test]
 fn test_storage_multiple_read_write() {
     common::init_logger();
-    let dir = "pearl_multiple/";
+    let dir = format!(
+        "pearl-test/{}/multiple/",
+        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
+    );
     let mut pool = ThreadPool::new().unwrap();
-    let path = env::temp_dir().join(dir);
+    let path = env::temp_dir().join(&dir);
     let mut storage = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
@@ -176,7 +188,10 @@ fn test_multithread_read_write() -> Result<(), String> {
     use std::thread;
 
     common::init_logger();
-    let dir = "pearl_multithread/";
+    let dir = format!(
+        "pearl-test/{}/multithread/",
+        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
+    );
     println!("create thread pool");
     let mut pool = ThreadPool::builder()
         .name_prefix("test-pool-")
@@ -184,7 +199,7 @@ fn test_multithread_read_write() -> Result<(), String> {
         .create()
         .map_err(|e| format!("{:?}", e))?;
     println!("block on create default test storage");
-    let storage = pool.run(common::default_test_storage_in(pool.clone(), dir))?;
+    let storage = pool.run(common::default_test_storage_in(pool.clone(), &dir))?;
     println!("collect indexes");
     let indexes = common::create_indexes(10, 10);
     println!("spawn std threads");
@@ -231,9 +246,12 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
 
     common::init_logger();
 
-    let dir = "pearl_overflow/";
+    let dir = format!(
+        "pearl-test/{}/overflow/",
+        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
+    );
     let mut pool = ThreadPool::new().map_err(|e| format!("{}", e))?;
-    let storage = block_on(common::create_test_storage(pool.clone(), dir, 10_000)).unwrap();
+    let storage = block_on(common::create_test_storage(pool.clone(), &dir, 10_000)).unwrap();
 
     let cloned_storage = storage.clone();
     let fut = async {
@@ -277,11 +295,11 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
         }
     };
     futures::executor::block_on(fut.map(|res| res.unwrap()));
-    let path = env::temp_dir().join(dir);
+    let path = env::temp_dir().join(&dir);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
     let dir_owned = dir.to_owned();
-    let task = async move { common::clean(storage, &dir_owned).await };
+    let task = async move { common::clean(storage, dir_owned).await };
     pool.run(task).unwrap();
     Ok(())
 }
@@ -318,8 +336,11 @@ fn test_on_disk_index() {
 
     let mut pool = ThreadPool::new().unwrap();
     warn!("pool created");
-    let dir = "pearl_index";
-    let path = env::temp_dir().join(dir);
+    let dir = format!(
+        "pearl-test/{}/index",
+        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
+    );
+    let path = env::temp_dir().join(&dir);
     let mut storage = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
@@ -375,13 +396,15 @@ fn test_work_dir_lock() {
 }
 
 async fn test_work_dir_lock_async(mut pool: ThreadPool) {
-    let dir = "pearl_work_dir";
-    let storage_one = common::create_test_storage(pool.clone(), dir, 1_000_000);
+    let dir = format!(
+        "pearl-test/{}/work_dir",
+        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
+    );
+    let storage_one = common::create_test_storage(pool.clone(), &dir, 1_000_000);
     let res_one = storage_one.await;
-    dbg!(&res_one);
     assert!(res_one.is_ok());
     let storage = res_one.unwrap();
-    let storage_two = common::create_test_storage(pool.clone(), dir, 1_000_000);
+    let storage_two = common::create_test_storage(pool.clone(), &dir, 1_000_000);
     let res_two = storage_two.await;
     dbg!(&res_two);
     assert!(res_two.is_err());
