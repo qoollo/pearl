@@ -1,29 +1,7 @@
-use futures::{
-    future::{self, FutureObj},
-    lock::Mutex,
-    stream::{futures_unordered::FuturesUnordered, StreamExt},
-    task::{Spawn, SpawnExt},
-};
-use std::os::unix::fs::OpenOptionsExt;
-use std::{
-    fs::{self, DirEntry, File, OpenOptions},
-    marker::PhantomData,
-    path::{Path, PathBuf},
-    sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc,
-    },
-    thread,
-    time::{Duration, Instant},
-};
+use crate::prelude::*;
 
 use super::error::{Error, ErrorKind};
 use super::observer::Observer;
-
-use crate::{
-    blob::{self, Blob},
-    record::Record,
-};
 
 const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
@@ -131,7 +109,7 @@ impl<K> Storage<K> {
     /// storage creates it, otherwise tries to init existing storage.
     ///
     /// [`init()`]: struct.Storage.html#method.init
-    pub async fn init<S>(&mut self, mut spawner: S) -> Result<()>
+    pub async fn init<S>(&mut self, spawner: S) -> Result<()>
     where
         S: Spawn + Clone + Send + 'static + Unpin + Sync,
     {
@@ -150,11 +128,7 @@ impl<K> Storage<K> {
         } else {
             self.init_new().await?
         };
-        let observer_fut_obj: FutureObj<_> =
-            Box::new(launch_observer(spawner.clone(), self.inner.clone())).into();
-        spawner
-            .spawn(observer_fut_obj)
-            .map_err(|e| Error::raw(format!("{:?}", e)))?;
+        launch_observer(spawner.clone(), self.inner.clone());
         Ok(())
     }
 
@@ -412,17 +386,15 @@ impl Default for Config {
     }
 }
 
-async fn launch_observer<S>(spawner: S, inner: Inner)
+fn launch_observer<S>(mut spawner: S, inner: Inner)
 where
     S: SpawnExt + Send + 'static + Unpin + Sync,
 {
     let observer = Observer::new(
         Duration::from_millis(inner.config.update_interval_ms),
         inner,
-        Instant::now(),
-        spawner,
     );
-    thread::spawn(move || observer.run());
+    spawner.spawn(observer.run()).unwrap();
 }
 
 /// Trait `Key`
