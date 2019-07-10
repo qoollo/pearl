@@ -13,17 +13,22 @@ pub(crate) trait Index {
     fn contains_key(&self, key: &[u8]) -> ContainsKey;
     fn count(&self) -> Count;
     fn dump(&mut self) -> Dump;
+    fn load(&mut self) -> Load;
 }
 
-pub(crate) struct Get(pub(crate) Pin<Box<dyn Future<Output = Result<RecordHeader>> + Send>>);
+type Inner<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
-pub(crate) struct Push(pub(crate) Pin<Box<dyn Future<Output = Result<()>> + Send>>);
+pub(crate) struct Get(pub(crate) Inner<RecordHeader>);
 
-pub(crate) struct ContainsKey(pub(crate) Pin<Box<dyn Future<Output = Result<bool>> + Send>>);
+pub(crate) struct Push(pub(crate) Inner<()>);
 
-pub(crate) struct Count(pub(crate) Pin<Box<dyn Future<Output = Result<usize>> + Send>>);
+pub(crate) struct ContainsKey(pub(crate) Inner<bool>);
 
-pub(crate) struct Dump(pub(crate) Pin<Box<dyn Future<Output = Result<()>> + Send>>);
+pub(crate) struct Count(pub(crate) Inner<usize>);
+
+pub(crate) struct Dump(pub(crate) Inner<()>);
+
+pub(crate) struct Load<'a>(pub(crate) Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>);
 
 impl Future for Count {
     type Output = Result<usize>;
@@ -58,6 +63,14 @@ impl Future for Dump {
 }
 
 impl Future for Push {
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        Future::poll(self.0.as_mut(), cx)
+    }
+}
+
+impl<'a> Future for Load<'a> {
     type Output = Result<()>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

@@ -1,12 +1,10 @@
 use bincode::{deserialize, serialize, serialize_into};
 use futures::{future, AsyncReadExt, AsyncSeekExt, AsyncWriteExt, FutureExt, TryFutureExt};
-use std::cmp::Ordering;
-use std::fs;
-use std::io::SeekFrom;
+use std::{cmp::Ordering, fs, io::SeekFrom};
 
 use super::core::{Error, ErrorKind, FileName, Result};
 use super::file::File;
-use super::index::{ContainsKey, Count, Dump, Get, Index, Push};
+use super::index::{ContainsKey, Count, Dump, Get, Index, Load, Push};
 
 use crate::record::Header as RecordHeader;
 
@@ -83,18 +81,6 @@ impl SimpleIndex {
         })
     }
 
-    pub(crate) async fn update<'a>(&'a mut self, blob_file: &'a File) -> Result<()> {
-        if let State::OnDisk(file) = &self.inner {
-            Self::generate(file, blob_file).await
-        } else {
-            Ok(())
-        }
-    }
-
-    pub(crate) async fn generate<'a>(index_file: &'a File, blob_file: &'a File) -> Result<()> {
-        unimplemented!()
-    }
-
     async fn binary_search(mut file: File, key: Vec<u8>) -> Result<RecordHeader> {
         let header: Header = Self::read_index_header(&mut file).await?;
 
@@ -169,9 +155,20 @@ impl SimpleIndex {
         Ok(buf)
     }
 
-    pub fn in_memory(&self) -> bool {
+    fn deserialize_bunch(buf: &[u8]) -> Result<Vec<RecordHeader>> {
+        let header: Header = deserialize(buf).map_err(Error::new)?;
+        let header_size = Header::serialized_size()? as usize;
+        Ok((0..header.records_count)
+            .map(|i| {
+                let offset = header_size + i * header.record_header_size;
+                deserialize(&buf[offset..]).unwrap()
+            })
+            .collect())
+    }
+
+    pub fn on_disk(&self) -> bool {
         match self.inner {
-            State::InMemory(_) => true,
+            State::OnDisk(_) => true,
             _ => false,
         }
     }
@@ -256,6 +253,26 @@ impl Index for SimpleIndex {
             State::OnDisk(_) => Dump(
                 future::err(ErrorKind::Index("Index is dumped already".to_string()).into()).boxed(),
             ),
+        }
+    }
+
+    fn load<'a>(&'a mut self) -> Load {
+        match &mut self.inner {
+            State::InMemory(_) => Load(
+                future::err(ErrorKind::Index("Index is loaded already".to_string()).into()).boxed(),
+            ),
+            State::OnDisk(file) => {
+                let mut buf = Vec::new();
+                let mut file = file.clone();
+                let task = async move {
+                    file.read_to_end(&mut buf).map_err(Error::new).await?;
+                    let bunch = Self::deserialize_bunch(&buf)?;
+                    self.inner = State::InMemory(bunch);
+                    Ok(())
+                }
+                    .boxed();
+                Load(task)
+            }
         }
     }
 

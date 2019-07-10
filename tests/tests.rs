@@ -3,15 +3,15 @@
 #[macro_use]
 extern crate log;
 
+use std::{env, fs, path::PathBuf};
+
 use futures::{
     executor::{block_on, ThreadPool},
     future::{FutureExt, TryFutureExt},
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
-    task::SpawnExt,
 };
 use pearl::{Builder, Storage};
 use rand::seq::SliceRandom;
-use std::{env, fs};
 
 mod common;
 
@@ -395,7 +395,7 @@ fn test_work_dir_lock() {
     pool.run(test_work_dir_lock_async(pool.clone()));
 }
 
-async fn test_work_dir_lock_async(mut pool: ThreadPool) {
+async fn test_work_dir_lock_async(pool: ThreadPool) {
     let dir = format!(
         "pearl-test/{}/work_dir",
         std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
@@ -408,6 +408,57 @@ async fn test_work_dir_lock_async(mut pool: ThreadPool) {
     let res_two = storage_two.await;
     dbg!(&res_two);
     assert!(res_two.is_err());
-    pool.spawn(common::clean(storage, dir).map(|res| res.expect("work dir clean failed")))
+    common::clean(storage, dir)
+        .map(|res| res.expect("work dir clean failed"))
+        .await;
+}
+
+#[test]
+fn test_index_from_blob() {
+    common::init_logger();
+    let mut pool = ThreadPool::new().unwrap();
+    pool.run(test_index_from_blob_async(pool.clone()));
+}
+
+async fn test_index_from_blob_async(pool: ThreadPool) {
+    let dir = format!(
+        "pearl-test/{}/index_from_blob",
+        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
+    );
+    let storage = common::create_test_storage(pool.clone(), &dir, 1_000_000)
+        .await
         .unwrap();
+    let records = common::generate_records(10, 10_000);
+    let futures: FuturesUnordered<_> = records
+        .into_iter()
+        .enumerate()
+        .map(|(i, data)| {
+            let key = common::KeyTest(i.to_be_bytes().to_vec());
+            storage.clone().write(key, data)
+        })
+        .collect();
+    futures.map(Result::unwrap).collect::<Vec<_>>().await;
+    storage.close().await.unwrap();
+    let dir_path: PathBuf = env::temp_dir().join(&dir);
+    fs::read_dir(&dir_path)
+        .unwrap()
+        .map(|r| r.unwrap())
+        .for_each(|f| error!("{:?}", f));
+    let index_file_path = dir_path.join("test.0.index");
+    fs::remove_file(&index_file_path).unwrap();
+    fs::read_dir(&dir_path)
+        .unwrap()
+        .map(|r| r.unwrap())
+        .for_each(|f| error!("{:?}", f));
+    let new_storage = common::create_test_storage(pool.clone(), &dir, 1_000_000)
+        .await
+        .unwrap();
+    fs::read_dir(&dir_path)
+        .unwrap()
+        .map(|r| r.unwrap())
+        .for_each(|f| error!("{:?}", f));
+    assert!(index_file_path.exists());
+    common::clean(new_storage, dir)
+        .map(|res| res.expect("work dir clean failed"))
+        .await;
 }

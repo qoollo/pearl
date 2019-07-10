@@ -171,7 +171,7 @@ impl Record {
 pub struct Header {
     magic_byte: u64,
     key: Vec<u8>,
-    data_len: u64,
+    pub(crate) data_len: u64,
     flags: u8,
     blob_offset: u64,
     created: u64,

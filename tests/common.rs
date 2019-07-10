@@ -2,14 +2,13 @@
 #![allow(unused_attributes)]
 #![feature(async_await, await_macro)]
 
+use std::{convert::TryInto, env, error::Error, fs};
+
 use futures::{
-    executor::block_on,
-    future::{FutureExt, FutureObj},
-    stream::{futures_unordered::FuturesUnordered, StreamExt},
-    task::SpawnExt,
+    executor::block_on, future::FutureObj, stream::futures_unordered::FuturesUnordered,
+    task::SpawnExt, FutureExt, StreamExt,
 };
-use std::error::Error;
-use std::{env, fs};
+use rand::Rng;
 
 use pearl::{Builder, Key, Storage};
 
@@ -102,4 +101,17 @@ pub fn check_all_written(storage: &Storage<KeyTest>, nums: Vec<usize>) -> Result
     })));
     block_on(future_obj);
     Ok(())
+}
+
+pub fn generate_records(count: usize, avg_size: usize) -> Vec<Vec<u8>> {
+    let mut gen = rand::thread_rng();
+    (0..count)
+        .map(|_i| {
+            let diff = gen.gen::<i32>() % (avg_size / 10) as i32;
+            let size = avg_size as i32 + diff;
+            let mut buf = vec![0; size.try_into().unwrap()];
+            gen.fill(buf.as_mut_slice());
+            buf
+        })
+        .collect()
 }

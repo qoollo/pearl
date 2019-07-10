@@ -3,7 +3,7 @@ use std::task::{Context, Poll};
 use std::{convert::TryInto, error, fmt, fs, pin::Pin, result, sync::Arc};
 
 use bincode::serialize;
-use futures::{io::AsyncWriteExt, lock::Mutex, Stream, TryStreamExt};
+use futures::{io::AsyncWriteExt, lock::Mutex, Future, FutureExt, Stream, TryStreamExt};
 
 use super::file::File;
 use super::index::Index;
@@ -87,6 +87,10 @@ impl Blob {
         self.index.dump().await
     }
 
+    pub(crate) async fn load_index(&mut self) -> Result<()> {
+        self.index.load().await
+    }
+
     fn create_file(path: &Path) -> Result<fs::File> {
         fs::OpenOptions::new()
             .create_new(true)
@@ -122,10 +126,10 @@ impl Blob {
             index_name.name_to_string()
         );
         let index = if index_name.exists() {
-            debug!("        file exists");
+            error!("        file exists");
             SimpleIndex::from_file(index_name).await?
         } else {
-            debug!("        file not found, create new");
+            error!("        file not found, create new");
             SimpleIndex::new(index_name)
         };
         debug!("    index initialized");
@@ -137,7 +141,8 @@ impl Blob {
             index,
             current_offset: Arc::new(Mutex::new(len)),
         };
-        blob.update_index().await?;
+        error!("call update index");
+        blob.try_regenerate_index().await?;
         blob.check_data_consistency()?;
 
         // @TODO Scan existing file to create index
@@ -145,19 +150,25 @@ impl Blob {
     }
 
     fn raw_records(&mut self) -> RawRecords {
-        unimplemented!();
-        RawRecords {
-            // current_offset: bincode::serialized_size(&self.header).unwrap(),
-            current_offset: 0,
-        }
+        let header_size = bincode::serialized_size(&self.header).unwrap();
+        RawRecords::new(self.file.clone(), header_size)
     }
 
-    pub(crate) async fn update_index(&mut self) -> Result<()> {
-        if self.index.in_memory() {
+    pub(crate) async fn try_regenerate_index(&mut self) -> Result<()> {
+        if self.index.on_disk() {
+            debug!("index already updated");
             return Ok(());
         }
         let raw_r = self.raw_records();
-        raw_r.try_for_each(|h| self.index.push(h)).await
+        raw_r.try_for_each(|h| self.index.push(h)).await?;
+        self.dump().await?;
+        let dir = self.name.dir.clone();
+        error!("updated index");
+        fs::read_dir(&dir)
+            .unwrap()
+            .map(|r| r.unwrap())
+            .for_each(|f| error!("{:?}", f));
+        Ok(())
     }
 
     pub(crate) fn check_data_consistency(&self) -> Result<()> {
@@ -372,13 +383,67 @@ impl Location {
     }
 }
 
+type PinBoxFut<T> = Pin<Box<dyn Future<Output = Result<T>>>>;
+
 struct RawRecords {
-    current_offset: usize,
+    current_offset: u64,
+    header_size: u64,
+    file: File,
+    file_len: u64,
+    read_fut: Option<PinBoxFut<RecordHeader>>,
+}
+
+impl RawRecords {
+    fn new(file: File, header_size: u64) -> Self {
+        let current_offset = header_size;
+        let read_fut = Self::read_at(file.clone(), header_size, current_offset).boxed();
+        let file_len = file.metadata().map(|m| m.len()).unwrap_or(0);
+        RawRecords {
+            current_offset,
+            header_size,
+            file,
+            file_len,
+            read_fut: Some(read_fut),
+        }
+    }
+
+    async fn read_at(file: File, size: u64, offset: u64) -> Result<RecordHeader> {
+        let buf = file.read_at(size.try_into().unwrap(), offset).await?;
+        RecordHeader::from_raw(&buf).map_err(Error::new)
+    }
+
+    fn update_future(&mut self, header: &RecordHeader) {
+        self.current_offset += self.header_size;
+        self.current_offset += header.data_len;
+        if self.file_len < self.current_offset + self.header_size {
+            self.read_fut = None;
+        } else {
+            self.read_fut = Some(
+                Self::read_at(self.file.clone(), self.header_size, self.current_offset).boxed(),
+            );
+        }
+    }
 }
 
 impl Stream for RawRecords {
     type Item = Result<RecordHeader>;
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        unimplemented!()
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let res = if let Some(ref mut f) = self.read_fut {
+            match ready!(Future::poll(f.as_mut(), cx)) {
+                Ok(header) => {
+                    self.update_future(&header);
+                    Some(Ok(header))
+                }
+                Err(e) => {
+                    error!("{:?}", e);
+                    Some(Err(e))
+                }
+            }
+        } else {
+            None
+        };
+
+        Poll::Ready(res)
     }
 }

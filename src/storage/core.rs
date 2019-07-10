@@ -1,21 +1,12 @@
-use futures::{
-    future::{self, FutureObj},
-    lock::Mutex,
-    stream::{futures_unordered::FuturesUnordered, StreamExt},
-    task::{Spawn, SpawnExt},
-};
-use std::os::unix::fs::OpenOptionsExt;
-use std::{
-    fs::{self, DirEntry, File, OpenOptions},
-    marker::PhantomData,
-    path::{Path, PathBuf},
-    sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc,
-    },
-    thread,
-    time::{Duration, Instant},
-};
+use std::fs::{self, DirEntry, File, OpenOptions};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::time::{Duration, Instant};
+use std::{marker::PhantomData, os::unix::fs::OpenOptionsExt, sync::Arc, thread};
+
+use futures::future::{self, FutureObj};
+use futures::task::{Spawn, SpawnExt};
+use futures::{lock::Mutex, stream::futures_unordered::FuturesUnordered, FutureExt, StreamExt};
 
 use super::error::{Error, ErrorKind};
 use super::observer::Observer;
@@ -222,12 +213,32 @@ impl<K> Storage<K> {
     /// # Description
     /// Stop work dir observer thread
     pub async fn close(&self) -> Result<()> {
+        self.inner
+            .safe
+            .lock()
+            .then(|mut safe| {
+                let active_blob = safe.active_blob.take();
+                async move {
+                    if let Some(mut blob) = active_blob {
+                        blob.dump().await
+                    } else {
+                        Ok(())
+                    }
+                }
+            })
+            .await
+            .map_err(Error::new)?;
+        error!("active_blob dumped");
+        let wd = self.inner.config.work_dir.clone().unwrap();
+        fs::read_dir(&wd)
+            .unwrap()
+            .map(|r| r.unwrap())
+            .for_each(|f| error!("{:?}", f));
         self.inner.need_exit.store(false, Ordering::Relaxed);
         self.inner.safe.lock().await.lock_file = None;
         if let Some(ref work_dir) = self.inner.config.work_dir {
             fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
         };
-        // @TODO implement
         Ok(())
     }
 
@@ -312,11 +323,12 @@ impl<K> Storage<K> {
             .collect();
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
-        let active_blob = blobs
+        let mut active_blob = blobs
             .pop()
             .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?
             .boxed();
         let mut safe_locked = self.inner.safe.lock().await;
+        active_blob.load_index().await.map_err(Error::new)?;
         safe_locked.active_blob = Some(active_blob);
         safe_locked.blobs = blobs;
         self.inner.next_blob_id.store(
