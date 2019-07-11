@@ -111,7 +111,7 @@ impl<K> Storage<K> {
     /// [`init()`]: struct.Storage.html#method.init
     pub async fn init<S>(&mut self, spawner: S) -> Result<()>
     where
-        S: Spawn + Clone + Send + 'static + Unpin + Sync,
+        S: Spawn + Clone,
     {
         // @TODO implement work dir validation
         self.prepare_work_dir().await?;
@@ -128,8 +128,7 @@ impl<K> Storage<K> {
         } else {
             self.init_new().await?
         };
-        launch_observer(spawner.clone(), self.inner.clone());
-        Ok(())
+        launch_observer(spawner.clone(), self.inner.clone())
     }
 
     /// # Description
@@ -386,15 +385,15 @@ impl Default for Config {
     }
 }
 
-fn launch_observer<S>(mut spawner: S, inner: Inner)
+fn launch_observer<S>(mut spawner: S, inner: Inner) -> Result<()>
 where
-    S: SpawnExt + Send + 'static + Unpin + Sync,
+    S: SpawnExt,
 {
     let observer = Observer::new(
         Duration::from_millis(inner.config.update_interval_ms),
         inner,
     );
-    spawner.spawn(observer.run()).unwrap();
+    spawner.spawn(observer.run()).map_err(Error::new)
 }
 
 /// Trait `Key`

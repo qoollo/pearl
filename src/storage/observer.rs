@@ -23,8 +23,13 @@ impl Observer {
         let mut interval = Interval::new(self.update_interval);
         while interval.next().await.is_some() && !self.inner.need_exit.load(Ordering::Relaxed) {
             debug!("check active blob");
-            self.try_update().await.unwrap();
+            if let Err(e) = self.try_update().await {
+                error!("{}", e);
+                error!("active blob will no longer be updated, shutdown the system");
+                break;
+            }
         }
+        info!("observer stopped");
     }
 
     async fn try_update(&mut self) -> Result<()> {
