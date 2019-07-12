@@ -42,7 +42,6 @@ impl Observer {
 }
 
 async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
-    error!("(active_size, active_count)");
     let (active_size, active_count) = {
         let safe_locked = inner.safe.lock().await;
         let active_blob = safe_locked
@@ -54,17 +53,14 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
             active_blob.records_count().await.map_err(Error::new)? as u64,
         )
     };
-    error!("config_max_size");
     let config_max_size = inner
         .config
         .max_blob_size
         .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
-    error!("config_max_count");
     let config_max_count = inner
         .config
         .max_data_in_blob
         .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
-    error!("");
     if active_size > config_max_size || active_count >= config_max_count {
         Ok(Some(inner))
     } else {

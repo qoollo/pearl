@@ -52,7 +52,13 @@ impl SimpleIndex {
         let mut buf = Vec::new();
         debug!("read to end index");
         file.read_to_end(&mut buf).await.map_err(Error::new)?;
-        deserialize(&buf).map_err(Error::new)
+        if buf.is_empty() {
+            debug!("empty index file");
+            Ok(Vec::new())
+        } else {
+            debug!("deserialize buffer:{} to headers", buf.len());
+            Self::deserialize_bunch(&buf)
+        }
     }
 
     pub(crate) async fn from_file(name: FileName) -> Result<Self> {
@@ -106,7 +112,7 @@ impl SimpleIndex {
             };
             size -= half;
         }
-        debug!("binary search not found");
+        error!("record with key: {:?}", key);
         Err(ErrorKind::NotFound.into())
     }
 
@@ -128,11 +134,13 @@ impl SimpleIndex {
     }
 
     fn serialize_bunch(bunch: &mut [RecordHeader]) -> Result<Vec<u8>> {
+        debug!("get record header size");
         let record_header_size = bunch
             .first()
-            .ok_or_else(|| Error::from(ErrorKind::NotFound))?
+            .ok_or_else(|| Error::from(ErrorKind::EmptyIndexBunch))?
             .serialized_size()
             .map_err(Error::new)? as usize;
+        debug!("sort bunch");
         bunch.sort_by_key(|h| h.key().to_vec());
         let header = Header {
             record_header_size,
@@ -156,6 +164,7 @@ impl SimpleIndex {
     }
 
     fn deserialize_bunch(buf: &[u8]) -> Result<Vec<RecordHeader>> {
+        debug!("deserialize header");
         let header: Header = deserialize(buf).map_err(Error::new)?;
         let header_size = Header::serialized_size()? as usize;
         Ok((0..header.records_count)
@@ -226,23 +235,35 @@ impl Index for SimpleIndex {
     }
 
     fn dump(&mut self) -> Dump {
+        debug!("dump simple index");
         match &mut self.inner {
             State::InMemory(bunch) => {
+                debug!("index state is InMemory");
+                debug!("create new index file");
                 let fd_res = fs::OpenOptions::new()
                     .create(true)
                     .read(true)
                     .write(true)
                     .open(self.name.as_path())
                     .map_err(Error::new);
+                debug!("serialize index inner data");
                 let buf = Self::serialize_bunch(bunch);
                 let file_res = fd_res.and_then(File::from_std_file);
                 match file_res {
                     Ok(mut file) => {
+                        debug!("set index state to OnDisk");
                         let inner = State::OnDisk(file.clone());
                         self.inner = inner;
+                        debug!("async write to file");
                         let fut = async move {
-                            let buf = buf?;
-                            file.write_all(&buf).map_err(Error::new).await
+                            match buf {
+                                Ok(buf) => {
+                                    debug!("write all buffer");
+                                    file.write_all(&buf).map_err(Error::new).await
+                                }
+                                Err(ref e) if e.is(&ErrorKind::EmptyIndexBunch) => Ok(()),
+                                Err(e) => Err(Error::new(e)),
+                            }
                         }
                             .boxed();
                         Dump(fut)

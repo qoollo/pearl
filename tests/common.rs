@@ -2,6 +2,10 @@
 #![allow(unused_attributes)]
 #![feature(async_await, await_macro)]
 
+use chrono::Local;
+use env_logger::fmt::Color;
+use log::Level;
+use std::io::Write;
 use std::{convert::TryInto, env, error::Error, fs};
 
 use futures::{
@@ -27,7 +31,27 @@ impl Key for KeyTest {
 
 pub fn init_logger() {
     env_logger::builder()
-        .filter_level(log::LevelFilter::Info)
+        .format(|buf, record: &log::Record| {
+            let mut style = buf.style();
+            let color = match record.level() {
+                Level::Error => Color::Red,
+                Level::Warn => Color::Yellow,
+                Level::Info => Color::Green,
+                Level::Debug => Color::Cyan,
+                Level::Trace => Color::White,
+            };
+            style.set_color(color);
+            writeln!(
+                buf,
+                "[{} {} {:>30}:{:^4}] - {}",
+                Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                style.value(record.level()),
+                record.module_path().unwrap_or(""),
+                style.value(record.line().unwrap_or(0)),
+                style.value(record.args())
+            )
+        })
+        .filter_level(log::LevelFilter::Trace)
         .try_init()
         .unwrap_or(());
 }

@@ -66,7 +66,9 @@ mod prelude {
     pub(crate) use crate::blob::{self, Blob};
     pub(crate) use crate::record::Record;
 
-    pub(crate) use futures::stream::{futures_unordered::FuturesUnordered, StreamExt};
+    pub(crate) use futures::stream::{
+        futures_unordered::FuturesUnordered, StreamExt, TryStreamExt,
+    };
     pub(crate) use futures::task::{Spawn, SpawnExt};
     pub(crate) use futures::{future, lock::Mutex, FutureExt};
 

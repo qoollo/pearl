@@ -296,6 +296,7 @@ pub(crate) enum ErrorKind {
     NotFound,
     WrongFileNamePattern(PathBuf),
     EmptyIndexFile,
+    EmptyIndexBunch,
     Index(String),
 }
 

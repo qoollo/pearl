@@ -77,7 +77,7 @@ fn test_storage_init_from_existing() {
 
     assert!(pool
         .run(storage.init(pool.clone()))
-        .map_err(|e| eprintln!("{:?}", e))
+        .map_err(|e| error!("{:?}", e))
         .is_ok());
     assert_eq!(storage.blobs_count(), 2);
     assert!(path.join("test.0.blob").exists());

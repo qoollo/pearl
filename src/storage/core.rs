@@ -116,13 +116,10 @@ impl<K> Storage<K> {
         // @TODO implement work dir validation
         self.prepare_work_dir().await?;
 
-        let cont_res = work_dir_content(
-            self.inner
-                .config
-                .work_dir
-                .as_ref()
-                .ok_or(ErrorKind::Uninitialized)?,
-        );
+        let cont_res = work_dir_content(self.inner.config.work_dir.as_ref().ok_or_else(|| {
+            error!("Work dir is not set");
+            ErrorKind::Uninitialized
+        })?);
         if let Some(files) = cont_res? {
             self.init_from_existing(files).await?
         } else {
@@ -199,9 +196,12 @@ impl<K> Storage<K> {
             .safe
             .lock()
             .then(|mut safe| {
+                debug!("take active blob");
                 let active_blob = safe.active_blob.take();
+                debug!("async dump blob");
                 async move {
                     if let Some(mut blob) = active_blob {
+                        debug!("await for blob to dump");
                         blob.dump().await
                     } else {
                         Ok(())
@@ -238,13 +238,11 @@ impl<K> Storage<K> {
     }
 
     async fn prepare_work_dir(&mut self) -> Result<()> {
-        let path = Path::new(
-            self.inner
-                .config
-                .work_dir
-                .as_ref()
-                .ok_or(ErrorKind::Uninitialized)?,
-        );
+        let work_dir = self.inner.config.work_dir.as_ref().ok_or_else(|| {
+            error!("Work dir is not set");
+            ErrorKind::Uninitialized
+        })?;
+        let path = Path::new(work_dir);
         if path.exists() {
             debug!("work dir exists: {}", path.display());
         } else {
@@ -277,6 +275,33 @@ impl<K> Storage<K> {
     }
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
+        let mut blobs = Self::read_blobs(&files).await?;
+
+        debug!("{} blobs successfully created", blobs.len());
+        blobs.sort_by_key(Blob::id);
+        let mut active_blob = blobs
+            .pop()
+            .ok_or_else(|| {
+                error!(
+                    "There are some blob files in the work dir: {:?}",
+                    self.inner.config.work_dir
+                );
+                error!("Creating blobs from all these files failed");
+                ErrorKind::Uninitialized
+            })?
+            .boxed();
+        let mut safe_locked = self.inner.safe.lock().await;
+        active_blob.load_index().await.map_err(Error::new)?;
+        safe_locked.active_blob = Some(active_blob);
+        safe_locked.blobs = blobs;
+        self.inner.next_blob_id.store(
+            safe_locked.max_id().map(|i| i + 1).unwrap_or(0),
+            Ordering::Relaxed,
+        );
+        Ok(())
+    }
+
+    async fn read_blobs(files: &[DirEntry]) -> Result<Vec<Blob>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
         debug!("read {} entities", dir_content.len());
@@ -292,32 +317,7 @@ impl<K> Storage<K> {
         debug!("init blobs from found files");
         let futures: FuturesUnordered<_> = blob_files.map(Blob::from_file).collect();
         debug!("async init blobs from file");
-        let blob_res: Vec<_> = futures.collect().await;
-        debug!("all {} futures finished", blob_res.len());
-        let mut blobs: Vec<_> = blob_res
-            .into_iter()
-            .filter_map(|res| {
-                if let Err(ref e) = res {
-                    error!("{:?}", e);
-                }
-                res.ok()
-            })
-            .collect();
-        debug!("{} blobs successfully created", blobs.len());
-        blobs.sort_by_key(Blob::id);
-        let mut active_blob = blobs
-            .pop()
-            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?
-            .boxed();
-        let mut safe_locked = self.inner.safe.lock().await;
-        active_blob.load_index().await.map_err(Error::new)?;
-        safe_locked.active_blob = Some(active_blob);
-        safe_locked.blobs = blobs;
-        self.inner.next_blob_id.store(
-            safe_locked.max_id().map(|i| i + 1).unwrap_or(0),
-            Ordering::Relaxed,
-        );
-        Ok(())
+        futures.try_collect().await.map_err(Error::new)
     }
 }
 
@@ -351,13 +351,19 @@ impl Inner {
             .config
             .blob_file_name_prefix
             .as_ref()
-            .ok_or(ErrorKind::Uninitialized)?
+            .ok_or_else(|| {
+                error!("Blob file name prefix is not set");
+                ErrorKind::Uninitialized
+            })?
             .to_owned();
         let dir = self
             .config
             .work_dir
             .as_ref()
-            .ok_or(ErrorKind::Uninitialized)?
+            .ok_or_else(|| {
+                error!("Work dir is not set");
+                ErrorKind::Uninitialized
+            })?
             .to_owned();
         Ok(blob::FileName::new(
             prefix,
