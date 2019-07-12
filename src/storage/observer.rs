@@ -1,93 +1,43 @@
-use std::pin::Pin;
-use std::sync::atomic::Ordering;
-use std::task::{Context, Poll};
-use std::thread;
-use std::time::{Duration, Instant};
-
-use futures::executor::block_on;
-use futures::future::{FutureExt, FutureObj};
-use futures::stream::{Stream, StreamExt};
-use futures::task::SpawnExt;
-
-use crate::blob::Blob;
+use crate::prelude::*;
 
 use super::{
     core::{Inner, Result},
     error::{Error, ErrorKind},
 };
 
-pub(crate) struct Observer<S>
-where
-    S: SpawnExt + Send + 'static,
-{
-    spawner: S,
+pub(crate) struct Observer {
     inner: Inner,
-    next_update: Instant,
     update_interval: Duration,
 }
 
-impl<S> Observer<S>
-where
-    S: SpawnExt + Send + 'static + Unpin + Sync,
-{
-    pub(crate) fn new(
-        update_interval: Duration,
-        inner: Inner,
-        next_update: Instant,
-        spawner: S,
-    ) -> Self {
+impl Observer {
+    pub(crate) fn new(update_interval: Duration, inner: Inner) -> Self {
         Self {
             update_interval,
             inner,
-            next_update,
-            spawner,
         }
     }
 
-    pub(crate) fn run(mut self) {
-        while let Some(f) = block_on(self.next()) {
-            if let Err(e) = self.spawner.spawn(f.map(|r| {
-                r.expect("active blob update future paniced");
-            })) {
-                error!("{:?}", e);
+    pub(crate) async fn run(mut self) {
+        debug!("update interval: {:?}", self.update_interval);
+        let mut interval = Interval::new(self.update_interval);
+        while interval.next().await.is_some() && !self.inner.need_exit.load(Ordering::Relaxed) {
+            debug!("check active blob");
+            if let Err(e) = self.try_update().await {
+                error!("{}", e);
+                error!("active blob will no longer be updated, shutdown the system");
                 break;
             }
-            thread::sleep(self.update_interval);
         }
-        trace!("observer stopped");
+        info!("observer stopped");
     }
-}
 
-impl<S> Stream for Observer<S>
-where
-    S: SpawnExt + Send + 'static + Unpin,
-{
-    type Item = FutureObj<'static, Result<()>>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        let now = Instant::now();
-        if self.next_update < now {
-            trace!("Observer update");
-            self.as_mut().next_update = now + self.update_interval;
-            let inner_cloned = self.inner.clone();
-            let res = async {
-                error!("run active blob check");
-                if let Some(inner) = active_blob_check(inner_cloned).await? {
-                    error!("run update active blob");
-                    update_active_blob(inner).await?;
-                }
-                Ok(())
-            };
-            let res = Box::new(res);
-            let obj = FutureObj::new(res);
-            Poll::Ready(Some(obj))
-        } else if self.inner.need_exit.load(Ordering::Relaxed) {
-            cx.waker().wake_by_ref();
-            Poll::Pending
-        } else {
-            trace!("observer state: false");
-            Poll::Ready(None)
+    async fn try_update(&mut self) -> Result<()> {
+        let inner_cloned = self.inner.clone();
+        if let Some(inner) = active_blob_check(inner_cloned).await? {
+            update_active_blob(inner).await?;
         }
+        Ok(())
     }
 }
 

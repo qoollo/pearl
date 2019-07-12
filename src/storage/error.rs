@@ -23,15 +23,6 @@ impl Error {
             repr: Repr::Other(error.into()),
         }
     }
-
-    pub(crate) fn raw<M>(msg: M) -> Self
-    where
-        M: AsRef<str>,
-    {
-        Self {
-            repr: Repr::Raw(msg.as_ref().to_owned()),
-        }
-    }
 }
 
 impl error::Error for Error {
@@ -39,7 +30,6 @@ impl error::Error for Error {
         match &self.repr {
             Repr::Inner(_) => None,
             Repr::Other(src) => Some(src.as_ref()),
-            Repr::Raw(_) => None,
         }
     }
 }
@@ -62,7 +52,6 @@ impl From<ErrorKind> for Error {
 enum Repr {
     Inner(ErrorKind),
     Other(Box<dyn error::Error + 'static + Send + Sync>),
-    Raw(String),
 }
 
 impl fmt::Display for Repr {
@@ -70,7 +59,6 @@ impl fmt::Display for Repr {
         match self {
             Repr::Inner(kind) => write!(f, "{}", kind.as_str()),
             Repr::Other(e) => e.fmt(f),
-            Repr::Raw(s) => write!(f, "{}", s),
         }
     }
 }

@@ -1,20 +1,7 @@
-use std::fs::{self, DirEntry, File, OpenOptions};
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
-use std::{marker::PhantomData, os::unix::fs::OpenOptionsExt, sync::Arc, thread};
-
-use futures::future::{self, FutureObj};
-use futures::task::{Spawn, SpawnExt};
-use futures::{lock::Mutex, stream::futures_unordered::FuturesUnordered, FutureExt, StreamExt};
+use crate::prelude::*;
 
 use super::error::{Error, ErrorKind};
 use super::observer::Observer;
-
-use crate::{
-    blob::{self, Blob},
-    record::Record,
-};
 
 const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
@@ -122,9 +109,9 @@ impl<K> Storage<K> {
     /// storage creates it, otherwise tries to init existing storage.
     ///
     /// [`init()`]: struct.Storage.html#method.init
-    pub async fn init<S>(&mut self, mut spawner: S) -> Result<()>
+    pub async fn init<S>(&mut self, spawner: S) -> Result<()>
     where
-        S: Spawn + Clone + Send + 'static + Unpin + Sync,
+        S: Spawn + Clone,
     {
         // @TODO implement work dir validation
         self.prepare_work_dir().await?;
@@ -141,12 +128,7 @@ impl<K> Storage<K> {
         } else {
             self.init_new().await?
         };
-        let observer_fut_obj: FutureObj<_> =
-            Box::new(launch_observer(spawner.clone(), self.inner.clone())).into();
-        spawner
-            .spawn(observer_fut_obj)
-            .map_err(|e| Error::raw(format!("{:?}", e)))?;
-        Ok(())
+        launch_observer(spawner.clone(), self.inner.clone())
     }
 
     /// # Description
@@ -424,17 +406,15 @@ impl Default for Config {
     }
 }
 
-async fn launch_observer<S>(spawner: S, inner: Inner)
+fn launch_observer<S>(mut spawner: S, inner: Inner) -> Result<()>
 where
-    S: SpawnExt + Send + 'static + Unpin + Sync,
+    S: SpawnExt,
 {
     let observer = Observer::new(
         Duration::from_millis(inner.config.update_interval_ms),
         inner,
-        Instant::now(),
-        spawner,
     );
-    thread::spawn(move || observer.run());
+    spawner.spawn(observer.run()).map_err(Error::new)
 }
 
 /// Trait `Key`
