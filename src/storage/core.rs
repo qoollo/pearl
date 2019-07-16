@@ -210,12 +210,7 @@ impl<K> Storage<K> {
             })
             .await
             .map_err(Error::new)?;
-        error!("active_blob dumped");
-        let wd = self.inner.config.work_dir.clone().unwrap();
-        fs::read_dir(&wd)
-            .unwrap()
-            .map(|r| r.unwrap())
-            .for_each(|f| error!("{:?}", f));
+        info!("active_blob dumped");
         self.inner.need_exit.store(false, Ordering::Relaxed);
         self.inner.safe.lock().await.lock_file = None;
         if let Some(ref work_dir) = self.inner.config.work_dir {

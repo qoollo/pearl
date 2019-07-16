@@ -29,7 +29,7 @@ impl Key for KeyTest {
     const LEN: u16 = 4;
 }
 
-pub fn init_logger() {
+pub fn init(dir_name: &str) -> String {
     env_logger::builder()
         .format(|buf, record: &log::Record| {
             let mut style = buf.style();
@@ -43,7 +43,7 @@ pub fn init_logger() {
             style.set_color(color);
             writeln!(
                 buf,
-                "[{} {} {:>30}:{:^4}] - {}",
+                "[{} {:^5} {:>30}:{:^4}] - {}",
                 Local::now().format("%Y-%m-%dT%H:%M:%S"),
                 style.value(record.level()),
                 record.module_path().unwrap_or(""),
@@ -51,9 +51,14 @@ pub fn init_logger() {
                 style.value(record.args())
             )
         })
-        .filter_level(log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Warn)
         .try_init()
         .unwrap_or(());
+    format!(
+        "pearl-test/{}/{}/",
+        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs() % 1_563_100_000,
+        dir_name
+    )
 }
 
 pub async fn default_test_storage_in<S>(

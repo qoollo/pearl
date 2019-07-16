@@ -104,9 +104,9 @@ impl File {
         read_fut.await
     }
 
-    pub(crate) fn from_std_file(fd: fs::File) -> Result<Self> {
-        Ok(File {
-            read_fd: Arc::new(fd.try_clone().map_err(Error::new)?),
+    pub(crate) fn from_std_file(fd: fs::File) -> io::Result<Self> {
+        fd.try_clone().map(|file| File {
+            read_fd: Arc::new(file),
             write_fd: Arc::new(Mutex::new(fd)),
         })
     }

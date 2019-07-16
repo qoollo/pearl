@@ -1,6 +1,6 @@
 use bincode::{deserialize, serialize, serialize_into};
 use futures::{future, AsyncReadExt, AsyncSeekExt, AsyncWriteExt, FutureExt, TryFutureExt};
-use std::{cmp::Ordering, fs, io::SeekFrom};
+use std::{cmp::Ordering, convert::TryInto, fs, io::SeekFrom};
 
 use super::core::{Error, ErrorKind, FileName, Result};
 use super::file::File;
@@ -22,9 +22,13 @@ struct Header {
 }
 
 impl Header {
-    fn serialized_size() -> Result<u64> {
+    fn serialized_size() -> bincode::Result<u64> {
         let header = Header::default();
-        bincode::serialized_size(&header).map_err(Error::new)
+        bincode::serialized_size(&header)
+    }
+
+    fn from_raw(buf: &[u8]) -> bincode::Result<Self> {
+        bincode::deserialize(buf)
     }
 }
 
@@ -46,19 +50,19 @@ impl SimpleIndex {
         }
     }
 
-    pub(crate) async fn load(mut file: File) -> Result<Vec<RecordHeader>> {
+    async fn load(mut file: File) -> Result<Vec<RecordHeader>> {
         debug!("seek to file start");
-        file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
+        file.seek(SeekFrom::Start(0)).await?;
         let mut buf = Vec::new();
         debug!("read to end index");
-        file.read_to_end(&mut buf).await.map_err(Error::new)?;
-        if buf.is_empty() {
+        file.read_to_end(&mut buf).await?;
+        Ok(if buf.is_empty() {
             debug!("empty index file");
-            Ok(Vec::new())
+            Vec::new()
         } else {
             debug!("deserialize buffer:{} to headers", buf.len());
-            Self::deserialize_bunch(&buf)
-        }
+            Self::deserialize_bunch(&buf)?
+        })
     }
 
     pub(crate) async fn from_file(name: FileName) -> Result<Self> {
@@ -67,19 +71,12 @@ impl SimpleIndex {
             .create(true)
             .read(true)
             .write(true)
-            .open(name.as_path())
-            .map_err(Error::new)?;
-        let file = File::from_std_file(fd)?;
+            .open(name.as_path())?;
+        let mut file = File::from_std_file(fd)?;
+        let mut buf = vec![0; Header::serialized_size()?.try_into().map_err(Error::new)?];
+        file.read_exact(&mut buf).await?;
+        let header = Header::from_raw(&buf)?;
         let index = Self::load(file).await?;
-        let record_header_size = index
-            .first()
-            .ok_or_else(|| Error::from(ErrorKind::EmptyIndexFile))?
-            .serialized_size()
-            .map_err(Error::new)? as usize;
-        let header = Header {
-            records_count: index.len(),
-            record_header_size,
-        };
         Ok(Self {
             header,
             inner: State::InMemory(index),
@@ -91,7 +88,7 @@ impl SimpleIndex {
         let header: Header = Self::read_index_header(&mut file).await?;
 
         let mut size = header.records_count;
-        if size == 0 {
+        if key.is_empty() {
             error!("empty key was provided");
         }
 
@@ -112,15 +109,15 @@ impl SimpleIndex {
             };
             size -= half;
         }
-        error!("record with key: {:?}", key);
+        info!("record with key: {:?} not found", key);
         Err(ErrorKind::NotFound.into())
     }
 
     async fn read_at(file: &mut File, index: usize, header: Header) -> Result<RecordHeader> {
-        let header_size = bincode::serialized_size(&header).map_err(Error::new)?;
+        let header_size = bincode::serialized_size(&header)?;
         let offset = header_size + (header.record_header_size * index) as u64;
         let buf = file.read_at(header.record_header_size, offset).await?;
-        deserialize(&buf).map_err(Error::new)
+        Ok(deserialize(&buf)?)
     }
 
     async fn read_index_header(file: &mut File) -> Result<Header> {
@@ -128,9 +125,11 @@ impl SimpleIndex {
         debug!("header s: {}", header_size);
         let mut buf = vec![0; header_size];
         debug!("seek to file start");
-        file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
-        file.read(&mut buf).map_err(Error::new).await?;
-        deserialize(&buf).map_err(Error::new)
+        file.seek(SeekFrom::Start(0)).await?;
+        debug!("read header");
+        file.read(&mut buf).await?;
+        debug!("deserialize header");
+        Ok(deserialize(&buf)?)
     }
 
     fn serialize_bunch(bunch: &mut [RecordHeader]) -> Result<Vec<u8>> {
@@ -138,8 +137,7 @@ impl SimpleIndex {
         let record_header_size = bunch
             .first()
             .ok_or_else(|| Error::from(ErrorKind::EmptyIndexBunch))?
-            .serialized_size()
-            .map_err(Error::new)? as usize;
+            .serialized_size()? as usize;
         debug!("sort bunch");
         bunch.sort_by_key(|h| h.key().to_vec());
         let header = Header {
@@ -149,7 +147,7 @@ impl SimpleIndex {
         let mut buf = Vec::with_capacity(
             Header::serialized_size()? as usize + bunch.len() * record_header_size,
         );
-        serialize_into(&mut buf, &header).map_err(Error::new)?;
+        serialize_into(&mut buf, &header)?;
         bunch
             .iter()
             .filter_map(|h| {
@@ -163,16 +161,18 @@ impl SimpleIndex {
         Ok(buf)
     }
 
-    fn deserialize_bunch(buf: &[u8]) -> Result<Vec<RecordHeader>> {
-        debug!("deserialize header");
-        let header: Header = deserialize(buf).map_err(Error::new)?;
+    fn deserialize_bunch(buf: &[u8]) -> bincode::Result<Vec<RecordHeader>> {
+        debug!("deserialize header from buf: {}", buf.len());
+        let header: Header = deserialize(buf)?;
+        trace!("header: {:?}", header);
         let header_size = Header::serialized_size()? as usize;
-        Ok((0..header.records_count)
-            .map(|i| {
-                let offset = header_size + i * header.record_header_size;
-                deserialize(&buf[offset..]).unwrap()
+        (0..header.records_count).try_fold(Vec::new(), |mut records, i| {
+            let offset = header_size + i * header.record_header_size;
+            deserialize(&buf[offset..]).map(|r| {
+                records.push(r);
+                records
             })
-            .collect())
+        })
     }
 
     pub fn on_disk(&self) -> bool {
@@ -244,8 +244,7 @@ impl Index for SimpleIndex {
                     .create(true)
                     .read(true)
                     .write(true)
-                    .open(self.name.as_path())
-                    .map_err(Error::new);
+                    .open(self.name.as_path());
                 debug!("serialize index inner data");
                 let buf = Self::serialize_bunch(bunch);
                 let file_res = fd_res.and_then(File::from_std_file);
@@ -268,7 +267,7 @@ impl Index for SimpleIndex {
                             .boxed();
                         Dump(fut)
                     }
-                    Err(e) => Dump(future::err(e).boxed()),
+                    Err(e) => Dump(future::err(Error::new(e)).boxed()),
                 }
             }
             State::OnDisk(_) => Dump(
@@ -286,6 +285,8 @@ impl Index for SimpleIndex {
                 let mut buf = Vec::new();
                 let mut file = file.clone();
                 let task = async move {
+                    debug!("seek to file start");
+                    file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
                     file.read_to_end(&mut buf).map_err(Error::new).await?;
                     let bunch = Self::deserialize_bunch(&buf)?;
                     self.inner = State::InMemory(bunch);
