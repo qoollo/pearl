@@ -53,6 +53,8 @@
 extern crate log;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate futures;
 
 mod blob;
 mod record;
@@ -64,9 +66,11 @@ mod prelude {
     pub(crate) use crate::blob::{self, Blob};
     pub(crate) use crate::record::Record;
 
-    pub(crate) use futures::stream::{futures_unordered::FuturesUnordered, StreamExt};
+    pub(crate) use futures::stream::{
+        futures_unordered::FuturesUnordered, StreamExt, TryStreamExt,
+    };
     pub(crate) use futures::task::{Spawn, SpawnExt};
-    pub(crate) use futures::{future, lock::Mutex};
+    pub(crate) use futures::{future, lock::Mutex, FutureExt};
 
     pub(crate) use futures_timer::Interval;
 

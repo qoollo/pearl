@@ -3,15 +3,16 @@
 #[macro_use]
 extern crate log;
 
+use std::{env, fs, path::PathBuf, time::Duration};
+
 use futures::{
     executor::{block_on, ThreadPool},
     future::{FutureExt, TryFutureExt},
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
-    task::SpawnExt,
 };
+use futures_timer::Delay;
 use pearl::{Builder, Storage};
 use rand::seq::SliceRandom;
-use std::{env, fs};
 
 mod common;
 
@@ -19,11 +20,7 @@ use common::KeyTest;
 
 #[test]
 fn test_storage_init_new() {
-    common::init_logger();
-    let dir = format!(
-        "pearl-test/{}/new/",
-        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
-    );
+    let dir = common::init("new");
     let mut pool = ThreadPool::new().unwrap();
     println!("storage init");
     let storage = pool
@@ -40,31 +37,30 @@ fn test_storage_init_new() {
 
 #[test]
 fn test_storage_init_from_existing() {
-    common::init_logger();
-    let dir = format!(
-        "pearl-test/{}/existing/",
-        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
-    );
+    let dir = common::init("existing");
     let mut pool = ThreadPool::new().unwrap();
     let path = env::temp_dir().join(&dir);
-    let mut cloned_pool = pool.clone();
-    {
+    let cloned_pool = pool.clone();
+    let task = async {
         let builder = Builder::new()
             .work_dir(&path)
             .blob_file_name_prefix("test")
             .max_blob_size(1_000_000)
             .max_data_in_blob(1_000);
-        let mut temp_storage: Storage<KeyTest> = builder.build().unwrap();
-        cloned_pool
-            .run(temp_storage.init(cloned_pool.clone()))
-            .unwrap();
-        fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(path.join("test.1.blob"))
-            .unwrap();
-        cloned_pool.run(temp_storage.close()).unwrap();
-    }
+        let mut temp_storage: Storage<KeyTest> = builder.build()?;
+        temp_storage.init(cloned_pool.clone()).await?;
+        let mut records = common::generate_records(15, 100_000);
+        while !records.is_empty() {
+            let key = KeyTest(records.len().to_be_bytes().to_vec());
+            let value = records.pop().unwrap();
+            let delay: Delay = futures_timer::Delay::new(Duration::from_millis(16));
+            delay
+                .then(|_| temp_storage.clone().write(key, value))
+                .await?;
+        }
+        temp_storage.close().await
+    };
+    pool.run(task).unwrap();
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
 
@@ -77,7 +73,7 @@ fn test_storage_init_from_existing() {
 
     assert!(pool
         .run(storage.init(pool.clone()))
-        .map_err(|e| eprintln!("{:?}", e))
+        .map_err(|e| error!("{:?}", e))
         .is_ok());
     assert_eq!(storage.blobs_count(), 2);
     assert!(path.join("test.0.blob").exists());
@@ -87,11 +83,7 @@ fn test_storage_init_from_existing() {
 
 #[test]
 fn test_storage_read_write() {
-    common::init_logger();
-    let dir = format!(
-        "pearl-test/{}/read_wirte/",
-        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
-    );
+    let dir = common::init("read_write");
     let mut pool = ThreadPool::new().unwrap();
     println!("create default test storage");
     let storage = pool
@@ -122,11 +114,7 @@ fn test_storage_read_write() {
 
 #[test]
 fn test_storage_multiple_read_write() {
-    common::init_logger();
-    let dir = format!(
-        "pearl-test/{}/multiple/",
-        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
-    );
+    let dir = common::init("multiple");
     let mut pool = ThreadPool::new().unwrap();
     let path = env::temp_dir().join(&dir);
     let mut storage = Builder::new()
@@ -187,22 +175,17 @@ fn test_storage_multiple_read_write() {
 fn test_multithread_read_write() -> Result<(), String> {
     use std::thread;
 
-    common::init_logger();
-    let dir = format!(
-        "pearl-test/{}/multithread/",
-        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
-    );
-    println!("create thread pool");
+    let dir = common::init("multithread");
+    info!("create thread pool");
     let mut pool = ThreadPool::builder()
         .name_prefix("test-pool-")
-        .stack_size(4)
         .create()
         .map_err(|e| format!("{:?}", e))?;
-    println!("block on create default test storage");
+    info!("block on create default test storage");
     let storage = pool.run(common::default_test_storage_in(pool.clone(), &dir))?;
-    println!("collect indexes");
+    info!("collect indexes");
     let indexes = common::create_indexes(10, 10);
-    println!("spawn std threads");
+    info!("spawn std threads");
     let handles = indexes
         .iter()
         .cloned()
@@ -222,19 +205,19 @@ fn test_multithread_read_write() -> Result<(), String> {
                 .unwrap()
         })
         .collect::<Vec<_>>();
-    println!("threads count: {}", handles.len());
+    info!("threads count: {}", handles.len());
     let errs_cnt = handles
         .into_iter()
         .map(std::thread::JoinHandle::join)
         .filter(Result::is_err)
         .count();
-    println!("errors count: {}", errs_cnt);
-    println!("generate flat indexes");
+    info!("errors count: {}", errs_cnt);
+    info!("generate flat indexes");
     let keys = indexes.iter().flatten().cloned().collect::<Vec<_>>();
-    println!("check result");
+    info!("check result");
     common::check_all_written(&storage, keys)?;
     pool.run(common::clean(storage, dir)).unwrap();
-    println!("done");
+    info!("done");
     Ok(())
 }
 
@@ -244,12 +227,7 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
     use futures_timer::Delay;
     use std::time::{Duration, Instant};
 
-    common::init_logger();
-
-    let dir = format!(
-        "pearl-test/{}/overflow/",
-        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
-    );
+    let dir = common::init("overflow");
     let mut pool = ThreadPool::new().map_err(|e| format!("{}", e))?;
     let storage = block_on(common::create_test_storage(pool.clone(), &dir, 10_000)).unwrap();
 
@@ -306,11 +284,10 @@ fn test_storage_multithread_blob_overflow() -> Result<(), String> {
 
 #[test]
 fn test_storage_close() {
-    common::init_logger();
+    let dir = common::init("pearl_close");
     let mut pool = ThreadPool::new().unwrap();
-    let path = env::temp_dir().join("pearl_close/");
     let builder = Builder::new()
-        .work_dir(&path)
+        .work_dir(&dir)
         .blob_file_name_prefix("test")
         .max_blob_size(1_000_000)
         .max_data_in_blob(1_000);
@@ -319,6 +296,7 @@ fn test_storage_close() {
         .run(storage.init(pool.clone()))
         .map_err(|e| eprintln!("{:?}", e))
         .is_ok());
+    let path: PathBuf = dir.into();
     let blob_file_path = path.join("test.0.blob");
     fs::remove_file(blob_file_path).unwrap();
     fs::remove_file(path.join("pearl.lock")).unwrap();
@@ -327,7 +305,7 @@ fn test_storage_close() {
 
 #[test]
 fn test_on_disk_index() {
-    common::init_logger();
+    let dir = common::init("index");
     warn!("logger initialized");
     let data_size = 500;
     let max_blob_size = 1500;
@@ -335,11 +313,6 @@ fn test_on_disk_index() {
     let read_key = 3usize;
 
     let mut pool = ThreadPool::new().unwrap();
-    warn!("pool created");
-    let dir = format!(
-        "pearl-test/{}/index",
-        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
-    );
     let path = env::temp_dir().join(&dir);
     let mut storage = Builder::new()
         .work_dir(&path)
@@ -348,12 +321,14 @@ fn test_on_disk_index() {
         .max_data_in_blob(1_000)
         .build()
         .unwrap();
-    warn!("storage built");
     let slice = [17, 40, 29, 7, 75];
     let data: Vec<u8> = slice.repeat(data_size / slice.len());
     let cloned_pool = pool.clone();
+    warn!("create write task");
     let prepare_task = async {
+        warn!("init storage");
         storage.init(cloned_pool).await.unwrap();
+        warn!("create write unordered futures");
         let write_results: FuturesUnordered<_> = (0..num_records_to_write)
             .map(|key| {
                 storage
@@ -361,6 +336,7 @@ fn test_on_disk_index() {
                     .write(KeyTest(key.to_be_bytes().to_vec()), data.clone())
             })
             .collect();
+        warn!("await for unordered futures");
         write_results
             .for_each(|res| {
                 res.unwrap();
@@ -373,15 +349,19 @@ fn test_on_disk_index() {
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
     };
+    warn!("run write task");
     pool.run(prepare_task);
+    warn!("prepare read task");
     let read_task = async {
         assert!(path.join("test.1.blob").exists());
+        warn!("read key: {}", read_key);
         storage
             .read(KeyTest(read_key.to_be_bytes().to_vec()))
             .await
             .unwrap()
     };
 
+    warn!("run read task");
     let new_data = pool.run(read_task);
 
     assert_eq!(new_data, data);
@@ -390,16 +370,12 @@ fn test_on_disk_index() {
 
 #[test]
 fn test_work_dir_lock() {
-    common::init_logger();
+    let dir = common::init("work_dir_lock");
     let mut pool = ThreadPool::new().unwrap();
-    pool.run(test_work_dir_lock_async(pool.clone()));
+    pool.run(test_work_dir_lock_async(pool.clone(), dir));
 }
 
-async fn test_work_dir_lock_async(mut pool: ThreadPool) {
-    let dir = format!(
-        "pearl-test/{}/work_dir",
-        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs()
-    );
+async fn test_work_dir_lock_async(pool: ThreadPool, dir: String) {
     let storage_one = common::create_test_storage(pool.clone(), &dir, 1_000_000);
     let res_one = storage_one.await;
     assert!(res_one.is_ok());
@@ -408,6 +384,62 @@ async fn test_work_dir_lock_async(mut pool: ThreadPool) {
     let res_two = storage_two.await;
     dbg!(&res_two);
     assert!(res_two.is_err());
-    pool.spawn(common::clean(storage, dir).map(|res| res.expect("work dir clean failed")))
+    common::clean(storage, dir)
+        .map(|res| res.expect("work dir clean failed"))
+        .await;
+}
+
+#[test]
+fn test_index_from_blob() {
+    let dir = common::init("index_from_blob");
+    let mut pool = ThreadPool::new().unwrap();
+    pool.run(test_index_from_blob_async(pool.clone(), dir));
+}
+
+async fn test_index_from_blob_async(pool: ThreadPool, dir: String) {
+    warn!("create storage");
+    let storage = common::create_test_storage(pool.clone(), &dir, 1_000_000)
+        .await
         .unwrap();
+    warn!("generate records");
+    let records = common::generate_records(10, 10_000);
+    warn!("create unordered write futures");
+    let futures: FuturesUnordered<_> = records
+        .into_iter()
+        .enumerate()
+        .map(|(i, data)| {
+            let key = common::KeyTest(i.to_be_bytes().to_vec());
+            storage.clone().write(key, data)
+        })
+        .collect();
+    warn!("collect futures");
+    futures.map(Result::unwrap).collect::<Vec<_>>().await;
+    warn!("close storage");
+    storage.close().await.unwrap();
+    let dir_path: PathBuf = env::temp_dir().join(&dir);
+    info!("ls work dir");
+    fs::read_dir(&dir_path)
+        .unwrap()
+        .map(|r| r.unwrap())
+        .for_each(|f| info!("{:?}", f));
+    let index_file_path = dir_path.join("test.0.index");
+    warn!("delete index file: {}", index_file_path.display());
+    fs::remove_file(&index_file_path).unwrap();
+    info!("ls work dir, index file deleted");
+    fs::read_dir(&dir_path)
+        .unwrap()
+        .map(|r| r.unwrap())
+        .for_each(|f| info!("{:?}", f));
+    warn!("create new test storage");
+    let new_storage = common::create_test_storage(pool.clone(), &dir, 1_000_000)
+        .await
+        .unwrap();
+    fs::read_dir(&dir_path)
+        .unwrap()
+        .map(|r| r.unwrap())
+        .for_each(|f| info!("{:?}", f));
+    assert!(index_file_path.exists());
+    common::clean(new_storage, dir)
+        .map(|res| res.expect("work dir clean failed"))
+        .await;
 }

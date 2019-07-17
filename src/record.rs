@@ -104,7 +104,7 @@ impl Record {
 
     /// # Description
     /// Serialize record to bytes
-    pub fn to_raw(&self) -> Result<Vec<u8>> {
+    pub fn to_raw(&self) -> bincode::Result<Vec<u8>> {
         let raw_header = self.header.to_raw()?;
         let mut buf = Vec::with_capacity(self.header.full_len()? as usize);
         buf.extend(raw_header.iter());
@@ -112,7 +112,7 @@ impl Record {
         Ok(buf)
     }
 
-    pub(crate) fn set_offset(&mut self, offset: u64) -> Result<()> {
+    pub(crate) fn set_offset(&mut self, offset: u64) -> bincode::Result<()> {
         self.header.blob_offset = offset;
         self.header.update_checksum()
     }
@@ -153,7 +153,7 @@ impl Record {
     fn check_header_checksum(&self) -> Result<()> {
         let mut header = self.header.clone();
         header.header_checksum = 0;
-        let calc_crc = crc32(&header.to_raw()?);
+        let calc_crc = header.crc32().map_err(Error::new)?;
         if calc_crc == self.header.header_checksum {
             Ok(())
         } else {
@@ -171,7 +171,7 @@ impl Record {
 pub struct Header {
     magic_byte: u64,
     key: Vec<u8>,
-    data_len: u64,
+    pub(crate) data_len: u64,
     flags: u8,
     blob_offset: u64,
     created: u64,
@@ -203,30 +203,34 @@ impl Header {
         deserialize(&buf).map_err(Error::new)
     }
 
-    pub(crate) fn to_raw(&self) -> Result<Vec<u8>> {
-        serialize(&self).map_err(Error::new)
+    pub(crate) fn to_raw(&self) -> bincode::Result<Vec<u8>> {
+        serialize(&self)
     }
 
     pub fn blob_offset(&self) -> u64 {
         self.blob_offset
     }
 
-    pub(crate) fn full_len(&self) -> Result<u64> {
-        Ok(self.data_len + self.serialized_size()?)
+    pub(crate) fn full_len(&self) -> bincode::Result<u64> {
+        self.serialized_size().map(|size| self.data_len + size)
     }
 
     pub fn key(&self) -> &[u8] {
         &self.key
     }
 
-    pub(crate) fn serialized_size(&self) -> Result<u64> {
-        bincode::serialized_size(&self).map_err(Error::new)
+    #[inline]
+    pub(crate) fn serialized_size(&self) -> bincode::Result<u64> {
+        bincode::serialized_size(&self)
     }
 
-    fn update_checksum(&mut self) -> Result<()> {
+    fn update_checksum(&mut self) -> bincode::Result<()> {
         self.header_checksum = 0;
-        let calc_crc = crc32(&self.to_raw()?);
-        self.header_checksum = calc_crc;
+        self.header_checksum = self.crc32()?;
         Ok(())
+    }
+
+    fn crc32(&self) -> bincode::Result<u32> {
+        self.to_raw().map(|raw| crc32(&raw))
     }
 }

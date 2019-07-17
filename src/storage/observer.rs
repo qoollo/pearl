@@ -25,7 +25,7 @@ impl Observer {
             debug!("check active blob");
             if let Err(e) = self.try_update().await {
                 error!("{}", e);
-                error!("active blob will no longer be updated, shutdown the system");
+                warn!("active blob will no longer be updated, shutdown the system");
                 break;
             }
         }
