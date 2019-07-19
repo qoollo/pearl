@@ -385,7 +385,7 @@ impl Location {
     }
 }
 
-type PinBoxFut<T> = Pin<Box<dyn Future<Output = Result<T>>>>;
+type PinBoxFut<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
 struct RawRecords {
     current_offset: u64,
