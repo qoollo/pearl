@@ -1,4 +1,4 @@
-#![feature(await_macro, async_await, arbitrary_self_types)]
+#![feature(async_await, arbitrary_self_types)]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 #![allow(clippy::needless_lifetimes)]
@@ -15,7 +15,7 @@
 //! For more advanced usage see the benchmark tool as the example
 //!
 //! ```no-run
-//! #![feature(async_await, await_macro)]
+//! #![feature(async_await)]
 //! use pearl::{Storage, Builder, Key};
 //! use futures::executor::ThreadPool;
 //!

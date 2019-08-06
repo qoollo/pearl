@@ -1,4 +1,4 @@
-#![feature(async_await, await_macro)]
+#![feature(async_await)]
 #![allow(clippy::needless_lifetimes)]
 
 extern crate pearl;
