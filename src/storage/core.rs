@@ -109,10 +109,7 @@ impl<K> Storage<K> {
     /// storage creates it, otherwise tries to init existing storage.
     ///
     /// [`init()`]: struct.Storage.html#method.init
-    pub async fn init<S>(&mut self, spawner: S) -> Result<()>
-    where
-        S: Spawn + Clone,
-    {
+    pub async fn init(&mut self) -> Result<()> {
         // @TODO implement work dir validation
         self.prepare_work_dir().await?;
 
@@ -125,7 +122,8 @@ impl<K> Storage<K> {
         } else {
             self.init_new().await?
         };
-        launch_observer(spawner.clone(), self.inner.clone())
+        launch_observer(self.inner.clone());
+        Ok(())
     }
 
     /// # Description
@@ -407,15 +405,12 @@ impl Default for Config {
     }
 }
 
-fn launch_observer<S>(mut spawner: S, inner: Inner) -> Result<()>
-where
-    S: SpawnExt,
-{
+fn launch_observer(inner: Inner) {
     let observer = Observer::new(
         Duration::from_millis(inner.config.update_interval_ms),
         inner,
     );
-    spawner.spawn(observer.run()).map_err(Error::new)
+    tokio::spawn(observer.run());
 }
 
 /// Trait `Key`

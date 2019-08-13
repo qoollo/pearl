@@ -69,15 +69,13 @@ mod prelude {
     pub(crate) use futures::stream::{
         futures_unordered::FuturesUnordered, StreamExt, TryStreamExt,
     };
-    pub(crate) use futures::task::{Spawn, SpawnExt};
     pub(crate) use futures::{future, lock::Mutex, FutureExt};
 
-    pub(crate) use futures_timer::Interval;
+    pub(crate) use tokio::timer::Interval;
 
     pub(crate) use std::fs::{self, DirEntry, File, OpenOptions};
     pub(crate) use std::path::{Path, PathBuf};
     pub(crate) use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-    pub(crate) use std::{
-        marker::PhantomData, os::unix::fs::OpenOptionsExt, sync::Arc, thread, time::Duration,
-    };
+    pub(crate) use std::time::{Duration, Instant};
+    pub(crate) use std::{marker::PhantomData, os::unix::fs::OpenOptionsExt, sync::Arc, thread};
 }

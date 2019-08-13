@@ -328,10 +328,6 @@ impl FileName {
         self.dir.join(self.to_string())
     }
 
-    fn to_string(&self) -> String {
-        format!("{}.{}.{}", self.name_prefix, self.id, self.extension)
-    }
-
     fn try_from_path(path: &Path) -> Option<Self> {
         let extension = path.extension()?.to_str()?.to_owned();
         let stem = path.file_stem()?;
@@ -353,6 +349,12 @@ impl FileName {
 
     fn exists(&self) -> bool {
         self.as_path().exists()
+    }
+}
+
+impl fmt::Display for FileName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+        write!(f, "{}.{}.{}", self.name_prefix, self.id, self.extension)
     }
 }
 

@@ -30,8 +30,7 @@ fn main() {
         .filter_module("pearl", LevelFilter::Error)
         .init();
     let mut pool = ThreadPool::new().unwrap();
-    let spawner = pool.clone();
-    let app = start_app(spawner);
+    let app = start_app();
     pool.run(app);
 }
 
@@ -42,7 +41,7 @@ async fn write(lawriter: Arc<Writer<Key128>>, key: Key128, data: Vec<u8>, mut lt
     ltx.try_send(report).unwrap();
 }
 
-async fn start_app(spawner: ThreadPool) {
+async fn start_app() {
     info!("Hello Async World");
     info!("Prepare app matches");
     let matches = prepare_matches();
@@ -60,7 +59,7 @@ async fn start_app(spawner: ThreadPool) {
     );
 
     info!("Init writer");
-    writer.init(spawner.clone()).await;
+    writer.init().await;
 
     info!("Create new statistics");
     let mut statistics = Statistics::new(matches.value_of("max_reports").unwrap().parse().unwrap());
