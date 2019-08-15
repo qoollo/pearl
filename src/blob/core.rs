@@ -116,7 +116,7 @@ impl Blob {
         let file: File = File::from_std_file(Self::open_file(&path)?)?;
         let name = FileName::from_path(&path)?;
         let len = file.metadata()?.len();
-        debug!("    blob file size: {:.1} MB", len as f64 / 1_000_000.0);
+        debug!("    blob file size: {} MB", len / 1_000_000);
         let mut index_name: FileName = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         debug!("    looking for index file: [{}]", index_name.to_string());

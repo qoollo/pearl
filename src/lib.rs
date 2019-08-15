@@ -6,7 +6,7 @@
 //! # pearl
 //!
 //! The `pearl` library is a Append only key-value blob storage on disk.
-//! Crate `pearl` provides [`Futures 0.3`] interface.
+//! Crate `pearl` provides [`Futures 0.3`] interface. Tokio runtime required.
 //!
 //! [`Futures 0.3`]: https://rust-lang-nursery.github.io/futures-api-docs#latest
 //!
@@ -17,7 +17,6 @@
 //! ```no-run
 //! #![feature(async_await)]
 //! use pearl::{Storage, Builder, Key};
-//! use futures::executor::ThreadPool;
 //!
 //! struct Id(String);
 //!
@@ -31,9 +30,8 @@
 //!     const LEN: u16 = 4;
 //! }
 //!
-//! let mut pool = ThreadPool::new().unwrap();
-//! let spawner = pool.clone();
-//! let task = async {
+//! #[tokio::main]
+//! async fn main() {
 //!     let mut storage: Storage<Id> = Builder::new()
 //!         .work_dir("/tmp/pearl/")
 //!         .max_blob_size(1_000_000)
@@ -41,12 +39,11 @@
 //!         .blob_file_name_prefix("pearl-test")
 //!         .build()
 //!         .unwrap();
-//!     storage.init(spawner).await.unwrap();
+//!     storage.init().await.unwrap();
 //!     let key = Id("test".to_string());
 //!     let data = b"Hello World!".to_vec();
 //!     storage.write(key, data).await.unwrap();
-//! };
-//! pool.run(task);
+//! }
 //! ```
 
 #[macro_use]
@@ -64,7 +61,7 @@ pub use storage::{Builder, Error, ErrorKind, Key, Storage};
 
 mod prelude {
     pub(crate) use crate::blob::{self, Blob};
-    pub(crate) use crate::record::Record;
+    pub(crate) use crate::{record::Record, storage::Key};
 
     pub(crate) use futures::stream::{
         futures_unordered::FuturesUnordered, StreamExt, TryStreamExt,
@@ -73,9 +70,12 @@ mod prelude {
 
     pub(crate) use tokio::timer::Interval;
 
+    pub(crate) use bincode::{deserialize, serialize};
+    pub(crate) use crc::crc32::checksum_castagnoli as crc32;
+    pub(crate) use std::fmt::{Display, Formatter, Result as FmtResult};
     pub(crate) use std::fs::{self, DirEntry, File, OpenOptions};
     pub(crate) use std::path::{Path, PathBuf};
     pub(crate) use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     pub(crate) use std::time::{Duration, Instant};
-    pub(crate) use std::{marker::PhantomData, os::unix::fs::OpenOptionsExt, sync::Arc, thread};
+    pub(crate) use std::{error, marker::PhantomData, os::unix::fs::OpenOptionsExt, sync::Arc};
 }

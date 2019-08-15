@@ -1,14 +1,14 @@
-use std::path::PathBuf;
+use crate::prelude::*;
 
 use super::core::{Config, Result, Storage};
 use super::error::ErrorKind;
 
-/// `Builder` used for initializing a `Storage`.
+/// `Builder` is used to initialize a `Storage`.
 /// Required params:
 ///  - [`work_dir`] - where `Storage` will keep blob and index files
 ///  - [`max_blob_size`] - upper limit of blob file size
 ///  - [`max_data_in_blob`] - maximum number of records in one blob
-///  - [`blob_file_name_prefix`] - blob file name pattern: {prefix}.{id}.{ext}
+///  - [`blob_file_name_prefix`] - prefix in blob file name pattern: {prefix}.{id}.{ext}
 ///  - [`key_size`] - const key size in bytes
 ///         
 /// # Example
@@ -63,7 +63,6 @@ impl Builder {
         }
     }
 
-    /// # Description
     /// Sets working directory. If path doesn't exists, Storage will try to create it
     /// at initialization stage.
     pub fn work_dir<S: Into<PathBuf>>(mut self, work_dir: S) -> Self {
@@ -74,7 +73,6 @@ impl Builder {
         self
     }
 
-    /// # Description
     /// Sets blob file size approximate limit. When the file size exceeds it,
     /// active blob update is activated.
     /// Must be greater than zero
@@ -87,7 +85,6 @@ impl Builder {
         self
     }
 
-    /// # Description
     /// Limits max number of records in a single blob.
     /// Must be greater than zero
     pub fn max_data_in_blob(mut self, max_data_in_blob: u64) -> Self {
@@ -99,7 +96,6 @@ impl Builder {
         self
     }
 
-    /// # Description
     /// Sets blob file name prefix, e.g. if prefix set to `hellopearl`,
     /// files will be named as `hellopearl.[N].blob`.
     /// Where N - index number of file
