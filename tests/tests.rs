@@ -1,4 +1,4 @@
-#![feature(async_await, repeat_generic_slice)]
+#![feature(repeat_generic_slice)]
 
 #[macro_use]
 extern crate log;
@@ -10,7 +10,7 @@ use futures::future::{FutureExt, TryFutureExt};
 use futures::stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt};
 use pearl::{Builder, Storage};
 use rand::seq::SliceRandom;
-use tokio::timer::Delay;
+use tokio::timer::delay;
 
 mod common;
 
@@ -46,7 +46,7 @@ async fn test_storage_init_from_existing() {
         while !records.is_empty() {
             let key = KeyTest(records.len().to_be_bytes().to_vec());
             let value = records.pop().unwrap();
-            let delay = Delay::new(Instant::now() + Duration::from_millis(16));
+            let delay = delay(Instant::now() + Duration::from_millis(16));
             delay
                 .then(|_| temp_storage.clone().write(key, value))
                 .await?;
@@ -209,7 +209,7 @@ async fn test_storage_multithread_blob_overflow() -> Result<(), String> {
         let data = "omn".repeat(150).as_bytes().to_vec();
         let delay_futures: Vec<_> = range
             .iter()
-            .map(|i| Delay::new(Instant::now() + Duration::from_millis(i * 100)))
+            .map(|i| delay(Instant::now() + Duration::from_millis(i * 100)))
             .collect();
         let write_futures: FuturesUnordered<_> = range
             .iter()
@@ -301,7 +301,7 @@ async fn test_on_disk_index() -> Result<(), String> {
     while count < 2 {
         count = storage.blobs_count();
         debug!("blobs count: {}", count);
-        tokio::timer::Delay::new(Instant::now() + Duration::from_millis(200)).await;
+        delay(Instant::now() + Duration::from_millis(200)).await;
     }
     assert!(path.join("test.1.blob").exists());
     warn!("read key: {}", read_key);

@@ -1,6 +1,4 @@
-#![allow(clippy::needless_lifetimes)]
 #![allow(unused_attributes)]
-#![feature(async_await)]
 
 use chrono::Local;
 use env_logger::fmt::Color;
