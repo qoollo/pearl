@@ -418,3 +418,10 @@ pub trait Key: AsRef<[u8]> {
         self.as_ref().to_vec()
     }
 }
+
+impl<T> Key for &T
+where
+    T: Key,
+{
+    const LEN: u16 = T::LEN;
+}

@@ -4,7 +4,7 @@ use chrono::Local;
 use env_logger::fmt::Color;
 use log::Level;
 use std::io::Write;
-use std::{convert::TryInto, env, error::Error, fs};
+use std::{convert::TryInto, env, fs};
 
 use futures::{
     executor::block_on, future::FutureObj, stream::futures_unordered::FuturesUnordered, FutureExt,
@@ -74,10 +74,7 @@ pub async fn create_test_storage(
         .max_blob_size(max_blob_size)
         .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
-    storage.init().await.map_err(|e| {
-        dbg!(e.source());
-        format!("{:?}", e)
-    })?;
+    storage.init().await.map_err(|e| format!("{:?}", e))?;
     Ok(storage)
 }
 
@@ -95,7 +92,7 @@ pub async fn clean(storage: Storage<KeyTest>, dir: String) -> Result<(), String>
 }
 
 pub async fn write(storage: Storage<KeyTest>, base_number: u64) -> Result<(), String> {
-    let key = KeyTest(base_number.to_be_bytes().to_vec());
+    let key = KeyTest(format!("{}key", base_number).as_bytes().to_vec());
     let data = "omn".repeat(base_number as usize % 1_000_000);
     storage
         .write(key, data.as_bytes().to_vec())
@@ -107,9 +104,11 @@ pub fn check_all_written(storage: &Storage<KeyTest>, nums: Vec<usize>) -> Result
     let keys = nums.iter().map(|n| format!("{}key", n)).collect::<Vec<_>>();
     let read_futures: FuturesUnordered<_> = keys
         .into_iter()
-        .map(|key: String| storage.read(KeyTest(key.as_bytes().to_vec())))
+        .map(|key: String| {
+            dbg!(&key);
+            storage.read(KeyTest(key.as_bytes().to_vec()))
+        })
         .collect();
-    println!("readed futures: {}", read_futures.len());
     let futures = read_futures.collect::<Vec<_>>();
     let expected_len = nums.len();
     let future_obj = FutureObj::new(Box::new(futures.map(move |records| {

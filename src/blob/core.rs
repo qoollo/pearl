@@ -155,7 +155,7 @@ impl Blob {
         let raw_r = self.raw_records().await?;
         raw_r.try_for_each(|h| self.index.push(h)).await?;
         self.dump().await?;
-        error!("index generated");
+        info!("index generated");
         Ok(())
     }
 

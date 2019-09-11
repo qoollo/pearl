@@ -38,7 +38,7 @@ async fn test_storage_init_from_existing() {
         let builder = Builder::new()
             .work_dir(&path)
             .blob_file_name_prefix("test")
-            .max_blob_size(1_000_000)
+            .max_blob_size(900_000)
             .max_data_in_blob(1_000);
         let mut temp_storage: Storage<KeyTest> = builder.build()?;
         temp_storage.init().await?;
@@ -46,7 +46,7 @@ async fn test_storage_init_from_existing() {
         while !records.is_empty() {
             let key = KeyTest(records.len().to_be_bytes().to_vec());
             let value = records.pop().unwrap();
-            let delay = delay(Instant::now() + Duration::from_millis(16));
+            let delay = delay(Instant::now() + Duration::from_millis(100));
             delay
                 .then(|_| temp_storage.clone().write(key, value))
                 .await?;
@@ -97,10 +97,7 @@ async fn test_storage_read_write() {
     common::clean(storage, dir).await.unwrap();
 }
 
-#[tokio::test]
-async fn test_storage_multiple_read_write() {
-    let dir = common::init("multiple");
-    let path = env::temp_dir().join(&dir);
+async fn init_storage(path: &PathBuf) -> Storage<KeyTest> {
     let mut storage = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
@@ -109,24 +106,38 @@ async fn test_storage_multiple_read_write() {
         .build()
         .unwrap();
     storage.init().await.unwrap();
+    storage
+}
 
-    let mut keys = Vec::new();
-    let mut records: Vec<_> = (0..100)
+fn generate_keys() -> Vec<String> {
+    let mut keys: Vec<_> = (0..100)
         .map(|i| {
-            let data = b"viva";
             let key = format!("key{:5}", i);
-            keys.push(key.clone());
-            (key, data)
+            key
         })
         .collect();
-    records.shuffle(&mut rand::thread_rng());
-    let write_stream: FuturesUnordered<_> = records
-        .clone()
-        .into_iter()
-        .map(|(key, data)| {
+    keys.shuffle(&mut rand::thread_rng());
+    keys
+}
+
+#[tokio::test]
+async fn test_storage_multiple_read_write() {
+    let dir = common::init("multiple");
+    dbg!(&dir);
+    let path = env::temp_dir().join(&dir);
+    dbg!(&path);
+    let storage = init_storage(&path).await;
+    error!("storage created");
+    let mut keys = generate_keys();
+    error!("generated {} keys", keys.len());
+
+    let write_stream: FuturesUnordered<_> = keys
+        .iter()
+        .map(|key| {
+            dbg!(&key);
             storage
                 .clone()
-                .write(KeyTest(key.as_bytes().to_vec()), data.to_vec())
+                .write(KeyTest(key.as_bytes().to_vec()), b"qwer".to_vec())
         })
         .collect();
     let now = std::time::Instant::now();
@@ -146,23 +157,23 @@ async fn test_storage_multiple_read_write() {
         .collect::<Vec<_>>()
         .await;
     let elapsed = now.elapsed().as_secs_f64();
-    records.sort_by_key(|(key, _)| key.clone());
+    keys.sort();
     let written = fs::metadata(&blob_file_path).unwrap().len();
     trace!("read {}B/s", written as f64 / elapsed);
     common::clean(storage, dir).await.unwrap();
-    assert_eq!(records.len(), data_from_file.len());
+    assert_eq!(keys.len(), data_from_file.len());
 }
 
 #[tokio::test]
 async fn test_multithread_read_write() -> Result<(), String> {
     let dir = common::init("multithread");
-    info!("block on create default test storage");
+    error!("block on create default test storage");
     let storage = common::default_test_storage_in(&dir).await?;
-    info!("collect indexes");
+    error!("collect indexes");
     let indexes = common::create_indexes(10, 10);
-    info!("create mpsc channel");
+    error!("create mpsc channel");
     let (snd, rcv) = tokio::sync::mpsc::channel(1024);
-    info!("spawn std threads");
+    error!("spawn std threads");
     let s = storage.clone();
     indexes.iter().cloned().for_each(move |mut range| {
         let s = s.clone();
@@ -184,16 +195,16 @@ async fn test_multithread_read_write() -> Result<(), String> {
             })
             .unwrap();
     });
-    info!("await for all threads to finish");
+    error!("await for all threads to finish");
     let handles = rcv.collect::<Vec<_>>().await;
     let errs_cnt = handles.iter().flatten().filter(|r| r.is_err()).count();
-    info!("errors count: {}", errs_cnt);
-    info!("generate flat indexes");
+    error!("errors count: {}", errs_cnt);
+    error!("generate flat indexes");
     let keys = indexes.iter().flatten().cloned().collect::<Vec<_>>();
-    info!("check result");
+    error!("check result");
     common::check_all_written(&storage, keys)?;
     common::clean(storage, dir).await.unwrap();
-    info!("done");
+    error!("done");
     Ok(())
 }
 
