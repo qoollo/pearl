@@ -2,12 +2,46 @@ use crate::prelude::*;
 
 const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
+/// [`Record`] consists of header and data.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub(crate) struct Record {
+    header: Header,
+    data: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct Header {
+    magic_byte: u64,
+    key: Vec<u8>,
+    pub(crate) data_len: u64,
+    flags: u8,
+    blob_offset: u64,
+    created: u64,
+    data_checksum: u32,
+    header_checksum: u32,
+    meta: Vec<Meta>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+struct Meta {
+    name: String,
+    value: Vec<u8>,
+}
+
 type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub(crate) struct Error {
     repr: Repr,
 }
+
+#[derive(Debug)]
+enum Repr {
+    Inner(ErrorKind),
+    Other(Box<dyn error::Error + 'static + Send + Sync>),
+}
+
+impl Meta {}
 
 impl Error {
     pub(crate) fn new<E>(error: E) -> Self
@@ -35,12 +69,6 @@ impl Display for Error {
     }
 }
 
-#[derive(Debug)]
-enum Repr {
-    Inner(ErrorKind),
-    Other(Box<dyn error::Error + 'static + Send + Sync>),
-}
-
 impl Display for Repr {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
@@ -61,13 +89,6 @@ impl From<ErrorKind> for Error {
             repr: Repr::Inner(kind),
         }
     }
-}
-
-/// [`Record`] consists of header and data.
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-pub(crate) struct Record {
-    header: Header,
-    data: Vec<u8>,
 }
 
 impl Record {
@@ -163,18 +184,6 @@ impl Record {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-pub struct Header {
-    magic_byte: u64,
-    key: Vec<u8>,
-    pub(crate) data_len: u64,
-    flags: u8,
-    blob_offset: u64,
-    created: u64,
-    data_checksum: u32,
-    header_checksum: u32,
-}
-
 impl Header {
     pub fn new(key: Vec<u8>, data_len: u64, data_checksum: u32) -> Self {
         Self {
@@ -192,6 +201,7 @@ impl Header {
                 }),
             data_checksum,
             header_checksum: 0,
+            meta: Vec::new(),
         }
     }
 

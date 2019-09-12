@@ -61,20 +61,17 @@ pub use storage::{Builder, Error, ErrorKind, Key, Storage};
 mod prelude {
     pub(crate) use crate::blob::{self, Blob};
     pub(crate) use crate::{record::Record, storage::Key};
-
+    pub(crate) use bincode::{deserialize, serialize};
+    pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::stream::{
         futures_unordered::FuturesUnordered, StreamExt, TryStreamExt,
     };
     pub(crate) use futures::{future, lock::Mutex, FutureExt};
-
-    pub(crate) use tokio::timer::Interval;
-
-    pub(crate) use bincode::{deserialize, serialize};
-    pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use std::fmt::{Display, Formatter, Result as FmtResult};
     pub(crate) use std::fs::{self, DirEntry, File, OpenOptions};
     pub(crate) use std::path::{Path, PathBuf};
     pub(crate) use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     pub(crate) use std::time::{Duration, Instant};
     pub(crate) use std::{error, marker::PhantomData, os::unix::fs::OpenOptionsExt, sync::Arc};
+    pub(crate) use tokio::timer::Interval;
 }
