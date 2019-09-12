@@ -135,7 +135,25 @@ impl<K> Storage<K> {
     /// }
     /// ```
     pub async fn write(self, key: impl Key, value: Vec<u8>) -> Result<()> {
-        let record = Record::new(key, value);
+        self.write_with(key, value, &[]).await
+    }
+
+    /// Similar to [`write()`] but with metadata
+    /// # Examples
+    /// ```no-run
+    /// async fn write_data() {
+    ///     let key = 42u64.to_be_bytes().to_vec();
+    ///     let data = b"async written to blob".to_vec();
+    ///     storage.write(key, data).await
+    /// }
+    /// ```
+    async fn write_with(
+        self,
+        key: impl Key,
+        value: Vec<u8>,
+        meta: impl AsRef<[Meta]>,
+    ) -> Result<()> {
+        let record = Record::new(key, value, meta);
         trace!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
         trace!("return write future");

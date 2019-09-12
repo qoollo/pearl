@@ -56,11 +56,13 @@ mod blob;
 mod record;
 mod storage;
 
+pub use record::Meta;
 pub use storage::{Builder, Error, ErrorKind, Key, Storage};
 
 mod prelude {
     pub(crate) use crate::blob::{self, Blob};
-    pub(crate) use crate::{record::Record, storage::Key};
+    pub(crate) use crate::record::{Meta, Record};
+    pub(crate) use crate::storage::Key;
     pub(crate) use bincode::{deserialize, serialize};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::stream::{

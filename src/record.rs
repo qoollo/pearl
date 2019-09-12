@@ -22,8 +22,10 @@ pub struct Header {
     meta: Vec<Meta>,
 }
 
+/// Struct representing additional meta information. Helps to distinguish different
+/// version of the records with the same key.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-struct Meta {
+pub struct Meta {
     name: String,
     value: Vec<u8>,
 }
@@ -41,7 +43,15 @@ enum Repr {
     Other(Box<dyn error::Error + 'static + Send + Sync>),
 }
 
-impl Meta {}
+impl Meta {
+    /// Create new Meta with name and bytes body.
+    pub fn new(name: String, raw: impl Into<Vec<u8>>) -> Self {
+        Self {
+            name,
+            value: raw.into(),
+        }
+    }
+}
 
 impl Error {
     pub(crate) fn new<E>(error: E) -> Self
@@ -93,8 +103,13 @@ impl From<ErrorKind> for Error {
 
 impl Record {
     /// Creates new `Record` with provided data and key.
-    pub fn new(key: impl Key, data: Vec<u8>) -> Self {
-        let header = Header::new(key.as_ref().to_vec(), data.len() as u64, crc32(&data));
+    pub fn new(key: impl Key, data: Vec<u8>, meta: impl AsRef<[Meta]>) -> Self {
+        let header = Header::new(
+            key.as_ref().to_vec(),
+            data.len() as u64,
+            crc32(&data),
+            meta.as_ref().to_vec(),
+        );
         Self { header, data }
     }
 
@@ -185,7 +200,7 @@ impl Record {
 }
 
 impl Header {
-    pub fn new(key: Vec<u8>, data_len: u64, data_checksum: u32) -> Self {
+    pub fn new(key: Vec<u8>, data_len: u64, data_checksum: u32, meta: Vec<Meta>) -> Self {
         Self {
             magic_byte: RECORD_MAGIC_BYTE,
             key,
@@ -201,18 +216,21 @@ impl Header {
                 }),
             data_checksum,
             header_checksum: 0,
-            meta: Vec::new(),
+            meta,
         }
     }
 
+    #[inline]
     pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
         deserialize(&buf).map_err(Error::new)
     }
 
+    #[inline]
     pub(crate) fn to_raw(&self) -> bincode::Result<Vec<u8>> {
         serialize(&self)
     }
 
+    #[inline]
     pub fn blob_offset(&self) -> u64 {
         self.blob_offset
     }
