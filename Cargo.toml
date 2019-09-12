@@ -9,15 +9,15 @@ readme = "README.md"
 
 [dependencies]
 bincode = "1.1"
+chrono = "0.4"
+crc = "1.8"
 env_logger = "0.6"
-futures-preview = { version = "0.3.0-alpha.16", features = ["compat"] }
 log = "0.4"
-rand = "0.6"
+rand = "0.7"
 serde = "1.0"
 serde_derive = "1.0"
-crc = "1.8"
-futures-timer = "0.2"
-chrono = "*"
+futures-preview = { version = "0.3.0-alpha.18" }
+tokio = { version = "0.2.0-alpha.4" }
 
 clap = { version = "2.33", optional = true }
 

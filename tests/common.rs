@@ -1,16 +1,14 @@
-#![allow(clippy::needless_lifetimes)]
 #![allow(unused_attributes)]
-#![feature(async_await)]
 
 use chrono::Local;
 use env_logger::fmt::Color;
 use log::Level;
 use std::io::Write;
-use std::{convert::TryInto, env, error::Error, fs};
+use std::{convert::TryInto, env, fs};
 
 use futures::{
-    executor::block_on, future::FutureObj, stream::futures_unordered::FuturesUnordered,
-    task::SpawnExt, FutureExt, StreamExt,
+    executor::block_on, future::FutureObj, stream::futures_unordered::FuturesUnordered, FutureExt,
+    StreamExt,
 };
 use rand::Rng;
 
@@ -61,24 +59,14 @@ pub fn init(dir_name: &str) -> String {
     )
 }
 
-pub async fn default_test_storage_in<S>(
-    spawner: S,
-    dir_name: &str,
-) -> Result<Storage<KeyTest>, String>
-where
-    S: SpawnExt + Clone + Send + 'static + Unpin + Sync,
-{
-    create_test_storage(spawner, dir_name, 10_000).await
+pub async fn default_test_storage_in(dir_name: &str) -> Result<Storage<KeyTest>, String> {
+    create_test_storage(dir_name, 10_000).await
 }
 
-pub async fn create_test_storage<S>(
-    spawner: S,
+pub async fn create_test_storage(
     dir_name: &str,
     max_blob_size: u64,
-) -> Result<Storage<KeyTest>, String>
-where
-    S: SpawnExt + Clone + Send + 'static + Unpin + Sync,
-{
+) -> Result<Storage<KeyTest>, String> {
     let path = env::temp_dir().join(dir_name);
     let builder = Builder::new()
         .work_dir(&path)
@@ -86,10 +74,7 @@ where
         .max_blob_size(max_blob_size)
         .max_data_in_blob(1_000);
     let mut storage = builder.build().unwrap();
-    storage.init(spawner).await.map_err(|e| {
-        dbg!(e.source());
-        format!("{:?}", e)
-    })?;
+    storage.init().await.map_err(|e| format!("{:?}", e))?;
     Ok(storage)
 }
 
@@ -101,24 +86,29 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
 
 pub async fn clean(storage: Storage<KeyTest>, dir: String) -> Result<(), String> {
     std::thread::sleep(std::time::Duration::from_millis(100));
-    storage.close().await.map_err(|e| format!("{:?}", e))?;
+    storage.close().await.map_err(|e| e.to_string())?;
     let path = env::temp_dir().join(dir);
-    fs::remove_dir_all(path).map_err(|e| format!("{:?}", e))
+    fs::remove_dir_all(path).map_err(|e| e.to_string())
 }
 
-pub async fn write(storage: Storage<KeyTest>, base_number: u64) {
-    let key = KeyTest(base_number.to_be_bytes().to_vec());
+pub async fn write(storage: Storage<KeyTest>, base_number: u64) -> Result<(), String> {
+    let key = KeyTest(format!("{}key", base_number).as_bytes().to_vec());
     let data = "omn".repeat(base_number as usize % 1_000_000);
-    storage.write(key, data.as_bytes().to_vec()).await.unwrap()
+    storage
+        .write(key, data.as_bytes().to_vec())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 pub fn check_all_written(storage: &Storage<KeyTest>, nums: Vec<usize>) -> Result<(), String> {
     let keys = nums.iter().map(|n| format!("{}key", n)).collect::<Vec<_>>();
     let read_futures: FuturesUnordered<_> = keys
         .into_iter()
-        .map(|key: String| storage.read(KeyTest(key.as_bytes().to_vec())))
+        .map(|key: String| {
+            dbg!(&key);
+            storage.read(KeyTest(key.as_bytes().to_vec()))
+        })
         .collect();
-    println!("readed futures: {}", read_futures.len());
     let futures = read_futures.collect::<Vec<_>>();
     let expected_len = nums.len();
     let future_obj = FutureObj::new(Box::new(futures.map(move |records| {

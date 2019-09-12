@@ -116,7 +116,7 @@ impl Blob {
         let file: File = File::from_std_file(Self::open_file(&path)?)?;
         let name = FileName::from_path(&path)?;
         let len = file.metadata()?.len();
-        debug!("    blob file size: {:.1} MB", len as f64 / 1_000_000.0);
+        debug!("    blob file size: {} MB", len / 1_000_000);
         let mut index_name: FileName = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         debug!("    looking for index file: [{}]", index_name.to_string());
@@ -155,7 +155,7 @@ impl Blob {
         let raw_r = self.raw_records().await?;
         raw_r.try_for_each(|h| self.index.push(h)).await?;
         self.dump().await?;
-        error!("index generated");
+        info!("index generated");
         Ok(())
     }
 
@@ -328,10 +328,6 @@ impl FileName {
         self.dir.join(self.to_string())
     }
 
-    fn to_string(&self) -> String {
-        format!("{}.{}.{}", self.name_prefix, self.id, self.extension)
-    }
-
     fn try_from_path(path: &Path) -> Option<Self> {
         let extension = path.extension()?.to_str()?.to_owned();
         let stem = path.file_stem()?;
@@ -353,6 +349,12 @@ impl FileName {
 
     fn exists(&self) -> bool {
         self.as_path().exists()
+    }
+}
+
+impl fmt::Display for FileName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+        write!(f, "{}.{}.{}", self.name_prefix, self.id, self.extension)
     }
 }
 

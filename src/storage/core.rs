@@ -5,15 +5,13 @@ use super::observer::Observer;
 
 const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
-// For now it is only constant from libc,
+
 const O_EXCL: i32 = 128;
 
-/// # Description
 /// A specialized storage result type
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// A main storage struct.
-/// # Description
 /// This type is clonable, cloning it will only create a new reference,
 /// not a new storage.
 /// Storage has a type parameter K.
@@ -22,17 +20,18 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// # Examples
 /// ```no-run
 /// use pearl::{Storage, Builder, Key};
-/// use futures::executor::ThreadPool;
 ///
-/// let mut pool = ThreadPool::new().unwrap();
-/// let mut storage: Storage<String> = Builder::new()
-///     .work_dir("/tmp/pearl/")
-///     .max_blob_size(1_000_000)
-///     .max_data_in_blob(1_000_000_000)
-///     .blob_file_name_prefix("pearl-test")
-///     .build()
-///     .unwrap();
-/// pool.run(storage.init(pool.clone())).unwrap();
+/// #[tokio::main]
+/// async fn main() {
+///     let mut storage: Storage<String> = Builder::new()
+///         .work_dir("/tmp/pearl/")
+///         .max_blob_size(1_000_000)
+///         .max_data_in_blob(1_000_000_000)
+///         .blob_file_name_prefix("pearl-test")
+///         .build()
+///         .unwrap();
+///     storage.init().await.unwrap();
+/// }
 /// ```
 /// [`Key`]: trait.Key.html
 #[derive(Debug)]
@@ -61,9 +60,8 @@ impl<K> Drop for Storage<K> {
         let twins = self.inner.twins_count.fetch_sub(1, Ordering::Relaxed);
         // 1 is because twin#0 - in observer thread, twin#1 - self
         if twins <= 1 {
+            trace!("stop observer thread");
             self.inner.need_exit.store(false, Ordering::Relaxed);
-            trace!("stop observer thread, await a little");
-            thread::sleep(Duration::from_millis(100));
         }
     }
 }
@@ -109,10 +107,7 @@ impl<K> Storage<K> {
     /// storage creates it, otherwise tries to init existing storage.
     ///
     /// [`init()`]: struct.Storage.html#method.init
-    pub async fn init<S>(&mut self, spawner: S) -> Result<()>
-    where
-        S: Spawn + Clone,
-    {
+    pub async fn init(&mut self) -> Result<()> {
         // @TODO implement work dir validation
         self.prepare_work_dir().await?;
 
@@ -125,19 +120,19 @@ impl<K> Storage<K> {
         } else {
             self.init_new().await?
         };
-        launch_observer(spawner.clone(), self.inner.clone())
+        launch_observer(self.inner.clone());
+        Ok(())
     }
 
-    /// # Description
     /// Writes `data` to active blob asyncronously. If active blob reaches it limit, creates new
     /// and closes old.
     /// # Examples
     /// ```no-run
-    /// block_on(async {
+    /// async fn write_data() {
     ///     let key = 42u64.to_be_bytes().to_vec();
     ///     let data = b"async written to blob".to_vec();
     ///     storage.write(key, data).await
-    /// )};
+    /// }
     /// ```
     pub async fn write(self, key: impl Key, value: Vec<u8>) -> Result<()> {
         let record = Record::new(key, value);
@@ -148,18 +143,18 @@ impl<K> Storage<K> {
             .active_blob
             .as_mut()
             .ok_or(ErrorKind::ActiveBlobNotSet)?;
-        blob.write(record).await.map_err(Error::new)
+        let res = blob.write(record).await;
+        res.map_err(Error::new)
     }
 
-    /// # Description
     /// Reads data with given key, if error ocured or there are no records with matching
     /// key, returns [`Error::RecordNotFound`]
     /// # Examples
     /// ```no-run
-    /// let data = block_on(async {
+    /// async fn read_data() {
     ///     let key = 42u64.to_be_bytes().to_vec();
-    ///     storage.read(key).await
-    /// )};
+    ///     let data = storage.read(key).await;
+    /// }
     /// ```
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
@@ -189,8 +184,7 @@ impl<K> Storage<K> {
         .get_data())
     }
 
-    /// # Description
-    /// Stop work dir observer thread
+    /// Stop blob updater and release lock file
     pub async fn close(&self) -> Result<()> {
         self.inner
             .safe
@@ -219,13 +213,13 @@ impl<K> Storage<K> {
         Ok(())
     }
 
-    /// # Description
-    /// Blobs count contains closed blobs and one active, if is some.
+    /// `blob_count` returns number of closed blobs plus one active, if there is some.
     /// # Examples
     /// ```no-run
-    /// # use pearl::Builder;
+    /// use pearl::Builder;
+    ///
     /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build::<f64>();
-    /// storage.init();
+    /// storage.init().await;
     /// assert_eq!(storage.blobs_count(), 1);
     /// ```
     pub fn blobs_count(&self) -> usize {
@@ -387,7 +381,6 @@ impl Safe {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Config {
-    // pub key_size: Option<u16>,
     pub work_dir: Option<PathBuf>,
     pub max_blob_size: Option<u64>,
     pub max_data_in_blob: Option<u64>,
@@ -407,15 +400,12 @@ impl Default for Config {
     }
 }
 
-fn launch_observer<S>(mut spawner: S, inner: Inner) -> Result<()>
-where
-    S: SpawnExt,
-{
+fn launch_observer(inner: Inner) {
     let observer = Observer::new(
         Duration::from_millis(inner.config.update_interval_ms),
         inner,
     );
-    spawner.spawn(observer.run()).map_err(Error::new)
+    tokio::spawn(observer.run());
 }
 
 /// Trait `Key`
@@ -427,4 +417,11 @@ pub trait Key: AsRef<[u8]> {
     fn to_vec(&self) -> Vec<u8> {
         self.as_ref().to_vec()
     }
+}
+
+impl<T> Key for &T
+where
+    T: Key,
+{
+    const LEN: u16 = T::LEN;
 }

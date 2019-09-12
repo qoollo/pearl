@@ -1,8 +1,4 @@
-use bincode::{deserialize, serialize};
-use crc::crc32::checksum_castagnoli as crc32;
-use std::{error, fmt, result};
-
-use crate::storage::Key;
+use crate::prelude::*;
 
 const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
@@ -33,8 +29,8 @@ impl error::Error for Error {
     }
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         self.repr.fmt(f)
     }
 }
@@ -45,8 +41,8 @@ enum Repr {
     Other(Box<dyn error::Error + 'static + Send + Sync>),
 }
 
-impl fmt::Display for Repr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+impl Display for Repr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Repr::Inner(kind) => write!(f, "{:?}", kind),
             Repr::Other(e) => e.fmt(f),

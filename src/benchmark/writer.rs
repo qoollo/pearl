@@ -1,9 +1,9 @@
-use crate::statistics::Report;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use futures::executor::ThreadPool;
 use pearl::*;
+
+use crate::statistics::Report;
 
 pub struct Writer<K> {
     storage: Storage<K>,
@@ -21,8 +21,8 @@ impl<K> Writer<K> {
         Self { storage }
     }
 
-    pub async fn init(&mut self, spawner: ThreadPool) {
-        self.storage.init(spawner).await.unwrap()
+    pub async fn init(&mut self) {
+        self.storage.init().await.unwrap()
     }
 
     pub async fn write(self: Arc<Self>, key: K, data: Vec<u8>) -> Report
