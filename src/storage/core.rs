@@ -134,8 +134,8 @@ impl<K> Storage<K> {
     ///     storage.write(key, data).await
     /// }
     /// ```
-    pub async fn write(self, key: impl Key, value: Vec<u8>) -> Result<()> {
-        self.write_with(key, value, &[]).await
+    pub async fn write(&self, key: impl Key, value: Vec<u8>) -> Result<()> {
+        self.write_with(key, value, Meta::new()).await
     }
 
     /// Similar to [`write()`] but with metadata
@@ -147,22 +147,50 @@ impl<K> Storage<K> {
     ///     storage.write(key, data).await
     /// }
     /// ```
-    async fn write_with(
-        self,
-        key: impl Key,
-        value: Vec<u8>,
-        meta: impl AsRef<[Meta]>,
-    ) -> Result<()> {
+    pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
+        let existing_metas = self.get_all_existing_metas(&key).await?;
+        if existing_metas.contains(&meta) {
+            return Err(ErrorKind::RecordExists.into());
+        }
+        info!("all existing meta received");
         let record = Record::new(key, value, meta);
-        trace!("await for inner lock");
+        info!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
-        trace!("return write future");
+        info!("return write future");
         let blob = safe
             .active_blob
             .as_mut()
             .ok_or(ErrorKind::ActiveBlobNotSet)?;
+        info!("get active blob");
         let res = blob.write(record).await;
+        info!("active blob write finished");
         res.map_err(Error::new)
+    }
+
+    async fn get_all_existing_metas(&self, key: impl Key) -> Result<Vec<Meta>> {
+        info!("get_all_existing_metas");
+        let mut safe = self.inner.safe.lock().await;
+        info!("lock acquired");
+        let active_blob = safe
+            .active_blob
+            .as_mut()
+            .ok_or(ErrorKind::ActiveBlobNotSet)?;
+        info!("active blob extracted");
+        let mut metas = active_blob
+            .get_all_metas(key.as_ref())
+            .await
+            .map_err(Error::new)?;
+        info!("active blob meta loaded");
+        let blobs: &Vec<Blob> = &safe.blobs;
+        info!("closed blobs extracted");
+        for blob in blobs {
+            let meta = blob.get_all_metas(key.as_ref()).await.map_err(Error::new)?;
+            info!("get all meta from blob {} finished", blob.name);
+            metas.extend(meta);
+            info!("extend finished");
+        }
+        info!("all metas collected");
+        Ok(metas)
     }
 
     /// Reads data with given key, if error ocured or there are no records with matching

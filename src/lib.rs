@@ -61,19 +61,25 @@ pub use storage::{Builder, Error, ErrorKind, Key, Storage};
 
 mod prelude {
     pub(crate) use crate::blob::{self, Blob};
-    pub(crate) use crate::record::{Meta, Record};
+    pub(crate) use crate::record::{Header as RecordHeader, Meta, Record};
     pub(crate) use crate::storage::Key;
-    pub(crate) use bincode::{deserialize, serialize};
+    pub(crate) use bincode::{deserialize, serialize, serialize_into};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
-    pub(crate) use futures::stream::{
-        futures_unordered::FuturesUnordered, StreamExt, TryStreamExt,
-    };
-    pub(crate) use futures::{future, lock::Mutex, FutureExt};
+    pub(crate) use futures::lock::Mutex;
+    pub(crate) use futures::prelude::*;
+    pub(crate) use futures::stream::{futures_unordered::FuturesUnordered, TryStreamExt};
+    pub(crate) use std::cmp::Ordering as CmpOrdering;
+    pub(crate) use std::collections::HashMap;
     pub(crate) use std::fmt::{Display, Formatter, Result as FmtResult};
     pub(crate) use std::fs::{self, DirEntry, File, OpenOptions};
+    pub(crate) use std::io::{Error as IOError, Result as IOResult, SeekFrom};
     pub(crate) use std::path::{Path, PathBuf};
-    pub(crate) use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+    pub(crate) use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicUsize, Ordering};
+    pub(crate) use std::task::{Context, Poll};
     pub(crate) use std::time::{Duration, Instant};
-    pub(crate) use std::{error, marker::PhantomData, os::unix::fs::OpenOptionsExt, sync::Arc};
+    pub(crate) use std::{
+        convert::TryInto, error, marker::PhantomData, os::unix::fs::OpenOptionsExt, pin::Pin,
+        sync::Arc,
+    };
     pub(crate) use tokio::timer::Interval;
 }

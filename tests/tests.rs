@@ -1,4 +1,4 @@
-#![feature(repeat_generic_slice)]
+#![feature(repeat_generic_slice, async_closure)]
 
 #[macro_use]
 extern crate log;
@@ -8,7 +8,7 @@ use std::{env, fs, path::PathBuf};
 
 use futures::future::{FutureExt, TryFutureExt};
 use futures::stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt};
-use pearl::{Builder, Storage};
+use pearl::{Builder, Meta, Storage};
 use rand::seq::SliceRandom;
 use tokio::timer::delay;
 
@@ -47,9 +47,7 @@ async fn test_storage_init_from_existing() {
             let key = KeyTest(records.len().to_be_bytes().to_vec());
             let value = records.pop().unwrap();
             let delay = delay(Instant::now() + Duration::from_millis(100));
-            delay
-                .then(|_| temp_storage.clone().write(key, value))
-                .await?;
+            delay.then(|_| temp_storage.write(key, value)).await?;
         }
         temp_storage.close().await
     };
@@ -135,9 +133,7 @@ async fn test_storage_multiple_read_write() {
         .iter()
         .map(|key| {
             dbg!(&key);
-            storage
-                .clone()
-                .write(KeyTest(key.as_bytes().to_vec()), b"qwer".to_vec())
+            storage.write(KeyTest(key.as_bytes().to_vec()), b"qwer".to_vec())
         })
         .collect();
     let now = std::time::Instant::now();
@@ -212,42 +208,34 @@ async fn test_multithread_read_write() -> Result<(), String> {
 async fn test_storage_multithread_blob_overflow() -> Result<(), String> {
     let dir = common::init("overflow");
     let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
-    let cloned_storage = storage.clone();
-    let fut = async {
-        let mut range: Vec<u64> = (0..100).map(|i| i).collect();
-        range.shuffle(&mut rand::thread_rng());
-        let mut next_write = Instant::now();
-        let data = "omn".repeat(150).as_bytes().to_vec();
-        let delay_futures: Vec<_> = range
-            .iter()
-            .map(|i| delay(Instant::now() + Duration::from_millis(i * 100)))
-            .collect();
-        let write_futures: FuturesUnordered<_> = range
-            .iter()
-            .zip(delay_futures)
-            .map(move |(i, df)| {
-                next_write += Duration::from_millis(500);
-                let write_fut = cloned_storage
-                    .clone()
-                    .write(KeyTest(i.to_be_bytes().to_vec()), data.clone())
+    let mut range: Vec<u64> = (0..100).map(|i| i).collect();
+    range.shuffle(&mut rand::thread_rng());
+    let mut next_write = Instant::now();
+    let data = "omn".repeat(150).as_bytes().to_vec();
+    let clonned_storage = storage.clone();
+    let delay_futures: Vec<_> = range
+        .iter()
+        .map(|i| delay(Instant::now() + Duration::from_millis(i * 100)))
+        .collect();
+    let write_futures: FuturesUnordered<_> = range
+        .iter()
+        .zip(delay_futures)
+        .map(move |(i, df)| {
+            next_write += Duration::from_millis(500);
+            let storage = clonned_storage.clone();
+            let data = data.clone();
+            df.then(async move |_| {
+                let write_fut = storage.write(KeyTest(i.to_be_bytes().to_vec()), data);
+                write_fut
                     .map_err(|e| {
                         trace!("{:?}", e);
-                    });
-                df.then(move |_| write_fut)
+                    })
+                    .await
             })
-            .collect();
-        if write_futures
-            .collect::<Vec<_>>()
-            .await
-            .iter()
-            .any(Result::is_err)
-        {
-            Err(())
-        } else {
-            Ok(())
-        }
-    };
-    fut.map(|res| res.unwrap()).await;
+        })
+        .collect();
+    let results: Vec<_> = write_futures.collect().await;
+    assert!(results.iter().all(|r| r.is_ok()));
     let path = env::temp_dir().join(&dir);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
@@ -294,11 +282,7 @@ async fn test_on_disk_index() -> Result<(), String> {
     storage.init().await.unwrap();
     debug!("create write unordered futures");
     let write_results: FuturesUnordered<_> = (0..num_records_to_write)
-        .map(|key| {
-            storage
-                .clone()
-                .write(KeyTest(key.to_be_bytes().to_vec()), data.clone())
-        })
+        .map(|key| storage.write(KeyTest(key.to_be_bytes().to_vec()), data.clone()))
         .collect();
     debug!("await for unordered futures");
     write_results
@@ -353,7 +337,7 @@ async fn test_index_from_blob() {
         .enumerate()
         .map(|(i, data)| {
             let key = common::KeyTest(i.to_be_bytes().to_vec());
-            storage.clone().write(key, data)
+            storage.write(key, data)
         })
         .collect();
     warn!("collect futures");
@@ -384,4 +368,29 @@ async fn test_index_from_blob() {
     common::clean(new_storage, dir)
         .map(|res| res.expect("work dir clean failed"))
         .await;
+}
+
+#[tokio::test]
+async fn test_write_with() {
+    let dir = common::init("write_with");
+    info!("init dir");
+    let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
+    info!("storage created");
+    let key = KeyTest(b"write_with".to_vec());
+    info!("key created");
+    let value = b"data_with_empty_meta".to_vec();
+    info!("value created");
+    storage
+        .write_with(key.clone(), value, Meta::new())
+        .await
+        .unwrap();
+    info!("write with finished");
+    let value = b"data_with_meta".to_vec();
+    info!("data with meta created");
+    let mut meta = Meta::new();
+    info!("meta created");
+    meta.insert("version".to_owned(), "1.1.0");
+    info!("inserted new entry");
+    storage.write_with(key, value, meta).await.unwrap();
+    info!("second write with finished");
 }

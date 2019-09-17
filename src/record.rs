@@ -19,16 +19,13 @@ pub struct Header {
     created: u64,
     data_checksum: u32,
     header_checksum: u32,
-    meta: Vec<Meta>,
+    meta: Meta,
 }
 
 /// Struct representing additional meta information. Helps to distinguish different
 /// version of the records with the same key.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-pub struct Meta {
-    name: String,
-    value: Vec<u8>,
-}
+pub struct Meta(HashMap<String, Vec<u8>>);
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -45,11 +42,18 @@ enum Repr {
 
 impl Meta {
     /// Create new Meta with name and bytes body.
-    pub fn new(name: String, raw: impl Into<Vec<u8>>) -> Self {
-        Self {
-            name,
-            value: raw.into(),
-        }
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    /// Inserts new option into meta
+    #[inline]
+    pub fn insert(
+        &mut self,
+        name: String,
+        value: impl Into<Vec<u8>>,
+    ) -> Option<impl Into<Vec<u8>>> {
+        self.0.insert(name, value.into())
     }
 }
 
@@ -103,13 +107,8 @@ impl From<ErrorKind> for Error {
 
 impl Record {
     /// Creates new `Record` with provided data and key.
-    pub fn new(key: impl Key, data: Vec<u8>, meta: impl AsRef<[Meta]>) -> Self {
-        let header = Header::new(
-            key.as_ref().to_vec(),
-            data.len() as u64,
-            crc32(&data),
-            meta.as_ref().to_vec(),
-        );
+    pub fn new(key: impl Key, data: Vec<u8>, meta: Meta) -> Self {
+        let header = Header::new(key.as_ref().to_vec(), data.len() as u64, crc32(&data), meta);
         Self { header, data }
     }
 
@@ -200,7 +199,7 @@ impl Record {
 }
 
 impl Header {
-    pub fn new(key: Vec<u8>, data_len: u64, data_checksum: u32, meta: Vec<Meta>) -> Self {
+    pub fn new(key: Vec<u8>, data_len: u64, data_checksum: u32, meta: Meta) -> Self {
         Self {
             magic_byte: RECORD_MAGIC_BYTE,
             key,
@@ -221,6 +220,11 @@ impl Header {
     }
 
     #[inline]
+    pub fn meta(&self) -> &Meta {
+        &self.meta
+    }
+
+    #[inline]
     pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
         deserialize(&buf).map_err(Error::new)
     }
@@ -235,10 +239,12 @@ impl Header {
         self.blob_offset
     }
 
+    #[inline]
     pub(crate) fn full_len(&self) -> bincode::Result<u64> {
         self.serialized_size().map(|size| self.data_len + size)
     }
 
+    #[inline]
     pub fn key(&self) -> &[u8] {
         &self.key
     }

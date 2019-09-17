@@ -80,6 +80,8 @@ pub enum ErrorKind {
     WorkDirInUse,
     /// Storage was initialized with different key size
     KeySizeMismatch,
+    /// Record with the same key and the same metadata already exists
+    RecordExists,
     /// Any error not part of this list
     Other,
 }
@@ -93,6 +95,7 @@ impl ErrorKind {
             ErrorKind::RecordNotFound => "record not found",
             ErrorKind::WorkDirInUse => "work dir in use",
             ErrorKind::KeySizeMismatch => "key size mismatch",
+            ErrorKind::RecordExists => "key exists with the same meta",
             ErrorKind::Other => "other",
         }
     }

@@ -1,12 +1,8 @@
-use bincode::{deserialize, serialize, serialize_into};
-use futures::{future, AsyncReadExt, AsyncSeekExt, AsyncWriteExt, FutureExt, TryFutureExt};
-use std::{cmp::Ordering, convert::TryInto, fs, io::SeekFrom};
+use crate::prelude::*;
 
 use super::core::{Error, ErrorKind, FileName, Result};
 use super::file::File;
-use super::index::{ContainsKey, Count, Dump, Get, Index, Load, Push};
-
-use crate::record::Header as RecordHeader;
+use super::index::{ContainsKey, Count, Dump, Get, Index, Load, Next, Push};
 
 #[derive(Debug)]
 pub(crate) struct SimpleIndex {
@@ -36,6 +32,11 @@ impl Header {
 enum State {
     InMemory(Vec<RecordHeader>),
     OnDisk(File),
+}
+
+struct BinarySearch {
+    header: RecordHeader,
+    file_offset: usize,
 }
 
 impl SimpleIndex {
@@ -84,7 +85,7 @@ impl SimpleIndex {
         })
     }
 
-    async fn binary_search(mut file: File, key: Vec<u8>) -> Result<RecordHeader> {
+    async fn binary_search(mut file: File, key: Vec<u8>) -> Result<BinarySearch> {
         let header: Header = Self::read_index_header(&mut file).await?;
 
         let mut size = header.records_count;
@@ -101,11 +102,14 @@ impl SimpleIndex {
             let cmp = mid_record_header.key().cmp(&key);
             debug!("mid read: {:?}", mid_record_header.key());
             start = match cmp {
-                Ordering::Greater => start,
-                Ordering::Equal => {
-                    return Ok(mid_record_header);
+                CmpOrdering::Greater => start,
+                CmpOrdering::Equal => {
+                    return Ok(BinarySearch {
+                        header: mid_record_header,
+                        file_offset: mid,
+                    });
                 }
-                Ordering::Less => mid,
+                CmpOrdering::Less => mid,
             };
             size -= half;
         }
@@ -184,6 +188,63 @@ impl SimpleIndex {
 }
 
 impl Index for SimpleIndex {
+    fn next_item(&self, key: &[u8], file_offset: Option<usize>, vec_index: Option<usize>) -> Next {
+        info!("next_item");
+        match &self.inner {
+            State::InMemory(bunch) => {
+                let mut id = None;
+                let start = if let Some(i) = vec_index { i + 1 } else { 0 };
+                info!("start index: {}", start);
+                let inner = if let Some(res) = bunch[start..]
+                    .iter()
+                    .enumerate()
+                    .find_map(|(i, h)| {
+                        if h.key() == key {
+                            id = Some(start + i);
+                            Some(h)
+                        } else {
+                            None
+                        }
+                    })
+                    .cloned()
+                {
+                    debug!("found in memory");
+                    future::ok(res)
+                } else {
+                    future::err(ErrorKind::NotFound.into())
+                }
+                .boxed();
+                Next {
+                    inner,
+                    file_offset: None,
+                    vec_index: id,
+                }
+            }
+            State::OnDisk(f) => {
+                debug!("index state on disk");
+                let cloned_key = key.to_vec();
+                let offset = Arc::new(AtomicIsize::new(-1));
+                let cloned_offset = offset.clone();
+                let file = f.clone();
+                let inner = async move {
+                    let binary_search_result =
+                        Self::binary_search(file, cloned_key).boxed().await?;
+                    cloned_offset.store(
+                        binary_search_result.file_offset.try_into().unwrap(),
+                        Ordering::Relaxed,
+                    );
+                    Ok(binary_search_result.header)
+                }
+                    .boxed();
+                Next {
+                    inner,
+                    file_offset: Some(offset),
+                    vec_index: None,
+                }
+            }
+        }
+    }
+
     fn contains_key(&self, key: &[u8]) -> ContainsKey {
         ContainsKey(
             self.get(key)
@@ -217,19 +278,28 @@ impl Index for SimpleIndex {
 
     fn get(&self, key: &[u8]) -> Get {
         match &self.inner {
-            State::InMemory(bunch) => Get(if let Some(res) =
-                bunch.iter().find(|h| h.key() == key).cloned()
-            {
-                debug!("found in memory");
-                future::ok(res)
-            } else {
-                future::err(ErrorKind::NotFound.into())
+            State::InMemory(bunch) => {
+                let inner = if let Some(res) = bunch.iter().find(|h| h.key() == key).cloned() {
+                    debug!("found in memory");
+                    future::ok(res)
+                } else {
+                    future::err(ErrorKind::NotFound.into())
+                }
+                .boxed();
+                Get { inner }
             }
-            .boxed()),
             State::OnDisk(f) => {
                 debug!("index state on disk");
                 let cloned_key = key.to_vec();
-                Get(Self::binary_search(f.clone(), cloned_key).boxed())
+                let file = f.clone();
+                let inner = async {
+                    Self::binary_search(file, cloned_key)
+                        .boxed()
+                        .await
+                        .map(|res| res.header)
+                }
+                    .boxed();
+                Get { inner }
             }
         }
     }

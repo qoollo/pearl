@@ -1,15 +1,8 @@
-use std::path::{Path, PathBuf};
-use std::task::{Context, Poll};
-use std::{convert::TryInto, error, fmt, fs, io, pin::Pin, result, sync::Arc};
-
-use bincode::serialize;
-use futures::{io::AsyncWriteExt, lock::Mutex, Future, FutureExt, Stream, TryStreamExt};
+use crate::prelude::*;
 
 use super::file::File;
-use super::index::Index;
+use super::index::{Index, IndexExt};
 use super::simple_index::SimpleIndex;
-
-use crate::record::{Header as RecordHeader, Record};
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
@@ -24,7 +17,7 @@ pub(crate) type Result<T> = std::result::Result<T, Error>;
 pub(crate) struct Blob {
     header: Header,
     index: SimpleIndex,
-    name: FileName,
+    pub(crate) name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
 }
@@ -77,7 +70,7 @@ impl Blob {
     }
 
     #[inline]
-    fn prepare_file(name: &FileName) -> io::Result<File> {
+    fn prepare_file(name: &FileName) -> IOResult<File> {
         Self::create_file(&name.as_path()).and_then(File::from_std_file)
     }
 
@@ -90,7 +83,7 @@ impl Blob {
     }
 
     #[inline]
-    fn create_file(path: &Path) -> io::Result<fs::File> {
+    fn create_file(path: &Path) -> IOResult<fs::File> {
         fs::OpenOptions::new()
             .create_new(true)
             .write(true)
@@ -99,7 +92,7 @@ impl Blob {
     }
 
     #[inline]
-    fn open_file(path: &Path) -> io::Result<fs::File> {
+    fn open_file(path: &Path) -> IOResult<fs::File> {
         fs::OpenOptions::new()
             .create(false)
             .append(true)
@@ -165,10 +158,6 @@ impl Blob {
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
-        let key = record.key().to_vec();
-        if self.index.contains_key(&key).await? {
-            return Err(ErrorKind::KeyExists.into());
-        }
         let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset).map_err(Error::new)?;
         let buf = record.to_raw().map_err(Error::new)?;
@@ -201,7 +190,7 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) fn file_size(&self) -> io::Result<u64> {
+    pub(crate) fn file_size(&self) -> IOResult<u64> {
         Ok(self.file.metadata()?.len())
     }
 
@@ -212,6 +201,15 @@ impl Blob {
     #[inline]
     pub(crate) fn id(&self) -> usize {
         self.name.id
+    }
+
+    pub(crate) async fn get_all_metas(&self, key: &[u8]) -> Result<Vec<Meta>> {
+        info!("get_all_metas");
+        let headers = self.index.get_all(key);
+        info!("get all headers finished");
+        let metas = headers.map(|h| h.meta().clone()).collect::<Vec<_>>().await;
+        info!("collect meta from headers finished");
+        Ok(metas)
     }
 }
 
@@ -229,8 +227,8 @@ impl error::Error for Error {
     }
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         self.repr.fmt(f)
     }
 }
@@ -262,8 +260,8 @@ impl From<ErrorKind> for Error {
     }
 }
 
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Self {
+impl From<IOError> for Error {
+    fn from(e: IOError) -> Self {
         ErrorKind::IO(e.to_string()).into()
     }
 }
@@ -282,8 +280,8 @@ enum Repr {
     Other(Box<dyn error::Error + 'static + Send + Sync>),
 }
 
-impl fmt::Display for Repr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+impl Display for Repr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Repr::Inner(kind) => write!(f, "{:?}", kind),
             Repr::Other(e) => e.fmt(f),
@@ -352,8 +350,8 @@ impl FileName {
     }
 }
 
-impl fmt::Display for FileName {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+impl Display for FileName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "{}.{}.{}", self.name_prefix, self.id, self.extension)
     }
 }
