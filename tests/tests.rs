@@ -370,27 +370,87 @@ async fn test_index_from_blob() {
         .await;
 }
 
-#[tokio::test]
-async fn test_write_with() {
-    let dir = common::init("write_with");
-    info!("init dir");
-    let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
-    info!("storage created");
-    let key = KeyTest(b"write_with".to_vec());
-    info!("key created");
+async fn write_first_record(storage: &Storage<KeyTest>, key: &KeyTest) {
     let value = b"data_with_empty_meta".to_vec();
-    info!("value created");
     storage
         .write_with(key.clone(), value, Meta::new())
         .await
         .unwrap();
-    info!("write with finished");
+}
+
+async fn write_second_record(storage: &Storage<KeyTest>, key: &KeyTest) -> Result<(), String> {
     let value = b"data_with_meta".to_vec();
-    info!("data with meta created");
     let mut meta = Meta::new();
-    info!("meta created");
     meta.insert("version".to_owned(), "1.1.0");
-    info!("inserted new entry");
-    storage.write_with(key, value, meta).await.unwrap();
-    info!("second write with finished");
+    storage
+        .write_with(key, value, meta)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tokio::test]
+async fn test_write_with() {
+    let dir = common::init("write_with");
+    let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
+    let key = KeyTest(b"write_with".to_vec());
+    write_first_record(&storage, &key).await;
+    write_second_record(&storage, &key).await.unwrap();
+    common::clean(storage, dir)
+        .map(|res| res.expect("work dir clean failed"))
+        .await;
+}
+
+#[tokio::test]
+async fn test_write_with_with_on_disk_index() {
+    let dir = common::init("write_with_with_on_disk_index");
+    let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
+
+    let key = KeyTest(b"write_with".to_vec());
+    write_first_record(&storage, &key).await;
+
+    let records = common::generate_records(20, 1000);
+    error!("{} records generated", records.len());
+    for (i, record) in records.into_iter().enumerate() {
+        let key = KeyTest(format!("{}key", i).as_bytes().to_vec());
+        error!("write key: {:?}", key);
+        delay(Instant::now() + Duration::from_millis(32)).await;
+        storage.write(key, record).await.unwrap();
+    }
+    error!("write records to create closed blob finished");
+    assert!(storage.blobs_count() > 1);
+    error!("blobs count more than 1");
+
+    write_second_record(&storage, &key).await.unwrap();
+    error!("write second record with the same key but different meta was successful");
+
+    assert!(write_second_record(&storage, &key).await.is_err());
+    error!("but next same write of the second record failed as expected");
+
+    common::clean(storage, dir)
+        .map(|res| res.expect("work dir clean failed"))
+        .await;
+}
+
+#[tokio::test]
+async fn test_write_1_000_records_with_same_key() {
+    let dir = common::init("write_1_000_000_records_with_same_key");
+    delay(Instant::now() + Duration::from_millis(1000)).await;
+    error!("work dir: {}", dir);
+    let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
+    let key = KeyTest(b"write_with".to_vec());
+    let value = b"data_with_empty_meta".to_vec();
+    for i in 0..1_000 {
+        info!("{} started", i);
+        let mut meta = Meta::new();
+        meta.insert("version".to_owned(), i.to_string());
+        delay(Instant::now() + Duration::from_micros(8)).await;
+        storage.write_with(&key, value.clone(), meta).await.unwrap();
+        if i % 100 == 0 {
+            error!("{} finished", i);
+        }
+    }
+
+    common::clean(storage, dir)
+        .map(|res| res.expect("work dir clean failed"))
+        .await;
 }

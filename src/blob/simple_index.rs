@@ -34,11 +34,6 @@ enum State {
     OnDisk(File),
 }
 
-struct BinarySearch {
-    header: RecordHeader,
-    file_offset: usize,
-}
-
 impl SimpleIndex {
     pub(crate) fn new(name: FileName) -> Self {
         Self {
@@ -85,7 +80,7 @@ impl SimpleIndex {
         })
     }
 
-    async fn binary_search(mut file: File, key: Vec<u8>) -> Result<BinarySearch> {
+    async fn binary_search(mut file: File, key: Vec<u8>) -> Result<RecordHeader> {
         let header: Header = Self::read_index_header(&mut file).await?;
 
         let mut size = header.records_count;
@@ -104,10 +99,7 @@ impl SimpleIndex {
             start = match cmp {
                 CmpOrdering::Greater => start,
                 CmpOrdering::Equal => {
-                    return Ok(BinarySearch {
-                        header: mid_record_header,
-                        file_offset: mid,
-                    });
+                    return Ok(mid_record_header);
                 }
                 CmpOrdering::Less => mid,
             };
@@ -121,6 +113,7 @@ impl SimpleIndex {
         let header_size = bincode::serialized_size(&header)?;
         let offset = header_size + (header.record_header_size * index) as u64;
         let buf = file.read_at(header.record_header_size, offset).await?;
+        info!("file read at: {}, buf len: {}", offset, buf.len());
         Ok(deserialize(&buf)?)
     }
 
@@ -185,10 +178,29 @@ impl SimpleIndex {
             _ => false,
         }
     }
+
+    async fn next_from(
+        mut file: File,
+        key: Vec<u8>,
+        offset: usize,
+    ) -> Result<(usize, RecordHeader)> {
+        info!("next_from: {}", offset);
+        let mut new_offset = offset;
+        let header: Header = Self::read_index_header(&mut file).await?;
+        loop {
+            let record_header = Self::read_at(&mut file, new_offset, header).await?;
+            new_offset += 1;
+            info!("new_offset: {}", new_offset);
+            if record_header.key() == key.as_slice() {
+                info!("key matched");
+                return Ok((new_offset, record_header));
+            }
+        }
+    }
 }
 
 impl Index for SimpleIndex {
-    fn next_item(&self, key: &[u8], file_offset: Option<usize>, vec_index: Option<usize>) -> Next {
+    fn next_item(&self, key: &[u8], file_index: Option<usize>, vec_index: Option<usize>) -> Next {
         info!("next_item");
         match &self.inner {
             State::InMemory(bunch) => {
@@ -209,36 +221,23 @@ impl Index for SimpleIndex {
                     .cloned()
                 {
                     debug!("found in memory");
-                    future::ok(res)
+                    future::ok((0, res))
                 } else {
                     future::err(ErrorKind::NotFound.into())
                 }
                 .boxed();
                 Next {
                     inner,
-                    file_offset: None,
                     vec_index: id,
                 }
             }
             State::OnDisk(f) => {
-                debug!("index state on disk");
+                info!("next item index on disk");
                 let cloned_key = key.to_vec();
-                let offset = Arc::new(AtomicIsize::new(-1));
-                let cloned_offset = offset.clone();
                 let file = f.clone();
-                let inner = async move {
-                    let binary_search_result =
-                        Self::binary_search(file, cloned_key).boxed().await?;
-                    cloned_offset.store(
-                        binary_search_result.file_offset.try_into().unwrap(),
-                        Ordering::Relaxed,
-                    );
-                    Ok(binary_search_result.header)
-                }
-                    .boxed();
+                let inner = Self::next_from(file, cloned_key, file_index.unwrap_or(0)).boxed();
                 Next {
                     inner,
-                    file_offset: Some(offset),
                     vec_index: None,
                 }
             }
@@ -292,13 +291,7 @@ impl Index for SimpleIndex {
                 debug!("index state on disk");
                 let cloned_key = key.to_vec();
                 let file = f.clone();
-                let inner = async {
-                    Self::binary_search(file, cloned_key)
-                        .boxed()
-                        .await
-                        .map(|res| res.header)
-                }
-                    .boxed();
+                let inner = async { Self::binary_search(file, cloned_key).await }.boxed();
                 Get { inner }
             }
         }

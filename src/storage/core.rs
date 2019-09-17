@@ -148,11 +148,13 @@ impl<K> Storage<K> {
     /// }
     /// ```
     pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
+        info!("write_with");
         let existing_metas = self.get_all_existing_metas(&key).await?;
+        info!("all existing meta received");
         if existing_metas.contains(&meta) {
             return Err(ErrorKind::RecordExists.into());
         }
-        info!("all existing meta received");
+        info!("record with the same meta and key does not exist");
         let record = Record::new(key, value, meta);
         info!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
@@ -184,6 +186,7 @@ impl<K> Storage<K> {
         let blobs: &Vec<Blob> = &safe.blobs;
         info!("closed blobs extracted");
         for blob in blobs {
+            info!("look into next blob");
             let meta = blob.get_all_metas(key.as_ref()).await.map_err(Error::new)?;
             info!("get all meta from blob {} finished", blob.name);
             metas.extend(meta);

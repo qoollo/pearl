@@ -33,6 +33,7 @@ impl Observer {
     }
 
     async fn try_update(&mut self) -> Result<()> {
+        info!("try_update");
         let inner_cloned = self.inner.clone();
         if let Some(inner) = active_blob_check(inner_cloned).await? {
             update_active_blob(inner).await?;
@@ -43,7 +44,9 @@ impl Observer {
 
 async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
     let (active_size, active_count) = {
+        info!("await for lock");
         let safe_locked = inner.safe.lock().await;
+        info!("lock acquired");
         let active_blob = safe_locked
             .active_blob
             .as_ref()
@@ -53,6 +56,7 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
             active_blob.records_count().await.map_err(Error::new)? as u64,
         )
     };
+    info!("lock released");
     let config_max_size = inner
         .config
         .max_blob_size
@@ -73,12 +77,16 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
     // Opening a new blob may take a while
     let new_active = Blob::open_new(next_name).await.map_err(Error::new)?.boxed();
 
-    let mut safe_locked = inner.safe.lock().await;
-    let mut old_active = safe_locked
-        .active_blob
-        .replace(new_active)
-        .ok_or(ErrorKind::ActiveBlobNotSet)?;
-    old_active.dump().await.map_err(Error::new)?;
-    safe_locked.blobs.push(*old_active);
+    {
+        let mut safe_locked = inner.safe.lock().await;
+        info!("lock acquired");
+        let mut old_active = safe_locked
+            .active_blob
+            .replace(new_active)
+            .ok_or(ErrorKind::ActiveBlobNotSet)?;
+        old_active.dump().await.map_err(Error::new)?;
+        safe_locked.blobs.push(*old_active);
+    }
+    info!("lock released");
     Ok(())
 }

@@ -72,14 +72,14 @@ mod prelude {
     pub(crate) use std::collections::HashMap;
     pub(crate) use std::fmt::{Display, Formatter, Result as FmtResult};
     pub(crate) use std::fs::{self, DirEntry, File, OpenOptions};
-    pub(crate) use std::io::{Error as IOError, Result as IOResult, SeekFrom};
+    pub(crate) use std::io::{
+        Error as IOError, ErrorKind as IOErrorKind, Read, Result as IOResult, Seek, SeekFrom, Write,
+    };
+    pub(crate) use std::os::unix::fs::{FileExt, OpenOptionsExt};
     pub(crate) use std::path::{Path, PathBuf};
     pub(crate) use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicUsize, Ordering};
     pub(crate) use std::task::{Context, Poll};
     pub(crate) use std::time::{Duration, Instant};
-    pub(crate) use std::{
-        convert::TryInto, error, marker::PhantomData, os::unix::fs::OpenOptionsExt, pin::Pin,
-        sync::Arc,
-    };
+    pub(crate) use std::{convert::TryInto, error, marker::PhantomData, pin::Pin, sync::Arc};
     pub(crate) use tokio::timer::Interval;
 }
