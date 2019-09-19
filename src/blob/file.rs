@@ -12,8 +12,6 @@ use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
 use tokio::timer::delay;
 
-use super::core::{Error, Result};
-
 const WOULDBLOCK_RETRY_INTERVAL_MS: u64 = 10;
 
 #[derive(Debug, Clone)]
@@ -122,7 +120,7 @@ impl File {
         self.read_fd.metadata()
     }
 
-    pub(crate) async fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> Result<usize> {
+    pub(crate) async fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> IOResult<usize> {
         let mut fd = self.write_fd.lock().await;
         let write_fut = WriteAt {
             fd: &mut fd,
@@ -132,7 +130,7 @@ impl File {
         write_fut.await
     }
 
-    pub(crate) async fn read_at(&self, len: usize, offset: u64) -> Result<Vec<u8>> {
+    pub(crate) async fn read_at(&self, len: usize, offset: u64) -> IOResult<Vec<u8>> {
         let read_fut = ReadAt {
             fd: self.read_fd.clone(),
             len,
@@ -156,16 +154,22 @@ struct WriteAt<'a> {
 }
 
 impl<'a> Future for WriteAt<'a> {
-    type Output = Result<usize>;
+    type Output = IOResult<usize>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         match self.fd.write_at(&self.buf, self.offset) {
-            Ok(t) => Poll::Ready(Ok(t)),
-            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                cx.waker().wake_by_ref();
+            Err(ref e)
+                if e.kind() == ErrorKind::WouldBlock || e.kind() == ErrorKind::Interrupted =>
+            {
+                warn!(
+                    "file write at operation wouldblock or interrupted, retry in {}ms",
+                    WOULDBLOCK_RETRY_INTERVAL_MS
+                );
+                schedule_wake(cx.waker().clone());
                 Poll::Pending
             }
-            Err(e) => Poll::Ready(Err(Error::new(e))),
+            Err(e) => Poll::Ready(Err(e)),
+            Ok(_) => Poll::Ready(Ok(self.buf.len())),
         }
     }
 }
@@ -177,17 +181,23 @@ struct ReadAt {
 }
 
 impl Future for ReadAt {
-    type Output = Result<Vec<u8>>;
+    type Output = IOResult<Vec<u8>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let mut buf = vec![0; self.len];
         match self.fd.read_at(&mut buf, self.offset) {
-            Ok(_t) => Poll::Ready(Ok(buf)),
-            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                cx.waker().wake_by_ref();
+            Err(ref e)
+                if e.kind() == ErrorKind::WouldBlock || e.kind() == ErrorKind::Interrupted =>
+            {
+                warn!(
+                    "file write at operation wouldblock or interrupted, retry in {}ms",
+                    WOULDBLOCK_RETRY_INTERVAL_MS
+                );
+                schedule_wake(cx.waker().clone());
                 Poll::Pending
             }
-            Err(e) => Poll::Ready(Err(Error::new(e))),
+            Err(e) => Poll::Ready(Err(e)),
+            Ok(_) => Poll::Ready(Ok(buf)),
         }
     }
 }
