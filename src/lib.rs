@@ -63,7 +63,7 @@ mod prelude {
     pub(crate) use crate::blob::{self, Blob};
     pub(crate) use crate::record::{Header as RecordHeader, Meta, Record};
     pub(crate) use crate::storage::Key;
-    pub(crate) use bincode::{deserialize, serialize, serialize_into};
+    pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::lock::Mutex;
     pub(crate) use futures::prelude::*;
@@ -77,7 +77,7 @@ mod prelude {
     };
     pub(crate) use std::os::unix::fs::{FileExt, OpenOptionsExt};
     pub(crate) use std::path::{Path, PathBuf};
-    pub(crate) use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicUsize, Ordering};
+    pub(crate) use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     pub(crate) use std::task::Waker;
     pub(crate) use std::task::{Context, Poll};
     pub(crate) use std::time::{Duration, Instant};

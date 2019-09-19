@@ -209,12 +209,14 @@ impl<K> Storage<K> {
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
         let inner = self.inner.safe.lock().await;
+        debug!("safe lock acquired");
         let active_blob_read_res = inner
             .active_blob
             .as_ref()
             .ok_or(ErrorKind::ActiveBlobNotSet)?
             .read(key.as_ref().to_vec())
             .await;
+        debug!("data read from active blob");
         Ok(if let Ok(record) = active_blob_read_res {
             record
         } else {
@@ -225,10 +227,14 @@ impl<K> Storage<K> {
                 .collect();
             debug!("await for stream of read futures: {}", stream.len());
             let mut task = stream.skip_while(|res| future::ready(res.is_err()));
-            task.next()
+            debug!("task created");
+            let res = task
+                .next()
                 .await
                 .ok_or(ErrorKind::RecordNotFound)?
-                .map_err(Error::new)?
+                .map_err(Error::new)?;
+            debug!("task completed");
+            res
         }
         .get_data())
     }

@@ -49,7 +49,7 @@ pub fn init(dir_name: &str) -> String {
                 style.value(record.args())
             )
         })
-        .filter_level(log::LevelFilter::Warn)
+        .filter_level(log::LevelFilter::Trace)
         .try_init()
         .unwrap_or(());
     format!(

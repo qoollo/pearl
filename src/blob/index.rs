@@ -5,9 +5,8 @@ use crate::record::Header as RecordHeader;
 
 type Result<T> = std::result::Result<T, Error>;
 
-pub(crate) trait Index {
+pub(crate) trait Index: Send + Sync {
     fn get(&self, key: &[u8]) -> Get;
-    fn next_item(&self, key: &[u8], file_offset: Option<usize>, vec_index: Option<usize>) -> Next;
     fn push(&mut self, h: RecordHeader) -> Push;
     fn contains_key(&self, key: &[u8]) -> ContainsKey;
     fn count(&self) -> Count;
@@ -15,40 +14,10 @@ pub(crate) trait Index {
     fn load(&mut self) -> Load;
 }
 
-pub(crate) trait IndexExt: Index {
-    fn get_all<'a>(&'a self, key: &'a [u8]) -> GetAll<'a>
-    where
-        Self: Sized,
-    {
-        GetAll {
-            inner: self.get(key).inner.map_ok(|h| (0, h)).boxed(),
-            key,
-            index: self,
-            file_offset: None,
-            vec_index: None,
-        }
-    }
-}
-
-impl<T> IndexExt for T where T: Index {}
-
 type Inner<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
 pub(crate) struct Get {
     pub(crate) inner: Inner<RecordHeader>,
-}
-
-pub(crate) struct Next {
-    pub(crate) inner: Inner<(usize, RecordHeader)>,
-    pub(crate) vec_index: Option<usize>,
-}
-
-pub(crate) struct GetAll<'a> {
-    inner: Inner<(usize, RecordHeader)>,
-    pub key: &'a [u8],
-    index: &'a dyn Index,
-    file_offset: Option<usize>,
-    vec_index: Option<usize>,
 }
 
 pub(crate) struct Push(pub(crate) Inner<()>);
@@ -60,34 +29,6 @@ pub(crate) struct Count(pub(crate) Inner<usize>);
 pub(crate) struct Dump(pub(crate) Inner<()>);
 
 pub(crate) struct Load<'a>(pub(crate) Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>);
-
-impl<'a> Stream for GetAll<'a> {
-    type Item = RecordHeader;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        info!("poll_next: {:?} {:?}", self.file_offset, self.vec_index);
-        if let Ok((offset, header)) = ready!(Future::poll(self.inner.as_mut(), cx)) {
-            info!("record ready");
-            let next = self
-                .index
-                .next_item(&self.key, self.file_offset, self.vec_index);
-            self.vec_index = next.vec_index;
-            if self.vec_index.is_none() {
-                if self.file_offset.is_some() {
-                    self.file_offset.iter_mut().for_each(|fo| *fo = offset);
-                } else {
-                    self.file_offset = Some(offset);
-                }
-            }
-            info!("create next future");
-            self.inner = next.inner;
-            info!("set next future");
-            Poll::Ready(Some(header))
-        } else {
-            Poll::Ready(None)
-        }
-    }
-}
 
 impl Future for Count {
     type Output = Result<usize>;

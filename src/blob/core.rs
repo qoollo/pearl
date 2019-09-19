@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 use super::file::File;
-use super::index::{Index, IndexExt};
+use super::index::Index;
 use super::simple_index::SimpleIndex;
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
@@ -205,10 +205,8 @@ impl Blob {
 
     pub(crate) async fn get_all_metas(&self, key: &[u8]) -> Result<Vec<Meta>> {
         info!("get_all_metas");
-        let headers = self.index.get_all(key);
+        let metas = self.index.get_all_metas(key).await?;
         info!("get all headers finished");
-        let metas = headers.map(|h| h.meta().clone()).collect::<Vec<_>>().await;
-        info!("collect meta from headers finished");
         Ok(metas)
     }
 }
@@ -291,7 +289,6 @@ impl Display for Repr {
 
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) enum ErrorKind {
-    KeyExists,
     NotFound,
     WrongFileNamePattern(PathBuf),
     EmptyIndexBunch,
@@ -437,7 +434,7 @@ impl RawRecords {
 
     fn update_future(&mut self, header: &RecordHeader) {
         self.current_offset += self.record_header_size;
-        self.current_offset += header.data_len;
+        self.current_offset += header.data_len();
         trace!(
             "file len: {}, current offset: {}",
             self.file_len,

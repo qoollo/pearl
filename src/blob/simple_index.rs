@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use super::core::{Error, ErrorKind, FileName, Result};
 use super::file::File;
-use super::index::{ContainsKey, Count, Dump, Get, Index, Load, Next, Push};
+use super::index::{ContainsKey, Count, Dump, Get, Index, Load, Push};
 
 #[derive(Debug)]
 pub(crate) struct SimpleIndex {
@@ -15,6 +15,17 @@ pub(crate) struct SimpleIndex {
 struct Header {
     records_count: usize,
     record_header_size: usize,
+}
+
+struct MetaLocation {
+    offset: u64,
+    len: u64,
+}
+
+impl MetaLocation {
+    fn new(offset: u64, len: u64) -> Self {
+        Self { offset, len }
+    }
 }
 
 impl Header {
@@ -46,7 +57,35 @@ impl SimpleIndex {
         }
     }
 
-    async fn load(mut file: File) -> Result<Vec<RecordHeader>> {
+    pub async fn get_all_metas(&self, key: &[u8]) -> Result<Vec<Meta>> {
+        let meta_locations: Vec<_> = match &self.inner {
+            State::InMemory(bunch) => bunch
+                .iter()
+                .filter_map(|header: &RecordHeader| {
+                    if header.key() == key {
+                        Some(MetaLocation::new(header.blob_offset(), header.meta_len()))
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+            State::OnDisk(file) => Self::load(file)
+                .await?
+                .iter()
+                .filter_map(|header| {
+                    if header.key() == key {
+                        Some(MetaLocation::new(header.blob_offset(), header.meta_len()))
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+        };
+        let metas = Vec::new();
+        Ok(metas)
+    }
+
+    async fn load(mut file: &File) -> Result<Vec<RecordHeader>> {
         debug!("seek to file start");
         file.seek(SeekFrom::Start(0)).await?;
         let mut buf = Vec::new();
@@ -72,7 +111,7 @@ impl SimpleIndex {
         let mut buf = vec![0; Header::serialized_size()?.try_into().map_err(Error::new)?];
         file.read_exact(&mut buf).await?;
         let header = Header::from_raw(&buf)?;
-        let index = Self::load(file).await?;
+        let index = Self::load(&file).await?;
         Ok(Self {
             header,
             inner: State::InMemory(index),
@@ -161,10 +200,12 @@ impl SimpleIndex {
     fn deserialize_bunch(buf: &[u8]) -> bincode::Result<Vec<RecordHeader>> {
         debug!("deserialize header from buf: {}", buf.len());
         let header: Header = deserialize(buf)?;
-        trace!("header: {:?}", header);
+        debug!("header deserialized: {:?}", header);
         let header_size = Header::serialized_size()? as usize;
+        debug!("header serialized size: {}", header_size);
         (0..header.records_count).try_fold(Vec::new(), |mut records, i| {
             let offset = header_size + i * header.record_header_size;
+            debug!("deserialize record header at: {}", offset);
             deserialize(&buf[offset..]).map(|r| {
                 records.push(r);
                 records
@@ -178,72 +219,9 @@ impl SimpleIndex {
             _ => false,
         }
     }
-
-    async fn next_from(
-        mut file: File,
-        key: Vec<u8>,
-        offset: usize,
-    ) -> Result<(usize, RecordHeader)> {
-        info!("next_from: {}", offset);
-        let mut new_offset = offset;
-        let header: Header = Self::read_index_header(&mut file).await?;
-        loop {
-            let record_header = Self::read_at(&mut file, new_offset, header).await?;
-            new_offset += 1;
-            info!("new_offset: {}", new_offset);
-            if record_header.key() == key.as_slice() {
-                info!("key matched");
-                return Ok((new_offset, record_header));
-            }
-        }
-    }
 }
 
 impl Index for SimpleIndex {
-    fn next_item(&self, key: &[u8], file_index: Option<usize>, vec_index: Option<usize>) -> Next {
-        info!("next_item");
-        match &self.inner {
-            State::InMemory(bunch) => {
-                let mut id = None;
-                let start = if let Some(i) = vec_index { i + 1 } else { 0 };
-                info!("start index: {}", start);
-                let inner = if let Some(res) = bunch[start..]
-                    .iter()
-                    .enumerate()
-                    .find_map(|(i, h)| {
-                        if h.key() == key {
-                            id = Some(start + i);
-                            Some(h)
-                        } else {
-                            None
-                        }
-                    })
-                    .cloned()
-                {
-                    debug!("found in memory");
-                    future::ok((0, res))
-                } else {
-                    future::err(ErrorKind::NotFound.into())
-                }
-                .boxed();
-                Next {
-                    inner,
-                    vec_index: id,
-                }
-            }
-            State::OnDisk(f) => {
-                info!("next item index on disk");
-                let cloned_key = key.to_vec();
-                let file = f.clone();
-                let inner = Self::next_from(file, cloned_key, file_index.unwrap_or(0)).boxed();
-                Next {
-                    inner,
-                    vec_index: None,
-                }
-            }
-        }
-    }
-
     fn contains_key(&self, key: &[u8]) -> ContainsKey {
         ContainsKey(
             self.get(key)

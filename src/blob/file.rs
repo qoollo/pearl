@@ -23,6 +23,18 @@ impl AsyncRead for File {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<IOResult<usize>> {
+        let mut file_ref = Pin::get_ref(self.as_ref());
+        let pinned_file_ref = Pin::new(&mut file_ref);
+        pinned_file_ref.poll_read(cx, buf)
+    }
+}
+
+impl AsyncRead for &File {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<IOResult<usize>> {
         let mut file = self.read_fd.as_ref();
         match file.read(buf) {
             Err(ref e)
@@ -84,6 +96,14 @@ impl AsyncWrite for File {
 }
 
 impl AsyncSeek for File {
+    fn poll_seek(self: Pin<&mut Self>, cx: &mut Context<'_>, pos: SeekFrom) -> Poll<IOResult<u64>> {
+        let mut file_ref = Pin::get_ref(self.as_ref());
+        let pinned_file_ref = Pin::new(&mut file_ref);
+        pinned_file_ref.poll_seek(cx, pos)
+    }
+}
+
+impl AsyncSeek for &File {
     fn poll_seek(self: Pin<&mut Self>, cx: &mut Context<'_>, pos: SeekFrom) -> Poll<IOResult<u64>> {
         let mut file = self.read_fd.as_ref();
         match file.seek(pos) {
@@ -185,7 +205,7 @@ impl Future for ReadAt {
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(e)),
-            Ok(_) => Poll::Ready(Ok(buf)),
+            Ok(n) => Poll::Ready(Ok(buf[0..n].to_vec())),
         }
     }
 }

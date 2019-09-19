@@ -121,37 +121,43 @@ fn generate_keys() -> Vec<String> {
 #[tokio::test]
 async fn test_storage_multiple_read_write() {
     let dir = common::init("multiple");
-    dbg!(&dir);
+    info!("use dir: {}", dir);
     let path = env::temp_dir().join(&dir);
-    dbg!(&path);
+    info!("created path: {:?}", path);
     let storage = init_storage(&path).await;
-    error!("storage created");
+    info!("storage initialized");
     let mut keys = generate_keys();
-    error!("generated {} keys", keys.len());
+    info!("generated {} keys", keys.len());
 
     let write_stream: FuturesUnordered<_> = keys
         .iter()
-        .map(|key| {
-            dbg!(&key);
-            storage.write(KeyTest(key.as_bytes().to_vec()), b"qwer".to_vec())
-        })
+        .map(|key| storage.write(KeyTest(key.as_bytes().to_vec()), b"qwer".to_vec()))
         .collect();
+    info!("write futures created");
     let now = std::time::Instant::now();
-    write_stream.map_err(|e| dbg!(e)).collect::<Vec<_>>().await;
+    write_stream
+        .map_err(|e| error!("{}", e.to_string()))
+        .collect::<Vec<_>>()
+        .await;
+    info!("write futures completed");
     let elapsed = now.elapsed().as_secs_f64();
+    info!("elapsed: {}secs", elapsed);
     let blob_file_path = path.join("test.0.blob");
+    info!("blob file path: {:?}", blob_file_path);
     let written = fs::metadata(&blob_file_path).unwrap().len();
-    trace!("write {:.0}B/s", written as f64 / elapsed);
+    info!("write {:.0}B/s", written as f64 / elapsed);
     let read_stream: FuturesUnordered<_> = keys
         .iter()
         .map(|key| storage.read(KeyTest(key.as_bytes().to_vec())))
         .collect();
+    info!("read futures collected");
     let now = std::time::Instant::now();
     let data_from_file = read_stream
         .map_err(|e| dbg!(e))
         .map(Result::unwrap)
         .collect::<Vec<_>>()
         .await;
+    info!("read futures completed");
     let elapsed = now.elapsed().as_secs_f64();
     keys.sort();
     let written = fs::metadata(&blob_file_path).unwrap().len();
@@ -439,16 +445,18 @@ async fn test_write_1_000_records_with_same_key() {
     let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
     let key = KeyTest(b"write_with".to_vec());
     let value = b"data_with_empty_meta".to_vec();
+    let now = Instant::now();
     for i in 0..1_000 {
         info!("{} started", i);
         let mut meta = Meta::new();
         meta.insert("version".to_owned(), i.to_string());
         delay(Instant::now() + Duration::from_micros(8)).await;
         storage.write_with(&key, value.clone(), meta).await.unwrap();
-        if i % 100 == 0 {
-            error!("{} finished", i);
-        }
+        // if i % 2 == 0 {
+        error!("{} finished", i);
+        // }
     }
+    error!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 
     common::clean(storage, dir)
         .map(|res| res.expect("work dir clean failed"))
