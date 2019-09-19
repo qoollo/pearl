@@ -78,8 +78,9 @@ mod prelude {
     pub(crate) use std::os::unix::fs::{FileExt, OpenOptionsExt};
     pub(crate) use std::path::{Path, PathBuf};
     pub(crate) use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicUsize, Ordering};
+    pub(crate) use std::task::Waker;
     pub(crate) use std::task::{Context, Poll};
     pub(crate) use std::time::{Duration, Instant};
     pub(crate) use std::{convert::TryInto, error, marker::PhantomData, pin::Pin, sync::Arc};
-    pub(crate) use tokio::timer::Interval;
+    pub(crate) use tokio::timer::{delay, Interval};
 }
