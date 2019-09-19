@@ -1,16 +1,20 @@
-use std::fs;
-use std::future::Future;
-use std::io::{self, Read, Seek, SeekFrom, Write};
-use std::os::unix::fs::FileExt;
-use std::pin::Pin;
-use std::result::Result as StdResult;
-use std::sync::Arc;
-use std::task::{Context, Poll};
-
 use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
 use futures::lock::Mutex;
+use futures::FutureExt;
+use std::fs;
+use std::future::Future;
+use std::io::{ErrorKind, Read, Result as IOResult, Seek, SeekFrom, Write};
+use std::os::unix::fs::FileExt;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::Waker;
+use std::task::{Context, Poll};
+use std::time::{Duration, Instant};
+use tokio::timer::delay;
 
 use super::core::{Error, Result};
+
+const WOULDBLOCK_RETRY_INTERVAL_MS: u64 = 10;
 
 #[derive(Debug, Clone)]
 pub(crate) struct File {
@@ -18,70 +22,103 @@ pub(crate) struct File {
     pub(crate) write_fd: Arc<Mutex<fs::File>>,
 }
 
+#[inline]
+fn schedule_wake(waker: Waker) {
+    tokio::spawn(async move {
+        delay(Instant::now() + Duration::from_millis(WOULDBLOCK_RETRY_INTERVAL_MS))
+            .map(|_| waker.wake_by_ref())
+            .await;
+    });
+}
+
 impl AsyncRead for File {
     fn poll_read(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut [u8],
-    ) -> Poll<StdResult<usize, io::Error>> {
+    ) -> Poll<IOResult<usize>> {
         let mut file = self.read_fd.as_ref();
         match file.read(buf) {
-            Ok(t) => Poll::Ready(Ok(t)),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                cx.waker().wake_by_ref();
+            Err(ref e)
+                if e.kind() == ErrorKind::WouldBlock || e.kind() == ErrorKind::Interrupted =>
+            {
+                warn!(
+                    "file read operation wouldblock or interrupted, retry in {}ms",
+                    WOULDBLOCK_RETRY_INTERVAL_MS
+                );
+                schedule_wake(cx.waker().clone());
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(e)),
+            Ok(n) => Poll::Ready(Ok(n)),
         }
     }
 }
 
 impl AsyncWrite for File {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<StdResult<usize, io::Error>> {
+    fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<IOResult<usize>> {
         let mut file = self.read_fd.as_ref();
         match file.write_all(buf) {
-            Ok(_) => Poll::Ready(Ok(buf.len())),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                cx.waker().wake_by_ref();
+            Err(ref e)
+                if e.kind() == ErrorKind::WouldBlock || e.kind() == ErrorKind::Interrupted =>
+            {
+                warn!(
+                    "file write all operation wouldblock or interrupted, retry in {}ms",
+                    WOULDBLOCK_RETRY_INTERVAL_MS
+                );
+                schedule_wake(cx.waker().clone());
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(e)),
+            Ok(_) => Poll::Ready(Ok(buf.len())),
         }
     }
 
-    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<StdResult<(), io::Error>> {
-        unimplemented!()
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<IOResult<()>> {
+        let mut file = self.read_fd.as_ref();
+        match file.flush() {
+            Err(ref e)
+                if e.kind() == ErrorKind::WouldBlock || e.kind() == ErrorKind::Interrupted =>
+            {
+                warn!(
+                    "file flush operation wouldblock or interrupted, retry in {}ms",
+                    WOULDBLOCK_RETRY_INTERVAL_MS
+                );
+                schedule_wake(cx.waker().clone());
+                Poll::Pending
+            }
+            Err(e) => Poll::Ready(Err(e)),
+            Ok(_) => Poll::Ready(Ok(())),
+        }
     }
 
-    fn poll_close(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<StdResult<(), io::Error>> {
-        unimplemented!()
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<IOResult<()>> {
+        self.poll_flush(cx)
     }
 }
 
 impl AsyncSeek for File {
-    fn poll_seek(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        pos: SeekFrom,
-    ) -> Poll<StdResult<u64, io::Error>> {
+    fn poll_seek(self: Pin<&mut Self>, cx: &mut Context<'_>, pos: SeekFrom) -> Poll<IOResult<u64>> {
         let mut file = self.read_fd.as_ref();
         match file.seek(pos) {
-            Ok(t) => Poll::Ready(Ok(t)),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                cx.waker().wake_by_ref();
+            Err(ref e)
+                if e.kind() == ErrorKind::WouldBlock || e.kind() == ErrorKind::Interrupted =>
+            {
+                warn!(
+                    "file seek operation wouldblock or interrupted, retry in {}ms",
+                    WOULDBLOCK_RETRY_INTERVAL_MS
+                );
+                schedule_wake(cx.waker().clone());
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(e)),
+            Ok(n) => Poll::Ready(Ok(n)),
         }
     }
 }
 
 impl File {
-    pub(crate) fn metadata(&self) -> io::Result<fs::Metadata> {
+    pub(crate) fn metadata(&self) -> IOResult<fs::Metadata> {
         self.read_fd.metadata()
     }
 
@@ -104,7 +141,7 @@ impl File {
         read_fut.await
     }
 
-    pub(crate) fn from_std_file(fd: fs::File) -> io::Result<Self> {
+    pub(crate) fn from_std_file(fd: fs::File) -> IOResult<Self> {
         fd.try_clone().map(|file| File {
             read_fd: Arc::new(file),
             write_fd: Arc::new(Mutex::new(fd)),
@@ -124,7 +161,7 @@ impl<'a> Future for WriteAt<'a> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         match self.fd.write_at(&self.buf, self.offset) {
             Ok(t) => Poll::Ready(Ok(t)),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 cx.waker().wake_by_ref();
                 Poll::Pending
             }
@@ -146,7 +183,7 @@ impl Future for ReadAt {
         let mut buf = vec![0; self.len];
         match self.fd.read_at(&mut buf, self.offset) {
             Ok(_t) => Poll::Ready(Ok(buf)),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 cx.waker().wake_by_ref();
                 Poll::Pending
             }
