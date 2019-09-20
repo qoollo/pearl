@@ -195,7 +195,7 @@ impl<K> Storage<K> {
         for blob in blobs {
             info!("look into next blob");
             let meta = blob.get_all_metas(key.as_ref()).await.map_err(Error::new)?;
-            info!("get all meta from blob {} finished", blob.name);
+            trace!("get all meta from blob {:?} finished", blob);
             metas.extend(meta);
             info!("extend finished");
         }

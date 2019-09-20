@@ -17,7 +17,7 @@ pub(crate) type Result<T> = std::result::Result<T, Error>;
 pub(crate) struct Blob {
     header: Header,
     index: SimpleIndex,
-    pub(crate) name: FileName,
+    name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
 }
