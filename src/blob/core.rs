@@ -53,7 +53,7 @@ impl Blob {
 
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
-        let offset = self.file.write(&buf).await.map_err(Error::new)?;
+        let offset = self.file.write(&buf).await?;
         self.update_offset(offset).await;
         Ok(())
     }
@@ -162,8 +162,8 @@ impl Blob {
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
         let mut offset = self.current_offset.lock().await;
-        record.set_offset(*offset).map_err(Error::new)?;
-        let buf = record.to_raw().map_err(Error::new)?;
+        record.set_offset(*offset)?;
+        let buf = record.to_raw()?;
         let bytes_written = self.file.write_at(buf, *offset).await?;
         self.index.push(record.header().clone());
         *offset += bytes_written as u64;
@@ -416,17 +416,10 @@ impl RawRecords {
         trace!("file: {:?}, blob header size: {:?}", file, blob_header_size);
         let current_offset = blob_header_size;
         let buf = file
-            .read_at(
-                std::mem::size_of::<usize>()
-                    .try_into()
-                    .map_err(Error::new)?,
-                current_offset + 8,
-            )
+            .read_at(std::mem::size_of::<usize>(), current_offset + 8)
             .await?;
-        let key_len: u64 = bincode::deserialize::<usize>(&buf)?
-            .try_into()
-            .map_err(Error::new)?;
-        let record_header_size = RecordHeader::default().serialized_size()? + key_len;
+        let key_len = bincode::deserialize::<usize>(&buf)?;
+        let record_header_size = RecordHeader::default().serialized_size()? + key_len as u64;
         let read_fut = Self::read_at(file.clone(), record_header_size, current_offset).boxed();
         let file_len = file.metadata().map(|m| m.len())?;
         trace!(
@@ -446,9 +439,7 @@ impl RawRecords {
 
     async fn read_at(file: File, size: u64, offset: u64) -> Result<RecordHeader> {
         debug!("call read_at: {} bytes at {}", size, offset);
-        let buf = file
-            .read_at(size.try_into().map_err(Error::new)?, offset)
-            .await?;
+        let buf = file.read_at(size.try_into()?, offset).await?;
         RecordHeader::from_raw(&buf).map_err(Error::new)
     }
 

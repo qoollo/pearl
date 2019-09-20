@@ -170,9 +170,7 @@ impl SimpleIndex {
     }
 
     fn serialize_bunch(bunch: &mut [RecordHeader]) -> Result<Vec<u8>> {
-        let record_header = bunch
-            .first()
-            .ok_or_else(|| Error::from(ErrorKind::EmptyIndexBunch))?;
+        let record_header = bunch.first().ok_or(ErrorKind::EmptyIndexBunch)?;
         let record_header_size = record_header.serialized_size()? as usize;
         debug!("record header serialized size: {}", record_header_size);
         bunch.sort_by_key(|h| h.key().to_vec());
@@ -206,12 +204,8 @@ impl SimpleIndex {
         (0..header.records_count).try_fold(Vec::new(), |mut record_headers, i| {
             let offset = header_size + i * header.record_header_size;
             debug!("deserialize record header at: {}", offset);
-            deserialize(&buf[offset..]).map(|record_header: RecordHeader| {
-                debug!(
-                    "record deserialized, push: {:?}",
-                    record_header.serialized_size()
-                );
-                record_headers.push(record_header);
+            deserialize(&buf[offset..]).map(|rh| {
+                record_headers.push(rh);
                 record_headers
             })
         })
@@ -246,18 +240,15 @@ impl Index for SimpleIndex {
         let fut = match &mut self.inner {
             State::InMemory(bunch) => {
                 bunch.push(h);
-                Push(future::ok(()).boxed())
+                future::ok(()).boxed()
             }
-            State::OnDisk(_) => Push(
-                future::err(
-                    ErrorKind::Index("Index is closed and dumped, push is unavalaible".to_string())
-                        .into(),
-                )
-                .boxed(),
-            ),
+            State::OnDisk(_) => future::err(
+                ErrorKind::Index("Index is closed, push is unavalaible".to_string()).into(),
+            )
+            .boxed(),
         };
         debug!("future created");
-        fut
+        Push(fut)
     }
 
     fn get(&self, key: &[u8]) -> Get {
