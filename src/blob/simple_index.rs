@@ -29,15 +29,17 @@ impl MetaLocation {
 }
 
 impl Header {
-    fn default_serialized_size() -> bincode::Result<u64> {
+    fn serialized_size_default() -> bincode::Result<u64> {
         let header = Header::default();
-        bincode::serialized_size(&header)
+        header.serialized_size()
     }
 
+    #[inline]
     fn serialized_size(&self) -> bincode::Result<u64> {
         bincode::serialized_size(&self)
     }
 
+    #[inline]
     fn from_raw(buf: &[u8]) -> bincode::Result<Self> {
         bincode::deserialize(buf)
     }
@@ -119,7 +121,7 @@ impl SimpleIndex {
         let mut file = File::from_std_file(fd)?;
         let mut buf = vec![
             0;
-            Header::default_serialized_size()?
+            Header::serialized_size_default()?
                 .try_into()
                 .map_err(Error::new)?
         ];
@@ -171,7 +173,7 @@ impl SimpleIndex {
     }
 
     async fn read_index_header(file: &mut File) -> Result<Header> {
-        let header_size = Header::default_serialized_size()? as usize;
+        let header_size = Header::serialized_size_default()? as usize;
         debug!("header s: {}", header_size);
         let mut buf = vec![0; header_size];
         debug!("seek to file start");

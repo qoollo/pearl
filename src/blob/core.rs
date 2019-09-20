@@ -407,11 +407,7 @@ struct RawRecords {
 
 impl RawRecords {
     async fn start(file: File, blob_header_size: u64) -> Result<Self> {
-        trace!(
-            "start file: {:?}, blob_header size: {:?}",
-            file,
-            blob_header_size
-        );
+        trace!("file: {:?}, blob header size: {:?}", file, blob_header_size);
         let current_offset = blob_header_size;
         let buf = file
             .read_at(
