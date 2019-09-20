@@ -63,37 +63,27 @@ impl SimpleIndex {
         }
     }
 
+    fn extract_matching_meta_locations(rec_hdrs: &[RecordHeader], key: &[u8]) -> Vec<MetaLocation> {
+        rec_hdrs
+            .iter()
+            .filter(|h| h.has_key(key))
+            .filter_map(|header| {
+                Some(MetaLocation::new(
+                    header.meta_len().try_into().ok()?,
+                    header.blob_offset() + header.serialized_size().ok()?,
+                ))
+            })
+            .collect()
+    }
+
     pub async fn get_all_meta_locations(&self, key: &[u8]) -> Result<Vec<MetaLocation>> {
-        let meta_locations: Vec<_> = match &self.inner {
-            State::InMemory(bunch) => bunch
-                .iter()
-                .filter_map(|header: &RecordHeader| {
-                    if header.key() == key {
-                        Some(MetaLocation::new(
-                            header.meta_len().try_into().ok()?,
-                            header.blob_offset() + header.serialized_size().ok()?,
-                        ))
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-            State::OnDisk(file) => Self::load(file)
-                .await?
-                .iter()
-                .filter_map(|header| {
-                    if header.key() == key {
-                        Some(MetaLocation::new(
-                            header.meta_len().try_into().ok()?,
-                            header.blob_offset() + header.serialized_size().ok()?,
-                        ))
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        };
-        Ok(meta_locations)
+        Ok(match &self.inner {
+            State::InMemory(bunch) => Self::extract_matching_meta_locations(bunch, key),
+            State::OnDisk(file) => {
+                let record_headers = Self::load(file).await?;
+                Self::extract_matching_meta_locations(&record_headers, key)
+            }
+        })
     }
 
     async fn load(mut file: &File) -> Result<Vec<RecordHeader>> {
@@ -119,12 +109,7 @@ impl SimpleIndex {
             .write(true)
             .open(name.as_path())?;
         let mut file = File::from_std_file(fd)?;
-        let mut buf = vec![
-            0;
-            Header::serialized_size_default()?
-                .try_into()
-                .map_err(Error::new)?
-        ];
+        let mut buf = vec![0; Header::serialized_size_default()?.try_into()?];
         file.read_exact(&mut buf).await?;
         let header = Header::from_raw(&buf)?;
         let index = Self::load(&file).await?;

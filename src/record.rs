@@ -291,6 +291,11 @@ impl Header {
     }
 
     #[inline]
+    pub fn has_key(&self, key: &[u8]) -> bool {
+        self.key.as_slice() == key
+    }
+
+    #[inline]
     pub(crate) fn serialized_size(&self) -> bincode::Result<u64> {
         debug!("serialized size");
         trace!("{:?}", self);

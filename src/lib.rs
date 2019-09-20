@@ -81,6 +81,8 @@ mod prelude {
     pub(crate) use std::task::Waker;
     pub(crate) use std::task::{Context, Poll};
     pub(crate) use std::time::{Duration, Instant};
-    pub(crate) use std::{convert::TryInto, error, marker::PhantomData, pin::Pin, sync::Arc};
+    pub(crate) use std::{
+        convert::TryInto, error, marker::PhantomData, num::TryFromIntError, pin::Pin, sync::Arc,
+    };
     pub(crate) use tokio::timer::{delay, Interval};
 }

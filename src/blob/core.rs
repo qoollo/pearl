@@ -279,9 +279,13 @@ impl From<IOError> for Error {
 
 impl From<Box<bincode::ErrorKind>> for Error {
     fn from(e: Box<bincode::ErrorKind>) -> Self {
-        Self {
-            repr: Repr::Other(e),
-        }
+        ErrorKind::Bincode(e.to_string()).into()
+    }
+}
+
+impl From<TryFromIntError> for Error {
+    fn from(e: TryFromIntError) -> Self {
+        ErrorKind::Conversion(e.to_string()).into()
     }
 }
 
@@ -307,6 +311,8 @@ pub(crate) enum ErrorKind {
     EmptyIndexBunch,
     Index(String),
     IO(String),
+    Bincode(String),
+    Conversion(String),
 }
 
 #[derive(Debug, Clone)]
