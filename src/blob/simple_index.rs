@@ -17,9 +17,9 @@ struct Header {
     record_header_size: usize,
 }
 
-struct MetaLocation {
-    offset: u64,
-    len: u64,
+pub(crate) struct MetaLocation {
+    pub(crate) offset: u64,
+    pub(crate) len: u64,
 }
 
 impl MetaLocation {
@@ -29,9 +29,13 @@ impl MetaLocation {
 }
 
 impl Header {
-    fn serialized_size() -> bincode::Result<u64> {
+    fn default_serialized_size() -> bincode::Result<u64> {
         let header = Header::default();
         bincode::serialized_size(&header)
+    }
+
+    fn serialized_size(&self) -> bincode::Result<u64> {
+        bincode::serialized_size(&self)
     }
 
     fn from_raw(buf: &[u8]) -> bincode::Result<Self> {
@@ -57,13 +61,16 @@ impl SimpleIndex {
         }
     }
 
-    pub async fn get_all_metas(&self, key: &[u8]) -> Result<Vec<Meta>> {
+    pub async fn get_all_meta_locations(&self, key: &[u8]) -> Result<Vec<MetaLocation>> {
         let meta_locations: Vec<_> = match &self.inner {
             State::InMemory(bunch) => bunch
                 .iter()
                 .filter_map(|header: &RecordHeader| {
                     if header.key() == key {
-                        Some(MetaLocation::new(header.blob_offset(), header.meta_len()))
+                        Some(MetaLocation::new(
+                            header.blob_offset() + header.serialized_size().ok()?,
+                            header.meta_len(),
+                        ))
                     } else {
                         None
                     }
@@ -74,15 +81,17 @@ impl SimpleIndex {
                 .iter()
                 .filter_map(|header| {
                     if header.key() == key {
-                        Some(MetaLocation::new(header.blob_offset(), header.meta_len()))
+                        Some(MetaLocation::new(
+                            header.blob_offset() + header.serialized_size().ok()?,
+                            header.meta_len(),
+                        ))
                     } else {
                         None
                     }
                 })
                 .collect(),
         };
-        let metas = Vec::new();
-        Ok(metas)
+        Ok(meta_locations)
     }
 
     async fn load(mut file: &File) -> Result<Vec<RecordHeader>> {
@@ -108,7 +117,12 @@ impl SimpleIndex {
             .write(true)
             .open(name.as_path())?;
         let mut file = File::from_std_file(fd)?;
-        let mut buf = vec![0; Header::serialized_size()?.try_into().map_err(Error::new)?];
+        let mut buf = vec![
+            0;
+            Header::default_serialized_size()?
+                .try_into()
+                .map_err(Error::new)?
+        ];
         file.read_exact(&mut buf).await?;
         let header = Header::from_raw(&buf)?;
         let index = Self::load(&file).await?;
@@ -157,7 +171,7 @@ impl SimpleIndex {
     }
 
     async fn read_index_header(file: &mut File) -> Result<Header> {
-        let header_size = Header::serialized_size()? as usize;
+        let header_size = Header::default_serialized_size()? as usize;
         debug!("header s: {}", header_size);
         let mut buf = vec![0; header_size];
         debug!("seek to file start");
@@ -169,19 +183,18 @@ impl SimpleIndex {
     }
 
     fn serialize_bunch(bunch: &mut [RecordHeader]) -> Result<Vec<u8>> {
-        debug!("get record header size");
-        let record_header_size = bunch
+        let record_header = bunch
             .first()
-            .ok_or_else(|| Error::from(ErrorKind::EmptyIndexBunch))?
-            .serialized_size()? as usize;
-        debug!("sort bunch");
+            .ok_or_else(|| Error::from(ErrorKind::EmptyIndexBunch))?;
+        let record_header_size = record_header.serialized_size()? as usize;
+        debug!("record header serialized size: {}", record_header_size);
         bunch.sort_by_key(|h| h.key().to_vec());
         let header = Header {
             record_header_size,
             records_count: bunch.len(),
         };
         let mut buf = Vec::with_capacity(
-            Header::serialized_size()? as usize + bunch.len() * record_header_size,
+            header.serialized_size()? as usize + bunch.len() * record_header_size,
         );
         serialize_into(&mut buf, &header)?;
         bunch
@@ -201,14 +214,18 @@ impl SimpleIndex {
         debug!("deserialize header from buf: {}", buf.len());
         let header: Header = deserialize(buf)?;
         debug!("header deserialized: {:?}", header);
-        let header_size = Header::serialized_size()? as usize;
+        let header_size = header.serialized_size()? as usize;
         debug!("header serialized size: {}", header_size);
-        (0..header.records_count).try_fold(Vec::new(), |mut records, i| {
+        (0..header.records_count).try_fold(Vec::new(), |mut record_headers, i| {
             let offset = header_size + i * header.record_header_size;
             debug!("deserialize record header at: {}", offset);
-            deserialize(&buf[offset..]).map(|r| {
-                records.push(r);
-                records
+            deserialize(&buf[offset..]).map(|record_header: RecordHeader| {
+                debug!(
+                    "record deserialized, push: {:?}",
+                    record_header.serialized_size()
+                );
+                record_headers.push(record_header);
+                record_headers
             })
         })
     }
@@ -238,7 +255,8 @@ impl Index for SimpleIndex {
     }
 
     fn push(&mut self, h: RecordHeader) -> Push {
-        match &mut self.inner {
+        trace!("push header: {:?}", h);
+        let fut = match &mut self.inner {
             State::InMemory(bunch) => {
                 bunch.push(h);
                 Push(future::ok(()).boxed())
@@ -250,7 +268,9 @@ impl Index for SimpleIndex {
                 )
                 .boxed(),
             ),
-        }
+        };
+        debug!("future created");
+        fut
     }
 
     fn get(&self, key: &[u8]) -> Get {

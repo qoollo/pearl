@@ -15,7 +15,7 @@ use rand::Rng;
 use pearl::{Builder, Key, Storage};
 
 #[derive(Debug, Clone)]
-pub struct KeyTest(pub Vec<u8>);
+pub struct KeyTest(Vec<u8>);
 
 impl AsRef<[u8]> for KeyTest {
     fn as_ref(&self) -> &[u8] {
@@ -25,6 +25,12 @@ impl AsRef<[u8]> for KeyTest {
 
 impl Key for KeyTest {
     const LEN: u16 = 4;
+}
+
+impl KeyTest {
+    pub fn new(inner: u32) -> Self {
+        Self(inner.to_be_bytes().to_vec())
+    }
 }
 
 pub fn init(dir_name: &str) -> String {
@@ -49,7 +55,7 @@ pub fn init(dir_name: &str) -> String {
                 style.value(record.args())
             )
         })
-        .filter_level(log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Error)
         .try_init()
         .unwrap_or(());
     format!(

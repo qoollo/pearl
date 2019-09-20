@@ -141,12 +141,15 @@ impl Blob {
     }
 
     pub(crate) async fn try_regenerate_index(&mut self) -> Result<()> {
+        info!("try regenerate index");
         if self.index.on_disk() {
             debug!("index already updated");
             return Ok(());
         }
         let raw_r = self.raw_records().await?;
+        info!("raw records loaded");
         raw_r.try_for_each(|h| self.index.push(h)).await?;
+        info!("index entries collected");
         self.dump().await?;
         info!("index generated");
         Ok(())
@@ -205,7 +208,17 @@ impl Blob {
 
     pub(crate) async fn get_all_metas(&self, key: &[u8]) -> Result<Vec<Meta>> {
         info!("get_all_metas");
-        let metas = self.index.get_all_metas(key).await?;
+        let meta_locations = self.index.get_all_meta_locations(key).await?;
+        info!("gotten all meta locations");
+        let mut metas = Vec::new();
+        for location in meta_locations {
+            let meta_raw = self
+                .file
+                .read_at(location.len as usize, location.offset)
+                .await?;
+            let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
+            metas.push(meta);
+        }
         info!("get all headers finished");
         Ok(metas)
     }
@@ -394,6 +407,11 @@ struct RawRecords {
 
 impl RawRecords {
     async fn start(file: File, blob_header_size: u64) -> Result<Self> {
+        trace!(
+            "start file: {:?}, blob_header size: {:?}",
+            file,
+            blob_header_size
+        );
         let current_offset = blob_header_size;
         let buf = file
             .read_at(
@@ -434,6 +452,7 @@ impl RawRecords {
 
     fn update_future(&mut self, header: &RecordHeader) {
         self.current_offset += self.record_header_size;
+        self.current_offset += header.meta_len();
         self.current_offset += header.data_len();
         trace!(
             "file len: {}, current offset: {}",

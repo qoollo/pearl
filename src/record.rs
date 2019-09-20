@@ -58,7 +58,7 @@ impl Meta {
     }
 
     #[inline]
-    fn from_raw(buf: &[u8]) -> Result<Self> {
+    pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
         trace!("buf: {:?}", buf);
         let res = deserialize(&buf).map_err(Error::new);
         trace!("meta deserialized: {:?}", res);
@@ -74,7 +74,6 @@ impl Meta {
     pub(crate) fn to_raw(&self) -> bincode::Result<Vec<u8>> {
         let buf = serialize(&self)?;
         trace!("buf: {:?}", buf);
-        trace!("self: {:?}", self);
         Ok(buf)
     }
 }
@@ -129,21 +128,17 @@ impl From<ErrorKind> for Error {
 
 impl Record {
     /// Creates new `Record` with provided data and key.
-    pub fn new(key: impl Key, data: Vec<u8>, meta: Meta) -> Self {
-        let header = Header::new(
-            key.as_ref().to_vec(),
-            meta.serialized_size().unwrap(),
-            data.len() as u64,
-            crc32(&data),
-        );
-        trace!("{:?} {:?} {:?}", header, meta, data);
-        Self { header, meta, data }
-    }
-
-    /// Get immutable reference to metadata.
-    #[inline]
-    pub fn meta(&self) -> &Meta {
-        &self.meta
+    pub fn create(key: impl Key, data: Vec<u8>, meta: Meta) -> Result<Self> {
+        meta.serialized_size().map(|meta_size| {
+            let header = Header::new(
+                key.as_ref().to_vec(),
+                meta_size,
+                data.len() as u64,
+                crc32(&data),
+            );
+            trace!("{:?} {:?} {:?}", header, meta, data);
+            Self { header, meta, data }
+        })
     }
 
     /// Get immutable reference to header.
@@ -154,16 +149,15 @@ impl Record {
     /// # Description
     /// Init new `Record` from raw buffer
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
-        trace!("buf: {:?}", buf);
+        trace!("len: {}, buf: {:?}", buf.len(), buf);
         // @TODO Header validation
-        trace!("create record from raw buf with len {}", buf.len());
-        let header = Header::from_raw(buf).unwrap();
+        let header = Header::from_raw(buf)?;
         trace!("header from raw created");
-        let meta_offset = header.serialized_size().map_err(Error::new).unwrap() as usize;
+        let meta_offset = header.serialized_size().map_err(Error::new)? as usize;
         let meta_len = header.meta_len as usize;
         trace!("meta offset {} len {}", meta_offset, meta_len);
-        let meta = Meta::from_raw(&buf[meta_offset..]).unwrap();
-        trace!("meta from raw created");
+        let meta = Meta::from_raw(&buf[meta_offset..])?;
+        trace!("meta from raw created: {:?}", meta);
         let data_offset = meta_offset + meta_len;
         trace!("data offset {}", data_offset);
         let data = buf[data_offset..].to_vec();
@@ -174,13 +168,13 @@ impl Record {
     /// # Description
     /// Serialize record to bytes
     pub fn to_raw(&self) -> bincode::Result<Vec<u8>> {
-        let raw_header = self.header.to_raw()?;
+        let mut buf = self.header.to_raw()?;
+        trace!("raw header: len: {} buf: {:?}", buf.len(), buf);
         let raw_meta = self.meta.to_raw()?;
-        let mut buf = Vec::with_capacity(self.header.full_len()? as usize);
-        buf.extend(raw_meta.iter());
-        buf.extend(raw_header.iter());
-        buf.extend_from_slice(&self.data);
-        trace!("buf: {:?}", buf);
+        trace!("raw meta: {:?}", raw_meta);
+        buf.extend(&raw_meta);
+        buf.extend(&self.data);
+        trace!("len: {}", buf.len());
         Ok(buf)
     }
 
@@ -298,6 +292,8 @@ impl Header {
 
     #[inline]
     pub(crate) fn serialized_size(&self) -> bincode::Result<u64> {
+        debug!("serialized size");
+        trace!("{:?}", self);
         bincode::serialized_size(&self)
     }
 

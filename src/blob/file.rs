@@ -182,6 +182,7 @@ impl<'a> Future for WriteAt<'a> {
     }
 }
 
+#[derive(Debug)]
 struct ReadAt {
     fd: Arc<fs::File>,
     len: usize,
@@ -192,6 +193,7 @@ impl Future for ReadAt {
     type Output = IOResult<Vec<u8>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        trace!("read at poll {:?}", self);
         let mut buf = vec![0; self.len];
         match self.fd.read_at(&mut buf, self.offset) {
             Err(ref e)

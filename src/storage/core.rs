@@ -110,17 +110,24 @@ impl<K> Storage<K> {
     pub async fn init(&mut self) -> Result<()> {
         // @TODO implement work dir validation
         self.prepare_work_dir().await?;
+        info!("work dir prepared");
 
-        let cont_res = work_dir_content(self.inner.config.work_dir.as_ref().ok_or_else(|| {
-            error!("Work dir is not set");
-            ErrorKind::Uninitialized
-        })?);
+        let cont_res = work_dir_content(
+            self.inner
+                .config
+                .work_dir
+                .as_ref()
+                .ok_or(ErrorKind::Uninitialized)?,
+        );
+        info!("work dir content loaded");
         if let Some(files) = cont_res? {
             self.init_from_existing(files).await?
         } else {
             self.init_new().await?
         };
+        info!("new storage initialized");
         launch_observer(self.inner.clone());
+        info!("observer started");
         Ok(())
     }
 
@@ -155,7 +162,7 @@ impl<K> Storage<K> {
             return Err(ErrorKind::RecordExists.into());
         }
         info!("record with the same meta and key does not exist");
-        let record = Record::new(key, value, meta);
+        let record = Record::create(key, value, meta).map_err(Error::new)?;
         info!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
         info!("return write future");
@@ -319,6 +326,7 @@ impl<K> Storage<K> {
     }
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
+        trace!("init from existing: {:?}", files);
         let mut blobs = Self::read_blobs(&files).await?;
 
         debug!("{} blobs successfully created", blobs.len());
