@@ -18,13 +18,13 @@ struct Header {
 }
 
 pub(crate) struct MetaLocation {
+    pub(crate) len: usize,
     pub(crate) offset: u64,
-    pub(crate) len: u64,
 }
 
 impl MetaLocation {
-    fn new(offset: u64, len: u64) -> Self {
-        Self { offset, len }
+    fn new(len: usize, offset: u64) -> Self {
+        Self { len, offset }
     }
 }
 
@@ -68,8 +68,8 @@ impl SimpleIndex {
                 .filter_map(|header: &RecordHeader| {
                     if header.key() == key {
                         Some(MetaLocation::new(
+                            header.meta_len().try_into().ok()?,
                             header.blob_offset() + header.serialized_size().ok()?,
-                            header.meta_len(),
                         ))
                     } else {
                         None
@@ -82,8 +82,8 @@ impl SimpleIndex {
                 .filter_map(|header| {
                     if header.key() == key {
                         Some(MetaLocation::new(
+                            header.meta_len().try_into().ok()?,
                             header.blob_offset() + header.serialized_size().ok()?,
-                            header.meta_len(),
                         ))
                     } else {
                         None
