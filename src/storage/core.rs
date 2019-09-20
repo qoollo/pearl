@@ -110,7 +110,7 @@ impl<K> Storage<K> {
     pub async fn init(&mut self) -> Result<()> {
         // @TODO implement work dir validation
         self.prepare_work_dir().await?;
-        info!("work dir prepared");
+        debug!("work dir prepared");
 
         let cont_res = work_dir_content(
             self.inner
@@ -119,15 +119,15 @@ impl<K> Storage<K> {
                 .as_ref()
                 .ok_or(ErrorKind::Uninitialized)?,
         );
-        info!("work dir content loaded");
+        debug!("work dir content loaded");
         if let Some(files) = cont_res? {
             self.init_from_existing(files).await?
         } else {
             self.init_new().await?
         };
-        info!("new storage initialized");
+        debug!("new storage initialized");
         launch_observer(self.inner.clone());
-        info!("observer started");
+        debug!("observer started");
         Ok(())
     }
 

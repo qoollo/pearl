@@ -436,7 +436,7 @@ async fn test_write_1_000_records_with_same_key() {
         meta.insert("version".to_owned(), i.to_string());
         delay(Instant::now() + Duration::from_micros(8)).await;
         storage.write_with(&key, value.clone(), meta).await.unwrap();
-        if i % 4 == 0 {
+        if i % 8 == 0 {
             info!("{} finished", i);
         }
     }

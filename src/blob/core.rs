@@ -141,17 +141,17 @@ impl Blob {
     }
 
     pub(crate) async fn try_regenerate_index(&mut self) -> Result<()> {
-        info!("try regenerate index");
+        info!("try regenerate index for blob: {}", self.name);
         if self.index.on_disk() {
             debug!("index already updated");
             return Ok(());
         }
         let raw_r = self.raw_records().await?;
-        info!("raw records loaded");
+        debug!("raw records loaded");
         raw_r.try_for_each(|h| self.index.push(h)).await?;
-        info!("index entries collected");
+        debug!("index entries collected");
         self.dump().await?;
-        info!("index generated");
+        debug!("index successfully generated: {}", self.index.name());
         Ok(())
     }
 

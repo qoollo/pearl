@@ -63,6 +63,10 @@ impl SimpleIndex {
         }
     }
 
+    pub(crate) fn name(&self) -> &FileName {
+        &self.name
+    }
+
     fn extract_matching_meta_locations(rec_hdrs: &[RecordHeader], key: &[u8]) -> Vec<MetaLocation> {
         rec_hdrs
             .iter()
@@ -153,7 +157,7 @@ impl SimpleIndex {
         let header_size = bincode::serialized_size(&header)?;
         let offset = header_size + (header.record_header_size * index) as u64;
         let buf = file.read_at(header.record_header_size, offset).await?;
-        info!("file read at: {}, buf len: {}", offset, buf.len());
+        debug!("file read at: {}, buf len: {}", offset, buf.len());
         Ok(deserialize(&buf)?)
     }
 
