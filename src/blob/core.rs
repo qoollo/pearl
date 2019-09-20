@@ -114,10 +114,10 @@ impl Blob {
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         debug!("    looking for index file: [{}]", index_name.to_string());
         let index = if index_name.exists() {
-            info!("        file exists");
+            debug!("        file exists");
             SimpleIndex::from_file(index_name).await?
         } else {
-            info!("        file not found, create new");
+            debug!("        file not found, create new");
             SimpleIndex::new(index_name)
         };
         debug!("    index initialized");
@@ -207,9 +207,9 @@ impl Blob {
     }
 
     pub(crate) async fn get_all_metas(&self, key: &[u8]) -> Result<Vec<Meta>> {
-        info!("get_all_metas");
+        debug!("get_all_metas");
         let meta_locations = self.index.get_all_meta_locations(key).await?;
-        info!("gotten all meta locations");
+        debug!("gotten all meta locations");
         let mut metas = Vec::new();
         for location in meta_locations {
             let meta_raw = self
@@ -219,7 +219,7 @@ impl Blob {
             let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
             metas.push(meta);
         }
-        info!("get all headers finished");
+        debug!("get all headers finished");
         Ok(metas)
     }
 }

@@ -155,13 +155,13 @@ async fn test_storage_multiple_read_write() {
 #[tokio::test]
 async fn test_multithread_read_write() -> Result<(), String> {
     let dir = common::init("multithread");
-    warn!("block on create default test storage");
+    info!("block on create default test storage");
     let storage = common::default_test_storage_in(&dir).await?;
-    warn!("collect indexes");
+    info!("collect indexes");
     let indexes = common::create_indexes(10, 10);
-    warn!("create mpsc channel");
+    info!("create mpsc channel");
     let (snd, rcv) = tokio::sync::mpsc::channel(1024);
-    warn!("spawn std threads");
+    info!("spawn std threads");
     let s = storage.clone();
     indexes.iter().cloned().for_each(move |mut range| {
         let s = s.clone();
@@ -183,16 +183,16 @@ async fn test_multithread_read_write() -> Result<(), String> {
             })
             .unwrap();
     });
-    warn!("await for all threads to finish");
+    info!("await for all threads to finish");
     let handles = rcv.collect::<Vec<_>>().await;
     let errs_cnt = handles.iter().flatten().filter(|r| r.is_err()).count();
-    warn!("errors count: {}", errs_cnt);
-    warn!("generate flat indexes");
+    info!("errors count: {}", errs_cnt);
+    info!("generate flat indexes");
     let keys = indexes.iter().flatten().cloned().collect::<Vec<_>>();
-    warn!("check result");
+    info!("check result");
     common::check_all_written(&storage, keys)?;
     common::clean(storage, dir).await.unwrap();
-    warn!("done");
+    info!("done");
     Ok(())
 }
 
@@ -291,7 +291,7 @@ async fn test_on_disk_index() -> Result<(), String> {
         delay(Instant::now() + Duration::from_millis(200)).await;
     }
     assert!(path.join("test.1.blob").exists());
-    warn!("read key: {}", read_key);
+    debug!("read key: {}", read_key);
     let new_data = storage.read(KeyTest::new(read_key)).await.unwrap();
     assert_eq!(new_data, data);
     common::clean(storage, dir).await
@@ -399,22 +399,22 @@ async fn test_write_with_with_on_disk_index() {
     write_first_record(&storage, &key).await;
 
     let records = common::generate_records(20, 1000);
-    warn!("{} records generated", records.len());
+    debug!("{} records generated", records.len());
     for (i, record) in records.into_iter().enumerate() {
         let key = KeyTest::new(i as u32);
         info!("write key: {:?}", key);
         delay(Instant::now() + Duration::from_millis(32)).await;
         storage.write(key, record).await.unwrap();
     }
-    warn!("write records to create closed blob finished");
+    info!("write records to create closed blob finished");
     assert!(storage.blobs_count() > 1);
-    warn!("blobs count more than 1");
+    info!("blobs count more than 1");
 
     write_second_record(&storage, &key).await.unwrap();
-    warn!("write second record with the same key but different meta was successful");
+    info!("write second record with the same key but different meta was successful");
 
     assert!(write_second_record(&storage, &key).await.is_err());
-    warn!("but next same write of the second record failed as expected");
+    info!("but next same write of the second record failed as expected");
 
     common::clean(storage, dir)
         .map(|res| res.expect("work dir clean failed"))
@@ -425,18 +425,18 @@ async fn test_write_with_with_on_disk_index() {
 async fn test_write_1_000_records_with_same_key() {
     let dir = common::init("write_1_000_000_records_with_same_key");
     delay(Instant::now() + Duration::from_millis(1000)).await;
-    warn!("work dir: {}", dir);
+    info!("work dir: {}", dir);
     let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
     let key = KeyTest::new(1234);
     let value = b"data_with_empty_meta".to_vec();
     let now = Instant::now();
     for i in 0..1_000 {
-        info!("{} started", i);
+        debug!("{} started", i);
         let mut meta = Meta::new();
         meta.insert("version".to_owned(), i.to_string());
         delay(Instant::now() + Duration::from_micros(8)).await;
         storage.write_with(&key, value.clone(), meta).await.unwrap();
-        if i % 2 == 0 {
+        if i % 4 == 0 {
             info!("{} finished", i);
         }
     }

@@ -59,7 +59,6 @@ impl Meta {
 
     #[inline]
     pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
-        trace!("buf: {:?}", buf);
         let res = deserialize(&buf).map_err(Error::new);
         trace!("meta deserialized: {:?}", res);
         res
@@ -73,7 +72,6 @@ impl Meta {
     #[inline]
     pub(crate) fn to_raw(&self) -> bincode::Result<Vec<u8>> {
         let buf = serialize(&self)?;
-        trace!("buf: {:?}", buf);
         Ok(buf)
     }
 }
@@ -136,7 +134,6 @@ impl Record {
                 data.len() as u64,
                 crc32(&data),
             );
-            trace!("{:?} {:?} {:?}", header, meta, data);
             Self { header, meta, data }
         })
     }
@@ -169,9 +166,8 @@ impl Record {
     /// Serialize record to bytes
     pub fn to_raw(&self) -> bincode::Result<Vec<u8>> {
         let mut buf = self.header.to_raw()?;
-        trace!("raw header: len: {} buf: {:?}", buf.len(), buf);
+        trace!("raw header: len: {}", buf.len());
         let raw_meta = self.meta.to_raw()?;
-        trace!("raw meta: {:?}", raw_meta);
         buf.extend(&raw_meta);
         buf.extend(&self.data);
         trace!("len: {}", buf.len());
@@ -297,8 +293,7 @@ impl Header {
 
     #[inline]
     pub(crate) fn serialized_size(&self) -> bincode::Result<u64> {
-        debug!("serialized size");
-        trace!("{:?}", self);
+        trace!("get serialized size of {:?}", self);
         bincode::serialized_size(&self)
     }
 

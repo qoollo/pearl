@@ -203,7 +203,7 @@ impl SimpleIndex {
         debug!("header serialized size: {}", header_size);
         (0..header.records_count).try_fold(Vec::new(), |mut record_headers, i| {
             let offset = header_size + i * header.record_header_size;
-            debug!("deserialize record header at: {}", offset);
+            trace!("deserialize record header at: {}", offset);
             deserialize(&buf[offset..]).map(|rh| {
                 record_headers.push(rh);
                 record_headers
@@ -236,7 +236,7 @@ impl Index for SimpleIndex {
     }
 
     fn push(&mut self, h: RecordHeader) -> Push {
-        trace!("push header: {:?}", h);
+        trace!("push header: {:#?}", h);
         let fut = match &mut self.inner {
             State::InMemory(bunch) => {
                 bunch.push(h);

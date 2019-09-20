@@ -155,51 +155,49 @@ impl<K> Storage<K> {
     /// }
     /// ```
     pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
-        info!("write_with");
         let existing_metas = self.get_all_existing_metas(&key).await?;
-        info!("all existing meta received");
+        debug!("all existing meta received");
         if existing_metas.contains(&meta) {
             return Err(ErrorKind::RecordExists.into());
         }
-        info!("record with the same meta and key does not exist");
+        debug!("record with the same meta and key does not exist");
         let record = Record::create(key, value, meta).map_err(Error::new)?;
-        info!("await for inner lock");
+        debug!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
-        info!("return write future");
+        debug!("return write future");
         let blob = safe
             .active_blob
             .as_mut()
             .ok_or(ErrorKind::ActiveBlobNotSet)?;
-        info!("get active blob");
+        debug!("get active blob");
         let res = blob.write(record).await;
-        info!("active blob write finished");
+        debug!("active blob write finished");
         res.map_err(Error::new)
     }
 
     async fn get_all_existing_metas(&self, key: impl Key) -> Result<Vec<Meta>> {
-        info!("get_all_existing_metas");
         let mut safe = self.inner.safe.lock().await;
-        info!("lock acquired");
+        debug!("lock acquired");
         let active_blob = safe
             .active_blob
             .as_mut()
             .ok_or(ErrorKind::ActiveBlobNotSet)?;
-        info!("active blob extracted");
+        debug!("active blob extracted");
         let mut metas = active_blob
             .get_all_metas(key.as_ref())
             .await
             .map_err(Error::new)?;
-        info!("active blob meta loaded");
+        debug!("active blob meta loaded");
         let blobs: &Vec<Blob> = &safe.blobs;
-        info!("closed blobs extracted");
+        debug!("closed blobs extracted");
         for blob in blobs {
-            info!("look into next blob");
+            debug!("look into next blob");
             let meta = blob.get_all_metas(key.as_ref()).await.map_err(Error::new)?;
-            trace!("get all meta from blob {:?} finished", blob);
+            trace!("get all meta from blob {:#?} finished", blob);
             metas.extend(meta);
-            info!("extend finished");
+            debug!("extend finished");
         }
-        info!("all metas collected");
+        debug!("all metas collected");
         Ok(metas)
     }
 
@@ -266,12 +264,12 @@ impl<K> Storage<K> {
             })
             .await
             .map_err(Error::new)?;
-        info!("active_blob dumped");
         self.inner.need_exit.store(false, Ordering::Relaxed);
         self.inner.safe.lock().await.lock_file = None;
         if let Some(ref work_dir) = self.inner.config.work_dir {
             fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
         };
+        info!("active blob dumped, lock released");
         Ok(())
     }
 
