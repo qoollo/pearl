@@ -1,15 +1,8 @@
-use std::path::{Path, PathBuf};
-use std::task::{Context, Poll};
-use std::{convert::TryInto, error, fmt, fs, io, pin::Pin, result, sync::Arc};
-
-use bincode::serialize;
-use futures::{io::AsyncWriteExt, lock::Mutex, Future, FutureExt, Stream, TryStreamExt};
+use crate::prelude::*;
 
 use super::file::File;
 use super::index::Index;
 use super::simple_index::SimpleIndex;
-
-use crate::record::{Header as RecordHeader, Record};
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
@@ -60,7 +53,7 @@ impl Blob {
 
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
-        let offset = self.file.write(&buf).await.map_err(Error::new)?;
+        let offset = self.file.write(&buf).await?;
         self.update_offset(offset).await;
         Ok(())
     }
@@ -77,7 +70,7 @@ impl Blob {
     }
 
     #[inline]
-    fn prepare_file(name: &FileName) -> io::Result<File> {
+    fn prepare_file(name: &FileName) -> IOResult<File> {
         Self::create_file(&name.as_path()).and_then(File::from_std_file)
     }
 
@@ -90,7 +83,7 @@ impl Blob {
     }
 
     #[inline]
-    fn create_file(path: &Path) -> io::Result<fs::File> {
+    fn create_file(path: &Path) -> IOResult<fs::File> {
         fs::OpenOptions::new()
             .create_new(true)
             .write(true)
@@ -99,7 +92,7 @@ impl Blob {
     }
 
     #[inline]
-    fn open_file(path: &Path) -> io::Result<fs::File> {
+    fn open_file(path: &Path) -> IOResult<fs::File> {
         fs::OpenOptions::new()
             .create(false)
             .append(true)
@@ -121,10 +114,10 @@ impl Blob {
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         debug!("    looking for index file: [{}]", index_name.to_string());
         let index = if index_name.exists() {
-            info!("        file exists");
+            debug!("        file exists");
             SimpleIndex::from_file(index_name).await?
         } else {
-            info!("        file not found, create new");
+            debug!("        file not found, create new");
             SimpleIndex::new(index_name)
         };
         debug!("    index initialized");
@@ -148,14 +141,17 @@ impl Blob {
     }
 
     pub(crate) async fn try_regenerate_index(&mut self) -> Result<()> {
+        info!("try regenerate index for blob: {}", self.name);
         if self.index.on_disk() {
             debug!("index already updated");
             return Ok(());
         }
         let raw_r = self.raw_records().await?;
+        debug!("raw records loaded");
         raw_r.try_for_each(|h| self.index.push(h)).await?;
+        debug!("index entries collected");
         self.dump().await?;
-        info!("index generated");
+        debug!("index successfully generated: {}", self.index.name());
         Ok(())
     }
 
@@ -165,13 +161,9 @@ impl Blob {
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
-        let key = record.key().to_vec();
-        if self.index.contains_key(&key).await? {
-            return Err(ErrorKind::KeyExists.into());
-        }
         let mut offset = self.current_offset.lock().await;
-        record.set_offset(*offset).map_err(Error::new)?;
-        let buf = record.to_raw().map_err(Error::new)?;
+        record.set_offset(*offset)?;
+        let buf = record.to_raw()?;
         let bytes_written = self.file.write_at(buf, *offset).await?;
         self.index.push(record.header().clone());
         *offset += bytes_written as u64;
@@ -201,7 +193,7 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) fn file_size(&self) -> io::Result<u64> {
+    pub(crate) fn file_size(&self) -> IOResult<u64> {
         Ok(self.file.metadata()?.len())
     }
 
@@ -212,6 +204,23 @@ impl Blob {
     #[inline]
     pub(crate) fn id(&self) -> usize {
         self.name.id
+    }
+
+    pub(crate) async fn get_all_metas(&self, key: &[u8]) -> Result<Vec<Meta>> {
+        debug!("get_all_metas");
+        let meta_locations = self.index.get_all_meta_locations(key).await?;
+        debug!("gotten all meta locations");
+        let mut metas = Vec::new();
+        for location in meta_locations {
+            let meta_raw = self
+                .file
+                .read_at(location.len as usize, location.offset)
+                .await?;
+            let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
+            metas.push(meta);
+        }
+        debug!("get all headers finished");
+        Ok(metas)
     }
 }
 
@@ -229,8 +238,8 @@ impl error::Error for Error {
     }
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         self.repr.fmt(f)
     }
 }
@@ -262,17 +271,21 @@ impl From<ErrorKind> for Error {
     }
 }
 
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Self {
+impl From<IOError> for Error {
+    fn from(e: IOError) -> Self {
         ErrorKind::IO(e.to_string()).into()
     }
 }
 
 impl From<Box<bincode::ErrorKind>> for Error {
     fn from(e: Box<bincode::ErrorKind>) -> Self {
-        Self {
-            repr: Repr::Other(e),
-        }
+        ErrorKind::Bincode(e.to_string()).into()
+    }
+}
+
+impl From<TryFromIntError> for Error {
+    fn from(e: TryFromIntError) -> Self {
+        ErrorKind::Conversion(e.to_string()).into()
     }
 }
 
@@ -282,8 +295,8 @@ enum Repr {
     Other(Box<dyn error::Error + 'static + Send + Sync>),
 }
 
-impl fmt::Display for Repr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+impl Display for Repr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Repr::Inner(kind) => write!(f, "{:?}", kind),
             Repr::Other(e) => e.fmt(f),
@@ -293,12 +306,13 @@ impl fmt::Display for Repr {
 
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) enum ErrorKind {
-    KeyExists,
     NotFound,
     WrongFileNamePattern(PathBuf),
     EmptyIndexBunch,
     Index(String),
     IO(String),
+    Bincode(String),
+    Conversion(String),
 }
 
 #[derive(Debug, Clone)]
@@ -352,8 +366,8 @@ impl FileName {
     }
 }
 
-impl fmt::Display for FileName {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> result::Result<(), fmt::Error> {
+impl Display for FileName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "{}.{}.{}", self.name_prefix, self.id, self.extension)
     }
 }
@@ -399,19 +413,13 @@ struct RawRecords {
 
 impl RawRecords {
     async fn start(file: File, blob_header_size: u64) -> Result<Self> {
+        trace!("file: {:?}, blob header size: {:?}", file, blob_header_size);
         let current_offset = blob_header_size;
         let buf = file
-            .read_at(
-                std::mem::size_of::<usize>()
-                    .try_into()
-                    .map_err(Error::new)?,
-                current_offset + 8,
-            )
+            .read_at(std::mem::size_of::<usize>(), current_offset + 8)
             .await?;
-        let key_len: u64 = bincode::deserialize::<usize>(&buf)?
-            .try_into()
-            .map_err(Error::new)?;
-        let record_header_size = RecordHeader::default().serialized_size()? + key_len;
+        let key_len = bincode::deserialize::<usize>(&buf)?;
+        let record_header_size = RecordHeader::default().serialized_size()? + key_len as u64;
         let read_fut = Self::read_at(file.clone(), record_header_size, current_offset).boxed();
         let file_len = file.metadata().map(|m| m.len())?;
         trace!(
@@ -431,15 +439,14 @@ impl RawRecords {
 
     async fn read_at(file: File, size: u64, offset: u64) -> Result<RecordHeader> {
         debug!("call read_at: {} bytes at {}", size, offset);
-        let buf = file
-            .read_at(size.try_into().map_err(Error::new)?, offset)
-            .await?;
+        let buf = file.read_at(size.try_into()?, offset).await?;
         RecordHeader::from_raw(&buf).map_err(Error::new)
     }
 
     fn update_future(&mut self, header: &RecordHeader) {
         self.current_offset += self.record_header_size;
-        self.current_offset += header.data_len;
+        self.current_offset += header.meta_len();
+        self.current_offset += header.data_len();
         trace!(
             "file len: {}, current offset: {}",
             self.file_len,

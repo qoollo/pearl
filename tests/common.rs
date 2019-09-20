@@ -14,8 +14,8 @@ use rand::Rng;
 
 use pearl::{Builder, Key, Storage};
 
-#[derive(Debug)]
-pub struct KeyTest(pub Vec<u8>);
+#[derive(Debug, Clone)]
+pub struct KeyTest(Vec<u8>);
 
 impl AsRef<[u8]> for KeyTest {
     fn as_ref(&self) -> &[u8] {
@@ -25,6 +25,12 @@ impl AsRef<[u8]> for KeyTest {
 
 impl Key for KeyTest {
     const LEN: u16 = 4;
+}
+
+impl KeyTest {
+    pub fn new(inner: u32) -> Self {
+        Self(inner.to_be_bytes().to_vec())
+    }
 }
 
 pub fn init(dir_name: &str) -> String {
@@ -49,7 +55,7 @@ pub fn init(dir_name: &str) -> String {
                 style.value(record.args())
             )
         })
-        .filter_level(log::LevelFilter::Warn)
+        .filter_level(log::LevelFilter::Info)
         .try_init()
         .unwrap_or(());
     format!(
@@ -94,10 +100,8 @@ pub async fn clean(storage: Storage<KeyTest>, dir: String) -> Result<(), String>
 pub async fn write(storage: Storage<KeyTest>, base_number: u64) -> Result<(), String> {
     let key = KeyTest(format!("{}key", base_number).as_bytes().to_vec());
     let data = "omn".repeat(base_number as usize % 1_000_000);
-    storage
-        .write(key, data.as_bytes().to_vec())
-        .await
-        .map_err(|e| e.to_string())
+    let res = storage.write(key, data.as_bytes().to_vec()).await;
+    res.map_err(|e| e.to_string())
 }
 
 pub fn check_all_written(storage: &Storage<KeyTest>, nums: Vec<usize>) -> Result<(), String> {

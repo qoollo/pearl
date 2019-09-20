@@ -2,11 +2,78 @@ use crate::prelude::*;
 
 const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
+/// [`Record`] consists of header and data.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub(crate) struct Record {
+    header: Header,
+    meta: Meta,
+    data: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct Header {
+    magic_byte: u64,
+    key: Vec<u8>,
+    meta_len: u64,
+    data_len: u64,
+    flags: u8,
+    blob_offset: u64,
+    created: u64,
+    data_checksum: u32,
+    header_checksum: u32,
+}
+
+/// Struct representing additional meta information. Helps to distinguish different
+/// version of the records with the same key.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct Meta(HashMap<String, Vec<u8>>);
+
 type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub(crate) struct Error {
     repr: Repr,
+}
+
+#[derive(Debug)]
+enum Repr {
+    Inner(ErrorKind),
+    Other(Box<dyn error::Error + 'static + Send + Sync>),
+}
+
+impl Meta {
+    /// Create new Meta with name and bytes body.
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    /// Inserts new option into meta
+    #[inline]
+    pub fn insert(
+        &mut self,
+        name: String,
+        value: impl Into<Vec<u8>>,
+    ) -> Option<impl Into<Vec<u8>>> {
+        self.0.insert(name, value.into())
+    }
+
+    #[inline]
+    pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
+        let res = deserialize(&buf).map_err(Error::new);
+        trace!("meta deserialized: {:?}", res);
+        res
+    }
+
+    #[inline]
+    fn serialized_size(&self) -> Result<u64> {
+        serialized_size(&self).map_err(Error::new)
+    }
+
+    #[inline]
+    pub(crate) fn to_raw(&self) -> bincode::Result<Vec<u8>> {
+        let buf = serialize(&self)?;
+        Ok(buf)
+    }
 }
 
 impl Error {
@@ -35,12 +102,6 @@ impl Display for Error {
     }
 }
 
-#[derive(Debug)]
-enum Repr {
-    Inner(ErrorKind),
-    Other(Box<dyn error::Error + 'static + Send + Sync>),
-}
-
 impl Display for Repr {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
@@ -63,23 +124,18 @@ impl From<ErrorKind> for Error {
     }
 }
 
-/// [`Record`] consists of header and data.
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-pub(crate) struct Record {
-    header: Header,
-    data: Vec<u8>,
-}
-
 impl Record {
     /// Creates new `Record` with provided data and key.
-    pub fn new(key: impl Key, data: Vec<u8>) -> Self {
-        let header = Header::new(key.as_ref().to_vec(), data.len() as u64, crc32(&data));
-        Self { header, data }
-    }
-
-    /// Get immutable reference to owned key buffer.
-    pub fn key(&self) -> &[u8] {
-        self.header.key()
+    pub fn create(key: impl Key, data: Vec<u8>, meta: Meta) -> Result<Self> {
+        meta.serialized_size().map(|meta_size| {
+            let header = Header::new(
+                key.as_ref().to_vec(),
+                meta_size,
+                data.len() as u64,
+                crc32(&data),
+            );
+            Self { header, meta, data }
+        })
     }
 
     /// Get immutable reference to header.
@@ -90,21 +146,31 @@ impl Record {
     /// # Description
     /// Init new `Record` from raw buffer
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
+        trace!("len: {}, buf: {:?}", buf.len(), buf);
         // @TODO Header validation
         let header = Header::from_raw(buf)?;
-        let data_offset = buf.len() - header.data_len as usize;
+        trace!("header from raw created");
+        let meta_offset = header.serialized_size().map_err(Error::new)? as usize;
+        let meta_len = header.meta_len as usize;
+        trace!("meta offset {} len {}", meta_offset, meta_len);
+        let meta = Meta::from_raw(&buf[meta_offset..])?;
+        trace!("meta from raw created: {:?}", meta);
+        let data_offset = meta_offset + meta_len;
+        trace!("data offset {}", data_offset);
         let data = buf[data_offset..].to_vec();
-        let record = Self { header, data };
+        let record = Self { header, meta, data };
         record.validate()
     }
 
     /// # Description
     /// Serialize record to bytes
     pub fn to_raw(&self) -> bincode::Result<Vec<u8>> {
-        let raw_header = self.header.to_raw()?;
-        let mut buf = Vec::with_capacity(self.header.full_len()? as usize);
-        buf.extend(raw_header.iter());
-        buf.extend_from_slice(&self.data);
+        let mut buf = self.header.to_raw()?;
+        trace!("raw header: len: {}", buf.len());
+        let raw_meta = self.meta.to_raw()?;
+        buf.extend(&raw_meta);
+        buf.extend(&self.data);
+        trace!("len: {}", buf.len());
         Ok(buf)
     }
 
@@ -163,23 +229,12 @@ impl Record {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-pub struct Header {
-    magic_byte: u64,
-    key: Vec<u8>,
-    pub(crate) data_len: u64,
-    flags: u8,
-    blob_offset: u64,
-    created: u64,
-    data_checksum: u32,
-    header_checksum: u32,
-}
-
 impl Header {
-    pub fn new(key: Vec<u8>, data_len: u64, data_checksum: u32) -> Self {
+    pub fn new(key: Vec<u8>, meta_len: u64, data_len: u64, data_checksum: u32) -> Self {
         Self {
             magic_byte: RECORD_MAGIC_BYTE,
             key,
+            meta_len,
             data_len,
             flags: 0,
             blob_offset: 0,
@@ -195,28 +250,50 @@ impl Header {
         }
     }
 
+    #[inline]
+    pub(crate) fn data_len(&self) -> u64 {
+        self.data_len
+    }
+
+    #[inline]
+    pub(crate) fn meta_len(&self) -> u64 {
+        self.meta_len
+    }
+
+    #[inline]
     pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
         deserialize(&buf).map_err(Error::new)
     }
 
+    #[inline]
     pub(crate) fn to_raw(&self) -> bincode::Result<Vec<u8>> {
         serialize(&self)
     }
 
+    #[inline]
     pub fn blob_offset(&self) -> u64 {
         self.blob_offset
     }
 
+    #[inline]
     pub(crate) fn full_len(&self) -> bincode::Result<u64> {
-        self.serialized_size().map(|size| self.data_len + size)
+        self.serialized_size()
+            .map(|size| self.data_len + self.meta_len + size)
     }
 
+    #[inline]
     pub fn key(&self) -> &[u8] {
         &self.key
     }
 
     #[inline]
+    pub fn has_key(&self, key: &[u8]) -> bool {
+        self.key.as_slice() == key
+    }
+
+    #[inline]
     pub(crate) fn serialized_size(&self) -> bincode::Result<u64> {
+        trace!("get serialized size of {:?}", self);
         bincode::serialized_size(&self)
     }
 

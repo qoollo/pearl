@@ -1,16 +1,4 @@
-use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
-use futures::lock::Mutex;
-use futures::FutureExt;
-use std::fs;
-use std::future::Future;
-use std::io::{ErrorKind, Read, Result as IOResult, Seek, SeekFrom, Write};
-use std::os::unix::fs::FileExt;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::Waker;
-use std::task::{Context, Poll};
-use std::time::{Duration, Instant};
-use tokio::timer::delay;
+use crate::prelude::*;
 
 const WOULDBLOCK_RETRY_INTERVAL_MS: u64 = 10;
 
@@ -35,10 +23,22 @@ impl AsyncRead for File {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<IOResult<usize>> {
+        let mut file_ref = Pin::get_ref(self.as_ref());
+        let pinned_file_ref = Pin::new(&mut file_ref);
+        pinned_file_ref.poll_read(cx, buf)
+    }
+}
+
+impl AsyncRead for &File {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<IOResult<usize>> {
         let mut file = self.read_fd.as_ref();
         match file.read(buf) {
             Err(ref e)
-                if e.kind() == ErrorKind::WouldBlock || e.kind() == ErrorKind::Interrupted =>
+                if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
             {
                 warn!(
                     "file read operation wouldblock or interrupted, retry in {}ms",
@@ -58,7 +58,7 @@ impl AsyncWrite for File {
         let mut file = self.read_fd.as_ref();
         match file.write_all(buf) {
             Err(ref e)
-                if e.kind() == ErrorKind::WouldBlock || e.kind() == ErrorKind::Interrupted =>
+                if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
             {
                 warn!(
                     "file write all operation wouldblock or interrupted, retry in {}ms",
@@ -76,7 +76,7 @@ impl AsyncWrite for File {
         let mut file = self.read_fd.as_ref();
         match file.flush() {
             Err(ref e)
-                if e.kind() == ErrorKind::WouldBlock || e.kind() == ErrorKind::Interrupted =>
+                if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
             {
                 warn!(
                     "file flush operation wouldblock or interrupted, retry in {}ms",
@@ -97,10 +97,18 @@ impl AsyncWrite for File {
 
 impl AsyncSeek for File {
     fn poll_seek(self: Pin<&mut Self>, cx: &mut Context<'_>, pos: SeekFrom) -> Poll<IOResult<u64>> {
+        let mut file_ref = Pin::get_ref(self.as_ref());
+        let pinned_file_ref = Pin::new(&mut file_ref);
+        pinned_file_ref.poll_seek(cx, pos)
+    }
+}
+
+impl AsyncSeek for &File {
+    fn poll_seek(self: Pin<&mut Self>, cx: &mut Context<'_>, pos: SeekFrom) -> Poll<IOResult<u64>> {
         let mut file = self.read_fd.as_ref();
         match file.seek(pos) {
             Err(ref e)
-                if e.kind() == ErrorKind::WouldBlock || e.kind() == ErrorKind::Interrupted =>
+                if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
             {
                 warn!(
                     "file seek operation wouldblock or interrupted, retry in {}ms",
@@ -159,7 +167,7 @@ impl<'a> Future for WriteAt<'a> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         match self.fd.write_at(&self.buf, self.offset) {
             Err(ref e)
-                if e.kind() == ErrorKind::WouldBlock || e.kind() == ErrorKind::Interrupted =>
+                if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
             {
                 warn!(
                     "file write at operation wouldblock or interrupted, retry in {}ms",
@@ -174,6 +182,7 @@ impl<'a> Future for WriteAt<'a> {
     }
 }
 
+#[derive(Debug)]
 struct ReadAt {
     fd: Arc<fs::File>,
     len: usize,
@@ -184,10 +193,11 @@ impl Future for ReadAt {
     type Output = IOResult<Vec<u8>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        trace!("read at poll {:?}", self);
         let mut buf = vec![0; self.len];
         match self.fd.read_at(&mut buf, self.offset) {
             Err(ref e)
-                if e.kind() == ErrorKind::WouldBlock || e.kind() == ErrorKind::Interrupted =>
+                if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
             {
                 warn!(
                     "file write at operation wouldblock or interrupted, retry in {}ms",
@@ -197,7 +207,7 @@ impl Future for ReadAt {
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(e)),
-            Ok(_) => Poll::Ready(Ok(buf)),
+            Ok(n) => Poll::Ready(Ok(buf[0..n].to_vec())),
         }
     }
 }

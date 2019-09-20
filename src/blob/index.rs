@@ -1,13 +1,11 @@
-use futures::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use crate::prelude::*;
 
 use super::core::Error;
 use crate::record::Header as RecordHeader;
 
 type Result<T> = std::result::Result<T, Error>;
 
-pub(crate) trait Index {
+pub(crate) trait Index: Send + Sync {
     fn get(&self, key: &[u8]) -> Get;
     fn push(&mut self, h: RecordHeader) -> Push;
     fn contains_key(&self, key: &[u8]) -> ContainsKey;
@@ -18,7 +16,9 @@ pub(crate) trait Index {
 
 type Inner<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
-pub(crate) struct Get(pub(crate) Inner<RecordHeader>);
+pub(crate) struct Get {
+    pub(crate) inner: Inner<RecordHeader>,
+}
 
 pub(crate) struct Push(pub(crate) Inner<()>);
 
@@ -50,7 +50,7 @@ impl Future for Get {
     type Output = Result<RecordHeader>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Future::poll(self.0.as_mut(), cx)
+        Future::poll(self.inner.as_mut(), cx)
     }
 }
 
