@@ -424,7 +424,6 @@ async fn test_write_with_with_on_disk_index() {
 #[tokio::test]
 async fn test_write_1_000_records_with_same_key() {
     let dir = common::init("write_1_000_000_records_with_same_key");
-    delay(Instant::now() + Duration::from_millis(1000)).await;
     info!("work dir: {}", dir);
     let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
     let key = KeyTest::new(1234);
@@ -445,4 +444,20 @@ async fn test_write_1_000_records_with_same_key() {
     common::clean(storage, dir)
         .map(|res| res.expect("work dir clean failed"))
         .await;
+}
+
+#[tokio::test]
+async fn test_read_with() {
+    let dir = common::init("read_with");
+    let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
+    let key = KeyTest::new(2345);
+    let value = b"some_random_data".to_vec();
+    let mut meta = Meta::new();
+    meta.insert("version".to_owned(), "2.0");
+    storage.write(&key, value).await.unwrap();
+    let now = Instant::now();
+    let data_read_with = storage.read_with(&key, &meta).await.unwrap();
+    let data_read = storage.read(&key).await.unwrap();
+    assert_eq!(data_read_with, data_read);
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }

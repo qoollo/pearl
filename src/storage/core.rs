@@ -151,7 +151,9 @@ impl<K> Storage<K> {
     /// async fn write_data() {
     ///     let key = 42u64.to_be_bytes().to_vec();
     ///     let data = b"async written to blob".to_vec();
-    ///     storage.write(key, data).await
+    ///     let meta = Meta::new();
+    ///     meta.insert("version".to_string(), b"1.0".to_vec());
+    ///     storage.write_with(&key, data, meta).await
     /// }
     /// ```
     pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
@@ -201,8 +203,8 @@ impl<K> Storage<K> {
         Ok(metas)
     }
 
-    /// Reads data with given key, if error ocured or there are no records with matching
-    /// key, returns [`Error::RecordNotFound`]
+    /// Reads the first found data matching given key,
+    /// if are no records with matching key, returns [`Error::RecordNotFound`]
     /// # Examples
     /// ```no-run
     /// async fn read_data() {
@@ -212,14 +214,37 @@ impl<K> Storage<K> {
     /// ```
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
+    #[inline]
     pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
+        self.read_with_optional_meta(key, None).await
+    }
+    /// Reads data matching given key and metadata,
+    /// if are no records with matching key, returns [`Error::RecordNotFound`]
+    /// # Examples
+    /// ```no-run
+    /// async fn read_data() {
+    ///     let key = 42u64.to_be_bytes().to_vec();
+    ///     let meta = Meta::new();
+    ///     meta.insert("version".to_string(), b"1.0".to_vec());
+    ///     let data = storage.read(&key, &meta).await;
+    /// }
+    /// ```
+    ///
+    /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
+    #[inline]
+    pub async fn read_with(&self, key: impl Key, meta: &Meta) -> Result<Vec<u8>> {
+        self.read_with_optional_meta(key, Some(meta)).await
+    }
+
+    async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {
         let inner = self.inner.safe.lock().await;
         debug!("safe lock acquired");
+        let key = key.as_ref();
         let active_blob_read_res = inner
             .active_blob
             .as_ref()
             .ok_or(ErrorKind::ActiveBlobNotSet)?
-            .read(key.as_ref().to_vec())
+            .read(&key, meta)
             .await;
         debug!("data read from active blob");
         Ok(if let Ok(record) = active_blob_read_res {
@@ -228,7 +253,7 @@ impl<K> Storage<K> {
             let stream: FuturesUnordered<_> = inner
                 .blobs
                 .iter()
-                .map(|blob| blob.read(key.as_ref().to_vec()))
+                .map(|blob| blob.read(&key, meta))
                 .collect();
             debug!("await for stream of read futures: {}", stream.len());
             let mut task = stream.skip_while(|res| future::ready(res.is_err()));
@@ -243,6 +268,12 @@ impl<K> Storage<K> {
         }
         .get_data())
     }
+
+    /// Similar to `read`, but returns `Entry` instead of full `Record`
+    // pub async fn get(&self, key: impl Key, meta: &Meta) -> Result<Entry> {
+    //     let inner = self.inner.safe.lock().await;
+    //     unimplemented!()
+    // }
 
     /// Stop blob updater and release lock file
     pub async fn close(&self) -> Result<()> {

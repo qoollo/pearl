@@ -170,7 +170,7 @@ impl Blob {
         Ok(())
     }
 
-    pub(crate) async fn read(&self, key: Vec<u8>) -> Result<Record> {
+    pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> Result<Record> {
         debug!("lookup key");
         let loc = self.lookup(&key).await?;
         debug!("read at");
@@ -181,10 +181,7 @@ impl Blob {
         Ok(record)
     }
 
-    async fn lookup<K>(&self, key: K) -> Result<Location>
-    where
-        K: AsRef<[u8]> + Ord,
-    {
+    async fn lookup(&self, key: &[u8]) -> Result<Location> {
         debug!("index get");
         let h = self.index.get(key.as_ref()).await?;
         debug!("blob offset");
