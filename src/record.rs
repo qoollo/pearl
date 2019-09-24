@@ -59,9 +59,9 @@ impl Meta {
 
     #[inline]
     pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
-        let res = deserialize(&buf).map_err(Error::new);
+        let res = deserialize(&buf);
         trace!("meta deserialized: {:?}", res);
-        res
+        res.map_err(Into::into)
     }
 
     #[inline]
@@ -98,7 +98,7 @@ impl error::Error for Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        self.repr.fmt(f)
+        Debug::fmt(&self.repr, f)
     }
 }
 
@@ -106,14 +106,21 @@ impl Display for Repr {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Repr::Inner(kind) => write!(f, "{:?}", kind),
-            Repr::Other(e) => e.fmt(f),
+            Repr::Other(e) => Debug::fmt(e, f),
         }
+    }
+}
+
+impl From<Box<bincode::ErrorKind>> for Error {
+    fn from(e: Box<bincode::ErrorKind>) -> Self {
+        ErrorKind::Bincode(e.to_string()).into()
     }
 }
 
 #[derive(Debug)]
 pub enum ErrorKind {
     Validation(String),
+    Bincode(String),
 }
 
 impl From<ErrorKind> for Error {

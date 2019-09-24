@@ -57,12 +57,12 @@ mod record;
 mod storage;
 
 pub use record::Meta;
-pub use storage::{Builder, Entry, Error, ErrorKind, Key, Storage};
+pub use storage::{Builder, Error, ErrorKind, Key, Storage};
 
 mod prelude {
     pub(crate) use crate::blob::{self, Blob};
     pub(crate) use crate::record::{Header as RecordHeader, Record};
-    pub(crate) use crate::{Entry, Key, Meta};
+    pub(crate) use crate::{Key, Meta};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::lock::Mutex;
@@ -70,8 +70,8 @@ mod prelude {
     pub(crate) use futures::stream::{futures_unordered::FuturesUnordered, TryStreamExt};
     pub(crate) use std::cmp::Ordering as CmpOrdering;
     pub(crate) use std::collections::HashMap;
-    pub(crate) use std::fmt::{Display, Formatter, Result as FmtResult};
-    pub(crate) use std::fs::{self, DirEntry, File, OpenOptions};
+    pub(crate) use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
+    pub(crate) use std::fs::{self, DirEntry, File as StdFile, OpenOptions};
     pub(crate) use std::io::{
         Error as IOError, ErrorKind as IOErrorKind, Read, Result as IOResult, Seek, SeekFrom, Write,
     };

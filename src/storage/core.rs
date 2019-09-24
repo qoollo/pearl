@@ -52,7 +52,7 @@ pub(crate) struct Inner {
 pub(crate) struct Safe {
     pub(crate) active_blob: Option<Box<Blob>>,
     pub(crate) blobs: Vec<Blob>,
-    lock_file: Option<File>,
+    lock_file: Option<StdFile>,
 }
 
 impl<K> Drop for Storage<K> {
@@ -166,7 +166,6 @@ impl<K> Storage<K> {
         let record = Record::create(key, value, meta).map_err(Error::new)?;
         debug!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
-        debug!("return write future");
         let blob = safe
             .active_blob
             .as_mut()
@@ -216,6 +215,7 @@ impl<K> Storage<K> {
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
     pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
+        info!("transfer call to read with optional meta");
         self.read_with_optional_meta(key, None).await
     }
     /// Reads data matching given key and metadata,
@@ -238,7 +238,7 @@ impl<K> Storage<K> {
 
     async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {
         let inner = self.inner.safe.lock().await;
-        debug!("safe lock acquired");
+        info!("lock acquired");
         let key = key.as_ref();
         let active_blob_read_res = inner
             .active_blob

@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-use super::core::{Error, ErrorKind, FileName, Result};
-use super::file::File;
+use super::core::{Error, ErrorKind, FileName, Location, Result};
 use super::index::{ContainsKey, Count, Dump, Get, Index, Load, Push};
+use super::{entry::Entries, file::File};
 
 #[derive(Debug)]
 pub(crate) struct SimpleIndex {
@@ -15,17 +15,6 @@ pub(crate) struct SimpleIndex {
 struct Header {
     records_count: usize,
     record_header_size: usize,
-}
-
-pub(crate) struct MetaLocation {
-    pub(crate) len: usize,
-    pub(crate) offset: u64,
-}
-
-impl MetaLocation {
-    fn new(len: usize, offset: u64) -> Self {
-        Self { len, offset }
-    }
 }
 
 impl Header {
@@ -46,7 +35,7 @@ impl Header {
 }
 
 #[derive(Debug, Clone)]
-enum State {
+pub(crate) enum State {
     InMemory(Vec<RecordHeader>),
     OnDisk(File),
 }
@@ -67,41 +56,13 @@ impl SimpleIndex {
         &self.name
     }
 
-    fn extract_matching_meta_locations(rec_hdrs: &[RecordHeader], key: &[u8]) -> Vec<MetaLocation> {
-        rec_hdrs
-            .iter()
-            .filter(|h| h.has_key(key))
-            .filter_map(|header| {
-                Some(MetaLocation::new(
-                    header.meta_len().try_into().ok()?,
-                    header.blob_offset() + header.serialized_size().ok()?,
-                ))
-            })
-            .collect()
-    }
-
-    pub async fn get_all_meta_locations(&self, key: &[u8]) -> Result<Vec<MetaLocation>> {
+    pub(crate) async fn get_all_meta_locations(&self, key: &[u8]) -> Result<Vec<Location>> {
         Ok(match &self.inner {
             State::InMemory(bunch) => Self::extract_matching_meta_locations(bunch, key),
             State::OnDisk(file) => {
                 let record_headers = Self::load(file).await?;
                 Self::extract_matching_meta_locations(&record_headers, key)
             }
-        })
-    }
-
-    async fn load(mut file: &File) -> Result<Vec<RecordHeader>> {
-        debug!("seek to file start");
-        file.seek(SeekFrom::Start(0)).await?;
-        let mut buf = Vec::new();
-        debug!("read to end index");
-        file.read_to_end(&mut buf).await?;
-        Ok(if buf.is_empty() {
-            debug!("empty index file");
-            Vec::new()
-        } else {
-            debug!("deserialize buffer:{} to headers", buf.len());
-            Self::deserialize_bunch(&buf)?
         })
     }
 
@@ -121,6 +82,46 @@ impl SimpleIndex {
             header,
             inner: State::InMemory(index),
             name,
+        })
+    }
+
+    pub(crate) fn on_disk(&self) -> bool {
+        match self.inner {
+            State::OnDisk(_) => true,
+            _ => false,
+        }
+    }
+
+    pub(crate) fn get_entry<'a, 'b: 'a>(&'b self, key: &'a [u8]) -> Entries<'a> {
+        info!("create iterator");
+        Entries::new(&self.inner, key)
+    }
+
+    fn extract_matching_meta_locations(rec_hdrs: &[RecordHeader], key: &[u8]) -> Vec<Location> {
+        rec_hdrs
+            .iter()
+            .filter(|h| h.has_key(key))
+            .filter_map(|header| {
+                Some(Location::new(
+                    header.blob_offset() + header.serialized_size().ok()?,
+                    header.meta_len().try_into().ok()?,
+                ))
+            })
+            .collect()
+    }
+
+    async fn load(mut file: &File) -> Result<Vec<RecordHeader>> {
+        debug!("seek to file start");
+        file.seek(SeekFrom::Start(0)).await?;
+        let mut buf = Vec::new();
+        debug!("read to end index");
+        file.read_to_end(&mut buf).await?;
+        Ok(if buf.is_empty() {
+            debug!("empty index file");
+            Vec::new()
+        } else {
+            debug!("deserialize buffer:{} to headers", buf.len());
+            Self::deserialize_bunch(&buf)?
         })
     }
 
@@ -213,13 +214,6 @@ impl SimpleIndex {
                 record_headers
             })
         })
-    }
-
-    pub fn on_disk(&self) -> bool {
-        match self.inner {
-            State::OnDisk(_) => true,
-            _ => false,
-        }
     }
 }
 

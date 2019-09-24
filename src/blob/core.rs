@@ -171,22 +171,38 @@ impl Blob {
     }
 
     pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> Result<Record> {
-        debug!("lookup key");
-        let loc = self.lookup(&key).await?;
-        debug!("read at");
+        let loc = self.lookup(&key, meta).await?;
+        debug!("key found");
         let buf = self.file.read_at(loc.size as usize, loc.offset).await?;
-        debug!("record from raw");
         let record = Record::from_raw(&buf).map_err(Error::new)?;
-        debug!("return result");
         Ok(record)
     }
 
-    async fn lookup(&self, key: &[u8]) -> Result<Location> {
-        debug!("index get");
-        let h = self.index.get(key.as_ref()).await?;
-        debug!("blob offset");
-        let offset = h.blob_offset();
-        Ok(Location::new(offset as u64, h.full_len()?))
+    async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Result<Location> {
+        if let Some(meta) = meta {
+            info!("lookup with meta");
+            let entry = self
+                .index
+                .get_entry(&key)
+                .find(|entry| {
+                    if let Some(ref m) = entry.meta() {
+                        m == meta
+                    } else {
+                        false
+                    }
+                })
+                .ok_or(ErrorKind::NotFound)?;
+            Ok(Location::new(entry.offset(), entry.size()))
+        } else {
+            info!("lookup first");
+            let entry = self
+                .index
+                .get_entry(key.as_ref())
+                .next()
+                .ok_or(ErrorKind::NotFound)?;
+            let offset = entry.offset();
+            Ok(Location::new(offset as u64, entry.size()))
+        }
     }
 
     #[inline]
@@ -205,13 +221,13 @@ impl Blob {
 
     pub(crate) async fn get_all_metas(&self, key: &[u8]) -> Result<Vec<Meta>> {
         debug!("get_all_metas");
-        let meta_locations = self.index.get_all_meta_locations(key).await?;
+        let locations = self.index.get_all_meta_locations(key).await?;
         debug!("gotten all meta locations");
         let mut metas = Vec::new();
-        for location in meta_locations {
+        for location in locations {
             let meta_raw = self
                 .file
-                .read_at(location.len as usize, location.offset)
+                .read_at(location.size as usize, location.offset)
                 .await?;
             let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
             metas.push(meta);
@@ -237,7 +253,7 @@ impl error::Error for Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        self.repr.fmt(f)
+        Debug::fmt(&self.repr, f)
     }
 }
 
@@ -296,7 +312,7 @@ impl Display for Repr {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Repr::Inner(kind) => write!(f, "{:?}", kind),
-            Repr::Other(e) => e.fmt(f),
+            Repr::Other(e) => Debug::fmt(e, f),
         }
     }
 }
@@ -387,13 +403,13 @@ impl Header {
 }
 
 #[derive(Debug)]
-struct Location {
+pub struct Location {
     offset: u64,
     size: u64,
 }
 
 impl Location {
-    fn new(offset: u64, size: u64) -> Self {
+    pub fn new(offset: u64, size: u64) -> Self {
         Self { offset, size }
     }
 }

@@ -1,4 +1,5 @@
 mod core;
+mod entry;
 mod file;
 mod index;
 mod simple_index;
