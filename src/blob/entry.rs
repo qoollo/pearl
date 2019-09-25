@@ -33,11 +33,11 @@ impl Entry {
     }
 
     pub(crate) fn offset(&self) -> u64 {
-        self.data_offset.expect("data offset was not set")
+        self.data_offset.expect("get data offset")
     }
 
     pub(crate) fn size(&self) -> usize {
-        self.data_size.unwrap()
+        self.data_size.expect("get data size")
     }
 }
 
@@ -70,15 +70,15 @@ impl<'a> Entries<'a> {
         let key = self.key;
         let file = self.blob_file;
         if let Some(it) = &mut self.in_memory_iter {
+            trace!("find in iterator");
             Self::try_find_record_header(it, key, file, cx)
         } else {
-            let mut rec_iter = headers.iter();
-            let h = rec_iter.find(|h| h.key() == key).unwrap();
-            let entry = Self::create_entry(file, h);
-            pin_mut!(entry);
-            let entry = ready!(Future::poll(entry, cx));
+            trace!("iterator not set");
+            let rec_iter = headers.iter();
             self.in_memory_iter = Some(rec_iter);
-            Poll::Ready(Some(entry))
+            cx.waker().wake_by_ref();
+            trace!("wake scheduled");
+            Poll::Pending
         }
     }
 
