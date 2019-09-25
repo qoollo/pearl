@@ -133,7 +133,11 @@ async fn test_multithread_read_write() -> Result<(), String> {
     });
     let handles = rcv.collect::<Vec<_>>().await;
     assert_eq!(handles.len(), 10);
-    let keys = indexes.iter().flatten().cloned().collect::<Vec<_>>();
+    let keys = indexes
+        .iter()
+        .flatten()
+        .map(|i| *i as u32)
+        .collect::<Vec<_>>();
     common::check_all_written(&storage, keys)?;
     common::clean(storage, dir).await.unwrap();
     Ok(())

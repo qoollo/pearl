@@ -1,8 +1,5 @@
+use super::prelude::*;
 use crate::prelude::*;
-
-use super::core::{Error, ErrorKind, FileName, Location, Result};
-use super::index::{ContainsKey, Count, Dump, Get, Index, Load, Push};
-use super::{entry::Entries, file::File};
 
 #[derive(Debug)]
 pub(crate) struct SimpleIndex {

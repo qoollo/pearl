@@ -6,3 +6,11 @@ mod simple_index;
 
 pub(crate) use self::core::{Blob, FileName, Location};
 pub(crate) use self::file::File;
+
+mod prelude {
+    pub(crate) use super::core::{Error, ErrorKind, FileName, Location, Result};
+    pub(crate) use super::entry::{Entries, Entry};
+    pub(crate) use super::file::File;
+    pub(crate) use super::index::{ContainsKey, Count, Dump, Get, Index, Load, Push};
+    pub(crate) use super::simple_index::State;
+}

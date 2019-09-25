@@ -55,7 +55,7 @@ pub fn init(dir_name: &str) -> String {
                 style.value(record.args())
             )
         })
-        .filter_level(log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Warn)
         .try_init()
         .unwrap_or(());
     format!(
@@ -97,17 +97,13 @@ pub async fn clean(storage: Storage<KeyTest>, dir: String) -> Result<(), String>
     fs::remove_dir_all(path).map_err(|e| e.to_string())
 }
 
-pub fn check_all_written(storage: &Storage<KeyTest>, nums: Vec<usize>) -> Result<(), String> {
-    let keys = nums.iter().map(|n| format!("{}key", n)).collect::<Vec<_>>();
+pub fn check_all_written(storage: &Storage<KeyTest>, keys: Vec<u32>) -> Result<(), String> {
     let read_futures: FuturesUnordered<_> = keys
-        .into_iter()
-        .map(|key: String| {
-            dbg!(&key);
-            storage.read(KeyTest(key.as_bytes().to_vec()))
-        })
+        .iter()
+        .map(|key| storage.read(KeyTest::new(*key)))
         .collect();
     let futures = read_futures.collect::<Vec<_>>();
-    let expected_len = nums.len();
+    let expected_len = keys.len();
     let future_obj = FutureObj::new(Box::new(futures.map(move |records| {
         assert_eq!(records.len(), expected_len);
         records

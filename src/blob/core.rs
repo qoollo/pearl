@@ -1,3 +1,4 @@
+use super::prelude::*;
 use crate::prelude::*;
 
 use super::index::Index;
@@ -171,7 +172,7 @@ impl Blob {
     }
 
     pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> Result<Record> {
-        let loc = self.lookup(&key, meta).await?;
+        let loc = self.lookup(&key, meta).await.ok_or(ErrorKind::NotFound)?;
         debug!("key found");
         let buf = self.file.read_at(loc.size as usize, loc.offset).await?;
         info!("buf read finished");
@@ -180,40 +181,24 @@ impl Blob {
         Ok(record)
     }
 
-    async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Result<Location> {
-        if let Some(meta) = meta {
-            info!("lookup with meta");
-            let entry = self
-                .index
-                .get_entry(&key, &self.file)
-                .filter(|entry| {
-                    info!("matching entry found");
-                    if let Some(ref m) = entry.meta() {
-                        info!("meta matched");
-                        debug!("m: {:?}", m);
-                        debug!("meta: {:?}", meta);
-                        future::ready(m == meta)
-                    } else {
-                        info!("meta not matched");
-                        future::ready(false)
-                    }
-                })
-                .next()
-                .await
-                .ok_or(ErrorKind::NotFound)?;
-            info!("entry found, return location");
-            Ok(Location::new(entry.offset(), entry.size()))
-        } else {
-            info!("lookup first");
-            let entry = self
-                .index
-                .get_entry(key.as_ref(), &self.file)
-                .next()
-                .await
-                .ok_or(ErrorKind::NotFound)?;
-            let offset = entry.offset();
-            Ok(Location::new(offset as u64, entry.size()))
-        }
+    async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
+        let entries = self.index.get_entry(key, &self.file);
+        Self::find_entry(entries, meta)
+            .await
+            .map(|entry| Location::new(entry.offset(), entry.size()))
+    }
+
+    async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Option<Entry> {
+        ents.filter(|entry| {
+            let cmp = if let Some(m) = meta {
+                *m == entry.meta()
+            } else {
+                true
+            };
+            future::ready(cmp)
+        })
+        .next()
+        .await
     }
 
     #[inline]

@@ -1,13 +1,12 @@
-use std::slice::Iter;
-
+use super::prelude::*;
 use crate::prelude::*;
 
-use super::{core::Result, file::File, simple_index::State};
+use std::slice::Iter;
 
 /// `Entry` similar to `Record`, but does not contain all of the data in memory.
 #[derive(Debug)]
 pub struct Entry {
-    meta: Option<Meta>,
+    meta: Meta,
     data_offset: Option<u64>,
     data_size: Option<usize>,
 }
@@ -21,20 +20,15 @@ pub struct Entries<'a> {
 }
 
 impl Entry {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(meta: Meta) -> Self {
         Self {
-            meta: None,
+            meta,
             data_offset: None,
             data_size: None,
         }
     }
 
-    pub(crate) fn set_meta(&mut self, meta: Meta) {
-        self.meta = Some(meta);
-    }
-
-    pub(crate) fn meta(&self) -> Option<Meta> {
-        info!("meta: {:?}", self.meta);
+    pub(crate) fn meta(&self) -> Meta {
         self.meta.clone()
     }
 
@@ -44,11 +38,6 @@ impl Entry {
 
     pub(crate) fn size(&self) -> usize {
         self.data_size.unwrap()
-    }
-
-    /// Converts `Entry` into `Record` by loading skipped parts from disk.
-    pub(crate) async fn load_data(self) -> Result<Vec<u8>> {
-        unimplemented!()
     }
 }
 
@@ -71,8 +60,7 @@ impl<'a> Stream for Entries<'a> {
                             let meta = Meta::load(self.blob_file, h.meta_location()).boxed();
                             pin_mut!(meta);
                             let resolved_meta = ready!(Future::poll(meta, cx));
-                            let mut entry = Entry::new();
-                            entry.set_meta(resolved_meta);
+                            let mut entry = Entry::new(resolved_meta);
                             entry.data_offset = Some(h.blob_offset());
                             entry.data_size = Some(h.full_size().unwrap().try_into().unwrap());
                             return Poll::Ready(Some(entry));
@@ -87,8 +75,7 @@ impl<'a> Stream for Entries<'a> {
                     let meta = Meta::load(self.blob_file, h.meta_location()).boxed();
                     pin_mut!(meta);
                     let resolved_meta = ready!(Future::poll(meta, cx));
-                    let mut entry = Entry::new();
-                    entry.set_meta(resolved_meta);
+                    let mut entry = Entry::new(resolved_meta);
                     entry.data_offset = Some(h.blob_offset());
                     entry.data_size = Some(h.full_size().unwrap().try_into().unwrap());
                     self.in_memory_iter = Some(rec_iter);

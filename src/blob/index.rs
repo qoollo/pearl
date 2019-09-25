@@ -1,7 +1,5 @@
+use super::prelude::*;
 use crate::prelude::*;
-
-use super::core::Error;
-use crate::record::Header as RecordHeader;
 
 type Result<T> = std::result::Result<T, Error>;
 
