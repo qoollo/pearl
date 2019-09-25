@@ -44,44 +44,9 @@ impl Entry {
 impl<'a> Stream for Entries<'a> {
     type Item = Entry;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        info!("match inner");
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
         match self.inner {
-            State::InMemory(headers) => {
-                info!("index in memory");
-                let key = self.key;
-                if let Some(it) = &mut self.in_memory_iter {
-                    info!("headers iterator set");
-                    info!("iter: {:?}", it);
-                    for h in it {
-                        info!("header: {:?}", h);
-                        if h.key() == key {
-                            info!("key matched");
-                            let meta = Meta::load(self.blob_file, h.meta_location()).boxed();
-                            pin_mut!(meta);
-                            let resolved_meta = ready!(Future::poll(meta, cx));
-                            let mut entry = Entry::new(resolved_meta);
-                            entry.data_offset = Some(h.blob_offset());
-                            entry.data_size = Some(h.full_size().unwrap().try_into().unwrap());
-                            return Poll::Ready(Some(entry));
-                        }
-                    }
-                    Poll::Ready(None)
-                } else {
-                    info!("headers iterator not set");
-                    let mut rec_iter = headers.iter();
-                    info!("created new headers iterator");
-                    let h = rec_iter.find(|h| h.key() == key).unwrap();
-                    let meta = Meta::load(self.blob_file, h.meta_location()).boxed();
-                    pin_mut!(meta);
-                    let resolved_meta = ready!(Future::poll(meta, cx));
-                    let mut entry = Entry::new(resolved_meta);
-                    entry.data_offset = Some(h.blob_offset());
-                    entry.data_size = Some(h.full_size().unwrap().try_into().unwrap());
-                    self.in_memory_iter = Some(rec_iter);
-                    return Poll::Ready(Some(entry));
-                }
-            }
+            State::InMemory(headers) => Self::get_next_poll(self, cx, headers),
             State::OnDisk(file) => unimplemented!(),
         }
     }
@@ -95,5 +60,51 @@ impl<'a> Entries<'a> {
             in_memory_iter: None,
             blob_file,
         }
+    }
+
+    fn get_next_poll(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context,
+        headers: &'a [RecordHeader],
+    ) -> Poll<Option<Entry>> {
+        let key = self.key;
+        let file = self.blob_file;
+        if let Some(it) = &mut self.in_memory_iter {
+            Self::find_entry_and_load(it, key, file, cx)
+        } else {
+            let mut rec_iter = headers.iter();
+            let h = rec_iter.find(|h| h.key() == key).unwrap();
+            let entry = Self::create_entry(file, h);
+            pin_mut!(entry);
+            let entry = ready!(Future::poll(entry, cx));
+            self.in_memory_iter = Some(rec_iter);
+            Poll::Ready(Some(entry))
+        }
+    }
+
+    fn find_entry_and_load(
+        it: &mut Iter<RecordHeader>,
+        key: &[u8],
+        file: &File,
+        cx: &mut Context,
+    ) -> Poll<Option<Entry>> {
+        for h in it {
+            if h.key() == key {
+                let entry = Self::create_entry(file, h);
+                pin_mut!(entry);
+                let entry = ready!(Future::poll(entry, cx));
+                return Poll::Ready(Some(entry));
+            }
+        }
+        Poll::Ready(None)
+    }
+
+    async fn create_entry(file: &File, header: &RecordHeader) -> Entry {
+        let meta = Meta::load(file, header.meta_location());
+        let resolved_meta = meta.await;
+        let mut entry = Entry::new(resolved_meta);
+        entry.data_offset = Some(header.blob_offset());
+        entry.data_size = Some(header.full_size().unwrap().try_into().unwrap());
+        entry
     }
 }
