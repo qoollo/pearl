@@ -100,7 +100,7 @@ impl<'a> Entries<'a> {
     }
 
     async fn create_entry(file: &File, header: &RecordHeader) -> Result<Entry> {
-        let meta = Meta::load(file, header.meta_location())
+        let meta = Meta::load(file, header.meta_location().map_err(Error::new)?)
             .await
             .map_err(Error::new)?;
         let mut entry = Entry::new(meta);

@@ -270,11 +270,12 @@ impl Header {
     }
 
     #[inline]
-    pub(crate) fn meta_location(&self) -> Location {
-        Location::new(
-            self.blob_offset + self.serialized_size().unwrap(),
-            self.meta_size as usize,
-        )
+    pub(crate) fn meta_location(&self) -> Result<Location> {
+        self.serialized_size()
+            .map(|header_size| {
+                Location::new(self.blob_offset + header_size, self.meta_size as usize)
+            })
+            .map_err(Into::into)
     }
 
     #[inline]
@@ -300,11 +301,6 @@ impl Header {
     #[inline]
     pub fn blob_offset(&self) -> u64 {
         self.blob_offset
-    }
-
-    #[inline]
-    pub fn data_offset(&self) -> u64 {
-        self.blob_offset + self.serialized_size().unwrap() + self.meta_size
     }
 
     #[inline]
