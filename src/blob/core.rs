@@ -322,6 +322,7 @@ pub(crate) enum ErrorKind {
     IO(String),
     Bincode(String),
     Conversion(String),
+    Record(String),
 }
 
 #[derive(Debug, Clone)]

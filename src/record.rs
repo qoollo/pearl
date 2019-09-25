@@ -75,12 +75,9 @@ impl Meta {
         Ok(buf)
     }
 
-    pub(crate) async fn load(file: &File, location: Location) -> Self {
-        let buf = file
-            .read_at(location.size(), location.offset())
-            .await
-            .unwrap();
-        Self::from_raw(&buf).unwrap()
+    pub(crate) async fn load(file: &File, location: Location) -> Result<Self> {
+        let buf = file.read_at(location.size(), location.offset()).await?;
+        Self::from_raw(&buf)
     }
 }
 
@@ -125,10 +122,17 @@ impl From<Box<bincode::ErrorKind>> for Error {
     }
 }
 
+impl From<IOError> for Error {
+    fn from(e: IOError) -> Self {
+        ErrorKind::IO(e.to_string()).into()
+    }
+}
+
 #[derive(Debug)]
 pub enum ErrorKind {
     Validation(String),
     Bincode(String),
+    IO(String),
 }
 
 impl From<ErrorKind> for Error {

@@ -100,9 +100,10 @@ impl<'a> Entries<'a> {
     }
 
     async fn create_entry(file: &File, header: &RecordHeader) -> Result<Entry> {
-        let meta = Meta::load(file, header.meta_location());
-        let resolved_meta = meta.await;
-        let mut entry = Entry::new(resolved_meta);
+        let meta = Meta::load(file, header.meta_location())
+            .await
+            .map_err(Error::new)?;
+        let mut entry = Entry::new(meta);
         entry.data_offset = Some(header.blob_offset());
         entry.data_size = Some(header.full_size()?.try_into()?);
         Ok(entry)
