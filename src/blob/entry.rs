@@ -70,7 +70,7 @@ impl<'a> Entries<'a> {
         let key = self.key;
         let file = self.blob_file;
         if let Some(it) = &mut self.in_memory_iter {
-            Self::find_entry_and_load(it, key, file, cx)
+            Self::try_find_record_header(it, key, file, cx)
         } else {
             let mut rec_iter = headers.iter();
             let h = rec_iter.find(|h| h.key() == key).unwrap();
@@ -82,7 +82,7 @@ impl<'a> Entries<'a> {
         }
     }
 
-    fn find_entry_and_load(
+    fn try_find_record_header(
         it: &mut Iter<RecordHeader>,
         key: &[u8],
         file: &File,

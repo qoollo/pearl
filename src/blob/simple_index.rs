@@ -94,17 +94,20 @@ impl SimpleIndex {
         Entries::new(&self.inner, key, file)
     }
 
+    #[inline]
     fn extract_matching_meta_locations(rec_hdrs: &[RecordHeader], key: &[u8]) -> Vec<Location> {
         rec_hdrs
             .iter()
             .filter(|h| h.has_key(key))
-            .filter_map(|header| {
-                Some(Location::new(
-                    header.blob_offset() + header.serialized_size().ok()?,
-                    header.meta_size().try_into().ok()?,
-                ))
-            })
+            .filter_map(Self::try_create_location)
             .collect()
+    }
+
+    fn try_create_location(h: &RecordHeader) -> Option<Location> {
+        Some(Location::new(
+            h.blob_offset() + h.serialized_size().ok()?,
+            h.meta_size().try_into().ok()?,
+        ))
     }
 
     async fn load(mut file: &File) -> Result<Vec<RecordHeader>> {
@@ -212,22 +215,64 @@ impl SimpleIndex {
             })
         })
     }
+
+    async fn check_result(res: Result<RecordHeader>) -> Result<bool> {
+        match res {
+            Ok(_) => Ok(true),
+            Err(ref e) if e.is(&ErrorKind::NotFound) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn get_from_bunch(
+        bunch: &[RecordHeader],
+        key: &[u8],
+    ) -> impl Future<Output = Result<RecordHeader>> {
+        future::ready(
+            bunch
+                .iter()
+                .find(|h| h.key() == key)
+                .cloned()
+                .ok_or(ErrorKind::NotFound.into()),
+        )
+    }
+
+    fn dump_in_memory(&mut self, buf: Vec<u8>) -> Dump {
+        let fd_res = fs::OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)
+            .open(self.name.as_path())
+            .expect("open new index file");
+        let mut file = File::from_std_file(fd_res).expect("convert std file to own format");
+        let inner = State::OnDisk(file.clone());
+        self.inner = inner;
+        let fut = async move { file.write_all(&buf).await.map_err(Into::into) }.boxed();
+        Dump(fut)
+    }
+
+    async fn load_in_memory(&mut self, mut file: File) -> Result<()> {
+        let mut buf = Vec::new();
+        debug!("seek to file start");
+        file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
+        file.read_to_end(&mut buf).map_err(Error::new).await?;
+        let bunch = Self::deserialize_bunch(&buf)?;
+        self.inner = State::InMemory(bunch);
+        Ok(())
+    }
+
+    fn count_inner(self) -> usize {
+        if let State::InMemory(index) = self.inner {
+            index.len()
+        } else {
+            0
+        }
+    }
 }
 
 impl Index for SimpleIndex {
     fn contains_key(&self, key: &[u8]) -> ContainsKey {
-        ContainsKey(
-            self.get(key)
-                .then(|res| match res {
-                    Ok(_) => future::ok(true),
-                    Err(ref e) if e.is(&ErrorKind::NotFound) => future::ok(false),
-                    Err(e) => {
-                        error!("{:?}", e);
-                        future::err(e)
-                    }
-                })
-                .boxed(),
-        )
+        ContainsKey(self.get(key).then(Self::check_result).boxed())
     }
 
     fn push(&mut self, h: RecordHeader) -> Push {
@@ -249,13 +294,7 @@ impl Index for SimpleIndex {
     fn get(&self, key: &[u8]) -> Get {
         match &self.inner {
             State::InMemory(bunch) => {
-                let inner = if let Some(res) = bunch.iter().find(|h| h.key() == key).cloned() {
-                    debug!("found in memory");
-                    future::ok(res)
-                } else {
-                    future::err(ErrorKind::NotFound.into())
-                }
-                .boxed();
+                let inner = Self::get_from_bunch(bunch, key).boxed();
                 Get { inner }
             }
             State::OnDisk(f) => {
@@ -269,65 +308,24 @@ impl Index for SimpleIndex {
     }
 
     fn dump(&mut self) -> Dump {
-        debug!("dump simple index");
-        match &mut self.inner {
-            State::InMemory(bunch) => {
-                debug!("index state is InMemory");
-                debug!("create new index file");
-                let fd_res = fs::OpenOptions::new()
-                    .create(true)
-                    .read(true)
-                    .write(true)
-                    .open(self.name.as_path());
-                debug!("serialize index inner data");
-                let buf = Self::serialize_bunch(bunch);
-                let file_res = fd_res.and_then(File::from_std_file);
-                match file_res {
-                    Ok(mut file) => {
-                        debug!("set index state to OnDisk");
-                        let inner = State::OnDisk(file.clone());
-                        self.inner = inner;
-                        debug!("async write to file");
-                        let fut = async move {
-                            match buf {
-                                Ok(buf) => {
-                                    debug!("write all buffer");
-                                    file.write_all(&buf).map_err(Error::new).await
-                                }
-                                Err(ref e) if e.is(&ErrorKind::EmptyIndexBunch) => Ok(()),
-                                Err(e) => Err(Error::new(e)),
-                            }
-                        }
-                            .boxed();
-                        Dump(fut)
-                    }
-                    Err(e) => Dump(future::err(Error::new(e)).boxed()),
-                }
+        if let State::InMemory(bunch) = &mut self.inner {
+            let buf = Self::serialize_bunch(bunch);
+            match buf {
+                Ok(buf) => self.dump_in_memory(buf),
+                Err(ref e) if e.is(&ErrorKind::EmptyIndexBunch) => Dump(future::ok(()).boxed()),
+                Err(e) => Dump(future::err(e).boxed()),
             }
-            State::OnDisk(_) => Dump(
-                future::err(ErrorKind::Index("Index is dumped already".to_string()).into()).boxed(),
-            ),
+        } else {
+            Dump(future::ok(()).boxed())
         }
     }
 
     fn load<'a>(&'a mut self) -> Load {
-        match &mut self.inner {
-            State::InMemory(_) => Load(
-                future::err(ErrorKind::Index("Index is loaded already".to_string()).into()).boxed(),
-            ),
+        match &self.inner {
+            State::InMemory(_) => Load(future::ok(()).boxed()),
             State::OnDisk(file) => {
-                let mut buf = Vec::new();
-                let mut file = file.clone();
-                let task = async move {
-                    debug!("seek to file start");
-                    file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
-                    file.read_to_end(&mut buf).map_err(Error::new).await?;
-                    let bunch = Self::deserialize_bunch(&buf)?;
-                    self.inner = State::InMemory(bunch);
-                    Ok(())
-                }
-                    .boxed();
-                Load(task)
+                let file = file.clone();
+                Load(self.load_in_memory(file).boxed())
             }
         }
     }
@@ -336,13 +334,7 @@ impl Index for SimpleIndex {
         Count(match &self.inner {
             State::InMemory(bunch) => future::ok(bunch.len()).boxed(),
             State::OnDisk(_) => Self::from_file(self.name.clone())
-                .map_ok(|st| {
-                    if let State::InMemory(index) = st.inner {
-                        index.len()
-                    } else {
-                        0
-                    }
-                })
+                .map_ok(Self::count_inner)
                 .boxed(),
         })
     }
