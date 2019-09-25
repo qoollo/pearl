@@ -93,18 +93,18 @@ impl<'a> Entries<'a> {
                 let entry = Self::create_entry(file, h);
                 pin_mut!(entry);
                 let entry = ready!(Future::poll(entry, cx));
-                return Poll::Ready(Some(entry));
+                return Poll::Ready(entry.ok());
             }
         }
         Poll::Ready(None)
     }
 
-    async fn create_entry(file: &File, header: &RecordHeader) -> Entry {
+    async fn create_entry(file: &File, header: &RecordHeader) -> Result<Entry> {
         let meta = Meta::load(file, header.meta_location());
         let resolved_meta = meta.await;
         let mut entry = Entry::new(resolved_meta);
         entry.data_offset = Some(header.blob_offset());
-        entry.data_size = Some(header.full_size().unwrap().try_into().unwrap());
-        entry
+        entry.data_size = Some(header.full_size()?.try_into()?);
+        Ok(entry)
     }
 }
