@@ -307,9 +307,7 @@ async fn test_write_1_000_records_with_same_key() {
 #[tokio::test]
 async fn test_read_with() {
     let now = Instant::now();
-    debug!("start stopwatch");
     let dir = common::init("read_with");
-    debug!("dir initialized");
     let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
     debug!("storage created");
     let key = 2345;

@@ -110,8 +110,6 @@ impl<K> Storage<K> {
     pub async fn init(&mut self) -> Result<()> {
         // @TODO implement work dir validation
         self.prepare_work_dir().await?;
-        debug!("work dir prepared");
-
         let cont_res = work_dir_content(
             self.inner
                 .config

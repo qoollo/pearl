@@ -92,9 +92,9 @@ impl SimpleIndex {
         }
     }
 
-    pub(crate) fn get_entry<'a, 'b: 'a>(&'b self, key: &'a [u8]) -> Entries<'a> {
+    pub(crate) fn get_entry<'a, 'b: 'a>(&'b self, key: &'a [u8], file: &'b File) -> Entries<'a> {
         info!("create iterator");
-        Entries::new(&self.inner, key)
+        Entries::new(&self.inner, key, file)
     }
 
     fn extract_matching_meta_locations(rec_hdrs: &[RecordHeader], key: &[u8]) -> Vec<Location> {
@@ -104,7 +104,7 @@ impl SimpleIndex {
             .filter_map(|header| {
                 Some(Location::new(
                     header.blob_offset() + header.serialized_size().ok()?,
-                    header.meta_len().try_into().ok()?,
+                    header.meta_size().try_into().ok()?,
                 ))
             })
             .collect()

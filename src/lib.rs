@@ -60,7 +60,7 @@ pub use record::Meta;
 pub use storage::{Builder, Error, ErrorKind, Key, Storage};
 
 mod prelude {
-    pub(crate) use crate::blob::{self, Blob};
+    pub(crate) use crate::blob::{self, Blob, File, Location};
     pub(crate) use crate::record::{Header as RecordHeader, Record};
     pub(crate) use crate::{Key, Meta};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};

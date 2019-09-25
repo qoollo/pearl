@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-use super::file::File;
 use super::index::Index;
 use super::simple_index::SimpleIndex;
 
@@ -161,6 +160,7 @@ impl Blob {
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
+        info!("record: {:#?}", record);
         let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
@@ -174,7 +174,9 @@ impl Blob {
         let loc = self.lookup(&key, meta).await?;
         debug!("key found");
         let buf = self.file.read_at(loc.size as usize, loc.offset).await?;
-        let record = Record::from_raw(&buf).map_err(Error::new)?;
+        info!("buf read finished");
+        let record = Record::from_raw(&buf).expect("from raw");
+        info!("record deserialized");
         Ok(record)
     }
 
@@ -183,22 +185,31 @@ impl Blob {
             info!("lookup with meta");
             let entry = self
                 .index
-                .get_entry(&key)
-                .find(|entry| {
+                .get_entry(&key, &self.file)
+                .filter(|entry| {
+                    info!("matching entry found");
                     if let Some(ref m) = entry.meta() {
-                        m == meta
+                        info!("meta matched");
+                        debug!("m: {:?}", m);
+                        debug!("meta: {:?}", meta);
+                        future::ready(m == meta)
                     } else {
-                        false
+                        info!("meta not matched");
+                        future::ready(false)
                     }
                 })
+                .next()
+                .await
                 .ok_or(ErrorKind::NotFound)?;
+            info!("entry found, return location");
             Ok(Location::new(entry.offset(), entry.size()))
         } else {
             info!("lookup first");
             let entry = self
                 .index
-                .get_entry(key.as_ref())
+                .get_entry(key.as_ref(), &self.file)
                 .next()
+                .await
                 .ok_or(ErrorKind::NotFound)?;
             let offset = entry.offset();
             Ok(Location::new(offset as u64, entry.size()))
@@ -405,12 +416,20 @@ impl Header {
 #[derive(Debug)]
 pub struct Location {
     offset: u64,
-    size: u64,
+    size: usize,
 }
 
 impl Location {
-    pub fn new(offset: u64, size: u64) -> Self {
+    pub fn new(offset: u64, size: usize) -> Self {
         Self { offset, size }
+    }
+
+    pub(crate) fn size(&self) -> usize {
+        self.size
+    }
+
+    pub(crate) fn offset(&self) -> u64 {
+        self.offset
     }
 }
 
@@ -458,8 +477,8 @@ impl RawRecords {
 
     fn update_future(&mut self, header: &RecordHeader) {
         self.current_offset += self.record_header_size;
-        self.current_offset += header.meta_len();
-        self.current_offset += header.data_len();
+        self.current_offset += header.meta_size();
+        self.current_offset += header.data_size();
         trace!(
             "file len: {}, current offset: {}",
             self.file_len,
