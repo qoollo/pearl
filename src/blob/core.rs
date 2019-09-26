@@ -159,7 +159,6 @@ impl Blob {
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
-        info!("record: {:#?}", record);
         let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
@@ -180,6 +179,10 @@ impl Blob {
         let record = Record::from_raw(&buf).expect("from raw");
         info!("record deserialized");
         Ok(record)
+    }
+
+    pub(crate) async fn read_all<'a>(&'a self, key: &'a [u8]) -> Entries<'a> {
+        unimplemented!()
     }
 
     async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {

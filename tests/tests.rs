@@ -346,7 +346,7 @@ async fn test_read_all() {
             .unwrap();
     }
     let records_read = storage
-        .read_all(KeyTest::new(key))
+        .read_all(&KeyTest::new(key))
         .await
         .then(async move |entry| entry.await.unwrap())
         .collect::<Vec<_>>()

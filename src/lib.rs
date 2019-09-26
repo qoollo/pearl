@@ -1,4 +1,5 @@
 #![feature(arbitrary_self_types)]
+#![feature(async_closure)]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 #![allow(clippy::needless_lifetimes)]

@@ -32,7 +32,7 @@ const O_EXCL: i32 = 128;
 /// [`Key`]: trait.Key.html
 #[derive(Debug)]
 pub struct Storage<K> {
-    inner: Inner,
+    pub(crate) inner: Inner,
     marker: PhantomData<K>,
 }
 
@@ -231,8 +231,8 @@ impl<K> Storage<K> {
     }
 
     /// Returns stream producing entries with matching key
-    pub async fn read_all<'a>(&'a self, key: impl Key) -> ReadAll {
-        unimplemented!()
+    pub async fn read_all<'a>(&'a self, key: &'a impl Key) -> ReadAll<'a, K> {
+        ReadAll::new(self, key.as_ref())
     }
 
     async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {
