@@ -115,7 +115,7 @@ pub fn check_all_written(storage: &Storage<KeyTest>, keys: Vec<u32>) -> Result<(
     Ok(())
 }
 
-pub fn generate_records(count: usize, avg_size: usize) -> Vec<Vec<u8>> {
+pub fn generate_records(count: usize, avg_size: usize) -> Vec<(u32, Vec<u8>)> {
     let mut gen = rand::thread_rng();
     (0..count)
         .map(|_i| {
@@ -123,7 +123,7 @@ pub fn generate_records(count: usize, avg_size: usize) -> Vec<Vec<u8>> {
             let size = avg_size as i32 + diff;
             let mut buf = vec![0; size.try_into().unwrap()];
             gen.fill(buf.as_mut_slice());
-            buf
+            (gen.gen(), buf)
         })
         .collect()
 }

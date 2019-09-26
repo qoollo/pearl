@@ -39,12 +39,10 @@ async fn test_storage_init_from_existing() {
             .max_data_in_blob(1_000);
         let mut temp_storage: Storage<KeyTest> = builder.build()?;
         temp_storage.init().await?;
-        let mut records = common::generate_records(15, 100_000);
-        while !records.is_empty() {
-            let key = KeyTest::new(records.len() as u32);
-            let value = records.pop().unwrap();
-            let delay = delay(Instant::now() + Duration::from_millis(100));
-            delay.then(|_| temp_storage.write(key, value)).await?;
+        let records = common::generate_records(15, 100_000);
+        for (key, data) in &records {
+            delay(Instant::now() + Duration::from_millis(100)).await;
+            write_one(&temp_storage, *key, data, None).await.unwrap();
         }
         temp_storage.close().await
     };
@@ -231,9 +229,9 @@ async fn test_work_dir_lock() {
 async fn test_index_from_blob() {
     let dir = common::init("index_from_blob");
     let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
-    let data_chunks = common::generate_records(10, 10_000);
-    for (i, data) in data_chunks.iter().enumerate() {
-        write_one(&storage, i as u32, &data, None).await.unwrap();
+    let records = common::generate_records(10, 10_000);
+    for (i, data) in &records {
+        write_one(&storage, *i, data, None).await.unwrap();
     }
     storage.close().await.unwrap();
     let dir_path: PathBuf = env::temp_dir().join(&dir);
@@ -270,11 +268,9 @@ async fn test_write_with_with_on_disk_index() {
     write_one(&storage, key, data, None).await.unwrap();
 
     let records = common::generate_records(20, 1000);
-    for (i, ref data) in records.into_iter().enumerate() {
+    for (i, data) in &records {
         delay(Instant::now() + Duration::from_millis(32)).await;
-        write_one(&storage, i as u32, data, Some("1.0"))
-            .await
-            .unwrap();
+        write_one(&storage, *i, data, Some("1.0")).await.unwrap();
     }
     assert!(storage.blobs_count() > 1);
 
@@ -351,9 +347,11 @@ async fn test_read_all() {
     }
     let records_read = storage
         .read_all(KeyTest::new(key))
+        .await
         .then(async move |entry| entry.await.unwrap())
-        .unwrap();
-    assert_eq!(records_write, records_read);
+        .collect::<Vec<_>>()
+        .await;
+    assert_eq!(records_write.len(), records_read.len());
     common::clean(storage, dir)
         .await
         .expect("work dir clean failed");
