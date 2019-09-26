@@ -231,7 +231,7 @@ impl<K> Storage<K> {
     }
 
     /// Returns stream producing entries with matching key
-    pub async fn read_all<'a>(&'a self, key: impl Key) -> Result<Entries<'a>> {
+    pub async fn read_all<'a>(&'a self, key: impl Key) -> ReadAll {
         unimplemented!()
     }
 

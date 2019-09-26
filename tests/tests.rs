@@ -337,6 +337,29 @@ async fn test_read_with() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
+#[tokio::test]
+async fn test_read_all() {
+    let now = Instant::now();
+    let dir = common::init("read_all");
+    let storage = common::create_test_storage(&dir, 100_000).await.unwrap();
+    let key = 3456;
+    let records_write = common::generate_records(100, 9_000);
+    for (i, data) in &records_write {
+        write_one(&storage, key, data, Some(&i.to_string()))
+            .await
+            .unwrap();
+    }
+    let records_read = storage
+        .read_all(KeyTest::new(key))
+        .then(async move |entry| entry.await.unwrap())
+        .unwrap();
+    assert_eq!(records_write, records_read);
+    common::clean(storage, dir)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
 async fn write_one(
     storage: &Storage<KeyTest>,
     key: u32,

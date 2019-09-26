@@ -60,7 +60,7 @@ mod storage;
 pub use blob::{Entries, Entry};
 pub use error::{Error, ErrorKind, Result};
 pub use record::Meta;
-pub use storage::{Builder, Key, Storage};
+pub use storage::{Builder, Key, ReadAll, Storage};
 
 mod prelude {
     pub(crate) use super::*;
