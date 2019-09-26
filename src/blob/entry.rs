@@ -3,7 +3,10 @@ use crate::prelude::*;
 
 use std::slice::Iter;
 
-/// `Entry` similar to `Record`, but does not contain all of the data in memory.
+/// [`Entry`] is a [`Future`], which contains header and metadata of the record,
+/// but does not contain all of the data in memory. To resolve [`Entry`] to data,
+/// you should poll it.
+/// [`Entry`]: struct.Entry.html
 #[derive(Debug)]
 pub struct Entry {
     meta: Meta,
@@ -11,6 +14,7 @@ pub struct Entry {
     data_size: Option<usize>,
 }
 
+/// `Entries`
 #[derive(Debug)]
 pub struct Entries<'a> {
     inner: &'a State,
@@ -38,6 +42,14 @@ impl Entry {
 
     pub(crate) fn size(&self) -> usize {
         self.data_size.expect("get data size")
+    }
+}
+
+impl Future for Entry {
+    type Output = Result<Vec<u8>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        unimplemented!()
     }
 }
 

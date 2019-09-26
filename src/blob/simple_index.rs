@@ -151,7 +151,7 @@ impl SimpleIndex {
             size -= half;
         }
         info!("record with key: {:?} not found", key);
-        Err(ErrorKind::NotFound.into())
+        Err(ErrorKind::RecordNotFound.into())
     }
 
     async fn read_at(file: &mut File, index: usize, header: Header) -> Result<RecordHeader> {
@@ -219,7 +219,7 @@ impl SimpleIndex {
     async fn check_result(res: Result<RecordHeader>) -> Result<bool> {
         match res {
             Ok(_) => Ok(true),
-            Err(ref e) if e.is(&ErrorKind::NotFound) => Ok(false),
+            Err(ref e) if e.is(&ErrorKind::RecordNotFound) => Ok(false),
             Err(e) => Err(e),
         }
     }
@@ -233,7 +233,7 @@ impl SimpleIndex {
                 .iter()
                 .find(|h| h.key() == key)
                 .cloned()
-                .ok_or(ErrorKind::NotFound.into()),
+                .ok_or_else(|| ErrorKind::RecordNotFound.into()),
         )
     }
 

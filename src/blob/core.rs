@@ -7,8 +7,6 @@ use super::simple_index::SimpleIndex;
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 
-pub(crate) type Result<T> = std::result::Result<T, Error>;
-
 /// A [`Blob`] struct representing file with records,
 /// provides methods for read/write access by key
 ///
@@ -172,7 +170,10 @@ impl Blob {
     }
 
     pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> Result<Record> {
-        let loc = self.lookup(&key, meta).await.ok_or(ErrorKind::NotFound)?;
+        let loc = self
+            .lookup(&key, meta)
+            .await
+            .ok_or(ErrorKind::RecordNotFound)?;
         debug!("key found");
         let buf = self.file.read_at(loc.size as usize, loc.offset).await?;
         info!("buf read finished");
@@ -231,98 +232,6 @@ impl Blob {
         debug!("get all headers finished");
         Ok(metas)
     }
-}
-
-#[derive(Debug)]
-pub(crate) struct Error {
-    repr: Repr,
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match &self.repr {
-            Repr::Inner(_) => None,
-            Repr::Other(src) => Some(src.as_ref()),
-        }
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        Debug::fmt(&self.repr, f)
-    }
-}
-
-impl Error {
-    pub(crate) fn new<E>(error: E) -> Self
-    where
-        E: Into<Box<dyn error::Error + Send + Sync>>,
-    {
-        Self {
-            repr: Repr::Other(error.into()),
-        }
-    }
-
-    pub(crate) fn is(&self, othr_kind: &ErrorKind) -> bool {
-        if let Repr::Inner(kind) = &self.repr {
-            kind == othr_kind
-        } else {
-            false
-        }
-    }
-}
-
-impl From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Self {
-        Self {
-            repr: Repr::Inner(kind),
-        }
-    }
-}
-
-impl From<IOError> for Error {
-    fn from(e: IOError) -> Self {
-        ErrorKind::IO(e.to_string()).into()
-    }
-}
-
-impl From<Box<bincode::ErrorKind>> for Error {
-    fn from(e: Box<bincode::ErrorKind>) -> Self {
-        ErrorKind::Bincode(e.to_string()).into()
-    }
-}
-
-impl From<TryFromIntError> for Error {
-    fn from(e: TryFromIntError) -> Self {
-        ErrorKind::Conversion(e.to_string()).into()
-    }
-}
-
-#[derive(Debug)]
-enum Repr {
-    Inner(ErrorKind),
-    Other(Box<dyn error::Error + 'static + Send + Sync>),
-}
-
-impl Display for Repr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Repr::Inner(kind) => write!(f, "{:?}", kind),
-            Repr::Other(e) => Debug::fmt(e, f),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub(crate) enum ErrorKind {
-    NotFound,
-    WrongFileNamePattern(PathBuf),
-    EmptyIndexBunch,
-    Index(String),
-    IO(String),
-    Bincode(String),
-    Conversion(String),
-    Record(String),
 }
 
 #[derive(Debug, Clone)]

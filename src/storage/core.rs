@@ -1,15 +1,11 @@
 use crate::prelude::*;
 
-use super::error::{Error, ErrorKind};
 use super::observer::Observer;
 
 const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
 
 const O_EXCL: i32 = 128;
-
-/// A specialized storage result type
-pub type Result<T> = std::result::Result<T, Error>;
 
 /// A main storage struct.
 /// This type is clonable, cloning it will only create a new reference,
@@ -232,6 +228,11 @@ impl<K> Storage<K> {
     #[inline]
     pub async fn read_with(&self, key: impl Key, meta: &Meta) -> Result<Vec<u8>> {
         self.read_with_optional_meta(key, Some(meta)).await
+    }
+
+    /// Returns stream producing entries with matching key
+    pub async fn read_all<'a>(&'a self, key: impl Key) -> Result<Entries<'a>> {
+        unimplemented!()
     }
 
     async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {

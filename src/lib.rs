@@ -53,13 +53,17 @@ extern crate serde_derive;
 extern crate futures;
 
 mod blob;
+mod error;
 mod record;
 mod storage;
 
+pub use blob::{Entries, Entry};
+pub use error::{Error, ErrorKind, Result};
 pub use record::Meta;
-pub use storage::{Builder, Error, ErrorKind, Key, Storage};
+pub use storage::{Builder, Key, Storage};
 
 mod prelude {
+    pub(crate) use super::*;
     pub(crate) use crate::blob::{self, Blob, File, Location};
     pub(crate) use crate::record::{Header as RecordHeader, Record};
     pub(crate) use crate::{Key, Meta};

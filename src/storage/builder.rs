@@ -1,7 +1,6 @@
 use crate::prelude::*;
 
-use super::core::{Config, Result, Storage};
-use super::error::ErrorKind;
+use super::core::{Config, Storage};
 
 /// `Builder` is used to initialize a `Storage`.
 /// Required params:

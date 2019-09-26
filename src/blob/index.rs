@@ -1,7 +1,4 @@
-use super::prelude::*;
 use crate::prelude::*;
-
-type Result<T> = std::result::Result<T, Error>;
 
 pub(crate) trait Index: Send + Sync {
     fn get(&self, key: &[u8]) -> Get;
