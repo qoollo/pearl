@@ -10,13 +10,13 @@ readme = "README.md"
 [dependencies]
 bincode = "1.1"
 env_logger = "0.6"
-futures-preview = { version = "0.3.0-alpha.16", features = ["compat"] }
+futures-preview = { version = "0.3.0-alpha.18", features = ["compat"] }
 log = "0.4"
 rand = "0.6"
 serde = "1.0"
 serde_derive = "1.0"
 crc = "1.8"
-futures-timer = "0.2"
+futures-timer = "0.4"
 chrono = "*"
 
 clap = { version = "2.33", optional = true }

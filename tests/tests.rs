@@ -1,4 +1,4 @@
-#![feature(async_await, repeat_generic_slice, duration_float)]
+#![feature(repeat_generic_slice)]
 
 #[macro_use]
 extern crate log;

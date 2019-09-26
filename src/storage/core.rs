@@ -148,7 +148,8 @@ impl<K> Storage<K> {
             .active_blob
             .as_mut()
             .ok_or(ErrorKind::ActiveBlobNotSet)?;
-        blob.write(record).await.map_err(Error::new)
+        let res = blob.write(record).await;
+        res.map_err(Error::new)
     }
 
     /// # Description
