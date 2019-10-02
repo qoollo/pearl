@@ -89,9 +89,11 @@ impl SimpleIndex {
         }
     }
 
-    pub(crate) fn get_entry<'a, 'b: 'a>(&'b self, key: &'a [u8], file: &'b File) -> Entries<'a> {
-        info!("create iterator");
-        Entries::new(&self.inner, key, file)
+    pub(crate) fn get_entry<'a, 'b: 'a>(&'b self, key: &'a [u8], file: File) -> Entries<'a> {
+        debug!("create iterator");
+        let entries = Entries::new(&self.inner, key, file);
+        trace!("entries: {:?}", entries);
+        entries
     }
 
     #[inline]
@@ -110,7 +112,7 @@ impl SimpleIndex {
         ))
     }
 
-    async fn load(mut file: &File) -> Result<Vec<RecordHeader>> {
+    pub async fn load(mut file: &File) -> Result<Vec<RecordHeader>> {
         debug!("seek to file start");
         file.seek(SeekFrom::Start(0)).await?;
         let mut buf = Vec::new();
@@ -203,9 +205,9 @@ impl SimpleIndex {
     fn deserialize_bunch(buf: &[u8]) -> bincode::Result<Vec<RecordHeader>> {
         debug!("deserialize header from buf: {}", buf.len());
         let header: Header = deserialize(buf)?;
-        debug!("header deserialized: {:?}", header);
+        trace!("header deserialized: {:?}", header);
         let header_size = header.serialized_size()? as usize;
-        debug!("header serialized size: {}", header_size);
+        trace!("header serialized size: {}", header_size);
         (0..header.records_count).try_fold(Vec::new(), |mut record_headers, i| {
             let offset = header_size + i * header.record_header_size;
             trace!("deserialize record header at: {}", offset);

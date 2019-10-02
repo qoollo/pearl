@@ -64,6 +64,8 @@ pub use record::Meta;
 pub use storage::{Builder, Key, ReadAll, Storage};
 
 mod prelude {
+    pub(crate) type PinBox<T> = Pin<Box<T>>;
+
     pub(crate) use super::*;
     pub(crate) use crate::blob::{self, Blob, File, Location};
     pub(crate) use crate::record::{Header as RecordHeader, Record};
@@ -71,8 +73,10 @@ mod prelude {
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::lock::Mutex;
+    pub(crate) use futures::lock::MutexGuard;
     pub(crate) use futures::prelude::*;
     pub(crate) use futures::stream::{futures_unordered::FuturesUnordered, TryStreamExt};
+    pub(crate) use std::cell::RefCell;
     pub(crate) use std::cmp::Ordering as CmpOrdering;
     pub(crate) use std::collections::HashMap;
     pub(crate) use std::fmt::{Debug, Display, Formatter, Result as FmtResult};

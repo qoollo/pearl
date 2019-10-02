@@ -1,6 +1,4 @@
-use crate::prelude::*;
-
-use super::observer::Observer;
+use super::prelude::*;
 
 const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
@@ -45,6 +43,7 @@ pub(crate) struct Inner {
     twins_count: Arc<AtomicUsize>,
 }
 
+#[derive(Debug)]
 pub(crate) struct Safe {
     pub(crate) active_blob: Option<Box<Blob>>,
     pub(crate) blobs: Vec<Blob>,
@@ -209,7 +208,6 @@ impl<K> Storage<K> {
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
     pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
-        info!("transfer call to read with optional meta");
         self.read_with_optional_meta(key, None).await
     }
     /// Reads data matching given key and metadata,
@@ -237,7 +235,7 @@ impl<K> Storage<K> {
 
     async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {
         let inner = self.inner.safe.lock().await;
-        info!("lock acquired");
+        debug!("lock acquired");
         let key = key.as_ref();
         let active_blob_read_res = inner
             .active_blob

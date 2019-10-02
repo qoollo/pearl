@@ -3,6 +3,7 @@
 #[macro_use]
 extern crate log;
 
+use std::convert::TryInto;
 use std::time::{Duration, Instant};
 use std::{env, fs, path::PathBuf};
 
@@ -285,18 +286,17 @@ async fn test_write_with_with_on_disk_index() {
 }
 
 #[tokio::test]
-async fn test_write_1_000_records_with_same_key() {
+async fn test_write_512_records_with_same_key() {
     let now = Instant::now();
     let dir = common::init("write_1_000_000_records_with_same_key");
     let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
     let key = KeyTest::new(1234);
     let value = b"data_with_empty_meta".to_vec();
-    for i in 0..1_000 {
+    for i in 0..512 {
         let mut meta = Meta::new();
         meta.insert("version".to_owned(), i.to_string());
-        delay(Instant::now() + Duration::from_micros(8)).await;
+        delay(Instant::now() + Duration::from_micros(1)).await;
         storage.write_with(&key, value.clone(), meta).await.unwrap();
-        if i % 8 == 0 {}
     }
     common::clean(storage, dir)
         .await
@@ -334,24 +334,68 @@ async fn test_read_with() {
 }
 
 #[tokio::test]
-async fn test_read_all() {
+async fn test_read_all_1000() {
     let now = Instant::now();
     let dir = common::init("read_all");
     let storage = common::create_test_storage(&dir, 100_000).await.unwrap();
     let key = 3456;
-    let records_write = common::generate_records(100, 9_000);
+    let records_write = common::generate_records(512, 9_000);
     for (i, data) in &records_write {
+        delay(Instant::now() + Duration::from_millis(1)).await;
         write_one(&storage, key, data, Some(&i.to_string()))
             .await
             .unwrap();
     }
-    let records_read = storage
+    let mut records_read = storage
         .read_all(&KeyTest::new(key))
         .await
         .then(async move |entry| entry.await.unwrap())
         .collect::<Vec<_>>()
         .await;
     assert_eq!(records_write.len(), records_read.len());
+    let mut records = records_write
+        .into_iter()
+        .map(|(_, data)| data)
+        .collect::<Vec<_>>();
+    records.sort();
+    records_read.sort();
+    assert_eq!(records, records_read);
+    common::clean(storage, dir)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_read_all_1000_find_one_key() {
+    let now = Instant::now();
+    let dir = common::init("read_all_1000_find_one_key");
+    let storage = common::create_test_storage(&dir, 100_000).await.unwrap();
+    let count = 1000;
+    let records_write = common::generate_records(count, 9_000);
+    for (i, data) in &records_write {
+        delay(Instant::now() + Duration::from_millis(1)).await;
+        write_one(&storage, *i, data, None).await.unwrap();
+    }
+    let key = records_write.last().unwrap().0;
+    let records_read = storage
+        .read_all(&KeyTest::new(key.try_into().unwrap()))
+        .await
+        .then(async move |entry| entry.await.unwrap())
+        .collect::<Vec<_>>()
+        .await;
+    assert_eq!(1, records_read.len());
+    assert_eq!(
+        records_write
+            .iter()
+            .find_map(|(i, data)| if *i == key.try_into().unwrap() {
+                Some(data)
+            } else {
+                None
+            })
+            .unwrap(),
+        &records_read[0]
+    );
     common::clean(storage, dir)
         .await
         .expect("work dir clean failed");

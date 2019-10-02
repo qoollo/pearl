@@ -289,6 +289,16 @@ impl Header {
     }
 
     #[inline]
+    pub(crate) fn full_size(&self) -> u64 {
+        self.serialized_size().unwrap() + self.meta_size + self.data_size
+    }
+
+    #[inline]
+    pub fn data_offset(&self) -> u64 {
+        self.blob_offset + self.serialized_size().unwrap() + self.meta_size
+    }
+
+    #[inline]
     pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
         deserialize(&buf).map_err(Error::new)
     }
@@ -301,12 +311,6 @@ impl Header {
     #[inline]
     pub fn blob_offset(&self) -> u64 {
         self.blob_offset
-    }
-
-    #[inline]
-    pub(crate) fn full_size(&self) -> bincode::Result<u64> {
-        self.serialized_size()
-            .map(|size| self.data_size + self.meta_size + size)
     }
 
     #[inline]

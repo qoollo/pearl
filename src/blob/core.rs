@@ -175,21 +175,22 @@ impl Blob {
             .ok_or(ErrorKind::RecordNotFound)?;
         debug!("key found");
         let buf = self.file.read_at(loc.size as usize, loc.offset).await?;
-        info!("buf read finished");
+        debug!("buf read finished");
         let record = Record::from_raw(&buf).expect("from raw");
-        info!("record deserialized");
+        debug!("record deserialized");
         Ok(record)
     }
 
+    #[inline]
     pub(crate) async fn read_all<'a>(&'a self, key: &'a [u8]) -> Entries<'a> {
-        unimplemented!()
+        self.index.get_entry(key, self.file.clone())
     }
 
     async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
-        let entries = self.index.get_entry(key, &self.file);
+        let entries = self.index.get_entry(key, self.file.clone());
         Self::find_entry(entries, meta)
             .await
-            .map(|entry| Location::new(entry.offset(), entry.size()))
+            .map(|entry| Location::new(entry.blob_offset(), entry.full_size()))
     }
 
     async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Option<Entry> {
@@ -331,14 +332,12 @@ impl Location {
     }
 }
 
-type PinBoxFut<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
-
 struct RawRecords {
     current_offset: u64,
     record_header_size: u64,
     file: File,
     file_len: u64,
-    read_fut: Option<PinBoxFut<RecordHeader>>,
+    read_fut: Option<PinBox<dyn Future<Output = Result<RecordHeader>> + Send>>,
 }
 
 impl RawRecords {

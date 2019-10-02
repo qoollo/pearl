@@ -13,5 +13,5 @@ mod prelude {
     pub use super::entry::{Entries, Entry};
     pub(crate) use super::file::File;
     pub(crate) use super::index::{ContainsKey, Count, Dump, Get, Index, Load, Push};
-    pub(crate) use super::simple_index::State;
+    pub(crate) use super::simple_index::{SimpleIndex, State};
 }

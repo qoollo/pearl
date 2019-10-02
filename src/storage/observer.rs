@@ -1,6 +1,4 @@
-use crate::prelude::*;
-
-use super::core::Inner;
+use super::prelude::*;
 
 pub(crate) struct Observer {
     inner: Inner,

@@ -1,6 +1,4 @@
-use crate::prelude::*;
-
-use super::core::{Config, Storage};
+use super::prelude::*;
 
 /// `Builder` is used to initialize a `Storage`.
 /// Required params:

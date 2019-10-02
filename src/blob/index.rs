@@ -9,21 +9,19 @@ pub(crate) trait Index: Send + Sync {
     fn load(&mut self) -> Load;
 }
 
-type Inner<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
-
 pub(crate) struct Get {
-    pub(crate) inner: Inner<RecordHeader>,
+    pub(crate) inner: PinBox<dyn Future<Output = Result<RecordHeader>> + Send>,
 }
 
-pub(crate) struct Push(pub(crate) Inner<()>);
+pub(crate) struct Push(pub(crate) PinBox<dyn Future<Output = Result<()>> + Send>);
 
-pub(crate) struct ContainsKey(pub(crate) Inner<bool>);
+pub(crate) struct ContainsKey(pub(crate) PinBox<dyn Future<Output = Result<bool>> + Send>);
 
-pub(crate) struct Count(pub(crate) Inner<usize>);
+pub(crate) struct Count(pub(crate) PinBox<dyn Future<Output = Result<usize>> + Send>);
 
-pub(crate) struct Dump(pub(crate) Inner<()>);
+pub(crate) struct Dump(pub(crate) PinBox<dyn Future<Output = Result<()>> + Send>);
 
-pub(crate) struct Load<'a>(pub(crate) Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>);
+pub(crate) struct Load<'a>(pub(crate) PinBox<dyn Future<Output = Result<()>> + Send + 'a>);
 
 impl Future for Count {
     type Output = Result<usize>;
