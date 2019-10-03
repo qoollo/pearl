@@ -266,32 +266,13 @@ impl<K> Storage<K> {
         .get_data())
     }
 
-    /// Similar to `read`, but returns `Entry` instead of full `Record`
-    // pub async fn get(&self, key: impl Key, meta: &Meta) -> Result<Entry> {
-    //     let inner = self.inner.safe.lock().await;
-    //     unimplemented!()
-    // }
-
     /// Stop blob updater and release lock file
     pub async fn close(&self) -> Result<()> {
-        self.inner
-            .safe
-            .lock()
-            .then(|mut safe| {
-                debug!("take active blob");
-                let active_blob = safe.active_blob.take();
-                debug!("async dump blob");
-                async move {
-                    if let Some(mut blob) = active_blob {
-                        debug!("await for blob to dump");
-                        blob.dump().await
-                    } else {
-                        Ok(())
-                    }
-                }
-            })
-            .await
-            .map_err(Error::new)?;
+        let mut safe = self.inner.safe.lock().await;
+        let active_blob = safe.active_blob.take();
+        if let Some(mut blob) = active_blob {
+            blob.dump().await?;
+        }
         self.inner.need_exit.store(false, Ordering::Relaxed);
         self.inner.safe.lock().await.lock_file = None;
         if let Some(ref work_dir) = self.inner.config.work_dir {

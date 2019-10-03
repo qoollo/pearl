@@ -4,7 +4,7 @@ use chrono::Local;
 use env_logger::fmt::Color;
 use log::Level;
 use std::io::Write;
-use std::{convert::TryInto, env, fs};
+use std::{env, fs};
 
 use futures::{
     executor::block_on, future::FutureObj, stream::futures_unordered::FuturesUnordered, FutureExt,
@@ -55,7 +55,7 @@ pub fn init(dir_name: &str) -> String {
                 style.value(record.args())
             )
         })
-        .filter_level(log::LevelFilter::Warn)
+        .filter_level(log::LevelFilter::Trace)
         .try_init()
         .unwrap_or(());
     format!(
@@ -121,7 +121,7 @@ pub fn generate_records(count: usize, avg_size: usize) -> Vec<(u32, Vec<u8>)> {
         .map(|_i| {
             let diff = gen.gen::<i32>() % (avg_size / 10) as i32;
             let size = avg_size as i32 + diff;
-            let mut buf = vec![0; size.try_into().unwrap()];
+            let mut buf = vec![0; size as usize];
             gen.fill(buf.as_mut_slice());
             (gen.gen(), buf)
         })

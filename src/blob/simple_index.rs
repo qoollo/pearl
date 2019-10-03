@@ -107,7 +107,7 @@ impl SimpleIndex {
 
     fn try_create_location(h: &RecordHeader) -> Option<Location> {
         Some(Location::new(
-            h.blob_offset() + h.serialized_size().ok()?,
+            h.blob_offset() + h.serialized_size(),
             h.meta_size().try_into().ok()?,
         ))
     }
@@ -178,7 +178,7 @@ impl SimpleIndex {
 
     fn serialize_bunch(bunch: &mut [RecordHeader]) -> Result<Vec<u8>> {
         let record_header = bunch.first().ok_or(ErrorKind::EmptyIndexBunch)?;
-        let record_header_size = record_header.serialized_size()? as usize;
+        let record_header_size = record_header.serialized_size() as usize;
         debug!("record header serialized size: {}", record_header_size);
         bunch.sort_by_key(|h| h.key().to_vec());
         let header = Header {

@@ -169,7 +169,7 @@ impl Record {
         // @TODO Header validation
         let header = Header::from_raw(buf)?;
         trace!("header from raw created");
-        let meta_offset = header.serialized_size().map_err(Error::new)? as usize;
+        let meta_offset = header.serialized_size() as usize;
         let meta_size = header.meta_size as usize;
         trace!("meta offset {} len {}", meta_offset, meta_size);
         let meta = Meta::from_raw(&buf[meta_offset..])?;
@@ -270,12 +270,11 @@ impl Header {
     }
 
     #[inline]
-    pub(crate) fn meta_location(&self) -> Result<Location> {
-        self.serialized_size()
-            .map(|header_size| {
-                Location::new(self.blob_offset + header_size, self.meta_size as usize)
-            })
-            .map_err(Into::into)
+    pub(crate) fn meta_location(&self) -> Location {
+        Location::new(
+            self.blob_offset + self.serialized_size(),
+            self.meta_size as usize,
+        )
     }
 
     #[inline]
@@ -290,12 +289,17 @@ impl Header {
 
     #[inline]
     pub(crate) fn full_size(&self) -> u64 {
-        self.serialized_size().unwrap() + self.meta_size + self.data_size
+        self.serialized_size() + self.meta_size + self.data_size
+    }
+
+    #[inline]
+    pub fn meta_offset(&self) -> u64 {
+        self.blob_offset + self.serialized_size()
     }
 
     #[inline]
     pub fn data_offset(&self) -> u64 {
-        self.blob_offset + self.serialized_size().unwrap() + self.meta_size
+        self.meta_offset() + self.meta_size
     }
 
     #[inline]
@@ -324,9 +328,8 @@ impl Header {
     }
 
     #[inline]
-    pub(crate) fn serialized_size(&self) -> bincode::Result<u64> {
-        trace!("get serialized size of {:?}", self);
-        bincode::serialized_size(&self)
+    pub(crate) fn serialized_size(&self) -> u64 {
+        bincode::serialized_size(&self).expect("calc record serialized size")
     }
 
     fn update_checksum(&mut self) -> bincode::Result<()> {

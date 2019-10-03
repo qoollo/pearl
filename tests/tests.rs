@@ -19,13 +19,18 @@ use common::KeyTest;
 
 #[tokio::test]
 async fn test_storage_init_new() {
+    debug!("run test");
     let dir = common::init("new");
+    debug!("init storage");
     let storage = common::default_test_storage_in(&dir).await.unwrap();
+    debug!("check count");
     assert_eq!(storage.blobs_count(), 1);
     let path = env::temp_dir().join(&dir);
     let blob_file_path = path.join("test.0.blob");
     assert!(blob_file_path.exists());
+    debug!("clean");
     common::clean(storage, dir).await.unwrap();
+    debug!("dinished");
 }
 
 #[tokio::test]

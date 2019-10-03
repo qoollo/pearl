@@ -117,18 +117,3 @@ pub enum ErrorKind {
     /// Other error
     Other,
 }
-
-// impl ErrorKind {
-//     fn as_str(&self) -> &'static str {
-//         match self {
-//             ErrorKind::ActiveBlobNotSet => "active blob not set",
-//             ErrorKind::WrongConfig => "wrong config",
-//             ErrorKind::Uninitialized => "storage unitialized",
-//             ErrorKind::RecordNotFound => "record not found",
-//             ErrorKind::WorkDirInUse => "work dir in use",
-//             ErrorKind::KeySizeMismatch => "key size mismatch",
-//             ErrorKind::RecordExists => "key exists with the same meta",
-//             ErrorKind::Other => "other",
-//         }
-//     }
-// }

@@ -342,21 +342,14 @@ struct RawRecords {
 
 impl RawRecords {
     async fn start(file: File, blob_header_size: u64) -> Result<Self> {
-        trace!("file: {:?}, blob header size: {:?}", file, blob_header_size);
         let current_offset = blob_header_size;
         let buf = file
             .read_at(std::mem::size_of::<usize>(), current_offset + 8)
             .await?;
         let key_len = bincode::deserialize::<usize>(&buf)?;
-        let record_header_size = RecordHeader::default().serialized_size()? + key_len as u64;
+        let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
         let read_fut = Self::read_at(file.clone(), record_header_size, current_offset).boxed();
         let file_len = file.metadata().map(|m| m.len())?;
-        trace!(
-            "file len: {}, current offset: {}, record header size: {}",
-            file_len,
-            current_offset,
-            record_header_size
-        );
         Ok(RawRecords {
             current_offset,
             record_header_size,
