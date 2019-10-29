@@ -80,7 +80,7 @@ impl<'a> Stream for Entries<'a> {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
         if let Some(headers) = &mut self.loaded_headers {
             let next = if let Some(header) = headers.pop() {
-                info!("{} headers loaded, create entries from them", headers.len());
+                debug!("{} headers loaded, create entries from them", headers.len());
                 let entry = Self::create_entry(&self.blob_file, &header);
                 pin_mut!(entry);
                 let entry = ready!(entry.poll(cx));

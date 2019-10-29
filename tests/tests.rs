@@ -1,5 +1,3 @@
-#![feature(repeat_generic_slice, async_closure)]
-
 #[macro_use]
 extern crate log;
 
@@ -30,7 +28,7 @@ async fn test_storage_init_new() {
     assert!(blob_file_path.exists());
     debug!("clean");
     common::clean(storage, dir).await.unwrap();
-    debug!("dinished");
+    debug!("finished");
 }
 
 #[tokio::test]
@@ -354,7 +352,7 @@ async fn test_read_all_1000() {
     let mut records_read = storage
         .read_all(&KeyTest::new(key))
         .await
-        .then(async move |entry| entry.await.unwrap())
+        .then(move |entry| async { entry.await.unwrap() })
         .collect::<Vec<_>>()
         .await;
     assert_eq!(records_write.len(), records_read.len());
@@ -386,7 +384,7 @@ async fn test_read_all_1000_find_one_key() {
     let records_read = storage
         .read_all(&KeyTest::new(key.try_into().unwrap()))
         .await
-        .then(async move |entry| entry.await.unwrap())
+        .then(move |entry| async { entry.await.unwrap() })
         .collect::<Vec<_>>()
         .await;
     assert_eq!(1, records_read.len());

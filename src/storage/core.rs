@@ -274,7 +274,7 @@ impl<K> Storage<K> {
             blob.dump().await?;
         }
         self.inner.need_exit.store(false, Ordering::Relaxed);
-        self.inner.safe.lock().await.lock_file = None;
+        safe.lock_file = None;
         if let Some(ref work_dir) = self.inner.config.work_dir {
             fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
         };

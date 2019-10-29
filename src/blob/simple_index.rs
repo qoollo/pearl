@@ -122,7 +122,6 @@ impl SimpleIndex {
             debug!("empty index file");
             Vec::new()
         } else {
-            debug!("deserialize buffer:{} to headers", buf.len());
             Self::deserialize_bunch(&buf)?
         })
     }
@@ -192,7 +191,7 @@ impl SimpleIndex {
         bunch
             .iter()
             .filter_map(|h| {
-                debug!("write key: {:?}", h.key());
+                trace!("write key: {:?}", h.key());
                 serialize(&h).ok()
             })
             .fold(&mut buf, |acc, h_buf| {
