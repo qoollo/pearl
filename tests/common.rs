@@ -47,12 +47,12 @@ pub fn init(dir_name: &str) -> String {
             style.set_color(color);
             writeln!(
                 buf,
-                "[{} {:^5} {:>30}:{:^4}] - {}",
+                "[{} {:>24}:{:^4} {:^5}] - {}",
                 Local::now().format("%Y-%m-%dT%H:%M:%S"),
-                style.value(record.level()),
                 record.module_path().unwrap_or(""),
-                style.value(record.line().unwrap_or(0)),
-                style.value(record.args())
+                record.line().unwrap_or(0),
+                style.value(record.level()),
+                record.args(),
             )
         })
         .filter_level(log::LevelFilter::Info)

@@ -352,7 +352,7 @@ async fn test_read_all_1000() {
     let mut records_read = storage
         .read_all(&KeyTest::new(key))
         .await
-        .then(move |entry| async { entry.await.unwrap() })
+        .then(|entry| async move { entry.load().await.unwrap() })
         .collect::<Vec<_>>()
         .await;
     assert_eq!(records_write.len(), records_read.len());
@@ -384,7 +384,7 @@ async fn test_read_all_1000_find_one_key() {
     let records_read = storage
         .read_all(&KeyTest::new(key.try_into().unwrap()))
         .await
-        .then(move |entry| async { entry.await.unwrap() })
+        .then(|entry| async move { entry.load().await.unwrap() })
         .collect::<Vec<_>>()
         .await;
     assert_eq!(1, records_read.len());
