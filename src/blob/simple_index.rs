@@ -321,7 +321,7 @@ impl Index for SimpleIndex {
         }
     }
 
-    fn load<'a>(&'a mut self) -> Load {
+    fn load(&mut self) -> Load {
         match &self.inner {
             State::InMemory(_) => Load(future::ok(()).boxed()),
             State::OnDisk(file) => {
