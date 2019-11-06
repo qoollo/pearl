@@ -1,9 +1,4 @@
-use crate::prelude::*;
-
-use super::{
-    core::{Inner, Result},
-    error::{Error, ErrorKind},
-};
+use super::prelude::*;
 
 pub(crate) struct Observer {
     inner: Inner,

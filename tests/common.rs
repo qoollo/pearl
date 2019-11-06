@@ -4,7 +4,7 @@ use chrono::Local;
 use env_logger::fmt::Color;
 use log::Level;
 use std::io::Write;
-use std::{convert::TryInto, env, fs};
+use std::{env, fs};
 
 use futures::{
     executor::block_on, future::FutureObj, stream::futures_unordered::FuturesUnordered, FutureExt,
@@ -47,12 +47,12 @@ pub fn init(dir_name: &str) -> String {
             style.set_color(color);
             writeln!(
                 buf,
-                "[{} {:^5} {:>30}:{:^4}] - {}",
+                "[{} {:>24}:{:^4} {:^5}] - {}",
                 Local::now().format("%Y-%m-%dT%H:%M:%S"),
-                style.value(record.level()),
                 record.module_path().unwrap_or(""),
-                style.value(record.line().unwrap_or(0)),
-                style.value(record.args())
+                record.line().unwrap_or(0),
+                style.value(record.level()),
+                record.args(),
             )
         })
         .filter_level(log::LevelFilter::Info)
@@ -97,24 +97,13 @@ pub async fn clean(storage: Storage<KeyTest>, dir: String) -> Result<(), String>
     fs::remove_dir_all(path).map_err(|e| e.to_string())
 }
 
-pub async fn write(storage: Storage<KeyTest>, base_number: u64) -> Result<(), String> {
-    let key = KeyTest(format!("{}key", base_number).as_bytes().to_vec());
-    let data = "omn".repeat(base_number as usize % 1_000_000);
-    let res = storage.write(key, data.as_bytes().to_vec()).await;
-    res.map_err(|e| e.to_string())
-}
-
-pub fn check_all_written(storage: &Storage<KeyTest>, nums: Vec<usize>) -> Result<(), String> {
-    let keys = nums.iter().map(|n| format!("{}key", n)).collect::<Vec<_>>();
+pub fn check_all_written(storage: &Storage<KeyTest>, keys: Vec<u32>) -> Result<(), String> {
     let read_futures: FuturesUnordered<_> = keys
-        .into_iter()
-        .map(|key: String| {
-            dbg!(&key);
-            storage.read(KeyTest(key.as_bytes().to_vec()))
-        })
+        .iter()
+        .map(|key| storage.read(KeyTest::new(*key)))
         .collect();
     let futures = read_futures.collect::<Vec<_>>();
-    let expected_len = nums.len();
+    let expected_len = keys.len();
     let future_obj = FutureObj::new(Box::new(futures.map(move |records| {
         assert_eq!(records.len(), expected_len);
         records
@@ -126,15 +115,15 @@ pub fn check_all_written(storage: &Storage<KeyTest>, nums: Vec<usize>) -> Result
     Ok(())
 }
 
-pub fn generate_records(count: usize, avg_size: usize) -> Vec<Vec<u8>> {
+pub fn generate_records(count: usize, avg_size: usize) -> Vec<(u32, Vec<u8>)> {
     let mut gen = rand::thread_rng();
     (0..count)
         .map(|_i| {
             let diff = gen.gen::<i32>() % (avg_size / 10) as i32;
             let size = avg_size as i32 + diff;
-            let mut buf = vec![0; size.try_into().unwrap()];
+            let mut buf = vec![0; size as usize];
             gen.fill(buf.as_mut_slice());
-            buf
+            (gen.gen(), buf)
         })
         .collect()
 }

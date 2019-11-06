@@ -1,7 +1,6 @@
-#![feature(arbitrary_self_types)]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
-#![allow(clippy::needless_lifetimes)]
+#![allow(clippy::needless_doctest_main)]
 
 //! # pearl
 //!
@@ -53,36 +52,53 @@ extern crate serde_derive;
 extern crate futures;
 
 mod blob;
+mod error;
 mod record;
 mod storage;
 
+pub use blob::{Entries, Entry};
+pub use error::{Error, ErrorKind, Result};
 pub use record::Meta;
-pub use storage::{Builder, Error, ErrorKind, Key, Storage};
+pub use storage::{Builder, Key, ReadAll, Storage};
 
 mod prelude {
-    pub(crate) use crate::blob::{self, Blob};
-    pub(crate) use crate::record::{Header as RecordHeader, Meta, Record};
-    pub(crate) use crate::storage::Key;
+    pub(crate) type PinBox<T> = Pin<Box<T>>;
+
+    pub(crate) use super::*;
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
+    pub(crate) use blob::{self, Blob, File, Location};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
-    pub(crate) use futures::lock::Mutex;
-    pub(crate) use futures::prelude::*;
-    pub(crate) use futures::stream::{futures_unordered::FuturesUnordered, TryStreamExt};
-    pub(crate) use std::cmp::Ordering as CmpOrdering;
-    pub(crate) use std::collections::HashMap;
-    pub(crate) use std::fmt::{Display, Formatter, Result as FmtResult};
-    pub(crate) use std::fs::{self, DirEntry, File, OpenOptions};
-    pub(crate) use std::io::{
-        Error as IOError, ErrorKind as IOErrorKind, Read, Result as IOResult, Seek, SeekFrom, Write,
+    pub(crate) use futures::{
+        future::{self, Future, FutureExt, TryFutureExt},
+        io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt, AsyncWrite, AsyncWriteExt},
+        lock::{Mutex, MutexGuard},
+        stream::{futures_unordered::FuturesUnordered, Stream, StreamExt, TryStreamExt},
     };
-    pub(crate) use std::os::unix::fs::{FileExt, OpenOptionsExt};
-    pub(crate) use std::path::{Path, PathBuf};
-    pub(crate) use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-    pub(crate) use std::task::Waker;
-    pub(crate) use std::task::{Context, Poll};
-    pub(crate) use std::time::{Duration, Instant};
+    pub(crate) use record::{Header as RecordHeader, Record};
     pub(crate) use std::{
-        convert::TryInto, error, marker::PhantomData, num::TryFromIntError, pin::Pin, sync::Arc,
+        cell::RefCell,
+        cmp::Ordering as CmpOrdering,
+        collections::HashMap,
+        convert::TryInto,
+        error,
+        fmt::{Debug, Display, Formatter, Result as FmtResult},
+        fs::{self, DirEntry, File as StdFile, OpenOptions},
+        io::{
+            Error as IOError, ErrorKind as IOErrorKind, Read, Result as IOResult, Seek, SeekFrom,
+            Write,
+        },
+        marker::PhantomData,
+        num::TryFromIntError,
+        os::unix::fs::{FileExt, OpenOptionsExt},
+        path::{Path, PathBuf},
+        pin::Pin,
+        sync::{
+            atomic::{AtomicBool, AtomicUsize, Ordering},
+            Arc,
+        },
+        task::{Context, Poll, Waker},
+        time::{Duration, Instant},
     };
     pub(crate) use tokio::timer::{delay, Interval};
+    pub(crate) use {Key, Meta};
 }

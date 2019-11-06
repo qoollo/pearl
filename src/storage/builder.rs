@@ -1,7 +1,4 @@
-use crate::prelude::*;
-
-use super::core::{Config, Result, Storage};
-use super::error::ErrorKind;
+use super::prelude::*;
 
 /// `Builder` is used to initialize a `Storage`.
 /// Required params:
@@ -66,7 +63,6 @@ impl Builder {
     /// Sets working directory. If path doesn't exists, Storage will try to create it
     /// at initialization stage.
     pub fn work_dir<S: Into<PathBuf>>(mut self, work_dir: S) -> Self {
-        debug!("set work dir");
         let path: PathBuf = work_dir.into();
         debug!("work dir set to: {}", path.display());
         self.config.work_dir = Some(path);

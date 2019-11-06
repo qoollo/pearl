@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "low level blob-based I/O library"
 authors = ["Pavel Yakushin <p.yakushin@qoollo.com>"]
 edition = "2018"
-repository = "https://lab.qoollo.com/py/pearl"
+repository = "https://github.com/qoollo/pearl"
 readme = "README.md"
 
 [dependencies]
@@ -16,8 +16,8 @@ log = "0.4"
 rand = "0.7"
 serde = "1.0"
 serde_derive = "1.0"
-futures-preview = { version = "0.3.0-alpha.18" }
-tokio = { version = "0.2.0-alpha.5" }
+futures-preview = { version = "0.3.0-alpha.19" }
+tokio = { version = "0.2.0-alpha.6" }
 
 clap = { version = "2.33", optional = true }
 

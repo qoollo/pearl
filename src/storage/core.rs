@@ -1,15 +1,9 @@
-use crate::prelude::*;
-
-use super::error::{Error, ErrorKind};
-use super::observer::Observer;
+use super::prelude::*;
 
 const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
 
 const O_EXCL: i32 = 128;
-
-/// A specialized storage result type
-pub type Result<T> = std::result::Result<T, Error>;
 
 /// A main storage struct.
 /// This type is clonable, cloning it will only create a new reference,
@@ -36,7 +30,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// [`Key`]: trait.Key.html
 #[derive(Debug)]
 pub struct Storage<K> {
-    inner: Inner,
+    pub(crate) inner: Inner,
     marker: PhantomData<K>,
 }
 
@@ -49,10 +43,11 @@ pub(crate) struct Inner {
     twins_count: Arc<AtomicUsize>,
 }
 
+#[derive(Debug)]
 pub(crate) struct Safe {
     pub(crate) active_blob: Option<Box<Blob>>,
     pub(crate) blobs: Vec<Blob>,
-    lock_file: Option<File>,
+    lock_file: Option<StdFile>,
 }
 
 impl<K> Drop for Storage<K> {
@@ -110,8 +105,6 @@ impl<K> Storage<K> {
     pub async fn init(&mut self) -> Result<()> {
         // @TODO implement work dir validation
         self.prepare_work_dir().await?;
-        debug!("work dir prepared");
-
         let cont_res = work_dir_content(
             self.inner
                 .config
@@ -151,7 +144,9 @@ impl<K> Storage<K> {
     /// async fn write_data() {
     ///     let key = 42u64.to_be_bytes().to_vec();
     ///     let data = b"async written to blob".to_vec();
-    ///     storage.write(key, data).await
+    ///     let meta = Meta::new();
+    ///     meta.insert("version".to_string(), b"1.0".to_vec());
+    ///     storage.write_with(&key, data, meta).await
     /// }
     /// ```
     pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
@@ -164,7 +159,6 @@ impl<K> Storage<K> {
         let record = Record::create(key, value, meta).map_err(Error::new)?;
         debug!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
-        debug!("return write future");
         let blob = safe
             .active_blob
             .as_mut()
@@ -201,8 +195,8 @@ impl<K> Storage<K> {
         Ok(metas)
     }
 
-    /// Reads data with given key, if error ocured or there are no records with matching
-    /// key, returns [`Error::RecordNotFound`]
+    /// Reads the first found data matching given key,
+    /// if are no records with matching key, returns [`Error::RecordNotFound`]
     /// # Examples
     /// ```no-run
     /// async fn read_data() {
@@ -212,14 +206,42 @@ impl<K> Storage<K> {
     /// ```
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
+    #[inline]
     pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
+        self.read_with_optional_meta(key, None).await
+    }
+    /// Reads data matching given key and metadata,
+    /// if are no records with matching key, returns [`Error::RecordNotFound`]
+    /// # Examples
+    /// ```no-run
+    /// async fn read_data() {
+    ///     let key = 42u64.to_be_bytes().to_vec();
+    ///     let meta = Meta::new();
+    ///     meta.insert("version".to_string(), b"1.0".to_vec());
+    ///     let data = storage.read(&key, &meta).await;
+    /// }
+    /// ```
+    ///
+    /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
+    #[inline]
+    pub async fn read_with(&self, key: impl Key, meta: &Meta) -> Result<Vec<u8>> {
+        self.read_with_optional_meta(key, Some(meta)).await
+    }
+
+    /// Returns stream producing entries with matching key
+    pub async fn read_all<'a>(&'a self, key: &'a impl Key) -> ReadAll<'a, K> {
+        ReadAll::new(self, key.as_ref())
+    }
+
+    async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {
         let inner = self.inner.safe.lock().await;
-        debug!("safe lock acquired");
+        debug!("lock acquired");
+        let key = key.as_ref();
         let active_blob_read_res = inner
             .active_blob
             .as_ref()
             .ok_or(ErrorKind::ActiveBlobNotSet)?
-            .read(key.as_ref().to_vec())
+            .read(&key, meta)
             .await;
         debug!("data read from active blob");
         Ok(if let Ok(record) = active_blob_read_res {
@@ -228,7 +250,7 @@ impl<K> Storage<K> {
             let stream: FuturesUnordered<_> = inner
                 .blobs
                 .iter()
-                .map(|blob| blob.read(key.as_ref().to_vec()))
+                .map(|blob| blob.read(&key, meta))
                 .collect();
             debug!("await for stream of read futures: {}", stream.len());
             let mut task = stream.skip_while(|res| future::ready(res.is_err()));
@@ -246,26 +268,13 @@ impl<K> Storage<K> {
 
     /// Stop blob updater and release lock file
     pub async fn close(&self) -> Result<()> {
-        self.inner
-            .safe
-            .lock()
-            .then(|mut safe| {
-                debug!("take active blob");
-                let active_blob = safe.active_blob.take();
-                debug!("async dump blob");
-                async move {
-                    if let Some(mut blob) = active_blob {
-                        debug!("await for blob to dump");
-                        blob.dump().await
-                    } else {
-                        Ok(())
-                    }
-                }
-            })
-            .await
-            .map_err(Error::new)?;
+        let mut safe = self.inner.safe.lock().await;
+        let active_blob = safe.active_blob.take();
+        if let Some(mut blob) = active_blob {
+            blob.dump().await?;
+        }
         self.inner.need_exit.store(false, Ordering::Relaxed);
-        self.inner.safe.lock().await.lock_file = None;
+        safe.lock_file = None;
         if let Some(ref work_dir) = self.inner.config.work_dir {
             fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
         };

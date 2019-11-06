@@ -1,13 +1,11 @@
+use super::prelude::*;
 use crate::prelude::*;
 
-use super::file::File;
 use super::index::Index;
 use super::simple_index::SimpleIndex;
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
-
-pub(crate) type Result<T> = std::result::Result<T, Error>;
 
 /// A [`Blob`] struct representing file with records,
 /// provides methods for read/write access by key
@@ -170,26 +168,42 @@ impl Blob {
         Ok(())
     }
 
-    pub(crate) async fn read(&self, key: Vec<u8>) -> Result<Record> {
-        debug!("lookup key");
-        let loc = self.lookup(&key).await?;
-        debug!("read at");
+    pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> Result<Record> {
+        let loc = self
+            .lookup(&key, meta)
+            .await
+            .ok_or(ErrorKind::RecordNotFound)?;
+        debug!("key found");
         let buf = self.file.read_at(loc.size as usize, loc.offset).await?;
-        debug!("record from raw");
-        let record = Record::from_raw(&buf).map_err(Error::new)?;
-        debug!("return result");
+        debug!("buf read finished");
+        let record = Record::from_raw(&buf).expect("from raw");
+        debug!("record deserialized");
         Ok(record)
     }
 
-    async fn lookup<K>(&self, key: K) -> Result<Location>
-    where
-        K: AsRef<[u8]> + Ord,
-    {
-        debug!("index get");
-        let h = self.index.get(key.as_ref()).await?;
-        debug!("blob offset");
-        let offset = h.blob_offset();
-        Ok(Location::new(offset as u64, h.full_len()?))
+    #[inline]
+    pub(crate) async fn read_all<'a>(&'a self, key: &'a [u8]) -> Entries<'a> {
+        self.index.get_entry(key, self.file.clone())
+    }
+
+    async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
+        let entries = self.index.get_entry(key, self.file.clone());
+        Self::find_entry(entries, meta)
+            .await
+            .map(|entry| Location::new(entry.blob_offset(), entry.full_size()))
+    }
+
+    async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Option<Entry> {
+        ents.filter(|entry| {
+            let cmp = if let Some(m) = meta {
+                *m == entry.meta()
+            } else {
+                true
+            };
+            future::ready(cmp)
+        })
+        .next()
+        .await
     }
 
     #[inline]
@@ -208,13 +222,13 @@ impl Blob {
 
     pub(crate) async fn get_all_metas(&self, key: &[u8]) -> Result<Vec<Meta>> {
         debug!("get_all_metas");
-        let meta_locations = self.index.get_all_meta_locations(key).await?;
+        let locations = self.index.get_all_meta_locations(key).await?;
         debug!("gotten all meta locations");
         let mut metas = Vec::new();
-        for location in meta_locations {
+        for location in locations {
             let meta_raw = self
                 .file
-                .read_at(location.len as usize, location.offset)
+                .read_at(location.size as usize, location.offset)
                 .await?;
             let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
             metas.push(meta);
@@ -222,97 +236,6 @@ impl Blob {
         debug!("get all headers finished");
         Ok(metas)
     }
-}
-
-#[derive(Debug)]
-pub(crate) struct Error {
-    repr: Repr,
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match &self.repr {
-            Repr::Inner(_) => None,
-            Repr::Other(src) => Some(src.as_ref()),
-        }
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        self.repr.fmt(f)
-    }
-}
-
-impl Error {
-    pub(crate) fn new<E>(error: E) -> Self
-    where
-        E: Into<Box<dyn error::Error + Send + Sync>>,
-    {
-        Self {
-            repr: Repr::Other(error.into()),
-        }
-    }
-
-    pub(crate) fn is(&self, othr_kind: &ErrorKind) -> bool {
-        if let Repr::Inner(kind) = &self.repr {
-            kind == othr_kind
-        } else {
-            false
-        }
-    }
-}
-
-impl From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Self {
-        Self {
-            repr: Repr::Inner(kind),
-        }
-    }
-}
-
-impl From<IOError> for Error {
-    fn from(e: IOError) -> Self {
-        ErrorKind::IO(e.to_string()).into()
-    }
-}
-
-impl From<Box<bincode::ErrorKind>> for Error {
-    fn from(e: Box<bincode::ErrorKind>) -> Self {
-        ErrorKind::Bincode(e.to_string()).into()
-    }
-}
-
-impl From<TryFromIntError> for Error {
-    fn from(e: TryFromIntError) -> Self {
-        ErrorKind::Conversion(e.to_string()).into()
-    }
-}
-
-#[derive(Debug)]
-enum Repr {
-    Inner(ErrorKind),
-    Other(Box<dyn error::Error + 'static + Send + Sync>),
-}
-
-impl Display for Repr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Repr::Inner(kind) => write!(f, "{:?}", kind),
-            Repr::Other(e) => e.fmt(f),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub(crate) enum ErrorKind {
-    NotFound,
-    WrongFileNamePattern(PathBuf),
-    EmptyIndexBunch,
-    Index(String),
-    IO(String),
-    Bincode(String),
-    Conversion(String),
 }
 
 #[derive(Debug, Clone)]
@@ -390,44 +313,43 @@ impl Header {
 }
 
 #[derive(Debug)]
-struct Location {
+pub struct Location {
     offset: u64,
-    size: u64,
+    size: usize,
 }
 
 impl Location {
-    fn new(offset: u64, size: u64) -> Self {
+    pub fn new(offset: u64, size: usize) -> Self {
         Self { offset, size }
     }
-}
 
-type PinBoxFut<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
+    pub(crate) fn size(&self) -> usize {
+        self.size
+    }
+
+    pub(crate) fn offset(&self) -> u64 {
+        self.offset
+    }
+}
 
 struct RawRecords {
     current_offset: u64,
     record_header_size: u64,
     file: File,
     file_len: u64,
-    read_fut: Option<PinBoxFut<RecordHeader>>,
+    read_fut: Option<PinBox<dyn Future<Output = Result<RecordHeader>> + Send>>,
 }
 
 impl RawRecords {
     async fn start(file: File, blob_header_size: u64) -> Result<Self> {
-        trace!("file: {:?}, blob header size: {:?}", file, blob_header_size);
         let current_offset = blob_header_size;
         let buf = file
             .read_at(std::mem::size_of::<usize>(), current_offset + 8)
             .await?;
         let key_len = bincode::deserialize::<usize>(&buf)?;
-        let record_header_size = RecordHeader::default().serialized_size()? + key_len as u64;
+        let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
         let read_fut = Self::read_at(file.clone(), record_header_size, current_offset).boxed();
         let file_len = file.metadata().map(|m| m.len())?;
-        trace!(
-            "file len: {}, current offset: {}, record header size: {}",
-            file_len,
-            current_offset,
-            record_header_size
-        );
         Ok(RawRecords {
             current_offset,
             record_header_size,
@@ -445,8 +367,8 @@ impl RawRecords {
 
     fn update_future(&mut self, header: &RecordHeader) {
         self.current_offset += self.record_header_size;
-        self.current_offset += header.meta_len();
-        self.current_offset += header.data_len();
+        self.current_offset += header.meta_size();
+        self.current_offset += header.data_size();
         trace!(
             "file len: {}, current offset: {}",
             self.file_len,

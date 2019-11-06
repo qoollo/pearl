@@ -1,12 +1,11 @@
-#![feature(repeat_generic_slice, async_closure)]
-
 #[macro_use]
 extern crate log;
 
+use std::convert::TryInto;
 use std::time::{Duration, Instant};
 use std::{env, fs, path::PathBuf};
 
-use futures::future::{FutureExt, TryFutureExt};
+use futures::future::FutureExt;
 use futures::stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt};
 use pearl::{Builder, Meta, Storage};
 use rand::seq::SliceRandom;
@@ -18,16 +17,18 @@ use common::KeyTest;
 
 #[tokio::test]
 async fn test_storage_init_new() {
+    debug!("run test");
     let dir = common::init("new");
-    trace!("storage init");
+    debug!("init storage");
     let storage = common::default_test_storage_in(&dir).await.unwrap();
-    trace!("blobs count");
+    debug!("check count");
     assert_eq!(storage.blobs_count(), 1);
     let path = env::temp_dir().join(&dir);
     let blob_file_path = path.join("test.0.blob");
-    trace!("check path exists");
     assert!(blob_file_path.exists());
+    debug!("clean");
     common::clean(storage, dir).await.unwrap();
+    debug!("finished");
 }
 
 #[tokio::test]
@@ -42,12 +43,10 @@ async fn test_storage_init_from_existing() {
             .max_data_in_blob(1_000);
         let mut temp_storage: Storage<KeyTest> = builder.build()?;
         temp_storage.init().await?;
-        let mut records = common::generate_records(15, 100_000);
-        while !records.is_empty() {
-            let key = KeyTest::new(records.len() as u32);
-            let value = records.pop().unwrap();
-            let delay = delay(Instant::now() + Duration::from_millis(100));
-            delay.then(|_| temp_storage.write(key, value)).await?;
+        let records = common::generate_records(15, 100_000);
+        for (key, data) in &records {
+            delay(Instant::now() + Duration::from_millis(100)).await;
+            write_one(&temp_storage, *key, data, None).await.unwrap();
         }
         temp_storage.close().await
     };
@@ -72,82 +71,36 @@ async fn test_storage_init_from_existing() {
 #[tokio::test]
 async fn test_storage_read_write() {
     let dir = common::init("read_write");
-    trace!("create default test storage");
     let storage = common::default_test_storage_in(&dir).await.unwrap();
-
-    trace!("create key/data");
     let key = 1234;
-    let data = b"test data string".to_vec();
-    trace!("block on write");
-    storage
-        .clone()
-        .write(KeyTest::new(key), data.clone())
-        .await
-        .unwrap();
-    trace!("block on read");
+    let data = b"test data string";
+    write_one(&storage, 1234, data, None).await.unwrap();
     let new_data = storage.read(KeyTest::new(key)).await.unwrap();
-    trace!("check record data len");
-    assert_eq!(new_data.len(), data.len());
-    trace!("clean test dir");
+    assert_eq!(new_data, data);
     common::clean(storage, dir).await.unwrap();
-}
-
-async fn init_storage(path: &PathBuf) -> Storage<KeyTest> {
-    let mut storage = Builder::new()
-        .work_dir(&path)
-        .blob_file_name_prefix("test")
-        .max_blob_size(1_000_000)
-        .max_data_in_blob(1_000)
-        .build()
-        .unwrap();
-    storage.init().await.unwrap();
-    storage
 }
 
 #[tokio::test]
 async fn test_storage_multiple_read_write() {
     let dir = common::init("multiple");
-    info!("use dir: {}", dir);
-    let path = env::temp_dir().join(&dir);
-    info!("created path: {:?}", path);
-    let storage = init_storage(&path).await;
-    info!("storage initialized");
-    let mut keys = (0..100).collect::<Vec<u32>>();
-    info!("generated {} keys", keys.len());
+    let storage = common::default_test_storage_in(&dir).await.unwrap();
+    let keys = (0..100).collect::<Vec<u32>>();
+    let data = b"test data string";
 
     let write_stream: FuturesUnordered<_> = keys
         .iter()
-        .map(|key| storage.write(KeyTest::new(*key), b"qwer".to_vec()))
+        .map(|key| write_one(&storage, *key, data, None))
         .collect();
-    info!("write futures created");
-    let now = std::time::Instant::now();
-    write_stream
-        .map_err(|e| error!("{}", e.to_string()))
-        .collect::<Vec<_>>()
-        .await;
-    info!("write futures completed");
-    let elapsed = now.elapsed().as_secs_f64();
-    info!("elapsed: {}secs", elapsed);
-    let blob_file_path = path.join("test.0.blob");
-    info!("blob file path: {:?}", blob_file_path);
-    let written = fs::metadata(&blob_file_path).unwrap().len();
-    info!("write {:.0}B/s", written as f64 / elapsed);
+    write_stream.collect::<Vec<_>>().await;
     let read_stream: FuturesUnordered<_> = keys
         .iter()
         .map(|key| storage.read(KeyTest::new(*key)))
         .collect();
-    info!("read futures collected");
-    let now = std::time::Instant::now();
     let data_from_file = read_stream
         .map_err(|e| dbg!(e))
         .map(Result::unwrap)
         .collect::<Vec<_>>()
         .await;
-    info!("read futures completed");
-    let elapsed = now.elapsed().as_secs_f64();
-    keys.sort();
-    let written = fs::metadata(&blob_file_path).unwrap().len();
-    trace!("read {}B/s", written as f64 / elapsed);
     common::clean(storage, dir).await.unwrap();
     assert_eq!(keys.len(), data_from_file.len());
 }
@@ -155,44 +108,40 @@ async fn test_storage_multiple_read_write() {
 #[tokio::test]
 async fn test_multithread_read_write() -> Result<(), String> {
     let dir = common::init("multithread");
-    info!("block on create default test storage");
     let storage = common::default_test_storage_in(&dir).await?;
-    info!("collect indexes");
     let indexes = common::create_indexes(10, 10);
-    info!("create mpsc channel");
     let (snd, rcv) = tokio::sync::mpsc::channel(1024);
-    info!("spawn std threads");
-    let s = storage.clone();
+    let data = b"test data string";
+    let clonned_storage = storage.clone();
     indexes.iter().cloned().for_each(move |mut range| {
-        let s = s.clone();
+        let st = clonned_storage.clone();
         let mut snd_cloned = snd.clone();
         std::thread::Builder::new()
             .name(format!("thread#{}", range[0]))
             .spawn(move || {
+                let s = st.clone();
                 let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
                 range.shuffle(&mut rand::thread_rng());
-                let write_futures: FuturesUnordered<_> = range
-                    .iter()
-                    .map(|i| common::write(s.clone(), *i as u64))
-                    .collect();
-                rt.spawn(async move {
-                    let res = write_futures.collect::<Vec<_>>().await;
-                    snd_cloned.send(res).await.unwrap();
-                });
-                rt.run().unwrap();
+                let task = async {
+                    let start = range[0];
+                    for i in range {
+                        write_one(&s, i as u32, data, None).await.unwrap();
+                    }
+                    snd_cloned.send(start).await.unwrap();
+                };
+                rt.block_on(task);
             })
             .unwrap();
     });
-    info!("await for all threads to finish");
     let handles = rcv.collect::<Vec<_>>().await;
-    let errs_cnt = handles.iter().flatten().filter(|r| r.is_err()).count();
-    info!("errors count: {}", errs_cnt);
-    info!("generate flat indexes");
-    let keys = indexes.iter().flatten().cloned().collect::<Vec<_>>();
-    info!("check result");
+    assert_eq!(handles.len(), 10);
+    let keys = indexes
+        .iter()
+        .flatten()
+        .map(|i| *i as u32)
+        .collect::<Vec<_>>();
     common::check_all_written(&storage, keys)?;
     common::clean(storage, dir).await.unwrap();
-    info!("done");
     Ok(())
 }
 
@@ -200,34 +149,13 @@ async fn test_multithread_read_write() -> Result<(), String> {
 async fn test_storage_multithread_blob_overflow() -> Result<(), String> {
     let dir = common::init("overflow");
     let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
-    let mut range: Vec<u32> = (0..100).map(|i| i).collect();
+    let mut range: Vec<u32> = (0..100).collect();
     range.shuffle(&mut rand::thread_rng());
-    let mut next_write = Instant::now();
-    let data = "omn".repeat(150).as_bytes().to_vec();
-    let clonned_storage = storage.clone();
-    let delay_futures: Vec<_> = range
-        .iter()
-        .map(|i| delay(Instant::now() + Duration::from_millis(u64::from(*i) * 100)))
-        .collect();
-    let write_futures: FuturesUnordered<_> = range
-        .iter()
-        .zip(delay_futures)
-        .map(move |(i, df)| {
-            next_write += Duration::from_millis(500);
-            let storage = clonned_storage.clone();
-            let data = data.clone();
-            df.then(async move |_| {
-                let write_fut = storage.write(KeyTest::new(*i), data);
-                write_fut
-                    .map_err(|e| {
-                        trace!("{:?}", e);
-                    })
-                    .await
-            })
-        })
-        .collect();
-    let results: Vec<_> = write_futures.collect().await;
-    assert!(results.iter().all(|r| r.is_ok()));
+    let data = b"test data string".repeat(16);
+    for i in range {
+        delay(Instant::now() + Duration::from_millis(100)).await;
+        write_one(&storage, i, &data, None).await.unwrap();
+    }
     let path = env::temp_dir().join(&dir);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
@@ -254,7 +182,6 @@ async fn test_storage_close() {
 #[tokio::test]
 async fn test_on_disk_index() -> Result<(), String> {
     let dir = common::init("index");
-    debug!("logger initialized");
     let data_size = 500;
     let max_blob_size = 1500;
     let num_records_to_write = 5u32;
@@ -270,28 +197,17 @@ async fn test_on_disk_index() -> Result<(), String> {
         .unwrap();
     let slice = [17, 40, 29, 7, 75];
     let data: Vec<u8> = slice.repeat(data_size / slice.len());
-    debug!("init storage");
     storage.init().await.unwrap();
-    debug!("create write unordered futures");
-    let write_results: FuturesUnordered<_> = (0..num_records_to_write)
-        .map(|key| storage.write(KeyTest::new(key), data.clone()))
-        .collect();
-    debug!("await for unordered futures");
-    write_results
-        .for_each(|res| {
-            res.unwrap();
-            futures::future::ready(())
-        })
-        .await;
-    debug!("wait while blobs_count < 2");
-    let mut count = 0;
-    while count < 2 {
-        count = storage.blobs_count();
-        debug!("blobs count: {}", count);
+    for i in 0..num_records_to_write {
+        delay(Instant::now() + Duration::from_millis(100))
+            .then(|_| write_one(&storage, i, &data, None))
+            .await
+            .unwrap();
+    }
+    while storage.blobs_count() < 2 {
         delay(Instant::now() + Duration::from_millis(200)).await;
     }
     assert!(path.join("test.1.blob").exists());
-    debug!("read key: {}", read_key);
     let new_data = storage.read(KeyTest::new(read_key)).await.unwrap();
     assert_eq!(new_data, data);
     common::clean(storage, dir).await
@@ -316,75 +232,31 @@ async fn test_work_dir_lock() {
 #[tokio::test]
 async fn test_index_from_blob() {
     let dir = common::init("index_from_blob");
-    info!("create storage");
     let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
-    info!("generate records");
     let records = common::generate_records(10, 10_000);
-    info!("create unordered write futures");
-    let futures: FuturesUnordered<_> = records
-        .into_iter()
-        .enumerate()
-        .map(|(i, data)| {
-            let key = common::KeyTest::new(i as u32);
-            storage.write(key, data)
-        })
-        .collect();
-    info!("collect futures");
-    futures.map(Result::unwrap).collect::<Vec<_>>().await;
-    info!("close storage");
+    for (i, data) in &records {
+        write_one(&storage, *i, data, None).await.unwrap();
+    }
     storage.close().await.unwrap();
     let dir_path: PathBuf = env::temp_dir().join(&dir);
-    info!("ls work dir");
-    fs::read_dir(&dir_path)
-        .unwrap()
-        .map(|r| r.unwrap())
-        .for_each(|f| info!("{:?}", f));
     let index_file_path = dir_path.join("test.0.index");
-    info!("delete index file: {}", index_file_path.display());
     fs::remove_file(&index_file_path).unwrap();
-    info!("ls work dir, index file deleted");
-    fs::read_dir(&dir_path)
-        .unwrap()
-        .map(|r| r.unwrap())
-        .for_each(|f| info!("{:?}", f));
-    info!("create new test storage");
     let new_storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
-    info!("new test storage created");
-    fs::read_dir(&dir_path)
-        .unwrap()
-        .map(|r| r.unwrap())
-        .for_each(|f| info!("{:?}", f));
     assert!(index_file_path.exists());
     common::clean(new_storage, dir)
         .map(|res| res.expect("work dir clean failed"))
         .await;
 }
 
-async fn write_first_record(storage: &Storage<KeyTest>, key: &KeyTest) {
-    let value = b"data_with_empty_meta".to_vec();
-    storage
-        .write_with(key.clone(), value, Meta::new())
-        .await
-        .unwrap();
-}
-
-async fn write_second_record(storage: &Storage<KeyTest>, key: &KeyTest) -> Result<(), String> {
-    let value = b"data_with_meta".to_vec();
-    let mut meta = Meta::new();
-    meta.insert("version".to_owned(), "1.1.0");
-    storage
-        .write_with(key, value, meta)
-        .await
-        .map_err(|e| e.to_string())
-}
-
 #[tokio::test]
 async fn test_write_with() {
     let dir = common::init("write_with");
     let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
-    let key = KeyTest::new(1234);
-    write_first_record(&storage, &key).await;
-    write_second_record(&storage, &key).await.unwrap();
+    let key = 1234;
+    let data = b"data_with_empty_meta";
+    write_one(&storage, key, data, None).await.unwrap();
+    let data = b"data_with_meta";
+    write_one(&storage, key, data, Some("1.0")).await.unwrap();
     common::clean(storage, dir)
         .map(|res| res.expect("work dir clean failed"))
         .await;
@@ -395,26 +267,21 @@ async fn test_write_with_with_on_disk_index() {
     let dir = common::init("write_with_with_on_disk_index");
     let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
 
-    let key = KeyTest::new(1234);
-    write_first_record(&storage, &key).await;
+    let key = 1234;
+    let data = b"data_with_empty_meta";
+    write_one(&storage, key, data, None).await.unwrap();
 
     let records = common::generate_records(20, 1000);
-    debug!("{} records generated", records.len());
-    for (i, record) in records.into_iter().enumerate() {
-        let key = KeyTest::new(i as u32);
-        info!("write key: {:?}", key);
+    for (i, data) in &records {
         delay(Instant::now() + Duration::from_millis(32)).await;
-        storage.write(key, record).await.unwrap();
+        write_one(&storage, *i, data, Some("1.0")).await.unwrap();
     }
-    info!("write records to create closed blob finished");
     assert!(storage.blobs_count() > 1);
-    info!("blobs count more than 1");
 
-    write_second_record(&storage, &key).await.unwrap();
-    info!("write second record with the same key but different meta was successful");
+    let data = b"data_with_meta";
+    write_one(&storage, key, data, Some("1.0")).await.unwrap();
 
-    assert!(write_second_record(&storage, &key).await.is_err());
-    info!("but next same write of the second record failed as expected");
+    assert!(write_one(&storage, key, data, Some("1.0")).await.is_err());
 
     common::clean(storage, dir)
         .map(|res| res.expect("work dir clean failed"))
@@ -422,27 +289,144 @@ async fn test_write_with_with_on_disk_index() {
 }
 
 #[tokio::test]
-async fn test_write_1_000_records_with_same_key() {
+async fn test_write_512_records_with_same_key() {
+    let now = Instant::now();
     let dir = common::init("write_1_000_000_records_with_same_key");
-    delay(Instant::now() + Duration::from_millis(1000)).await;
-    info!("work dir: {}", dir);
     let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
     let key = KeyTest::new(1234);
     let value = b"data_with_empty_meta".to_vec();
-    let now = Instant::now();
-    for i in 0..1_000 {
-        debug!("{} started", i);
+    for i in 0..512 {
         let mut meta = Meta::new();
         meta.insert("version".to_owned(), i.to_string());
-        delay(Instant::now() + Duration::from_micros(8)).await;
+        delay(Instant::now() + Duration::from_micros(1)).await;
         storage.write_with(&key, value.clone(), meta).await.unwrap();
-        if i % 8 == 0 {
-            info!("{} finished", i);
-        }
     }
-    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
-
     common::clean(storage, dir)
-        .map(|res| res.expect("work dir clean failed"))
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_read_with() {
+    let now = Instant::now();
+    let dir = common::init("read_with");
+    let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
+    debug!("storage created");
+    let key = 2345;
+    trace!("key: {}", key);
+    let data = b"some_random_data";
+    trace!("data: {:?}", data);
+    write_one(&storage, key, data, Some("1.0")).await.unwrap();
+    debug!("first data written");
+    let data = b"some data with different version";
+    trace!("data: {:?}", data);
+    write_one(&storage, key, data, Some("2.0")).await.unwrap();
+    debug!("second data written");
+    let key = KeyTest::new(key);
+    let data_read_with = storage.read_with(&key, &meta_with("2.0")).await.unwrap();
+    debug!("read with finished");
+    let data_read = storage.read(&key).await.unwrap();
+    debug!("read finished");
+    assert_ne!(data_read_with, data_read);
+    assert_eq!(data_read_with, data);
+    common::clean(storage, dir)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_read_all_1000() {
+    let now = Instant::now();
+    let dir = common::init("read_all");
+    let storage = common::create_test_storage(&dir, 100_000).await.unwrap();
+    let key = 3456;
+    let records_write = common::generate_records(512, 9_000);
+    for (i, data) in &records_write {
+        delay(Instant::now() + Duration::from_millis(1)).await;
+        write_one(&storage, key, data, Some(&i.to_string()))
+            .await
+            .unwrap();
+    }
+    let mut records_read = storage
+        .read_all(&KeyTest::new(key))
+        .await
+        .then(|entry| async move { entry.load().await.unwrap() })
+        .collect::<Vec<_>>()
         .await;
+    assert_eq!(records_write.len(), records_read.len());
+    let mut records = records_write
+        .into_iter()
+        .map(|(_, data)| data)
+        .collect::<Vec<_>>();
+    records.sort();
+    records_read.sort();
+    assert_eq!(records, records_read);
+    common::clean(storage, dir)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_read_all_1000_find_one_key() {
+    let now = Instant::now();
+    let dir = common::init("read_all_1000_find_one_key");
+    let storage = common::create_test_storage(&dir, 100_000).await.unwrap();
+    let count = 1000;
+    let records_write = common::generate_records(count, 9_000);
+    for (i, data) in &records_write {
+        delay(Instant::now() + Duration::from_millis(1)).await;
+        write_one(&storage, *i, data, None).await.unwrap();
+    }
+    let key = records_write.last().unwrap().0;
+    let records_read = storage
+        .read_all(&KeyTest::new(key.try_into().unwrap()))
+        .await
+        .then(|entry| async move { entry.load().await.unwrap() })
+        .collect::<Vec<_>>()
+        .await;
+    assert_eq!(1, records_read.len());
+    assert_eq!(
+        records_write
+            .iter()
+            .find_map(|(i, data)| if *i == key.try_into().unwrap() {
+                Some(data)
+            } else {
+                None
+            })
+            .unwrap(),
+        &records_read[0]
+    );
+    common::clean(storage, dir)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+async fn write_one(
+    storage: &Storage<KeyTest>,
+    key: u32,
+    data: &[u8],
+    version: Option<&str>,
+) -> Result<(), String> {
+    let data = data.to_vec();
+    trace!("data: {:?}", data);
+    let key = KeyTest::new(key);
+    trace!("key: {:?}", key);
+    if let Some(v) = version {
+        debug!("write with");
+        storage.write_with(key, data, meta_with(v)).await
+    } else {
+        debug!("write");
+        storage.write(key, data).await
+    }
+    .map_err(|e| e.to_string())
+}
+
+fn meta_with(version: &str) -> Meta {
+    let mut meta = Meta::new();
+    meta.insert("version".to_owned(), version);
+    meta
 }
