@@ -1,6 +1,6 @@
 use super::prelude::*;
 
-/// @TODO
+/// Stream of entries
 #[derive(Debug)]
 pub struct ReadAll<'a, K> {
     key: &'a [u8],
@@ -98,7 +98,7 @@ impl<'a, K> ReadAll<'a, K> {
                     }
                     entries
                 }
-                    .boxed();
+                .boxed();
                 self.state.replace(State::CollectFromClosedBlobs(new_fut));
             }
             State::CollectFromClosedBlobs(fut) => {

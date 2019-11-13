@@ -59,7 +59,7 @@ pub fn init(dir_name: &str) -> String {
         .try_init()
         .unwrap_or(());
     format!(
-        "pearl-test/{}/{}/",
+        "/tmp/pearl-test/{}/{}/",
         std::time::UNIX_EPOCH.elapsed().unwrap().as_secs() % 1_563_100_000,
         dir_name
     )

@@ -1,6 +1,7 @@
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 #![allow(clippy::needless_doctest_main)]
+// #![warn(clippy::pedantic)]
 
 //! # pearl
 //!
@@ -57,7 +58,7 @@ mod record;
 mod storage;
 
 pub use blob::{Entries, Entry};
-pub use error::{Error, ErrorKind, Result};
+pub use error::{Error, Kind as ErrorKind, Result};
 pub use record::Meta;
 pub use storage::{Builder, Key, ReadAll, Storage};
 

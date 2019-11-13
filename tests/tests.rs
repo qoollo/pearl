@@ -5,8 +5,11 @@ use std::convert::TryInto;
 use std::time::{Duration, Instant};
 use std::{env, fs, path::PathBuf};
 
-use futures::future::FutureExt;
-use futures::stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt};
+use futures::{
+    future::FutureExt,
+    sink::SinkExt,
+    stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
+};
 use pearl::{Builder, Meta, Storage};
 use rand::seq::SliceRandom;
 use tokio::timer::delay;
@@ -110,7 +113,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let dir = common::init("multithread");
     let storage = common::default_test_storage_in(&dir).await?;
     let indexes = common::create_indexes(10, 10);
-    let (snd, rcv) = tokio::sync::mpsc::channel(1024);
+    let (snd, rcv) = futures::channel::mpsc::channel(1024);
     let data = b"test data string";
     let clonned_storage = storage.clone();
     indexes.iter().cloned().for_each(move |mut range| {

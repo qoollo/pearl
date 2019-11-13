@@ -1,6 +1,7 @@
 use super::prelude::*;
 
-/// `Builder` is used to initialize a `Storage`.
+/// Is used to initialize a `Storage`.
+///
 /// Required params:
 ///  - [`work_dir`] - where `Storage` will keep blob and index files
 ///  - [`max_blob_size`] - upper limit of blob file size
@@ -35,8 +36,9 @@ pub struct Builder {
 
 impl Builder {
     /// Create new unitialized `Builder`
+    #[must_use]
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
 
     /// Creates `Storage` based on given configuration,
@@ -72,6 +74,7 @@ impl Builder {
     /// Sets blob file size approximate limit. When the file size exceeds it,
     /// active blob update is activated.
     /// Must be greater than zero
+    #[must_use]
     pub fn max_blob_size(mut self, max_blob_size: u64) -> Self {
         if max_blob_size > 0 {
             self.config.max_blob_size = Some(max_blob_size);
@@ -83,6 +86,7 @@ impl Builder {
 
     /// Limits max number of records in a single blob.
     /// Must be greater than zero
+    #[must_use]
     pub fn max_data_in_blob(mut self, max_data_in_blob: u64) -> Self {
         if max_data_in_blob > 0 {
             self.config.max_data_in_blob = Some(max_data_in_blob);
