@@ -6,12 +6,14 @@ const LOCK_FILE: &str = "pearl.lock";
 const O_EXCL: i32 = 128;
 
 /// A main storage struct.
+///
 /// This type is clonable, cloning it will only create a new reference,
 /// not a new storage.
 /// Storage has a type parameter K.
 /// To perform read/write operations K must implement [`Key`] trait.
 ///
 /// # Examples
+///
 /// ```no-run
 /// use pearl::{Storage, Builder, Key};
 ///
@@ -27,6 +29,7 @@ const O_EXCL: i32 = 128;
 ///     storage.init().await.unwrap();
 /// }
 /// ```
+///
 /// [`Key`]: trait.Key.html
 #[derive(Debug)]
 pub struct Storage<K> {
@@ -62,6 +65,7 @@ impl<K> Drop for Storage<K> {
 }
 
 impl<K> Clone for Storage<K> {
+    #[must_use]
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
@@ -291,6 +295,7 @@ impl<K> Storage<K> {
     /// storage.init().await;
     /// assert_eq!(storage.blobs_count(), 1);
     /// ```
+    #[must_use]
     pub fn blobs_count(&self) -> usize {
         self.inner.next_blob_id.load(Ordering::Relaxed)
     }
@@ -353,10 +358,9 @@ impl<K> Storage<K> {
         active_blob.load_index().await.map_err(Error::new)?;
         safe_locked.active_blob = Some(active_blob);
         safe_locked.blobs = blobs;
-        self.inner.next_blob_id.store(
-            safe_locked.max_id().map(|i| i + 1).unwrap_or(0),
-            Ordering::Relaxed,
-        );
+        self.inner
+            .next_blob_id
+            .store(safe_locked.max_id().map_or(0, |i| i + 1), Ordering::Relaxed);
         Ok(())
     }
 

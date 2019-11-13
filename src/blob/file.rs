@@ -148,7 +148,7 @@ impl File {
     }
 
     pub(crate) fn from_std_file(fd: fs::File) -> IOResult<Self> {
-        fd.try_clone().map(|file| File {
+        fd.try_clone().map(|file| Self {
             read_fd: Arc::new(file),
             write_fd: Arc::new(Mutex::new(fd)),
         })

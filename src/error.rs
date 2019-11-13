@@ -11,6 +11,7 @@ pub struct Error {
 
 impl Error {
     /// Returns the corresponding `ErrorKind` for this error.
+    #[must_use]
     pub fn kind(&self) -> ErrorKind {
         match &self.repr {
             Repr::Inner(k) => k.clone(),
@@ -37,6 +38,7 @@ impl Error {
 }
 
 impl error::Error for Error {
+    #[must_use]
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match &self.repr {
             Repr::Inner(_) => None,
@@ -52,6 +54,7 @@ impl Display for Error {
 }
 
 impl From<ErrorKind> for Error {
+    #[must_use]
     fn from(kind: ErrorKind) -> Self {
         Self {
             repr: Repr::Inner(kind),
@@ -60,18 +63,21 @@ impl From<ErrorKind> for Error {
 }
 
 impl From<IOError> for Error {
+    #[must_use]
     fn from(e: IOError) -> Self {
         ErrorKind::IO(e.to_string()).into()
     }
 }
 
 impl From<Box<bincode::ErrorKind>> for Error {
+    #[must_use]
     fn from(e: Box<bincode::ErrorKind>) -> Self {
         ErrorKind::Bincode(e.to_string()).into()
     }
 }
 
 impl From<TryFromIntError> for Error {
+    #[must_use]
     fn from(e: TryFromIntError) -> Self {
         ErrorKind::Conversion(e.to_string()).into()
     }
@@ -79,13 +85,13 @@ impl From<TryFromIntError> for Error {
 
 #[derive(Debug)]
 enum Repr {
-    Inner(ErrorKind),
+    Inner(Kind),
     Other(Box<dyn error::Error + 'static + Send + Sync>),
 }
 
 /// A list specifying categories of Storage error.
 #[derive(Debug, Clone, PartialEq)]
-pub enum ErrorKind {
+pub enum Kind {
     /// Active blob not set, often initialization failed.
     ActiveBlobNotSet,
     /// Input configuration is wrong.

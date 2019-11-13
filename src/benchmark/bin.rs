@@ -11,7 +11,6 @@ mod writer;
 use clap::{App, Arg, ArgMatches};
 use futures::{
     channel::mpsc::{channel, Sender},
-    executor::ThreadPool,
     stream::{FuturesUnordered, StreamExt},
 };
 use log::LevelFilter;
@@ -22,15 +21,14 @@ use generator::Generator;
 use statistics::{Report, Statistics};
 use writer::Writer;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("{:_^41}", "PEARL_BENCHMARK");
     env_logger::Builder::new()
         .filter_module("benchmark", LevelFilter::Debug)
         .filter_module("pearl", LevelFilter::Error)
         .init();
-    let mut pool = ThreadPool::new().unwrap();
-    let app = start_app();
-    pool.run(app);
+    start_app().await;
 }
 
 async fn write(lawriter: Arc<Writer<Key128>>, key: Key128, data: Vec<u8>, mut ltx: Sender<Report>) {
@@ -117,7 +115,7 @@ async fn start_app() {
 
     info!("start await ");
     let _ = rx
-        .take(counter as u64)
+        .take(counter)
         .map(|r| statistics.add(r))
         .collect::<Vec<_>>()
         .await;

@@ -130,7 +130,7 @@ impl Blob {
         debug!("call update index");
         blob.try_regenerate_index().await?;
         debug!("check data consistency");
-        blob.check_data_consistency()?;
+        Self::check_data_consistency()?;
         Ok(blob)
     }
 
@@ -153,7 +153,7 @@ impl Blob {
         Ok(())
     }
 
-    pub(crate) fn check_data_consistency(&self) -> Result<()> {
+    pub(crate) fn check_data_consistency() -> Result<()> {
         // @TODO implement
         Ok(())
     }
@@ -350,7 +350,7 @@ impl RawRecords {
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
         let read_fut = Self::read_at(file.clone(), record_header_size, current_offset).boxed();
         let file_len = file.metadata().map(|m| m.len())?;
-        Ok(RawRecords {
+        Ok(Self {
             current_offset,
             record_header_size,
             file,

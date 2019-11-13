@@ -16,7 +16,7 @@ struct Header {
 
 impl Header {
     fn serialized_size_default() -> bincode::Result<u64> {
-        let header = Header::default();
+        let header = Self::default();
         header.serialized_size()
     }
 
@@ -164,7 +164,7 @@ impl SimpleIndex {
     }
 
     async fn read_index_header(file: &mut File) -> Result<Header> {
-        let header_size = Header::serialized_size_default()? as usize;
+        let header_size = Header::serialized_size_default()?.try_into()?;
         debug!("header s: {}", header_size);
         let mut buf = vec![0; header_size];
         debug!("seek to file start");
@@ -177,16 +177,15 @@ impl SimpleIndex {
 
     fn serialize_bunch(bunch: &mut [RecordHeader]) -> Result<Vec<u8>> {
         let record_header = bunch.first().ok_or(ErrorKind::EmptyIndexBunch)?;
-        let record_header_size = record_header.serialized_size() as usize;
+        let record_header_size = record_header.serialized_size().try_into()?;
         debug!("record header serialized size: {}", record_header_size);
         bunch.sort_by_key(|h| h.key().to_vec());
         let header = Header {
             record_header_size,
             records_count: bunch.len(),
         };
-        let mut buf = Vec::with_capacity(
-            header.serialized_size()? as usize + bunch.len() * record_header_size,
-        );
+        let hs: usize = header.serialized_size()?.try_into().unwrap();
+        let mut buf = Vec::with_capacity(hs + bunch.len() * record_header_size);
         serialize_into(&mut buf, &header)?;
         bunch
             .iter()
@@ -201,19 +200,21 @@ impl SimpleIndex {
         Ok(buf)
     }
 
-    fn deserialize_bunch(buf: &[u8]) -> bincode::Result<Vec<RecordHeader>> {
+    fn deserialize_bunch(buf: &[u8]) -> Result<Vec<RecordHeader>> {
         debug!("deserialize header from buf: {}", buf.len());
         let header: Header = deserialize(buf)?;
         trace!("header deserialized: {:?}", header);
-        let header_size = header.serialized_size()? as usize;
+        let header_size: usize = header.serialized_size()?.try_into()?;
         trace!("header serialized size: {}", header_size);
         (0..header.records_count).try_fold(Vec::new(), |mut record_headers, i| {
             let offset = header_size + i * header.record_header_size;
             trace!("deserialize record header at: {}", offset);
-            deserialize(&buf[offset..]).map(|rh| {
-                record_headers.push(rh);
-                record_headers
-            })
+            deserialize(&buf[offset..])
+                .map(|rh| {
+                    record_headers.push(rh);
+                    record_headers
+                })
+                .map_err(Into::into)
         })
     }
 

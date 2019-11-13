@@ -43,6 +43,7 @@ enum Repr {
 
 impl Meta {
     /// Create new Meta with name and bytes body.
+    #[must_use]
     pub fn new() -> Self {
         Self(HashMap::new())
     }
@@ -110,8 +111,8 @@ impl Display for Error {
 impl Display for Repr {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
-            Repr::Inner(kind) => write!(f, "{:?}", kind),
-            Repr::Other(e) => Debug::fmt(e, f),
+            Self::Inner(kind) => write!(f, "{:?}", kind),
+            Self::Other(e) => Debug::fmt(e, f),
         }
     }
 }
@@ -128,11 +129,19 @@ impl From<IOError> for Error {
     }
 }
 
+impl From<TryFromIntError> for Error {
+    #[must_use]
+    fn from(e: TryFromIntError) -> Self {
+        ErrorKind::Conversion(e.to_string()).into()
+    }
+}
+
 #[derive(Debug)]
 pub enum ErrorKind {
     Validation(String),
     Bincode(String),
     IO(String),
+    Conversion(String),
 }
 
 impl From<ErrorKind> for Error {
@@ -169,8 +178,8 @@ impl Record {
         // @TODO Header validation
         let header = Header::from_raw(buf)?;
         trace!("header from raw created");
-        let meta_offset = header.serialized_size() as usize;
-        let meta_size = header.meta_size as usize;
+        let meta_offset = header.serialized_size().try_into()?;
+        let meta_size: usize = header.meta_size.try_into()?;
         trace!("meta offset {} len {}", meta_offset, meta_size);
         let meta = Meta::from_raw(&buf[meta_offset..])?;
         trace!("meta from raw created: {:?}", meta);
@@ -273,7 +282,7 @@ impl Header {
     pub(crate) fn meta_location(&self) -> Location {
         Location::new(
             self.blob_offset + self.serialized_size(),
-            self.meta_size as usize,
+            self.meta_size.try_into().expect("convert to usize"),
         )
     }
 

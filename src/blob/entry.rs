@@ -4,9 +4,11 @@ use std::slice::Iter;
 
 /// [`Entry`] is a [`Future`], which contains header and metadata of the record,
 /// but does not contain all of the data in memory.
+///
 /// If you searching for the records with particular meta, you don't need to load
 /// full record. When you've found entry with required meta, call [`load`] to get
 /// body.
+///
 /// [`Entry`]: struct.Entry.html
 /// [`load`]: struct.Entry.html#method.load
 #[derive(Debug)]
@@ -19,11 +21,14 @@ pub struct Entry {
     blob_file: File,
 }
 
-/// [`Entries`] is an iterator over the entries with the same key. It is a [`Stream`],
+/// [`Entries`] is an iterator over the entries with the same key.
+///
+/// It is a [`Stream`],
 /// because it requires to load record headers from the disk index. But only if
 /// the blob is closed and index dumped
+///
 /// [`Entries`]: struct.Entries.html
-/// [`Stream`]: https://rust-lang-nursery.github.io/futures-api-docs/0.3.0-alpha.19/futures/stream/trait.Stream.html
+/// [`Stream`]: `futures::stream::Stream`
 pub struct Entries<'a> {
     inner: &'a State,
     key: &'a [u8],
@@ -42,10 +47,10 @@ impl Entry {
     }
 
     pub(crate) fn new(meta: Meta, header: &RecordHeader, blob_file: File) -> Self {
-        let data_size = header.data_size() as usize;
+        let data_size = header.data_size().try_into().unwrap();
         let data_offset = header.data_offset();
         let blob_offset = header.blob_offset();
-        let full_size = header.full_size() as usize;
+        let full_size = header.full_size().try_into().unwrap();
         Self {
             meta,
             data_offset,
@@ -150,7 +155,7 @@ impl<'a> Entries<'a> {
         let file = self.blob_file.clone();
         if let Some(it) = &mut self.in_memory_iter {
             trace!("find in iterator");
-            Self::try_find_record_header(it, key, file, cx)
+            Self::try_find_record_header(it, key, &file, cx)
         } else {
             trace!("iterator not set");
             let rec_iter = headers.iter();
@@ -164,7 +169,7 @@ impl<'a> Entries<'a> {
     fn try_find_record_header(
         it: &mut Iter<RecordHeader>,
         key: &[u8],
-        file: File,
+        file: &File,
         cx: &mut Context,
     ) -> Poll<Option<Entry>> {
         for h in it {
