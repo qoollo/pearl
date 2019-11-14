@@ -1,6 +1,10 @@
+use super::prelude::*;
+
 pub struct Statistics {
     max_reports: usize,
     pile: Vec<Report>,
+    start: Instant,
+    last: Instant,
 }
 
 impl Statistics {
@@ -8,6 +12,8 @@ impl Statistics {
         Self {
             max_reports,
             pile: Vec::new(),
+            start: Instant::now(),
+            last: Instant::now(),
         }
     }
 
@@ -16,6 +22,7 @@ impl Statistics {
         if self.pile.len() >= self.max_reports && self.max_reports != 0 {
             self.merge();
         }
+        self.last = Instant::now();
     }
 
     pub fn merge(&mut self) {
@@ -43,9 +50,7 @@ impl Statistics {
         let total_count = self.pile.iter().fold(0, |acc, r| acc + r.count);
         Self::print("reports total:", total_count);
         Self::print("reports collected:", self.pile.len());
-        let test_duration_ms = (self.pile.last().unwrap().timestamp
-            - self.pile.first().unwrap().timestamp)
-            .as_millis() as f64;
+        let test_duration_ms = (self.last - self.start).as_secs_f64() * 1000.0;
         Self::print("test duration:", test_duration_ms / 1000.0);
         let total_size = self
             .pile
@@ -74,9 +79,6 @@ impl Statistics {
         println!("{:>5}{:<20}{:>10.3?}", "", name, value);
     }
 }
-
-use std::ops::Add;
-use std::time::{Duration, Instant};
 
 #[derive(Clone, Copy)]
 pub struct Report {

@@ -1,4 +1,5 @@
 #![allow(clippy::needless_lifetimes)]
+// #![warn(clippy::pedantic)]
 
 extern crate pearl;
 #[macro_use]
@@ -8,25 +9,59 @@ mod generator;
 mod statistics;
 mod writer;
 
-use clap::{App, Arg, ArgMatches};
-use futures::{
-    channel::mpsc::{channel, Sender},
-    stream::{FuturesUnordered, StreamExt},
-};
-use log::LevelFilter;
-use pearl::Key;
-use std::{sync::Arc, time::Instant};
+mod prelude {
+    pub(crate) use super::{
+        generator::Generator,
+        statistics::{Report, Statistics},
+        writer::Writer,
+    };
+    pub(crate) use chrono::Local;
+    pub(crate) use clap::{App, Arg, ArgMatches};
+    pub(crate) use env_logger::fmt::Color;
+    pub(crate) use futures::{
+        channel::mpsc::{channel, Sender},
+        stream::{FuturesUnordered, StreamExt},
+    };
+    pub(crate) use log::{Level, LevelFilter};
+    pub(crate) use pearl::{Builder, Key, Storage};
+    pub(crate) use rand::{rngs::ThreadRng, RngCore};
+    pub(crate) use std::{
+        io::Write,
+        ops::Add,
+        path::{Path, PathBuf},
+        sync::Arc,
+        time::{Duration, Instant},
+    };
+}
 
-use generator::Generator;
-use statistics::{Report, Statistics};
-use writer::Writer;
+use prelude::*;
 
 #[tokio::main]
 async fn main() {
     println!("{:_^41}", "PEARL_BENCHMARK");
     env_logger::Builder::new()
-        .filter_module("benchmark", LevelFilter::Debug)
-        .filter_module("pearl", LevelFilter::Error)
+        .format(|buf, record: &log::Record| {
+            let mut style = buf.style();
+            let color = match record.level() {
+                Level::Error => Color::Red,
+                Level::Warn => Color::Yellow,
+                Level::Info => Color::Green,
+                Level::Debug => Color::Cyan,
+                Level::Trace => Color::White,
+            };
+            style.set_color(color);
+            writeln!(
+                buf,
+                "[{} {:>24}:{:^4} {:^5}] - {}",
+                Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                record.module_path().unwrap_or(""),
+                record.line().unwrap_or(0),
+                style.value(record.level()),
+                record.args(),
+            )
+        })
+        .filter_module("benchmark", LevelFilter::Info)
+        .filter_module("pearl", LevelFilter::Info)
         .init();
     start_app().await;
 }
@@ -50,7 +85,11 @@ async fn start_app() {
 
     info!("Create new writer");
     let mut writer = Writer::new(
-        matches.value_of("dst_dir").unwrap().parse().unwrap(),
+        &matches
+            .value_of("dst_dir")
+            .unwrap()
+            .parse::<PathBuf>()
+            .unwrap(),
         matches.value_of("max_size").unwrap().parse().unwrap(),
         matches.value_of("max_data").unwrap().parse().unwrap(),
     );
@@ -63,10 +102,10 @@ async fn start_app() {
 
     info!("Start write cycle");
     let (tx, rx) = channel::<statistics::Report>(limit);
-    let awriter = Arc::new(writer);
+    let writer = Arc::new(writer);
     let mut counter = 0;
 
-    let futures_limit = matches.value_of("futures_limit").unwrap().parse().unwrap();
+    let futures_limit: usize = matches.value_of("futures_limit").unwrap().parse().unwrap();
 
     let prepared: Vec<_> = (0..futures_limit)
         .map(|_| generator.next().unwrap())
@@ -75,7 +114,7 @@ async fn start_app() {
     let mut futures_pool: FuturesUnordered<_> = prepared
         .into_iter()
         .map(|(key, data)| {
-            let lawriter = awriter.clone();
+            let lawriter = writer.clone();
             let ltx = tx.clone();
             counter += 1;
             write(lawriter, key.into(), data, ltx)
@@ -103,9 +142,9 @@ async fn start_app() {
             }
         }
         prev_p = percent;
-        if futures_pool.len() < futures_limit as usize {
+        if futures_pool.len() < futures_limit {
             if let Some((key, data)) = generator.next() {
-                let lawriter = awriter.clone();
+                let lawriter = writer.clone();
                 let ltx = tx.clone();
                 counter += 1;
                 futures_pool.push(write(lawriter, key.into(), data, ltx));
@@ -121,7 +160,7 @@ async fn start_app() {
         .await;
     info!("end await ");
     statistics.display().await;
-    awriter.close().await;
+    writer.close().await;
 }
 
 fn prepare_matches<'a>() -> ArgMatches<'a> {
@@ -165,6 +204,7 @@ fn prepare_matches<'a>() -> ArgMatches<'a> {
         .get_matches()
 }
 
+#[derive(Debug)]
 struct Key128(Vec<u8>);
 
 impl Key for Key128 {

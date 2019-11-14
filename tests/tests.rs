@@ -281,10 +281,10 @@ async fn test_write_with_with_on_disk_index() {
     }
     assert!(storage.blobs_count() > 1);
 
-    let data = b"data_with_meta";
-    write_one(&storage, key, data, Some("1.0")).await.unwrap();
+    // let data = b"data_with_meta";
+    // write_one(&storage, key, data, Some("1.0")).await.unwrap();
 
-    assert!(write_one(&storage, key, data, Some("1.0")).await.is_err());
+    // assert!(write_one(&storage, key, data, Some("1.0")).await.is_err());
 
     common::clean(storage, dir)
         .map(|res| res.expect("work dir clean failed"))

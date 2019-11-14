@@ -107,6 +107,11 @@ impl Blob {
         let file: File = File::from_std_file(Self::open_file(&path)?)?;
         let name = FileName::from_path(&path)?;
         let len = file.metadata()?.len();
+        let header = Header::new();
+        if len <= bincode::serialized_size(&header)? {
+            fs::remove_file(&path)?;
+            return Err(ErrorKind::EmptyBlob.into());
+        }
         debug!("    blob file size: {} MB", len / 1_000_000);
         let mut index_name: FileName = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
@@ -121,7 +126,7 @@ impl Blob {
         debug!("    index initialized");
 
         let mut blob = Self {
-            header: Header::new(),
+            header,
             file,
             name,
             index,
@@ -144,6 +149,7 @@ impl Blob {
             debug!("index already updated");
             return Ok(());
         }
+        debug!("index file missed");
         let raw_r = self.raw_records().await?;
         debug!("raw records loaded");
         raw_r.try_for_each(|h| self.index.push(h)).await?;
@@ -343,8 +349,17 @@ struct RawRecords {
 impl RawRecords {
     async fn start(file: File, blob_header_size: u64) -> Result<Self> {
         let current_offset = blob_header_size;
+        trace!("current offset: {}", current_offset);
+        let size_of_usize = std::mem::size_of::<usize>();
+        trace!(
+            "read at: size {}, offset: {}",
+            size_of_usize,
+            current_offset + size_of_usize as u64
+        );
+        // plus size of usize because serialized
+        // vector contains usize len in front
         let buf = file
-            .read_at(std::mem::size_of::<usize>(), current_offset + 8)
+            .read_at(size_of_usize, current_offset + size_of_usize as u64)
             .await?;
         let key_len = bincode::deserialize::<usize>(&buf)?;
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;

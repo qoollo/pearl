@@ -1,16 +1,11 @@
-use std::path::PathBuf;
-use std::sync::Arc;
-
-use pearl::*;
-
-use crate::statistics::Report;
+use super::prelude::*;
 
 pub struct Writer<K> {
     storage: Storage<K>,
 }
 
 impl<K> Writer<K> {
-    pub fn new(tmp_dir: PathBuf, max_blob_size: u64, max_data_in_blob: u64) -> Self {
+    pub fn new(tmp_dir: &Path, max_blob_size: u64, max_data_in_blob: u64) -> Self {
         let storage = Builder::new()
             .blob_file_name_prefix("benchmark")
             .max_blob_size(max_blob_size)
