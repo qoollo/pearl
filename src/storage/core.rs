@@ -382,18 +382,7 @@ impl<K> Storage<K> {
         debug!("init blobs from found files");
         let futures: FuturesUnordered<_> = blob_files.map(Blob::from_file).collect();
         debug!("async init blobs from file");
-        futures
-            .filter_map(Self::skip_empty_blobs)
-            .try_collect()
-            .await
-            .map_err(Error::new)
-    }
-
-    async fn skip_empty_blobs(res: Result<Blob>) -> Option<Result<Blob>> {
-        match res.as_ref().err() {
-            Some(e) if e.kind() == ErrorKind::EmptyBlob => None,
-            _ => Some(res),
-        }
+        futures.try_collect().await.map_err(Error::new)
     }
 }
 

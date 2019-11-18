@@ -108,10 +108,6 @@ impl Blob {
         let name = FileName::from_path(&path)?;
         let len = file.metadata()?.len();
         let header = Header::new();
-        if len <= bincode::serialized_size(&header)? {
-            fs::remove_file(&path)?;
-            return Err(ErrorKind::EmptyBlob.into());
-        }
         debug!("    blob file size: {} MB", len / 1_000_000);
         let mut index_name: FileName = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
@@ -124,7 +120,7 @@ impl Blob {
             SimpleIndex::new(index_name)
         };
         debug!("    index initialized");
-
+        let header_size = bincode::serialized_size(&header)?;
         let mut blob = Self {
             header,
             file,
@@ -133,7 +129,11 @@ impl Blob {
             current_offset: Arc::new(Mutex::new(len)),
         };
         debug!("call update index");
-        blob.try_regenerate_index().await?;
+        if len > header_size {
+            blob.try_regenerate_index().await?;
+        } else {
+            warn!("empty or corrupted blob: {:?}", path);
+        }
         debug!("check data consistency");
         Self::check_data_consistency()?;
         Ok(blob)
