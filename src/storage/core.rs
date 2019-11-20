@@ -157,7 +157,9 @@ impl<K> Storage<K> {
         let existing_metas = self.get_all_existing_metas(&key).await?;
         debug!("all existing meta received");
         if existing_metas.contains(&meta) {
-            return Err(ErrorKind::RecordExists.into());
+            // @ TODO make Exists error optional
+            warn!("record with key {:?} and meta {:?} exists", key, meta);
+            return Ok(());
         }
         debug!("record with the same meta and key does not exist");
         let record = Record::create(key, value, meta).map_err(Error::new)?;
@@ -483,7 +485,7 @@ fn launch_observer(inner: Inner) {
 }
 
 /// Trait `Key`
-pub trait Key: AsRef<[u8]> {
+pub trait Key: AsRef<[u8]> + Debug {
     /// Key must have fixed length
     const LEN: u16;
 

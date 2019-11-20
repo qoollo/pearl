@@ -1,4 +1,4 @@
-use rand::{rngs::*, RngCore};
+use super::prelude::*;
 
 pub struct Generator {
     config: Config,
