@@ -165,7 +165,7 @@ async fn test_storage_multithread_blob_overflow() -> Result<(), String> {
     let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
     let mut range: Vec<u32> = (0..90).collect();
     range.shuffle(&mut rand::thread_rng());
-    let data = b"test data string".repeat(16);
+    let data = "test data string".repeat(16).as_bytes().to_vec();
     for i in range {
         delay(Instant::now() + Duration::from_millis(100)).await;
         write_one(&storage, i, &data, None).await.unwrap();
@@ -214,7 +214,10 @@ async fn test_on_disk_index() -> Result<(), String> {
         .build()
         .unwrap();
     let slice = [17, 40, 29, 7, 75];
-    let data: Vec<u8> = slice.repeat(data_size / slice.len());
+    let mut data = Vec::new();
+    for _ in 0..(data_size/ slice.len()) {
+        data.extend(&slice);
+    }
     storage.init().await.unwrap();
     for i in 0..num_records_to_write {
         delay(Instant::now() + Duration::from_millis(100))
