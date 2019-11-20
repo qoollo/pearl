@@ -120,8 +120,6 @@ pub enum Kind {
     WrongFileNamePattern(PathBuf),
     /// Conversion error
     Conversion(String),
-    /// Closed blob has no records
-    EmptyBlob,
     /// Other error
     Other,
 }
