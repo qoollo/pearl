@@ -69,7 +69,7 @@ impl SimpleIndex {
             .create(true)
             .read(true)
             .write(true)
-            .open(name.as_path())?;
+            .open(name.to_path())?;
         let mut file = File::from_std_file(fd)?;
         let mut buf = vec![0; Header::serialized_size_default()?.try_into()?];
         file.read_exact(&mut buf).await?;
@@ -244,7 +244,7 @@ impl SimpleIndex {
             .create(true)
             .read(true)
             .write(true)
-            .open(self.name.as_path())
+            .open(self.name.to_path())
             .expect("open new index file");
         let mut file = File::from_std_file(fd_res).expect("convert std file to own format");
         let inner = State::OnDisk(file.clone());

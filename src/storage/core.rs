@@ -269,7 +269,7 @@ impl<K> Storage<K> {
             debug!("task completed");
             res
         }
-        .get_data())
+        .into_data())
     }
 
     /// Stop blob updater and release lock file
