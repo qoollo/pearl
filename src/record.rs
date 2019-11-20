@@ -207,7 +207,7 @@ impl Record {
         self.header.update_checksum()
     }
 
-    pub(crate) fn get_data(self) -> Vec<u8> {
+    pub(crate) fn into_data(self) -> Vec<u8> {
         self.data
     }
 
