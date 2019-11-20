@@ -69,7 +69,7 @@ impl Blob {
 
     #[inline]
     fn prepare_file(name: &FileName) -> IOResult<File> {
-        Self::create_file(&name.as_path()).and_then(File::from_std_file)
+        Self::create_file(&name.to_path()).and_then(File::from_std_file)
     }
 
     pub(crate) async fn dump(&mut self) -> Result<()> {
@@ -267,7 +267,7 @@ impl FileName {
             .ok_or_else(|| ErrorKind::WrongFileNamePattern(path.to_owned()).into())
     }
 
-    pub fn as_path(&self) -> PathBuf {
+    pub fn to_path(&self) -> PathBuf {
         self.dir.join(self.to_string())
     }
 
@@ -291,7 +291,7 @@ impl FileName {
     }
 
     fn exists(&self) -> bool {
-        self.as_path().exists()
+        self.to_path().exists()
     }
 }
 
