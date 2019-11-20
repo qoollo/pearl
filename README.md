@@ -10,26 +10,28 @@ Append only key-value blob storage on disk
 Table of Contents
 =================
 
-* [Storage scheme](#storage-scheme)
-* [Blob](#blob)
-  * [Header](#header)
-* [Record](#record)
-  * [Header](#header)
-* [Index](#index)
-  * [Header](#header)
+* [Overview](#overview)
+    * [Storage scheme](#storage-scheme)
+    * [Blob](#blob)
+        * [Header](#header)
+    * [Record](#record)
+        * [Header](#header)
+    * [Index](#index)
+        * [Header](#header)
+* [Rust Version](#rust-version)
 
-# Storage scheme
+# Overview
+## Storage scheme
 ![pearl storage scheme](pearl_storage_scheme.svg)
 
-# Blob
-## Header
+## Blob
+### Header
 
 Structure:
 ```rust
 struct Header {
     magic_byte: u64,
     version: u32,
-    key_size: u32,
     flags: u64,
 }
 ```
@@ -38,25 +40,22 @@ Description
 | Field       | Size, B | Description |
 | ----------- | :----:  | :----------- |
 |magic_byte   | 8       | marks `pearl` blob
-|version      |any size | used to check compatibility
-|key_size     |8        | size of key in record
-|flags        |1        | additional file props
+|version      | any     | used to check compatibility
+|flags        | 1       | additional file props
 
-# Record
-## Header
+## Record
+### Header
 
 Structure:
 ```rust
-struct Header<T>
-where
-    T: Sized,
-{
+pub struct Header {
     magic_byte: u64,
-    size: u64,
+    key: Vec<u8>,
+    meta_size: u64,
+    data_size: u64,
     flags: u8,
     blob_offset: u64,
     created: u64,
-    key: T,
     data_checksum: u32,
     header_checksum: u32,
 }
@@ -66,32 +65,18 @@ Description
 | Field          | Size, B | Description |
 | -------------- | :----:  | :----------- |
 |magic_byte      | 8       | separates records in blob
-|size            | 8       | data length (without header)
+|key             | (any)   | key for record location and searching
+|meta_size       | 8       | meta length
+|data_size       | 8       | data length (without header)
 |flags           | 1       | additional record metadata
 |blob_offset     | 8       | record offset from blob start
 |created         | 8       | created timestamp
-|key             | (any)   | key for record location and searching
 |data_checksum   | 4       | data crc32 checksum (without header)
 |header_checksum | 4       | header crc32 checksum (only record header)
 
-
-# Index
-## Header
-
-Structure:
-```rust
-struct Header {
-    magic_byte: u64,
-    version: u32,
-    key_size: u32,
-    flags: u64,
-}
+# Rust Version
+`pearl` works on stable rust and above
 ```
-Description
-
-| Field       | Size, B | Description |
-| ----------- | :----:  | :----------- |
-|magic_byte   | 8       | marks pearl index file
-|version      | 4       | used to check compatibility
-|key_size     | 4       | size of key in record
-|flags        | 8       | additional index props
+$ rustup update
+$ cargo build
+```
