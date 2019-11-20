@@ -1,10 +1,43 @@
 [package]
 name = "pearl"
 version = "0.1.0"
-description = "low level blob-based I/O library"
+description = "Pearl is a low level blob-based I/O library"
+repository = "https://github.com/qoollo/pearl"
+homepage = "https://github.com/qoollo/pearl"
+documentation = "https://docs.rs/pearl"
+keywords = ["blob", "blob-storage", "append-only", "key-value", "async"]
+categories = ["data-structures", "filesystem"]
+license = "MIT"
 authors = ["Pavel Yakushin <p.yakushin@qoollo.com>"]
 edition = "2018"
-repository = "https://lab.qoollo.com/py/pearl"
 readme = "README.md"
 
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
 [dependencies]
+bincode = "1.2"
+chrono = "0.4"
+crc = "1.8"
+env_logger = "0.7"
+log = "0.4"
+rand = "0.7"
+serde = "1.0"
+serde_derive = "1.0"
+futures = "0.3"
+tokio = "0.2.0-alpha.6"
+
+clap = { version = "2.33", optional = true }
+
+[features]
+benchmark = ["clap"]
+
+[lib]
+name = "pearl"
+
+[[bin]]
+name = "benchmark"
+path = "src/benchmark/bin.rs"
+required-features = ["benchmark"]
