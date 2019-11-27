@@ -47,10 +47,10 @@ impl Entry {
     }
 
     pub(crate) fn new(meta: Meta, header: &RecordHeader, blob_file: File) -> Self {
-        let data_size = header.data_size().try_into().unwrap();
+        let data_size = header.data_size().try_into().expect("u64 to usize");
         let data_offset = header.data_offset();
         let blob_offset = header.blob_offset();
-        let full_size = header.full_size().try_into().unwrap();
+        let full_size = header.full_size().try_into().expect("u64 to usize");
         Self {
             meta,
             data_offset,

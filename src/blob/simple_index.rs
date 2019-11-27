@@ -183,7 +183,7 @@ impl SimpleIndex {
             record_header_size,
             records_count: bunch.len(),
         };
-        let hs: usize = header.serialized_size()?.try_into().unwrap();
+        let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
         let mut buf = Vec::with_capacity(hs + bunch.len() * record_header_size);
         serialize_into(&mut buf, &header)?;
         bunch
