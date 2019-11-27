@@ -91,9 +91,7 @@ impl SimpleIndex {
 
     pub(crate) fn get_entry<'a, 'b: 'a>(&'b self, key: &'a [u8], file: File) -> Entries<'a> {
         debug!("create iterator");
-        let entries = Entries::new(&self.inner, key, file);
-        trace!("entries: {:?}", entries);
-        entries
+        Entries::new(&self.inner, key, file)
     }
 
     #[inline]
@@ -113,15 +111,16 @@ impl SimpleIndex {
     }
 
     pub async fn load(mut file: &File) -> Result<Vec<RecordHeader>> {
-        debug!("seek to file start");
+        trace!("seek to file start");
         file.seek(SeekFrom::Start(0)).await?;
         let mut buf = Vec::new();
-        debug!("read to end index");
+        trace!("read to end index");
         file.read_to_end(&mut buf).await?;
         Ok(if buf.is_empty() {
             debug!("empty index file");
             Vec::new()
         } else {
+            trace!("deserialize bunch");
             Self::deserialize_bunch(&buf)?
         })
     }
@@ -184,7 +183,7 @@ impl SimpleIndex {
             record_header_size,
             records_count: bunch.len(),
         };
-        let hs: usize = header.serialized_size()?.try_into().unwrap();
+        let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
         let mut buf = Vec::with_capacity(hs + bunch.len() * record_header_size);
         serialize_into(&mut buf, &header)?;
         bunch
@@ -201,14 +200,14 @@ impl SimpleIndex {
     }
 
     fn deserialize_bunch(buf: &[u8]) -> Result<Vec<RecordHeader>> {
-        debug!("deserialize header from buf: {}", buf.len());
+        trace!("deserialize header from buf: {}", buf.len());
         let header: Header = deserialize(buf)?;
         trace!("header deserialized: {:?}", header);
         let header_size: usize = header.serialized_size()?.try_into()?;
-        trace!("header serialized size: {}", header_size);
+        trace!("deserialize record header at: {}", header_size);
         (0..header.records_count).try_fold(Vec::new(), |mut record_headers, i| {
             let offset = header_size + i * header.record_header_size;
-            trace!("deserialize record header at: {}", offset);
+            trace!("at: {}", offset);
             deserialize(&buf[offset..])
                 .map(|rh| {
                     record_headers.push(rh);
@@ -218,7 +217,7 @@ impl SimpleIndex {
         })
     }
 
-    async fn check_result(res: Result<RecordHeader>) -> Result<bool> {
+    fn check_result(res: Result<RecordHeader>) -> Result<bool> {
         match res {
             Ok(_) => Ok(true),
             Err(ref e) if e.is(&ErrorKind::RecordNotFound) => Ok(false),
@@ -257,6 +256,7 @@ impl SimpleIndex {
         let mut buf = Vec::new();
         debug!("seek to file start");
         file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
+        debug!("read to end index file");
         file.read_to_end(&mut buf).map_err(Error::new).await?;
         let bunch = Self::deserialize_bunch(&buf)?;
         self.inner = State::InMemory(bunch);
@@ -274,11 +274,11 @@ impl SimpleIndex {
 
 impl Index for SimpleIndex {
     fn contains_key(&self, key: &[u8]) -> ContainsKey {
-        ContainsKey(self.get(key).then(Self::check_result).boxed())
+        ContainsKey(self.get(key).map(Self::check_result).boxed())
     }
 
     fn push(&mut self, h: RecordHeader) -> Push {
-        trace!("push header: {:#?}", h);
+        trace!("push header: {:?}", h);
         let fut = match &mut self.inner {
             State::InMemory(bunch) => {
                 bunch.push(h);

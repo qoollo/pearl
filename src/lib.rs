@@ -64,7 +64,6 @@ pub use storage::{Builder, Key, ReadAll, Storage};
 
 mod prelude {
     pub(crate) type PinBox<T> = Pin<Box<T>>;
-
     pub(crate) use super::*;
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use blob::{self, Blob, File, Location};
@@ -98,8 +97,8 @@ mod prelude {
             Arc,
         },
         task::{Context, Poll, Waker},
-        time::{Duration, Instant},
+        time::Duration,
     };
-    pub(crate) use tokio::timer::{delay, Interval};
+    pub(crate) use tokio::time::{delay_for, interval};
     pub(crate) use {Key, Meta};
 }

@@ -159,7 +159,7 @@ async fn start_app() {
         .collect::<Vec<_>>()
         .await;
     info!("end await ");
-    statistics.display().await;
+    statistics.display();
     writer.close().await;
 }
 

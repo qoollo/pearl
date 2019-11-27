@@ -12,7 +12,7 @@ use futures::{
 };
 use pearl::{Builder, Meta, Storage};
 use rand::seq::SliceRandom;
-use tokio::timer::delay;
+use tokio::time::delay_for;
 
 mod common;
 
@@ -51,7 +51,7 @@ async fn test_storage_init_from_existing() {
         temp_storage.init().await?;
         let records = common::generate_records(15, 100_000);
         for (key, data) in &records {
-            delay(Instant::now() + Duration::from_millis(100)).await;
+            delay_for(Duration::from_millis(100)).await;
             write_one(&temp_storage, *key, data, None).await.unwrap();
         }
         temp_storage.close().await
@@ -132,7 +132,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
             .name(format!("thread#{}", range[0]))
             .spawn(move || {
                 let s = st.clone();
-                let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+                let mut rt = tokio::runtime::Runtime::new().unwrap();
                 range.shuffle(&mut rand::thread_rng());
                 let task = async {
                     let start = range[0];
@@ -167,7 +167,7 @@ async fn test_storage_multithread_blob_overflow() -> Result<(), String> {
     range.shuffle(&mut rand::thread_rng());
     let data = "test data string".repeat(16).as_bytes().to_vec();
     for i in range {
-        delay(Instant::now() + Duration::from_millis(100)).await;
+        delay_for(Duration::from_millis(100)).await;
         write_one(&storage, i, &data, None).await.unwrap();
     }
     let path = env::temp_dir().join(&dir);
@@ -215,18 +215,18 @@ async fn test_on_disk_index() -> Result<(), String> {
         .unwrap();
     let slice = [17, 40, 29, 7, 75];
     let mut data = Vec::new();
-    for _ in 0..(data_size/ slice.len()) {
+    for _ in 0..(data_size / slice.len()) {
         data.extend(&slice);
     }
     storage.init().await.unwrap();
     for i in 0..num_records_to_write {
-        delay(Instant::now() + Duration::from_millis(100))
+        delay_for(Duration::from_millis(100))
             .then(|_| write_one(&storage, i, &data, None))
             .await
             .unwrap();
     }
     while storage.blobs_count() < 2 {
-        delay(Instant::now() + Duration::from_millis(200)).await;
+        delay_for(Duration::from_millis(200)).await;
     }
     assert!(path.join("test.1.blob").exists());
     let new_data = storage.read(KeyTest::new(read_key)).await.unwrap();
@@ -302,7 +302,7 @@ async fn test_write_with_with_on_disk_index() {
 
     let records = common::generate_records(20, 1000);
     for (i, data) in &records {
-        delay(Instant::now() + Duration::from_millis(32)).await;
+        delay_for(Duration::from_millis(32)).await;
         write_one(&storage, *i, data, Some("1.0")).await.unwrap();
     }
     assert!(storage.blobs_count() > 1);
@@ -328,7 +328,7 @@ async fn test_write_512_records_with_same_key() {
     for i in 0..512 {
         let mut meta = Meta::new();
         meta.insert("version".to_owned(), i.to_string());
-        delay(Instant::now() + Duration::from_micros(1)).await;
+        delay_for(Duration::from_micros(1)).await;
         storage.write_with(&key, value.clone(), meta).await.unwrap();
     }
     common::clean(storage, dir)
@@ -374,14 +374,13 @@ async fn test_read_all_1000() {
     let key = 3456;
     let records_write = common::generate_records(512, 9_000);
     for (i, data) in &records_write {
-        delay(Instant::now() + Duration::from_millis(1)).await;
+        delay_for(Duration::from_millis(1)).await;
         write_one(&storage, key, data, Some(&i.to_string()))
             .await
             .unwrap();
     }
     let mut records_read = storage
         .read_all(&KeyTest::new(key))
-        .await
         .then(|entry| async move { entry.load().await.unwrap() })
         .collect::<Vec<_>>()
         .await;
@@ -403,21 +402,28 @@ async fn test_read_all_1000() {
 async fn test_read_all_1000_find_one_key() {
     let now = Instant::now();
     let dir = common::init("read_all_1000_find_one_key");
-    let storage = common::create_test_storage(&dir, 100_000).await.unwrap();
+    let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
     let count = 1000;
-    let records_write = common::generate_records(count, 9_000);
+    let size = 30_000;
+    info!("generate {} records with size {}", count, size);
+    let records_write = common::generate_records(count, size);
     for (i, data) in &records_write {
-        delay(Instant::now() + Duration::from_millis(1)).await;
+        delay_for(Duration::from_millis(1)).await;
         write_one(&storage, *i, data, None).await.unwrap();
     }
     let key = records_write.last().unwrap().0;
+    debug!("read all with key: {:?}", &key);
     let records_read = storage
-        .read_all(&KeyTest::new(key.try_into().unwrap()))
-        .await
-        .then(|entry| async move { entry.load().await.unwrap() })
+        .read_all(&KeyTest::new(key))
+        .then(|entry| {
+            async move {
+                debug!("load entry {:?}", entry);
+                entry.load().await.unwrap()
+            }
+        })
         .collect::<Vec<_>>()
         .await;
-    assert_eq!(1, records_read.len());
+    debug!("storage read all finished");
     assert_eq!(
         records_write
             .iter()

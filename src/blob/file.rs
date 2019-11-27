@@ -11,7 +11,7 @@ pub(crate) struct File {
 #[inline]
 fn schedule_wake(waker: Waker) {
     tokio::spawn(async move {
-        delay(Instant::now() + Duration::from_millis(WOULDBLOCK_RETRY_INTERVAL_MS))
+        delay_for(Duration::from_millis(WOULDBLOCK_RETRY_INTERVAL_MS))
             .map(|_| waker.wake_by_ref())
             .await;
     });

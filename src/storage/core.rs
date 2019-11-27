@@ -191,9 +191,9 @@ impl<K> Storage<K> {
         let blobs: &Vec<Blob> = &safe.blobs;
         debug!("closed blobs extracted");
         for blob in blobs {
-            debug!("look into next blob");
+            trace!("look into next blob");
             let meta = blob.get_all_metas(key.as_ref()).await.map_err(Error::new)?;
-            trace!("get all meta from blob {:#?} finished", blob);
+            trace!("get all meta from blob {:?} finished", blob);
             metas.extend(meta);
             debug!("extend finished");
         }
@@ -235,7 +235,7 @@ impl<K> Storage<K> {
     }
 
     /// Returns stream producing entries with matching key
-    pub async fn read_all<'a>(&'a self, key: &'a impl Key) -> ReadAll<'a, K> {
+    pub fn read_all<'a>(&'a self, key: &'a impl Key) -> ReadAll<'a, K> {
         ReadAll::new(self, key.as_ref())
     }
 
