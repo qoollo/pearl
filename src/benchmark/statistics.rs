@@ -45,7 +45,7 @@ impl Statistics {
         self.pile = new_pile;
     }
 
-    pub async fn display(&mut self) {
+    pub fn display(&mut self) {
         println!("\n\n{:-^40}", "RESULTS");
         let total_count = self.pile.iter().fold(0, |acc, r| acc + r.count);
         Self::print("reports total:", total_count);

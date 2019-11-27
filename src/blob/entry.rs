@@ -90,6 +90,7 @@ impl<'a> Stream for Entries<'a> {
             };
             Poll::Ready(next)
         } else {
+            cx.waker().wake_by_ref();
             self.get_headers_from_index(cx)
         }
     }
@@ -123,10 +124,12 @@ impl<'a> Entries<'a> {
         file: &'a File,
     ) -> Poll<Option<<Self as Stream>::Item>> {
         if let Some(fut) = &mut self.load_fut {
-            if let Ok(headers) =
-                ready!(fut.as_mut().poll(cx)).map_err(|e| error!("{}", e.to_string()))
-            {
+            let headers = ready!(fut.as_mut().poll(cx)).map_err(|e| error!("{}", e.to_string()));
+            trace!("load future ready");
+            if let Ok(headers) = headers {
+                debug!("load future finished");
                 self.reset_load_future(headers);
+                debug!("load future reset");
             }
         } else {
             let fut = SimpleIndex::load(file);
@@ -143,7 +146,9 @@ impl<'a> Entries<'a> {
                 .filter(|h| h.key() == self.key)
                 .collect(),
         );
+        debug!("loaded headers set");
         self.load_fut = None;
+        debug!("load future is none");
     }
 
     fn get_next_poll(

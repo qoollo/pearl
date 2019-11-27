@@ -41,6 +41,7 @@ impl<'a, K> Stream for ReadAll<'a, K> {
             cx.waker().wake_by_ref();
             Poll::Ready(Some(entry))
         } else {
+            debug!("match stream state");
             self.match_state(cx)
         }
     }
@@ -76,7 +77,7 @@ impl<'a, K> ReadAll<'a, K> {
                 let key = key.to_vec();
                 let new_fut = async move {
                     let active_blob = safe.active_blob.as_ref()?;
-                    Some(active_blob.read_all(&key).await.collect().await)
+                    Some(active_blob.read_all(&key).collect().await)
                 };
                 self.state
                     .replace(State::CollectFromActiveBlob(new_fut.boxed()));
@@ -94,19 +95,27 @@ impl<'a, K> ReadAll<'a, K> {
                 let new_fut = async move {
                     let mut entries = Vec::new();
                     for blob in &safe.blobs {
-                        entries.extend(blob.read_all(&key).await.collect::<Vec<_>>().await);
+                        let read_all = blob.read_all(&key).collect::<Vec<_>>().await;
+                        debug!("read all from blob finished");
+                        entries.extend(read_all);
                     }
+                    debug!("read all from all blobs finished");
                     entries
                 }
                 .boxed();
                 self.state.replace(State::CollectFromClosedBlobs(new_fut));
             }
             State::CollectFromClosedBlobs(fut) => {
+                debug!("enter collect from closed blobs state");
                 let entries = ready!(fut.as_mut().poll(cx));
                 self.ready_entries.extend(entries);
                 self.state.replace(State::Finished);
+                debug!("collect from closed blobs finished");
             }
-            State::Finished => return Poll::Ready(None),
+            State::Finished => {
+                debug!("state finished, return None");
+                return Poll::Ready(None);
+            }
         }
         cx.waker().wake_by_ref();
         Poll::Pending

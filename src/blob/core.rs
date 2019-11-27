@@ -188,7 +188,7 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) async fn read_all<'a>(&'a self, key: &'a [u8]) -> Entries<'a> {
+    pub(crate) fn read_all<'a>(&'a self, key: &'a [u8]) -> Entries<'a> {
         self.index.get_entry(key, self.file.clone())
     }
 
@@ -229,7 +229,7 @@ impl Blob {
     pub(crate) async fn get_all_metas(&self, key: &[u8]) -> Result<Vec<Meta>> {
         debug!("get_all_metas");
         let locations = self.index.get_all_meta_locations(key).await?;
-        debug!("gotten all meta locations");
+        trace!("gotten all meta locations");
         let mut metas = Vec::new();
         for location in locations {
             let meta_raw = self
@@ -239,7 +239,7 @@ impl Blob {
             let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
             metas.push(meta);
         }
-        debug!("get all headers finished");
+        trace!("get all headers finished");
         Ok(metas)
     }
 }
