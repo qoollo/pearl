@@ -112,8 +112,7 @@ impl<K> Storage<K> {
         let cont_res = work_dir_content(
             self.inner
                 .config
-                .work_dir
-                .as_ref()
+                .work_dir()
                 .ok_or(ErrorKind::Uninitialized)?,
         );
         debug!("work dir content loaded");
@@ -154,12 +153,14 @@ impl<K> Storage<K> {
     /// }
     /// ```
     pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
-        let existing_metas = self.get_all_existing_metas(&key).await?;
-        debug!("all existing meta received");
-        if existing_metas.contains(&meta) {
-            // @ TODO make Exists error optional
-            warn!("record with key {:?} and meta {:?} exists", key, meta);
-            return Ok(());
+        if self.existence_check_is_on() {
+            debug!("check existing records");
+            let existing_metas = self.get_all_existing_metas(&key).await?;
+            debug!("all existing meta received");
+            if existing_metas.contains(&meta) {
+                warn!("record with key {:?} and meta {:?} exists", key, meta);
+                return Ok(());
+            }
         }
         debug!("record with the same meta and key does not exist");
         let record = Record::create(key, value, meta).map_err(Error::new)?;
@@ -281,7 +282,7 @@ impl<K> Storage<K> {
         }
         self.inner.need_exit.store(false, Ordering::Relaxed);
         safe.lock_file = None;
-        if let Some(ref work_dir) = self.inner.config.work_dir {
+        if let Some(work_dir) = self.inner.config.work_dir() {
             fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
         };
         info!("active blob dumped, lock released");
@@ -303,7 +304,7 @@ impl<K> Storage<K> {
     }
 
     async fn prepare_work_dir(&mut self) -> Result<()> {
-        let work_dir = self.inner.config.work_dir.as_ref().ok_or_else(|| {
+        let work_dir = self.inner.config.work_dir().ok_or_else(|| {
             error!("Work dir is not set");
             ErrorKind::Uninitialized
         })?;
@@ -350,7 +351,7 @@ impl<K> Storage<K> {
             .ok_or_else(|| {
                 error!(
                     "There are some blob files in the work dir: {:?}",
-                    self.inner.config.work_dir
+                    self.inner.config.work_dir()
                 );
                 error!("Creating blobs from all these files failed");
                 ErrorKind::Uninitialized
@@ -384,6 +385,10 @@ impl<K> Storage<K> {
         debug!("async init blobs from file");
         futures.try_collect().await.map_err(Error::new)
     }
+
+    fn existence_check_is_on(&self) -> bool {
+        !self.inner.config.allow_duplicates()
+    }
 }
 
 impl Clone for Inner {
@@ -414,8 +419,7 @@ impl Inner {
         let next_id = self.next_blob_id.fetch_add(1, Ordering::Relaxed);
         let prefix = self
             .config
-            .blob_file_name_prefix
-            .as_ref()
+            .blob_file_name_prefix()
             .ok_or_else(|| {
                 error!("Blob file name prefix is not set");
                 ErrorKind::Uninitialized
@@ -423,8 +427,7 @@ impl Inner {
             .to_owned();
         let dir = self
             .config
-            .work_dir
-            .as_ref()
+            .work_dir()
             .ok_or_else(|| {
                 error!("Work dir is not set");
                 ErrorKind::Uninitialized
@@ -455,30 +458,9 @@ impl Safe {
     }
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct Config {
-    pub work_dir: Option<PathBuf>,
-    pub max_blob_size: Option<u64>,
-    pub max_data_in_blob: Option<u64>,
-    pub blob_file_name_prefix: Option<String>,
-    pub update_interval_ms: u64,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            work_dir: None,
-            max_blob_size: None,
-            max_data_in_blob: None,
-            blob_file_name_prefix: None,
-            update_interval_ms: 100,
-        }
-    }
-}
-
 fn launch_observer(inner: Inner) {
     let observer = Observer::new(
-        Duration::from_millis(inner.config.update_interval_ms),
+        Duration::from_millis(inner.config.update_interval_ms()),
         inner,
     );
     tokio::spawn(observer.run());

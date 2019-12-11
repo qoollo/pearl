@@ -92,6 +92,7 @@ async fn start_app() {
             .unwrap(),
         matches.value_of("max_size").unwrap().parse().unwrap(),
         matches.value_of("max_data").unwrap().parse().unwrap(),
+        matches.is_present("allow_duplicates"),
     );
 
     info!("Init writer");
@@ -200,6 +201,11 @@ fn prepare_matches<'a>() -> ArgMatches<'a> {
             Arg::with_name("futures_limit")
                 .long("futures")
                 .default_value("10"),
+        )
+        .arg(
+            Arg::with_name("allow_duplicates")
+                .short("a")
+                .help("Disable existence checking on write"),
         )
         .get_matches()
 }

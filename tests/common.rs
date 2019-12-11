@@ -78,7 +78,8 @@ pub async fn create_test_storage(
         .work_dir(&path)
         .blob_file_name_prefix("test")
         .max_blob_size(max_blob_size)
-        .max_data_in_blob(1_000);
+        .max_data_in_blob(1_000)
+        .allow_duplicates();
     let mut storage = builder.build().unwrap();
     storage.init().await.map_err(|e| format!("{:?}", e))?;
     Ok(storage)

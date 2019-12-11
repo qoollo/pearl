@@ -45,13 +45,13 @@ impl Builder {
     /// returns error if not all params are set.
     pub fn build<K>(self) -> Result<Storage<K>> {
         let mut missed_params = String::new();
-        if self.config.work_dir.is_none() {
+        if self.config.work_dir().is_none() {
             missed_params.push_str("> work_dir\n");
-        } else if self.config.max_data_in_blob.is_none() {
+        } else if self.config.max_data_in_blob().is_none() {
             missed_params.push_str("> max_data_in_blob\n");
-        } else if self.config.max_blob_size.is_none() {
+        } else if self.config.max_blob_size().is_none() {
             missed_params.push_str("> max_blob_size\n");
-        } else if self.config.blob_file_name_prefix.is_none() {
+        } else if self.config.blob_file_name_prefix().is_none() {
             missed_params.push_str("> blob_file_name_prefix\n");
         }
         if missed_params.is_empty() {
@@ -67,7 +67,7 @@ impl Builder {
     pub fn work_dir<S: Into<PathBuf>>(mut self, work_dir: S) -> Self {
         let path: PathBuf = work_dir.into();
         debug!("work dir set to: {}", path.display());
-        self.config.work_dir = Some(path);
+        self.config.set_work_dir(path);
         self
     }
 
@@ -77,7 +77,7 @@ impl Builder {
     #[must_use]
     pub fn max_blob_size(mut self, max_blob_size: u64) -> Self {
         if max_blob_size > 0 {
-            self.config.max_blob_size = Some(max_blob_size);
+            self.config.set_max_blob_size(max_blob_size);
         } else {
             error!("zero size blobs is useless, not set");
         }
@@ -89,7 +89,7 @@ impl Builder {
     #[must_use]
     pub fn max_data_in_blob(mut self, max_data_in_blob: u64) -> Self {
         if max_data_in_blob > 0 {
-            self.config.max_data_in_blob = Some(max_data_in_blob);
+            self.config.set_max_data_in_blob(max_data_in_blob);
         } else {
             error!("zero size blobs is useless, not set");
         }
@@ -105,8 +105,16 @@ impl Builder {
         if prefix.is_empty() {
             error!("passed empty file prefix, not set");
         } else {
-            self.config.blob_file_name_prefix = Some(prefix);
+            self.config.set_blob_file_name_prefix(prefix);
         }
+        self
+    }
+
+    /// Disables check existence of the record on write.
+    /// Writing becomes faster because there is no additional disk access
+    /// for searching for duplicates.
+    pub fn allow_duplicates(mut self) -> Self {
+        self.config.set_allow_duplicates(true);
         self
     }
 }
