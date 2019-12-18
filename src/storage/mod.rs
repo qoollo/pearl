@@ -1,4 +1,5 @@
 mod builder;
+mod config;
 mod core;
 mod observer;
 mod read_all;
@@ -10,8 +11,12 @@ pub use self::{
 };
 
 mod prelude {
-    pub(crate) use super::core::{Config, Inner, Safe};
-    pub(crate) use super::observer::Observer;
-    pub(crate) use super::*;
-    pub(crate) use crate::prelude::*;
+    pub(crate) use {
+        super::{
+            config::Config,
+            core::{Inner, Safe},
+            observer::Observer,
+        },
+        crate::prelude::*,
+    };
 }

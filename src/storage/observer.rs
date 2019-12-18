@@ -55,11 +55,11 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
     debug!("lock released");
     let config_max_size = inner
         .config
-        .max_blob_size
+        .max_blob_size()
         .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
     let config_max_count = inner
         .config
-        .max_data_in_blob
+        .max_data_in_blob()
         .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
     if active_size > config_max_size || active_count >= config_max_count {
         Ok(Some(inner))
