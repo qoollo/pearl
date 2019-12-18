@@ -12,26 +12,32 @@ pub(crate) struct Config {
 
 // Getters
 impl Config {
+    #[inline]
     pub fn work_dir(&self) -> Option<&Path> {
         self.work_dir.as_ref().map(AsRef::as_ref)
     }
 
+    #[inline]
     pub fn max_blob_size(&self) -> Option<u64> {
         self.max_blob_size
     }
 
+    #[inline]
     pub fn max_data_in_blob(&self) -> Option<u64> {
         self.max_data_in_blob
     }
 
+    #[inline]
     pub fn blob_file_name_prefix(&self) -> Option<&str> {
         self.blob_file_name_prefix.as_ref().map(AsRef::as_ref)
     }
 
+    #[inline]
     pub fn update_interval_ms(&self) -> u64 {
         self.update_interval_ms
     }
 
+    #[inline]
     pub fn allow_duplicates(&self) -> bool {
         self.allow_duplicates
     }

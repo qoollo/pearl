@@ -153,7 +153,7 @@ impl<K> Storage<K> {
     /// }
     /// ```
     pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
-        if self.existence_check_is_on() {
+        if !self.inner.config.allow_duplicates() {
             debug!("check existing records");
             let existing_metas = self.get_all_existing_metas(&key).await?;
             debug!("all existing meta received");
@@ -384,10 +384,6 @@ impl<K> Storage<K> {
         let futures: FuturesUnordered<_> = blob_files.map(Blob::from_file).collect();
         debug!("async init blobs from file");
         futures.try_collect().await.map_err(Error::new)
-    }
-
-    fn existence_check_is_on(&self) -> bool {
-        !self.inner.config.allow_duplicates()
     }
 }
 
