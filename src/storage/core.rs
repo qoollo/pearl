@@ -50,6 +50,7 @@ pub(crate) struct Inner {
 pub(crate) struct Safe {
     pub(crate) active_blob: Option<Box<Blob>>,
     pub(crate) blobs: Vec<Blob>,
+    bloom_filter_global: BloomFilter,
     lock_file: Option<StdFile>,
 }
 
@@ -163,9 +164,11 @@ impl<K> Storage<K> {
             }
         }
         debug!("record with the same meta and key does not exist");
-        let record = Record::create(key, value, meta).map_err(Error::new)?;
+        let record = Record::create(&key, value, meta).map_err(Error::new)?;
         debug!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
+        debug!("add key to global bloom filter");
+        safe.bloom_filter_global.add(key);
         let blob = safe
             .active_blob
             .as_mut()
@@ -385,6 +388,26 @@ impl<K> Storage<K> {
         debug!("async init blobs from file");
         futures.try_collect().await.map_err(Error::new)
     }
+
+    /// @TODO
+    pub async fn contains(&self, key: impl Key) -> bool {
+        debug!("[{:?}] check key existence", &key.to_vec());
+        self.bloom_global_contains(&key).await && self.bloom_blobs_contains(&key).await
+    }
+
+    async fn bloom_global_contains(&self, key: &impl Key) -> bool {
+        debug!("[{:?}] check in global bloom filter", &key.to_vec());
+        let inner = self.inner.safe.lock().await;
+        debug!("[{:?}] storage inner safe locked", &key.to_vec());
+        inner.bloom_filter_global.contains(key)
+    }
+
+    async fn bloom_blobs_contains(&self, key: &impl Key) -> bool {
+        debug!("[{:?}] check in blobs bloom filter", &key.to_vec());
+        let inner = self.inner.safe.lock().await;
+        let active_blob = inner.active_blob.as_ref().unwrap();
+        active_blob.contains(key) || inner.blobs.iter().any(|blob| blob.contains(key))
+    }
 }
 
 impl Clone for Inner {
@@ -440,9 +463,11 @@ impl Inner {
 
 impl Safe {
     fn new() -> Self {
+        error!("@TODO find correct number of elements");
         Self {
             active_blob: None,
             blobs: Vec::new(),
+            bloom_filter_global: BloomFilter::new(1_000_000),
             lock_file: None,
         }
     }

@@ -15,6 +15,7 @@ const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 pub(crate) struct Blob {
     header: Header,
     index: SimpleIndex,
+    bloom_filter: BloomFilter,
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
@@ -33,10 +34,13 @@ impl Blob {
         let index = Self::create_index(&name);
         let current_offset = Self::new_offset();
         let header = Header::new();
+        error!("@TODO provide max records in blob");
+        let bloom_filter = BloomFilter::new(1_000_000);
         let mut blob = Self {
             header,
             file,
             index,
+            bloom_filter,
             name,
             current_offset,
         };
@@ -119,6 +123,8 @@ impl Blob {
             debug!("        file not found, create new");
             SimpleIndex::new(index_name)
         };
+        error!("@TODO provide max blob count");
+        let bloom_filter = BloomFilter::new(1_000_000);
         debug!("    index initialized");
         let header_size = bincode::serialized_size(&header)?;
         let mut blob = Self {
@@ -126,6 +132,7 @@ impl Blob {
             file,
             name,
             index,
+            bloom_filter,
             current_offset: Arc::new(Mutex::new(len)),
         };
         debug!("call update index");
@@ -241,6 +248,11 @@ impl Blob {
         }
         trace!("get all headers finished");
         Ok(metas)
+    }
+
+    pub(crate) fn contains(&self, key: &impl Key) -> bool {
+        error!("@TODO");
+        false
     }
 }
 

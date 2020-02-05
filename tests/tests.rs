@@ -415,11 +415,9 @@ async fn test_read_all_1000_find_one_key() {
     debug!("read all with key: {:?}", &key);
     let records_read = storage
         .read_all(&KeyTest::new(key))
-        .then(|entry| {
-            async move {
-                debug!("load entry {:?}", entry);
-                entry.load().await.unwrap()
-            }
+        .then(|entry| async move {
+            debug!("load entry {:?}", entry);
+            entry.load().await.unwrap()
         })
         .collect::<Vec<_>>()
         .await;
@@ -438,6 +436,24 @@ async fn test_read_all_1000_find_one_key() {
     common::clean(storage, dir)
         .await
         .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_contains_bloom_filter() {
+    let now = Instant::now();
+    let dir = common::init("contains_bloom_filter");
+    let storage = common::create_test_storage(&dir, 10).await.unwrap();
+    let data = b"some_random_data";
+    let key = KeyTest::new(1);
+    storage.write(&key, data.to_vec()).await.unwrap();
+    assert!(storage.contains(key).await);
+    let data = b"other_random_data";
+    let key = KeyTest::new(2);
+    storage.write(&key, data.to_vec()).await.unwrap();
+    assert!(storage.contains(key).await);
+    let key = KeyTest::new(3);
+    assert!(!storage.contains(key).await);
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
