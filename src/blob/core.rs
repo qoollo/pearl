@@ -172,6 +172,7 @@ impl Blob {
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
+        self.bloom_filter.add(record.header().key());
         let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
@@ -251,8 +252,8 @@ impl Blob {
     }
 
     pub(crate) fn contains(&self, key: &impl Key) -> bool {
-        error!("@TODO");
-        false
+        debug!("check bloom filter");
+        self.bloom_filter.contains(key)
     }
 }
 

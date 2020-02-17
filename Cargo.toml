@@ -26,9 +26,10 @@ log = "0.4"
 rand = "0.7"
 serde = "1.0"
 serde_derive = "1.0"
-futures = "0.3.3"
+futures = "0.3.4"
 clap = { version = "2.33", optional = true }
 bitvec = "0.17"
+ahash = "0.3"
 
 [dependencies.tokio]
 version = "0.2.11"
