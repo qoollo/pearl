@@ -442,7 +442,7 @@ async fn test_read_all_1000_find_one_key() {
 #[tokio::test]
 async fn test_contains_bloom_filter_single() {
     let now = Instant::now();
-    let dir = common::init("contains_bloom_filter");
+    let dir = common::init("contains_bloom_filter_single");
     let storage = common::create_test_storage(&dir, 10).await.unwrap();
     let data = b"some_random_data";
     let key = KeyTest::new(1);
@@ -462,7 +462,7 @@ async fn test_contains_bloom_filter_single() {
 #[tokio::test]
 async fn test_contains_bloom_filter_multiple() {
     let now = Instant::now();
-    let dir = common::init("contains_bloom_filter");
+    let dir = common::init("contains_bloom_filter_multiple");
     let storage = common::create_test_storage(&dir, 20000).await.unwrap();
     let data =
         b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
@@ -476,6 +476,45 @@ async fn test_contains_bloom_filter_multiple() {
         assert!(storage.contains(KeyTest::new(i)).await);
     }
     for i in 800..1600 {
+        assert!(!storage.contains(KeyTest::new(i)).await);
+    }
+    common::clean(storage, dir)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_contains_bloom_filter_init_from_existing() {
+    let now = Instant::now();
+    let dir = common::init("contains_bloom_filter_init_from_existing");
+    debug!("open new storage");
+    let base = 10;
+    {
+        let storage = common::create_test_storage(&dir, 100).await.unwrap();
+        debug!("write some data");
+        let data =
+        b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
+        for i in 1..base {
+            let key = KeyTest::new(i);
+            storage.write(&key, data.to_vec()).await.unwrap();
+            delay_for(Duration::from_millis(6)).await;
+            debug!("blobs count: {}", storage.blobs_count());
+        }
+        debug!("close storage");
+        storage.close().await.unwrap();
+    }
+
+    debug!("storage closed, await a little");
+    delay_for(Duration::from_millis(100)).await;
+    debug!("reopen storage");
+    let storage = common::create_test_storage(&dir, 100).await.unwrap();
+    debug!("check contains");
+    for i in 1..base {
+        debug!("check key: {}", i);
+        assert!(storage.contains(KeyTest::new(i)).await);
+    }
+    for i in base..base * 2 {
         assert!(!storage.contains(KeyTest::new(i)).await);
     }
     common::clean(storage, dir)

@@ -1,8 +1,6 @@
 use super::prelude::*;
-use crate::prelude::*;
 
 use super::index::Index;
-use super::simple_index::SimpleIndex;
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
@@ -15,7 +13,6 @@ const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 pub(crate) struct Blob {
     header: Header,
     index: SimpleIndex,
-    bloom_filter: BloomFilter,
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
@@ -35,12 +32,10 @@ impl Blob {
         let current_offset = Self::new_offset();
         let header = Header::new();
         error!("@TODO provide max records in blob");
-        let bloom_filter = BloomFilter::new(1_000_000);
         let mut blob = Self {
             header,
             file,
             index,
-            bloom_filter,
             name,
             current_offset,
         };
@@ -117,14 +112,13 @@ impl Blob {
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         debug!("    looking for index file: [{}]", index_name.to_string());
         let index = if index_name.exists() {
-            debug!("        file exists");
+            debug!("    file exists");
             SimpleIndex::from_file(index_name).await?
         } else {
-            debug!("        file not found, create new");
+            debug!("    file not found, create new");
             SimpleIndex::new(index_name)
         };
         error!("@TODO provide max blob count");
-        let bloom_filter = BloomFilter::new(1_000_000);
         debug!("    index initialized");
         let header_size = bincode::serialized_size(&header)?;
         let mut blob = Self {
@@ -132,7 +126,6 @@ impl Blob {
             file,
             name,
             index,
-            bloom_filter,
             current_offset: Arc::new(Mutex::new(len)),
         };
         debug!("call update index");
@@ -172,7 +165,6 @@ impl Blob {
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
-        self.bloom_filter.add(record.header().key());
         let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
@@ -253,7 +245,7 @@ impl Blob {
 
     pub(crate) fn contains(&self, key: &impl Key) -> bool {
         debug!("check bloom filter");
-        self.bloom_filter.contains(key)
+        self.index.contains_key(key.as_ref())
     }
 }
 

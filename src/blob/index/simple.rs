@@ -1,9 +1,9 @@
 use super::prelude::*;
-use crate::prelude::*;
 
 #[derive(Debug)]
-pub(crate) struct SimpleIndex {
+pub(crate) struct Simple {
     header: Header,
+    filter: Bloom,
     inner: State,
     name: FileName,
 }
@@ -37,13 +37,15 @@ pub(crate) enum State {
     OnDisk(File),
 }
 
-impl SimpleIndex {
+impl Simple {
     pub(crate) fn new(name: FileName) -> Self {
+        error!("@TODO configurable elements count");
         Self {
             header: Header {
                 records_count: 0,
                 record_header_size: 0,
             },
+            filter: Bloom::new(10_000_000),
             inner: State::InMemory(Vec::new()),
             name,
         }
@@ -64,20 +66,24 @@ impl SimpleIndex {
     }
 
     pub(crate) async fn from_file(name: FileName) -> Result<Self> {
-        debug!("opening index file");
+        debug!("open index file");
         let fd = fs::OpenOptions::new()
             .create(true)
             .read(true)
             .write(true)
             .open(name.to_path())?;
         let mut file = File::from_std_file(fd)?;
+        debug!("load index header");
         let mut buf = vec![0; Header::serialized_size_default()?.try_into()?];
         file.read_exact(&mut buf).await?;
         let header = Header::from_raw(&buf)?;
-        let index = Self::load(&file).await?;
+        debug!("index restored successfuly");
+        error!("@TODO check consistency");
+        error!("@TODO configurable filter elements count");
         Ok(Self {
             header,
-            inner: State::InMemory(index),
+            filter: Bloom::new(10_000_000),
+            inner: State::OnDisk(file),
             name,
         })
     }
@@ -217,14 +223,6 @@ impl SimpleIndex {
         })
     }
 
-    fn check_result(res: Result<RecordHeader>) -> Result<bool> {
-        match res {
-            Ok(_) => Ok(true),
-            Err(ref e) if e.is(&ErrorKind::RecordNotFound) => Ok(false),
-            Err(e) => Err(e),
-        }
-    }
-
     fn get_from_bunch(
         bunch: &[RecordHeader],
         key: &[u8],
@@ -272,15 +270,16 @@ impl SimpleIndex {
     }
 }
 
-impl Index for SimpleIndex {
-    fn contains_key(&self, key: &[u8]) -> ContainsKey {
-        ContainsKey(self.get(key).map(Self::check_result).boxed())
+impl Index for Simple {
+    fn contains_key(&self, key: &[u8]) -> bool {
+        self.filter.contains(key)
     }
 
     fn push(&mut self, h: RecordHeader) -> Push {
         trace!("push header: {:?}", h);
         let fut = match &mut self.inner {
             State::InMemory(bunch) => {
+                self.filter.add(h.key());
                 bunch.push(h);
                 future::ok(()).boxed()
             }

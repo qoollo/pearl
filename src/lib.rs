@@ -53,7 +53,6 @@ extern crate serde_derive;
 extern crate futures;
 
 mod blob;
-mod bloom;
 mod error;
 mod record;
 mod storage;
@@ -66,7 +65,6 @@ pub use storage::{Builder, Key, ReadAll, Storage};
 mod prelude {
     pub(crate) type PinBox<T> = Pin<Box<T>>;
     pub(crate) use super::*;
-    pub(crate) use crate::bloom::Filter as BloomFilter;
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use blob::{self, Blob, File, Location};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
