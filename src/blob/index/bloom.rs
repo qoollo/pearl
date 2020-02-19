@@ -8,14 +8,14 @@ pub struct Bloom {
 
 impl Bloom {
     pub fn new(elements: usize) -> Self {
-        let elements = 10_000_000f64;
+        let elements = 100_000f64;
         let hashers = Self::hashers();
         let len = elements * hashers.len() as f64 / 2f64.ln();
         debug!("create bloom Bloom with len: {:.0}", len);
         let pr = (1f64
             - 1f64
                 .exp()
-                .powf((0f64 - hashers.len() as f64) * elements as f64 / len))
+                .powf(-(hashers.len() as f64) * elements as f64 / len))
         .powi(hashers.len() as i32);
         debug!("bloom Bloom false positive rate: {:.6}", pr);
         error!("@TODO");
@@ -52,24 +52,27 @@ impl Bloom {
         let len = self.inner.len() as u64;
         for h in hashers.iter_mut().map(|hasher| {
             hasher.write(item.as_ref());
+            trace!("hasher: {:?}", hasher);
             hasher.finish() % len
         }) {
             *self
                 .inner
                 .get_mut(h as usize)
                 .expect("impossible due to mod by len") = true;
+            debug!("set true to {}", h);
         }
-        debug!("filter add: {}", self);
+        trace!("filter add: {:#?}", self.inner);
     }
 
     pub fn contains(&self, item: impl AsRef<[u8]>) -> bool {
-        debug!("filter: {}", self);
+        trace!("filter: {:#?}", self.inner);
         let mut hashers = self.hashers.clone();
         let len = self.inner.len() as u64;
         let res = hashers
             .iter_mut()
             .map(|hasher| {
                 hasher.write(item.as_ref());
+                trace!("hasher: {:?}", hasher);
                 hasher.finish() % len
             })
             .all(|i| {
@@ -78,7 +81,7 @@ impl Bloom {
                     .get(i as usize)
                     .expect("impossible due to mod by len")
             });
-        debug!("item definitely missed: {}", !res);
+        trace!("item definitely missed: {}", !res);
         res
     }
 
@@ -96,14 +99,5 @@ impl Bloom {
 
     pub fn save(&self) {
         unimplemented!()
-    }
-}
-
-impl Display for Bloom {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let output = format!("{:#?}", self.inner);
-        let output = output.replace("0", " ");
-        let output = output.replace("1", "█");
-        write!(f, "{}", output)
     }
 }

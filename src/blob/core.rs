@@ -169,6 +169,7 @@ impl Blob {
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
         let bytes_written = self.file.write_at(buf, *offset).await?;
+        debug!("push record header");
         self.index.push(record.header().clone());
         *offset += bytes_written as u64;
         Ok(())
@@ -244,7 +245,7 @@ impl Blob {
     }
 
     pub(crate) fn contains(&self, key: &impl Key) -> bool {
-        debug!("check bloom filter");
+        trace!("check bloom filter");
         self.index.contains_key(key.as_ref())
     }
 }

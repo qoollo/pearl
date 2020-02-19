@@ -324,9 +324,9 @@ impl Index for Simple {
     }
 
     fn push(&mut self, h: RecordHeader) -> Push {
-        trace!("push header: {:?}", h);
         let fut = match &mut self.inner {
             State::InMemory(bunch) => {
+                debug!("add header to filter");
                 self.filter.add(h.key());
                 bunch.push(h);
                 future::ok(()).boxed()

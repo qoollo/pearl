@@ -489,7 +489,7 @@ async fn test_contains_bloom_filter_init_from_existing() {
     let now = Instant::now();
     let dir = common::init("contains_bloom_filter_init_from_existing");
     debug!("open new storage");
-    let base = 10;
+    let base = 9_000;
     {
         let storage = common::create_test_storage(&dir, 100).await.unwrap();
         debug!("write some data");
@@ -497,6 +497,7 @@ async fn test_contains_bloom_filter_init_from_existing() {
         b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
         for i in 1..base {
             let key = KeyTest::new(i);
+            debug!("write key: {}", i);
             storage.write(&key, data.to_vec()).await.unwrap();
             delay_for(Duration::from_millis(6)).await;
             debug!("blobs count: {}", storage.blobs_count());
@@ -506,17 +507,28 @@ async fn test_contains_bloom_filter_init_from_existing() {
     }
 
     debug!("storage closed, await a little");
-    delay_for(Duration::from_millis(100)).await;
+    delay_for(Duration::from_millis(1000)).await;
     debug!("reopen storage");
     let storage = common::create_test_storage(&dir, 100).await.unwrap();
+    debug!("storage created");
+    delay_for(Duration::from_millis(1000)).await;
     debug!("check contains");
     for i in 1..base {
         debug!("check key: {}", i);
         assert!(storage.contains(KeyTest::new(i)).await);
     }
+    debug!("check certainly missed keys");
+    delay_for(Duration::from_millis(1000)).await;
+    let mut false_positive_counter = 0usize;
     for i in base..base * 2 {
-        assert!(!storage.contains(KeyTest::new(i)).await);
+        debug!("check key: {}", i);
+        if storage.contains(KeyTest::new(i)).await {
+            false_positive_counter += 1;
+        }
     }
+    let fpr = false_positive_counter as f64 / base as f64;
+    debug!("false positive rate: {:.3}", fpr);
+    assert!(fpr < 0.001);
     common::clean(storage, dir)
         .await
         .expect("work dir clean failed");

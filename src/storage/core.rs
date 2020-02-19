@@ -166,7 +166,6 @@ impl<K> Storage<K> {
         let record = Record::create(&key, value, meta).map_err(Error::new)?;
         debug!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
-        debug!("add key to global bloom filter");
         let blob = safe
             .active_blob
             .as_mut()
@@ -392,7 +391,9 @@ impl<K> Storage<K> {
         debug!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.lock().await;
         let active_blob = inner.active_blob.as_ref().unwrap();
-        active_blob.contains(&key) || inner.blobs.iter().any(|blob| blob.contains(&key))
+        let res = active_blob.contains(&key) || inner.blobs.iter().any(|blob| blob.contains(&key));
+        debug!("item definitely missed: {}", !res);
+        res
     }
 }
 
