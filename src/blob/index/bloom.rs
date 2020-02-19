@@ -8,7 +8,7 @@ pub struct Bloom {
 
 impl Bloom {
     pub fn new(elements: usize) -> Self {
-        let elements = 1000f64;
+        let elements = 10_000_000f64;
         let hashers = Self::hashers();
         let len = elements * hashers.len() as f64 / 2f64.ln();
         debug!("create bloom Bloom with len: {:.0}", len);
@@ -35,11 +35,14 @@ impl Bloom {
             .collect()
     }
 
-    pub fn from_raw(buf: &[u8]) -> Self {
+    pub fn from_raw(buf: &[u8], bits: usize) -> Self {
         let hashers = Self::hashers();
+        debug!("deserialize filter from buf, len = {}", buf.len());
         let buf = bincode::deserialize(buf).unwrap();
+        let mut bit_vec = BitVec::from_vec(buf);
+        bit_vec.truncate(bits);
         Self {
-            inner: BitVec::from_vec(buf),
+            inner: bit_vec,
             hashers,
         }
     }
@@ -56,11 +59,11 @@ impl Bloom {
                 .get_mut(h as usize)
                 .expect("impossible due to mod by len") = true;
         }
-        debug!("filter add: {:#?}", self.inner);
+        debug!("filter add: {}", self);
     }
 
     pub fn contains(&self, item: impl AsRef<[u8]>) -> bool {
-        debug!("filter: {:#?}", self.inner);
+        debug!("filter: {}", self);
         let mut hashers = self.hashers.clone();
         let len = self.inner.len() as u64;
         let res = hashers
@@ -83,11 +86,24 @@ impl Bloom {
         bincode::serialized_size(self.inner.as_slice()).unwrap()
     }
 
+    pub fn bits(&self) -> usize {
+        self.inner.len()
+    }
+
     pub fn as_slice(&self) -> &[usize] {
         self.inner.as_slice()
     }
 
     pub fn save(&self) {
         unimplemented!()
+    }
+}
+
+impl Display for Bloom {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        let output = format!("{:#?}", self.inner);
+        let output = output.replace("0", " ");
+        let output = output.replace("1", "█");
+        write!(f, "{}", output)
     }
 }
