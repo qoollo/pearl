@@ -8,10 +8,11 @@ pub(crate) struct Simple {
     name: FileName,
 }
 
-#[derive(Debug, Deserialize, Default, Serialize, Copy, Clone)]
+#[derive(Debug, Deserialize, Default, Serialize, Clone)]
 struct Header {
     records_count: usize,
     record_header_size: usize,
+    filter_size: usize,
 }
 
 impl Header {
@@ -40,12 +41,14 @@ pub(crate) enum State {
 impl Simple {
     pub(crate) fn new(name: FileName) -> Self {
         error!("@TODO configurable elements count");
+        let filter = Bloom::new(10_000_000);
         Self {
             header: Header {
                 records_count: 0,
                 record_header_size: 0,
+                filter_size: filter.size() as usize,
             },
-            filter: Bloom::new(10_000_000),
+            filter,
             inner: State::InMemory(Vec::new()),
             name,
         }
@@ -59,7 +62,7 @@ impl Simple {
         Ok(match &self.inner {
             State::InMemory(bunch) => Self::extract_matching_meta_locations(bunch, key),
             State::OnDisk(file) => {
-                let record_headers = Self::load(file).await?;
+                let record_headers = Self::load_records(file).await?;
                 Self::extract_matching_meta_locations(&record_headers, key)
             }
         })
@@ -75,16 +78,23 @@ impl Simple {
         let mut file = File::from_std_file(fd)?;
         debug!("load index header");
         let mut buf = vec![0; Header::serialized_size_default()?.try_into()?];
+        debug!("read header into buf: [0; {}]", buf.len());
+        file.read_exact(&mut buf).await.unwrap();
+        debug!("serialize header from bytes");
+        let header = Header::from_raw(&buf).unwrap();
+        debug!("load filter");
+        let mut buf = vec![0; header.filter_size];
+        debug!("read filter into buf: [0; {}]", buf.len());
         file.read_exact(&mut buf).await?;
-        let header = Header::from_raw(&buf)?;
+        let filter = Bloom::from_raw(&buf);
         debug!("index restored successfuly");
         error!("@TODO check consistency");
         error!("@TODO configurable filter elements count");
         Ok(Self {
             header,
-            filter: Bloom::new(10_000_000),
             inner: State::OnDisk(file),
             name,
+            filter,
         })
     }
 
@@ -116,7 +126,7 @@ impl Simple {
         ))
     }
 
-    pub async fn load(mut file: &File) -> Result<Vec<RecordHeader>> {
+    pub async fn load_records(mut file: &File) -> Result<Vec<RecordHeader>> {
         trace!("seek to file start");
         file.seek(SeekFrom::Start(0)).await?;
         let mut buf = Vec::new();
@@ -127,7 +137,12 @@ impl Simple {
             Vec::new()
         } else {
             trace!("deserialize bunch");
-            Self::deserialize_bunch(&buf)?
+            let header = Self::deserialize_header(&buf);
+            Self::deserialize_bunch(
+                &buf[header.serialized_size().unwrap() as usize + header.filter_size..],
+                header.records_count,
+                header.record_header_size,
+            )?
         })
     }
 
@@ -144,7 +159,7 @@ impl Simple {
         while size > 1 {
             let half = size / 2;
             let mid = start + half;
-            let mid_record_header = Self::read_at(&mut file, mid, header).await?;
+            let mid_record_header = Self::read_at(&mut file, mid, &header).await?;
             let cmp = mid_record_header.key().cmp(&key);
             debug!("mid read: {:?}", mid_record_header.key());
             start = match cmp {
@@ -160,7 +175,7 @@ impl Simple {
         Err(ErrorKind::RecordNotFound.into())
     }
 
-    async fn read_at(file: &mut File, index: usize, header: Header) -> Result<RecordHeader> {
+    async fn read_at(file: &mut File, index: usize, header: &Header) -> Result<RecordHeader> {
         let header_size = bincode::serialized_size(&header)?;
         let offset = header_size + (header.record_header_size * index) as u64;
         let buf = file.read_at(header.record_header_size, offset).await?;
@@ -180,7 +195,7 @@ impl Simple {
         Ok(deserialize(&buf)?)
     }
 
-    fn serialize_bunch(bunch: &mut [RecordHeader]) -> Result<Vec<u8>> {
+    fn serialize_bunch(bunch: &mut [RecordHeader], filter: Bloom) -> Result<Vec<u8>> {
         let record_header = bunch.first().ok_or(ErrorKind::EmptyIndexBunch)?;
         let record_header_size = record_header.serialized_size().try_into()?;
         debug!("record header serialized size: {}", record_header_size);
@@ -188,10 +203,19 @@ impl Simple {
         let header = Header {
             record_header_size,
             records_count: bunch.len(),
+            filter_size: filter.size() as usize,
         };
         let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
+        debug!("index header size: {}b", hs);
         let mut buf = Vec::with_capacity(hs + bunch.len() * record_header_size);
         serialize_into(&mut buf, &header)?;
+        let filter_buf = bincode::serialize(&filter.as_slice()).unwrap();
+        debug!(
+            "filter serialized_size: {}, header.filter_size: {}",
+            filter_buf.len(),
+            header.filter_size,
+        );
+        buf.extend_from_slice(&filter_buf);
         bunch
             .iter()
             .filter_map(|h| {
@@ -205,14 +229,25 @@ impl Simple {
         Ok(buf)
     }
 
-    fn deserialize_bunch(buf: &[u8]) -> Result<Vec<RecordHeader>> {
+    fn deserialize_header(buf: &[u8]) -> Header {
         trace!("deserialize header from buf: {}", buf.len());
-        let header: Header = deserialize(buf)?;
-        trace!("header deserialized: {:?}", header);
-        let header_size: usize = header.serialized_size()?.try_into()?;
-        trace!("deserialize record header at: {}", header_size);
-        (0..header.records_count).try_fold(Vec::new(), |mut record_headers, i| {
-            let offset = header_size + i * header.record_header_size;
+        deserialize(buf).unwrap()
+    }
+
+    fn deserialize_filter(buf: &[u8]) -> Bloom {
+        let filter_buf: Vec<u8> = deserialize(&buf).unwrap();
+        Bloom::from_raw(&filter_buf)
+    }
+
+    fn deserialize_bunch(
+        buf: &[u8],
+        count: usize,
+        record_header_size: usize,
+    ) -> Result<Vec<RecordHeader>> {
+        // let header_size: usize = header.serialized_size()?.try_into()?;
+        // trace!("deserialize record header at: {}", header_size);
+        (0..count).try_fold(Vec::new(), |mut record_headers, i| {
+            let offset = i * record_header_size;
             trace!("at: {}", offset);
             deserialize(&buf[offset..])
                 .map(|rh| {
@@ -256,8 +291,16 @@ impl Simple {
         file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
         debug!("read to end index file");
         file.read_to_end(&mut buf).map_err(Error::new).await?;
-        let bunch = Self::deserialize_bunch(&buf)?;
+        let header = Self::deserialize_header(&buf);
+        let offset = header.serialized_size().unwrap() as usize;
+        let filter = Self::deserialize_filter(&buf[offset..]);
+        let bunch = Self::deserialize_bunch(
+            &buf[offset + header.filter_size..],
+            header.records_count,
+            header.record_header_size,
+        )?;
         self.inner = State::InMemory(bunch);
+        self.filter = filter;
         Ok(())
     }
 
@@ -310,7 +353,8 @@ impl Index for Simple {
 
     fn dump(&mut self) -> Dump {
         if let State::InMemory(bunch) = &mut self.inner {
-            let buf = Self::serialize_bunch(bunch);
+            let filter = self.filter.clone();
+            let buf = Self::serialize_bunch(bunch, filter);
             match buf {
                 Ok(buf) => self.dump_in_memory(buf),
                 Err(ref e) if e.is(&ErrorKind::EmptyIndexBunch) => Dump(future::ok(()).boxed()),

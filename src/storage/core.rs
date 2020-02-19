@@ -384,7 +384,7 @@ impl<K> Storage<K> {
         debug!("init blobs from found files");
         let futures: FuturesUnordered<_> = blob_files.map(Blob::from_file).collect();
         debug!("async init blobs from file");
-        futures.try_collect().await.map_err(Error::new)
+        futures.try_collect().await
     }
 
     /// @TODO

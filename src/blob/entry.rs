@@ -132,7 +132,7 @@ impl<'a> Entries<'a> {
                 debug!("load future reset");
             }
         } else {
-            let fut = SimpleIndex::load(file);
+            let fut = SimpleIndex::load_records(file);
             self.load_fut = Some(fut.boxed());
             cx.waker().wake_by_ref();
         }

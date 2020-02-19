@@ -8,6 +8,9 @@ pub(crate) use simple::{Simple, State};
 mod prelude {
     pub(crate) use super::super::prelude::*;
     pub(crate) use super::bloom::Bloom;
+    pub(crate) use ahash::AHasher;
+    pub(crate) use bitvec::prelude::*;
+    pub(crate) use std::hash::Hasher;
 }
 
 pub(crate) trait Index: Send + Sync {
