@@ -40,9 +40,9 @@ pub(crate) enum State {
 }
 
 impl Simple {
-    pub(crate) fn new(name: FileName) -> Self {
+    pub(crate) fn new(name: FileName, records_in_blob: usize) -> Self {
         error!("@TODO configurable elements count");
-        let filter = Bloom::new(10_000_000);
+        let filter = Bloom::new(records_in_blob);
         Self {
             header: Header {
                 records_count: 0,
@@ -291,13 +291,13 @@ impl Simple {
         file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
         debug!("read to end index file");
         file.read_to_end(&mut buf).map_err(Error::new).await?;
-        debug!("read total {} bytes", buf.len());
+        trace!("read total {} bytes", buf.len());
         let header = Self::deserialize_header(&buf);
         debug!("header: {:?}", header);
         let offset = header.serialized_size().unwrap() as usize;
-        debug!("filter offset: {}", offset);
+        trace!("filter offset: {}", offset);
         let buf_ref = &buf[offset..];
-        debug!("slice len: {}", buf_ref.len());
+        trace!("slice len: {}", buf_ref.len());
         let filter = Bloom::from_raw(buf_ref, header.filter_bits_count);
         let bunch = Self::deserialize_bunch(
             &buf[offset + header.filter_buf_size..],
@@ -326,7 +326,7 @@ impl Index for Simple {
     fn push(&mut self, h: RecordHeader) -> Push {
         let fut = match &mut self.inner {
             State::InMemory(bunch) => {
-                debug!("add header to filter");
+                trace!("add header to filter");
                 self.filter.add(h.key());
                 bunch.push(h);
                 future::ok(()).boxed()
@@ -336,7 +336,7 @@ impl Index for Simple {
             )
             .boxed(),
         };
-        debug!("future created");
+        trace!("future created");
         Push(fut)
     }
 

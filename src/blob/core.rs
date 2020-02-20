@@ -26,9 +26,9 @@ impl Blob {
     /// Panics if file with same path already exists
     ///
     /// [`FileName`]: struct.FileName.html
-    pub(crate) async fn open_new(name: FileName) -> Result<Self> {
+    pub(crate) async fn open_new(name: FileName, records_in_blob: usize) -> Result<Self> {
         let file = Self::prepare_file(&name)?;
-        let index = Self::create_index(&name);
+        let index = Self::create_index(&name, records_in_blob);
         let current_offset = Self::new_offset();
         let header = Header::new();
         error!("@TODO provide max records in blob");
@@ -60,10 +60,10 @@ impl Blob {
     }
 
     #[inline]
-    fn create_index(name: &FileName) -> SimpleIndex {
+    fn create_index(name: &FileName, records_in_blob: usize) -> SimpleIndex {
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        SimpleIndex::new(index_name)
+        SimpleIndex::new(index_name, records_in_blob)
     }
 
     #[inline]
@@ -101,7 +101,7 @@ impl Blob {
         Box::new(self)
     }
 
-    pub(crate) async fn from_file(path: PathBuf) -> Result<Self> {
+    pub(crate) async fn from_file(path: PathBuf, records_in_blob: usize) -> Result<Self> {
         debug!("create file instance");
         let file: File = File::from_std_file(Self::open_file(&path)?)?;
         let name = FileName::from_path(&path)?;
@@ -116,7 +116,7 @@ impl Blob {
             SimpleIndex::from_file(index_name).await?
         } else {
             debug!("    file not found, create new");
-            SimpleIndex::new(index_name)
+            SimpleIndex::new(index_name, records_in_blob)
         };
         error!("@TODO provide max blob count");
         debug!("    index initialized");
@@ -169,7 +169,7 @@ impl Blob {
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
         let bytes_written = self.file.write_at(buf, *offset).await?;
-        debug!("push record header");
+        trace!("push record header");
         self.index.push(record.header().clone());
         *offset += bytes_written as u64;
         Ok(())

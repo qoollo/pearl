@@ -55,7 +55,7 @@ pub fn init(dir_name: &str) -> String {
                 record.args(),
             )
         })
-        .filter_level(log::LevelFilter::Debug)
+        .filter_level(log::LevelFilter::Info)
         .try_init()
         .unwrap_or(());
     format!(

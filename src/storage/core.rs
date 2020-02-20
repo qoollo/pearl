@@ -162,17 +162,17 @@ impl<K> Storage<K> {
                 return Ok(());
             }
         }
-        debug!("record with the same meta and key does not exist");
+        trace!("record with the same meta and key does not exist");
         let record = Record::create(&key, value, meta).map_err(Error::new)?;
-        debug!("await for inner lock");
+        trace!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
         let blob = safe
             .active_blob
             .as_mut()
             .ok_or(ErrorKind::ActiveBlobNotSet)?;
-        debug!("get active blob");
+        trace!("get active blob");
         let res = blob.write(record).await;
-        debug!("active blob write finished");
+        trace!("active blob write finished");
         res.map_err(Error::new)
     }
 
@@ -335,14 +335,32 @@ impl<K> Storage<K> {
     async fn init_new(&mut self) -> Result<()> {
         let safe_locked = self.inner.safe.lock();
         let next = self.inner.next_blob_name()?;
-        safe_locked.await.active_blob =
-            Some(Blob::open_new(next).await.map_err(Error::new)?.boxed());
+        safe_locked.await.active_blob = Some(
+            Blob::open_new(
+                next,
+                self.inner
+                    .config
+                    .max_data_in_blob()
+                    .ok_or(ErrorKind::Uninitialized)? as usize,
+            )
+            .await
+            .map_err(Error::new)?
+            .boxed(),
+        );
         Ok(())
     }
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         trace!("init from existing: {:?}", files);
-        let mut blobs = Self::read_blobs(&files).await?;
+        let mut blobs = Self::read_blobs(
+            &files,
+            self.inner
+                .config
+                .max_data_in_blob()
+                .ok_or(ErrorKind::Uninitialized)?
+                .try_into()?,
+        )
+        .await?;
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
@@ -367,7 +385,7 @@ impl<K> Storage<K> {
         Ok(())
     }
 
-    async fn read_blobs(files: &[DirEntry]) -> Result<Vec<Blob>> {
+    async fn read_blobs(files: &[DirEntry], records_in_blob: usize) -> Result<Vec<Blob>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
         debug!("read {} entities", dir_content.len());
@@ -381,18 +399,20 @@ impl<K> Storage<K> {
             }
         });
         debug!("init blobs from found files");
-        let futures: FuturesUnordered<_> = blob_files.map(Blob::from_file).collect();
+        let futures: FuturesUnordered<_> = blob_files
+            .map(|file| Blob::from_file(file, records_in_blob))
+            .collect();
         debug!("async init blobs from file");
         futures.try_collect().await
     }
 
     /// @TODO
     pub async fn contains(&self, key: impl Key) -> bool {
-        debug!("[{:?}] check in blobs bloom filter", &key.to_vec());
+        trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.lock().await;
         let active_blob = inner.active_blob.as_ref().unwrap();
         let res = active_blob.contains(&key) || inner.blobs.iter().any(|blob| blob.contains(&key));
-        debug!("item definitely missed: {}", !res);
+        trace!("item definitely missed: {}", !res);
         res
     }
 }
