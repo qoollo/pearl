@@ -16,28 +16,24 @@ impl Bloom {
         debug!("bloom filter for {} elements", elements);
         let max_bit_count = 4194304usize; // 1Mb
         debug!("max bit count: {}", max_bit_count);
-        error!("@TODO config limits, hashers count");
+        error!("@TODO config limits, hashers count, bit step");
         let k = 2usize; // hashers count
         let mut bits_count = (elements * k as f64 / 2f64.ln()) as usize;
-        let init_bits_count = (elements * k as f64 / 2f64.ln()) as usize;
         let bits_step = 8196usize;
-        let mut fpr; // false positive rate
+        let mut fpr = 1f64; // false positive rate
         error!("@TODO configurable fpr threshold");
-        loop {
+        while fpr > 0.001 {
             if bits_count >= max_bit_count {
                 trace!("bits count EQ or GREATER max bit count");
                 fpr = false_positive_rate(k as f64, elements, bits_count as f64);
                 trace!("false positive: {:.6}", fpr,);
-                bits_count = init_bits_count;
+                break;
             } else {
                 trace!("bits count LESSER max bit count");
                 fpr = false_positive_rate(k as f64, elements, bits_count as f64);
                 trace!("bloom false positive rate: {:.6}", fpr,);
                 bits_count = max_bit_count.min(bits_step + bits_count);
                 trace!("increased bits count to: {}", bits_count);
-            }
-            if fpr < 0.001 {
-                break;
             }
         }
         debug!(
