@@ -244,17 +244,12 @@ impl Simple {
         count: usize,
         record_header_size: usize,
     ) -> Result<Vec<RecordHeader>> {
-        // let header_size: usize = header.serialized_size()?.try_into()?;
-        // trace!("deserialize record header at: {}", header_size);
         (0..count).try_fold(Vec::new(), |mut record_headers, i| {
             let offset = i * record_header_size;
             trace!("at: {}", offset);
-            deserialize(&buf[offset..])
-                .map(|rh| {
-                    record_headers.push(rh);
-                    record_headers
-                })
-                .map_err(Into::into)
+            let header = deserialize(&buf[offset..])?;
+            record_headers.push(header);
+            Ok(record_headers)
         })
     }
 

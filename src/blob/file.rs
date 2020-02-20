@@ -29,6 +29,14 @@ impl AsyncRead for File {
     }
 }
 
+fn warn_and_wake(waker: Waker) {
+    warn!(
+        "file read operation wouldblock or interrupted, retry in {}ms",
+        WOULDBLOCK_RETRY_INTERVAL_MS
+    );
+    schedule_wake(waker);
+}
+
 impl AsyncRead for &File {
     fn poll_read(
         self: Pin<&mut Self>,
@@ -40,11 +48,7 @@ impl AsyncRead for &File {
             Err(ref e)
                 if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
             {
-                warn!(
-                    "file read operation wouldblock or interrupted, retry in {}ms",
-                    WOULDBLOCK_RETRY_INTERVAL_MS
-                );
-                schedule_wake(cx.waker().clone());
+                warn_and_wake(cx.waker().clone());
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(e)),
@@ -60,11 +64,7 @@ impl AsyncWrite for File {
             Err(ref e)
                 if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
             {
-                warn!(
-                    "file write all operation wouldblock or interrupted, retry in {}ms",
-                    WOULDBLOCK_RETRY_INTERVAL_MS
-                );
-                schedule_wake(cx.waker().clone());
+                warn_and_wake(cx.waker().clone());
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(e)),
@@ -78,11 +78,7 @@ impl AsyncWrite for File {
             Err(ref e)
                 if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
             {
-                warn!(
-                    "file flush operation wouldblock or interrupted, retry in {}ms",
-                    WOULDBLOCK_RETRY_INTERVAL_MS
-                );
-                schedule_wake(cx.waker().clone());
+                warn_and_wake(cx.waker().clone());
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(e)),
@@ -110,11 +106,7 @@ impl AsyncSeek for &File {
             Err(ref e)
                 if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
             {
-                warn!(
-                    "file seek operation wouldblock or interrupted, retry in {}ms",
-                    WOULDBLOCK_RETRY_INTERVAL_MS
-                );
-                schedule_wake(cx.waker().clone());
+                warn_and_wake(cx.waker().clone());
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(e)),
@@ -169,11 +161,7 @@ impl<'a> Future for WriteAt<'a> {
             Err(ref e)
                 if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
             {
-                warn!(
-                    "file write at operation wouldblock or interrupted, retry in {}ms",
-                    WOULDBLOCK_RETRY_INTERVAL_MS
-                );
-                schedule_wake(cx.waker().clone());
+                warn_and_wake(cx.waker().clone());
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(e)),
@@ -199,11 +187,7 @@ impl Future for ReadAt {
             Err(ref e)
                 if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
             {
-                warn!(
-                    "file write at operation wouldblock or interrupted, retry in {}ms",
-                    WOULDBLOCK_RETRY_INTERVAL_MS
-                );
-                schedule_wake(cx.waker().clone());
+                warn_and_wake(cx.waker().clone());
                 Poll::Pending
             }
             Err(e) => Poll::Ready(Err(e)),

@@ -335,17 +335,16 @@ impl<K> Storage<K> {
     async fn init_new(&mut self) -> Result<()> {
         let safe_locked = self.inner.safe.lock();
         let next = self.inner.next_blob_name()?;
+        let records_in_blob = self
+            .inner
+            .config
+            .max_data_in_blob()
+            .ok_or(ErrorKind::Uninitialized)? as usize;
         safe_locked.await.active_blob = Some(
-            Blob::open_new(
-                next,
-                self.inner
-                    .config
-                    .max_data_in_blob()
-                    .ok_or(ErrorKind::Uninitialized)? as usize,
-            )
-            .await
-            .map_err(Error::new)?
-            .boxed(),
+            Blob::open_new(next, records_in_blob)
+                .await
+                .map_err(Error::new)?
+                .boxed(),
         );
         Ok(())
     }
@@ -367,10 +366,8 @@ impl<K> Storage<K> {
         let mut active_blob = blobs
             .pop()
             .ok_or_else(|| {
-                error!(
-                    "There are some blob files in the work dir: {:?}",
-                    self.inner.config.work_dir()
-                );
+                let wd = self.inner.config.work_dir();
+                error!("There are some blob files in the work dir: {:?}", wd);
                 error!("Creating blobs from all these files failed");
                 ErrorKind::Uninitialized
             })?

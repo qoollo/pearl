@@ -155,13 +155,9 @@ impl From<ErrorKind> for Error {
 impl Record {
     /// Creates new `Record` with provided data and key.
     pub fn create(key: impl Key, data: Vec<u8>, meta: Meta) -> Result<Self> {
+        let key = key.as_ref().to_vec();
         meta.serialized_size().map(|meta_size| {
-            let header = Header::new(
-                key.as_ref().to_vec(),
-                meta_size,
-                data.len() as u64,
-                crc32(&data),
-            );
+            let header = Header::new(key, meta_size, data.len() as u64, crc32(&data));
             Self { header, meta, data }
         })
     }
@@ -231,10 +227,11 @@ impl Record {
         if calc_crc == self.header.data_checksum {
             Ok(())
         } else {
-            let e = ErrorKind::Validation(format!(
+            let msg = format!(
                 "wrong data checksum {} vs {}",
                 calc_crc, self.header.data_checksum
-            ));
+            );
+            let e = ErrorKind::Validation(msg);
             error!("{:?}", e);
             Err(e.into())
         }
@@ -259,6 +256,13 @@ impl Record {
 
 impl Header {
     pub fn new(key: Vec<u8>, meta_size: u64, data_size: u64, data_checksum: u32) -> Self {
+        let created = std::time::UNIX_EPOCH
+            .elapsed()
+            .map(|d| d.as_secs())
+            .unwrap_or_else(|e| {
+                error!("{}", e);
+                0
+            });
         Self {
             magic_byte: RECORD_MAGIC_BYTE,
             key,
@@ -266,13 +270,7 @@ impl Header {
             data_size,
             flags: 0,
             blob_offset: 0,
-            created: std::time::UNIX_EPOCH
-                .elapsed()
-                .map(|d| d.as_secs())
-                .unwrap_or_else(|e| {
-                    error!("{}", e);
-                    0
-                }),
+            created,
             data_checksum,
             header_checksum: 0,
         }

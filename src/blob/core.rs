@@ -398,14 +398,13 @@ impl RawRecords {
         if self.file_len < self.current_offset + self.record_header_size {
             self.read_fut = None;
         } else {
-            self.read_fut = Some(
-                Self::read_at(
-                    self.file.clone(),
-                    self.record_header_size,
-                    self.current_offset,
-                )
-                .boxed(),
-            );
+            let read_fut = Self::read_at(
+                self.file.clone(),
+                self.record_header_size,
+                self.current_offset,
+            )
+            .boxed();
+            self.read_fut = Some(read_fut);
         }
     }
 }
@@ -415,16 +414,10 @@ impl Stream for RawRecords {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let res = if let Some(ref mut f) = self.read_fut {
-            match ready!(Future::poll(f.as_mut(), cx)) {
-                Ok(header) => {
-                    self.update_future(&header);
-                    Some(Ok(header))
-                }
-                Err(e) => {
-                    error!("{:?}", e);
-                    Some(Err(e))
-                }
-            }
+            Some(ready!(Future::poll(f.as_mut(), cx)).map(|h| {
+                self.update_future(&h);
+                h
+            }))
         } else {
             None
         };

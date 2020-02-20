@@ -126,24 +126,23 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let data = b"test data string";
     let clonned_storage = storage.clone();
     indexes.iter().cloned().for_each(move |mut range| {
+        let builder = std::thread::Builder::new().name(format!("thread#{}", range[0]));
         let st = clonned_storage.clone();
         let mut snd_cloned = snd.clone();
-        std::thread::Builder::new()
-            .name(format!("thread#{}", range[0]))
-            .spawn(move || {
-                let s = st.clone();
-                let mut rt = tokio::runtime::Runtime::new().unwrap();
-                range.shuffle(&mut rand::thread_rng());
-                let task = async {
-                    let start = range[0];
-                    for i in range {
-                        write_one(&s, i as u32, data, None).await.unwrap();
-                    }
-                    snd_cloned.send(start).await.unwrap();
-                };
-                rt.block_on(task);
-            })
-            .unwrap();
+        let task = move || {
+            let s = st.clone();
+            let mut rt = tokio::runtime::Runtime::new().unwrap();
+            range.shuffle(&mut rand::thread_rng());
+            let task = async {
+                let start = range[0];
+                for i in range {
+                    write_one(&s, i as u32, data, None).await.unwrap();
+                }
+                snd_cloned.send(start).await.unwrap();
+            };
+            rt.block_on(task);
+        };
+        builder.spawn(task).unwrap();
     });
     let handles = rcv.collect::<Vec<_>>().await;
     assert_eq!(handles.len(), 10);
