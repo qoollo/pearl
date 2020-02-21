@@ -40,9 +40,9 @@ pub(crate) enum State {
 }
 
 impl Simple {
-    pub(crate) fn new(name: FileName, records_in_blob: usize) -> Self {
+    pub(crate) fn new(filter_config: Config, name: FileName) -> Self {
         error!("@TODO configurable elements count");
-        let filter = Bloom::new(records_in_blob);
+        let filter = Bloom::new(filter_config);
         Self {
             header: Header {
                 records_count: 0,

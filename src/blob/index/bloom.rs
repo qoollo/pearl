@@ -1,9 +1,41 @@
 use super::prelude::*;
 
 #[derive(Debug, Default, Clone)]
-pub struct Bloom {
+pub(crate) struct Bloom {
     inner: BitVec,
     hashers: Vec<AHasher>,
+    config: Config,
+}
+
+/// Bloom filter configuration parameters.
+#[derive(Debug, Clone)]
+pub struct Config {
+    /// records count in one blob.
+    pub elements: usize,
+    /// number of hash functions, the more hash functions.
+    /// you have, the slower bloom filter, and the quicker it fills up. If you
+    /// have too few, however, you may suffer too many false positives.
+    pub hashers_count: usize,
+    /// number of bits in the inner buffer.
+    pub max_buf_bits_count: usize,
+    /// filter buf increase value.
+    pub buf_increase_step: usize,
+    /// filter incrementally increases buffer
+    /// size by step and checks result false positive rate to be less than param.
+    /// It stops once buffer reaches size of max_buf_bits_count.
+    pub preferred_false_positive_rate: f64,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            elements: 100_000,
+            hashers_count: 2,
+            max_buf_bits_count: 4_194_304, // 500kb
+            buf_increase_step: 8196,
+            preferred_false_positive_rate: 0.001,
+        }
+    }
 }
 
 fn false_positive_rate(k: f64, n: f64, m: f64) -> f64 {
@@ -11,18 +43,16 @@ fn false_positive_rate(k: f64, n: f64, m: f64) -> f64 {
 }
 
 impl Bloom {
-    pub fn new(elements: usize) -> Self {
-        let elements = elements as f64;
+    pub fn new(config: Config) -> Self {
+        let elements = config.elements as f64;
         debug!("bloom filter for {} elements", elements);
-        let max_bit_count = 4194304usize; // 1Mb
+        let max_bit_count = config.max_buf_bits_count; // 1Mb
         debug!("max bit count: {}", max_bit_count);
-        error!("@TODO config limits, hashers count, bit step");
-        let k = 2usize; // hashers count
+        let k = config.hashers_count;
         let mut bits_count = (elements * k as f64 / 2f64.ln()) as usize;
-        let bits_step = 8196usize;
-        let mut fpr = 1f64; // false positive rate
-        error!("@TODO configurable fpr threshold");
-        while fpr > 0.001 {
+        let bits_step = config.buf_increase_step;
+        let mut fpr = 1f64;
+        while fpr > config.preferred_false_positive_rate {
             if bits_count >= max_bit_count {
                 trace!("bits count EQ or GREATER max bit count");
                 fpr = false_positive_rate(k as f64, elements, bits_count as f64);
@@ -46,6 +76,7 @@ impl Bloom {
         Self {
             inner: bitvec![0; bits_count as usize],
             hashers: Self::hashers(k),
+            ..Default::default()
         }
     }
 
@@ -57,6 +88,7 @@ impl Bloom {
     }
 
     pub fn from_raw(buf: &[u8], bits: usize) -> Result<Self> {
+        error!("@TODO save and read hashers count from file");
         let hashers = Self::hashers(2);
         debug!("deserialize filter from buf, len = {}", buf.len());
         let buf = bincode::deserialize(buf)?;
@@ -65,6 +97,7 @@ impl Bloom {
         Ok(Self {
             inner: bit_vec,
             hashers,
+            ..Default::default()
         })
     }
 

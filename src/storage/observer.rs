@@ -71,16 +71,10 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
 async fn update_active_blob(inner: Inner) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
-    let new_active = Blob::open_new(
-        next_name,
-        inner
-            .config
-            .max_data_in_blob()
-            .ok_or(ErrorKind::Uninitialized)? as usize,
-    )
-    .await
-    .map_err(Error::new)?
-    .boxed();
+    let new_active = Blob::open_new(next_name, inner.config.filter())
+        .await
+        .map_err(Error::new)?
+        .boxed();
 
     {
         let mut safe_locked = inner.safe.lock().await;

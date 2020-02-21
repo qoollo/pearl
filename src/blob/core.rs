@@ -26,12 +26,11 @@ impl Blob {
     /// Panics if file with same path already exists
     ///
     /// [`FileName`]: struct.FileName.html
-    pub(crate) async fn open_new(name: FileName, records_in_blob: usize) -> Result<Self> {
+    pub(crate) async fn open_new(name: FileName, filter_config: BloomConfig) -> Result<Self> {
         let file = Self::prepare_file(&name)?;
-        let index = Self::create_index(&name, records_in_blob);
+        let index = Self::create_index(filter_config, &name);
         let current_offset = Self::new_offset();
         let header = Header::new();
-        error!("@TODO provide max records in blob");
         let mut blob = Self {
             header,
             file,
@@ -60,10 +59,10 @@ impl Blob {
     }
 
     #[inline]
-    fn create_index(name: &FileName, records_in_blob: usize) -> SimpleIndex {
+    fn create_index(filter_config: BloomConfig, name: &FileName) -> SimpleIndex {
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        SimpleIndex::new(index_name, records_in_blob)
+        SimpleIndex::new(filter_config, index_name)
     }
 
     #[inline]
@@ -101,7 +100,7 @@ impl Blob {
         Box::new(self)
     }
 
-    pub(crate) async fn from_file(path: PathBuf, records_in_blob: usize) -> Result<Self> {
+    pub(crate) async fn from_file(filter_config: BloomConfig, path: PathBuf) -> Result<Self> {
         debug!("create file instance");
         let file: File = File::from_std_file(Self::open_file(&path)?)?;
         let name = FileName::from_path(&path)?;
@@ -116,9 +115,8 @@ impl Blob {
             SimpleIndex::from_file(index_name).await?
         } else {
             debug!("    file not found, create new");
-            SimpleIndex::new(index_name, records_in_blob)
+            SimpleIndex::new(filter_config, index_name)
         };
-        error!("@TODO provide max blob count");
         debug!("    index initialized");
         let header_size = bincode::serialized_size(&header)?;
         let mut blob = Self {

@@ -8,6 +8,7 @@ pub(crate) struct Config {
     blob_file_name_prefix: Option<String>,
     update_interval_ms: u64,
     allow_duplicates: bool,
+    filter: BloomConfig,
 }
 
 // Getters
@@ -41,6 +42,11 @@ impl Config {
     pub fn allow_duplicates(&self) -> bool {
         self.allow_duplicates
     }
+
+    #[inline]
+    pub fn filter(&self) -> BloomConfig {
+        self.filter.clone()
+    }
 }
 
 //Setters
@@ -64,6 +70,10 @@ impl Config {
     pub fn set_allow_duplicates(&mut self, allow_duplicates: bool) {
         self.allow_duplicates = allow_duplicates;
     }
+
+    pub fn set_filter(&mut self, filter: BloomConfig) {
+        self.filter = filter;
+    }
 }
 
 // Impl Traits
@@ -76,6 +86,7 @@ impl Default for Config {
             blob_file_name_prefix: None,
             update_interval_ms: 100,
             allow_duplicates: false,
+            filter: BloomConfig::default(),
         }
     }
 }

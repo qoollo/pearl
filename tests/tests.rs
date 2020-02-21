@@ -166,7 +166,7 @@ async fn test_storage_multithread_blob_overflow() -> Result<(), String> {
     range.shuffle(&mut rand::thread_rng());
     let data = "test data string".repeat(16).as_bytes().to_vec();
     for i in range {
-        delay_for(Duration::from_millis(100)).await;
+        delay_for(Duration::from_millis(10)).await;
         write_one(&storage, i, &data, None).await.unwrap();
     }
     let path = env::temp_dir().join(&dir);
@@ -366,12 +366,12 @@ async fn test_read_with() {
 }
 
 #[tokio::test]
-async fn test_read_all_1000() {
+async fn test_read_all_load_all() {
     let now = Instant::now();
     let dir = common::init("read_all");
     let storage = common::create_test_storage(&dir, 100_000).await.unwrap();
     let key = 3456;
-    let records_write = common::generate_records(512, 9_000);
+    let records_write = common::generate_records(500, 9_000);
     for (i, data) in &records_write {
         delay_for(Duration::from_millis(1)).await;
         write_one(&storage, key, data, Some(&i.to_string()))
@@ -398,18 +398,21 @@ async fn test_read_all_1000() {
 }
 
 #[tokio::test]
-async fn test_read_all_1000_find_one_key() {
+async fn test_read_all_find_one_key() {
     let now = Instant::now();
     let dir = common::init("read_all_1000_find_one_key");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     let count = 1000;
-    let size = 30_000;
+    let size = 3_000;
     info!("generate {} records with size {}", count, size);
     let records_write = common::generate_records(count, size);
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     for (i, data) in &records_write {
-        delay_for(Duration::from_millis(1)).await;
         write_one(&storage, *i, data, None).await.unwrap();
     }
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     let key = records_write.last().unwrap().0;
     debug!("read all with key: {:?}", &key);
     let records_read = storage
@@ -420,6 +423,7 @@ async fn test_read_all_1000_find_one_key() {
         })
         .collect::<Vec<_>>()
         .await;
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     debug!("storage read all finished");
     assert_eq!(
         records_write
@@ -432,6 +436,7 @@ async fn test_read_all_1000_find_one_key() {
             .unwrap(),
         &records_read[0]
     );
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     common::clean(storage, dir)
         .await
         .expect("work dir clean failed");
@@ -498,7 +503,6 @@ async fn test_contains_bloom_filter_init_from_existing() {
             let key = KeyTest::new(i);
             trace!("write key: {}", i);
             storage.write(&key, data.to_vec()).await.unwrap();
-            delay_for(Duration::from_millis(6)).await;
             trace!("blobs count: {}", storage.blobs_count());
         }
         debug!("close storage");

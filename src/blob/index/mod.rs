@@ -1,13 +1,15 @@
 use crate::prelude::*;
 
-mod bloom;
+/// bloom filter for faster check record contains in blob
+pub mod bloom;
 mod simple;
 
+pub(crate) use super::prelude::*;
+pub(crate) use bloom::{Bloom, Config};
 pub(crate) use simple::{Simple, State};
 
 mod prelude {
-    pub(crate) use super::super::prelude::*;
-    pub(crate) use super::bloom::Bloom;
+    pub(crate) use super::*;
     pub(crate) use ahash::AHasher;
     pub(crate) use bitvec::prelude::*;
     pub(crate) use std::hash::Hasher;

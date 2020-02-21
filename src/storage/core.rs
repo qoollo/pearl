@@ -141,7 +141,7 @@ impl<K> Storage<K> {
         self.write_with(key, value, Meta::new()).await
     }
 
-    /// Similar to [`write()`] but with metadata
+    /// Similar to [`write`] but with metadata
     /// # Examples
     /// ```no-run
     /// async fn write_data() {
@@ -335,13 +335,9 @@ impl<K> Storage<K> {
     async fn init_new(&mut self) -> Result<()> {
         let safe_locked = self.inner.safe.lock();
         let next = self.inner.next_blob_name()?;
-        let records_in_blob = self
-            .inner
-            .config
-            .max_data_in_blob()
-            .ok_or(ErrorKind::Uninitialized)? as usize;
+        let config = self.filter_config();
         safe_locked.await.active_blob = Some(
-            Blob::open_new(next, records_in_blob)
+            Blob::open_new(next, config)
                 .await
                 .map_err(Error::new)?
                 .boxed(),
@@ -351,15 +347,7 @@ impl<K> Storage<K> {
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         trace!("init from existing: {:?}", files);
-        let mut blobs = Self::read_blobs(
-            &files,
-            self.inner
-                .config
-                .max_data_in_blob()
-                .ok_or(ErrorKind::Uninitialized)?
-                .try_into()?,
-        )
-        .await?;
+        let mut blobs = Self::read_blobs(self.filter_config(), &files).await?;
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
@@ -382,7 +370,7 @@ impl<K> Storage<K> {
         Ok(())
     }
 
-    async fn read_blobs(files: &[DirEntry], records_in_blob: usize) -> Result<Vec<Blob>> {
+    async fn read_blobs(filter_config: BloomConfig, files: &[DirEntry]) -> Result<Vec<Blob>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
         debug!("read {} entities", dir_content.len());
@@ -397,7 +385,7 @@ impl<K> Storage<K> {
         });
         debug!("init blobs from found files");
         let futures: FuturesUnordered<_> = blob_files
-            .map(|file| Blob::from_file(file, records_in_blob))
+            .map(|file| Blob::from_file(filter_config.clone(), file))
             .collect();
         debug!("async init blobs from file");
         futures.try_collect().await
@@ -414,6 +402,10 @@ impl<K> Storage<K> {
             .unwrap_or(false);
         let in_closed = inner.blobs.iter().any(|blob| blob.contains(&key));
         in_active || in_closed
+    }
+
+    fn filter_config(&self) -> BloomConfig {
+        self.inner.config.filter()
     }
 }
 
