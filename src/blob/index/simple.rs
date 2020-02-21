@@ -12,7 +12,6 @@ pub(crate) struct Simple {
 struct Header {
     records_count: usize,
     record_header_size: usize,
-    filter_bits_count: usize,
     filter_buf_size: usize,
 }
 
@@ -41,14 +40,12 @@ pub(crate) enum State {
 
 impl Simple {
     pub(crate) fn new(filter_config: Config, name: FileName) -> Self {
-        error!("@TODO configurable elements count");
         let filter = Bloom::new(filter_config);
         Self {
             header: Header {
                 records_count: 0,
                 record_header_size: 0,
-                filter_bits_count: filter.bits(),
-                filter_buf_size: filter.size() as usize,
+                filter_buf_size: 0,
             },
             filter,
             inner: State::InMemory(Vec::new()),
@@ -88,10 +85,9 @@ impl Simple {
         let mut buf = vec![0; header.filter_buf_size];
         debug!("read filter into buf: [0; {}]", buf.len());
         file.read_exact(&mut buf).await?;
-        let filter = Bloom::from_raw(&buf, header.filter_bits_count)?;
+        let filter = Bloom::from_raw(&buf)?;
         debug!("index restored successfuly");
         error!("@TODO check consistency");
-        error!("@TODO configurable filter elements count");
         Ok(Self {
             header,
             inner: State::OnDisk(file),
@@ -202,17 +198,16 @@ impl Simple {
         let record_header_size = record_header.serialized_size().try_into()?;
         debug!("record header serialized size: {}", record_header_size);
         bunch.sort_by_key(|h| h.key().to_vec());
+        let filter_buf = filter.to_raw();
         let header = Header {
             record_header_size,
             records_count: bunch.len(),
-            filter_buf_size: filter.size() as usize,
-            filter_bits_count: filter.bits(),
+            filter_buf_size: filter_buf.len(),
         };
         let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
         debug!("index header size: {}b", hs);
         let mut buf = Vec::with_capacity(hs + bunch.len() * record_header_size);
         serialize_into(&mut buf, &header)?;
-        let filter_buf = bincode::serialize(&filter.as_slice())?;
         debug!(
             "filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
             filter_buf.len(),
@@ -293,7 +288,7 @@ impl Simple {
         trace!("filter offset: {}", offset);
         let buf_ref = &buf[offset..];
         trace!("slice len: {}", buf_ref.len());
-        let filter = Bloom::from_raw(buf_ref, header.filter_bits_count)?;
+        let filter = Bloom::from_raw(buf_ref)?;
         let bunch = Self::deserialize_bunch(
             &buf[offset + header.filter_buf_size..],
             header.records_count,

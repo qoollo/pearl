@@ -462,7 +462,6 @@ impl Inner {
 
 impl Safe {
     fn new() -> Self {
-        error!("@TODO find correct number of elements");
         Self {
             active_blob: None,
             blobs: Vec::new(),

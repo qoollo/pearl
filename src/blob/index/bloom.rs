@@ -8,7 +8,7 @@ pub(crate) struct Bloom {
 }
 
 /// Bloom filter configuration parameters.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     /// records count in one blob.
     pub elements: usize,
@@ -24,6 +24,13 @@ pub struct Config {
     /// size by step and checks result false positive rate to be less than param.
     /// It stops once buffer reaches size of max_buf_bits_count.
     pub preferred_false_positive_rate: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Save {
+    config: Config,
+    buf: Vec<usize>,
+    bits_count: usize,
 }
 
 impl Default for Config {
@@ -81,24 +88,38 @@ impl Bloom {
     }
 
     pub fn hashers(k: usize) -> Vec<AHasher> {
-        error!("@TODO create configurable hashers");
+        debug!("@TODO create configurable hashers");
         (0..k)
             .map(|i| AHasher::new_with_keys((i + 1) as u64, (i + 2) as u64))
             .collect()
     }
 
-    pub fn from_raw(buf: &[u8], bits: usize) -> Result<Self> {
-        error!("@TODO save and read hashers count from file");
-        let hashers = Self::hashers(2);
-        debug!("deserialize filter from buf, len = {}", buf.len());
-        let buf = bincode::deserialize(buf)?;
-        let mut bit_vec = BitVec::from_vec(buf);
-        bit_vec.truncate(bits);
-        Ok(Self {
-            inner: bit_vec,
-            hashers,
-            ..Default::default()
-        })
+    fn save(&self) -> Save {
+        Save {
+            config: self.config.clone(),
+            buf: self.inner.as_slice().to_vec(),
+            bits_count: self.inner.len(),
+        }
+    }
+
+    fn from(save: Save) -> Self {
+        let mut inner = BitVec::from_vec(save.buf);
+        inner.truncate(save.bits_count);
+        Self {
+            hashers: Self::hashers(save.config.hashers_count),
+            config: save.config,
+            inner,
+        }
+    }
+
+    pub fn to_raw(&self) -> Vec<u8> {
+        let save = self.save();
+        bincode::serialize(&save).unwrap()
+    }
+
+    pub fn from_raw(buf: &[u8]) -> Result<Self> {
+        let save: Save = bincode::deserialize(buf)?;
+        Ok(Self::from(save))
     }
 
     pub fn add(&mut self, item: impl AsRef<[u8]>) {
@@ -132,17 +153,5 @@ impl Bloom {
             .all(|i| *self.inner.get(i as usize).expect("unreachable"));
         trace!("item definitely missed: {}", !res);
         res
-    }
-
-    pub fn size(&self) -> u64 {
-        bincode::serialized_size(self.inner.as_slice()).expect("serialize slice")
-    }
-
-    pub fn bits(&self) -> usize {
-        self.inner.len()
-    }
-
-    pub fn as_slice(&self) -> &[usize] {
-        self.inner.as_slice()
     }
 }
