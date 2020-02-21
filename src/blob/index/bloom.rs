@@ -52,22 +52,20 @@ impl Bloom {
     pub fn hashers(k: usize) -> Vec<AHasher> {
         error!("@TODO create configurable hashers");
         (0..k)
-            .map(|i| {
-                AHasher::new_with_keys((i + 1).try_into().unwrap(), (i + 2).try_into().unwrap())
-            })
+            .map(|i| AHasher::new_with_keys((i + 1) as u64, (i + 2) as u64))
             .collect()
     }
 
-    pub fn from_raw(buf: &[u8], bits: usize) -> Self {
+    pub fn from_raw(buf: &[u8], bits: usize) -> Result<Self> {
         let hashers = Self::hashers(2);
         debug!("deserialize filter from buf, len = {}", buf.len());
-        let buf = bincode::deserialize(buf).unwrap();
+        let buf = bincode::deserialize(buf)?;
         let mut bit_vec = BitVec::from_vec(buf);
         bit_vec.truncate(bits);
-        Self {
+        Ok(Self {
             inner: bit_vec,
             hashers,
-        }
+        })
     }
 
     pub fn add(&mut self, item: impl AsRef<[u8]>) {
@@ -104,7 +102,7 @@ impl Bloom {
     }
 
     pub fn size(&self) -> u64 {
-        bincode::serialized_size(self.inner.as_slice()).unwrap()
+        bincode::serialized_size(self.inner.as_slice()).expect("serialize slice")
     }
 
     pub fn bits(&self) -> usize {

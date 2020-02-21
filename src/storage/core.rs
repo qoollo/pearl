@@ -407,10 +407,13 @@ impl<K> Storage<K> {
     pub async fn contains(&self, key: impl Key) -> bool {
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.lock().await;
-        let active_blob = inner.active_blob.as_ref().unwrap();
-        let res = active_blob.contains(&key) || inner.blobs.iter().any(|blob| blob.contains(&key));
-        trace!("item definitely missed: {}", !res);
-        res
+        let in_active = inner
+            .active_blob
+            .as_ref()
+            .map(|active_blob| active_blob.contains(&key))
+            .unwrap_or(false);
+        let in_closed = inner.blobs.iter().any(|blob| blob.contains(&key));
+        in_active || in_closed
     }
 }
 
