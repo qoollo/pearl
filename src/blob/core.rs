@@ -106,18 +106,18 @@ impl Blob {
         let name = FileName::from_path(&path)?;
         let len = file.metadata()?.len();
         let header = Header::new();
-        debug!("    blob file size: {} MB", len / 1_000_000);
+        debug!("blob file size: {} MB", len / 1_000_000);
         let mut index_name: FileName = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        debug!("    looking for index file: [{}]", index_name.to_string());
+        debug!("looking for index file: [{}]", index_name.to_string());
         let index = if index_name.exists() {
-            debug!("    file exists");
+            debug!("file exists");
             SimpleIndex::from_file(index_name).await?
         } else {
-            debug!("    file not found, create new");
+            debug!("file not found, create new");
             SimpleIndex::new(filter_config, index_name)
         };
-        debug!("    index initialized");
+        debug!("index initialized");
         let header_size = bincode::serialized_size(&header)?;
         let mut blob = Self {
             header,
@@ -379,7 +379,7 @@ impl RawRecords {
     }
 
     async fn read_at(file: File, size: u64, offset: u64) -> Result<RecordHeader> {
-        debug!("call read_at: {} bytes at {}", size, offset);
+        trace!("call read_at: {} bytes at {}", size, offset);
         let buf = file.read_at(size.try_into()?, offset).await?;
         RecordHeader::from_raw(&buf).map_err(Error::new)
     }

@@ -117,6 +117,7 @@ impl<K> Storage<K> {
         );
         debug!("work dir content loaded");
         if let Some(files) = cont_res? {
+            debug!("storage init from existing files");
             self.init_from_existing(files).await?
         } else {
             self.init_new().await?
