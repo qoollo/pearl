@@ -61,7 +61,7 @@ pub fn init(dir_name: &str) -> PathBuf {
         .try_init()
         .unwrap_or(());
     env::temp_dir().join(format!(
-        "{}/{}",
+        "pearl_test/{}/{}",
         std::time::UNIX_EPOCH.elapsed().unwrap().as_secs() % 1_563_100_000,
         dir_name
     ))

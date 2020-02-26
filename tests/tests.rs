@@ -33,33 +33,18 @@ async fn test_storage_init_new() {
 async fn test_storage_init_from_existing() {
     let now = Instant::now();
     let path = common::init("existing");
-    let task = async {
-        let builder = Builder::new()
-            .work_dir(&path)
-            .blob_file_name_prefix("test")
-            .max_blob_size(900_000)
-            .max_data_in_blob(1_000);
-        let mut temp_storage: Storage<KeyTest> = builder.build()?;
-        temp_storage.init().await?;
-        let records = common::generate_records(15, 100_000);
-        for (key, data) in &records {
-            delay_for(Duration::from_millis(100)).await;
-            write_one(&temp_storage, *key, data, None).await.unwrap();
-        }
-        temp_storage.close().await
-    };
-    task.await.unwrap();
+    let storage = common::default_test_storage_in(&path).await.unwrap();
+    let records = common::generate_records(15, 1_000);
+    for (key, data) in &records {
+        delay_for(Duration::from_millis(100)).await;
+        write_one(&storage, *key, data, None).await.unwrap();
+    }
+    storage.close().await.unwrap();
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
+    assert!(!path.join("pearl.lock").exists());
 
-    let builder = Builder::new()
-        .work_dir(&path)
-        .blob_file_name_prefix("test")
-        .max_blob_size(1_000_000)
-        .max_data_in_blob(1_000);
-    let mut storage = builder.build().unwrap();
-
-    assert!(storage.init().await.map_err(|e| error!("{:?}", e)).is_ok());
+    let storage = common::default_test_storage_in(&path).await.unwrap();
     assert_eq!(storage.blobs_count(), 2);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
