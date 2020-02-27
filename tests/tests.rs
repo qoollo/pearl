@@ -103,23 +103,18 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let data = b"test data string";
     let clonned_storage = storage.clone();
     indexes.iter().cloned().for_each(move |mut range| {
-        let builder = std::thread::Builder::new().name(format!("thread#{}", range[0]));
         let st = clonned_storage.clone();
         let mut snd_cloned = snd.clone();
-        let task = move || {
+        let task = async move {
             let s = st.clone();
-            let mut rt = tokio::runtime::Runtime::new().unwrap();
             range.shuffle(&mut rand::thread_rng());
-            let task = async {
-                let start = range[0];
-                for i in range {
-                    write_one(&s, i as u32, data, None).await.unwrap();
-                }
-                snd_cloned.send(start).await.unwrap();
-            };
-            rt.block_on(task);
+            let start = range[0];
+            for i in range {
+                write_one(&s, i as u32, data, None).await.unwrap();
+            }
+            snd_cloned.send(start).await.unwrap();
         };
-        builder.spawn(task).unwrap();
+        tokio::spawn(task);
     });
     let handles = rcv.collect::<Vec<_>>().await;
     assert_eq!(handles.len(), 10);
@@ -146,27 +141,24 @@ async fn test_storage_multithread_blob_overflow() -> Result<(), String> {
         delay_for(Duration::from_millis(10)).await;
         write_one(&storage, i, &data, None).await.unwrap();
     }
+    common::clean(storage, &path).await?;
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
-    common::clean(storage, path).await
+    Ok(())
 }
 
 #[tokio::test]
 async fn test_storage_close() {
     let now = Instant::now();
     let path = common::init("pearl_close");
-    let builder = Builder::new()
-        .work_dir(&path)
-        .blob_file_name_prefix("test")
-        .max_blob_size(1_000_000)
-        .max_data_in_blob(1_000);
-    let mut storage: Storage<KeyTest> = builder.build().unwrap();
-    assert!(storage.init().await.map_err(|e| error!("{:?}", e)).is_ok());
+    let storage = common::default_test_storage_in(&path).await.unwrap();
+    storage.close().await.unwrap();
     let blob_file_path = path.join("test.0.blob");
-    fs::remove_file(blob_file_path).unwrap();
-    fs::remove_file(path.join("pearl.lock")).unwrap();
-    fs::remove_dir(&path).unwrap();
+    let lock_file_path = path.join("pearl.lock");
+    assert!(blob_file_path.exists());
+    assert!(!lock_file_path.exists());
+    fs::remove_dir_all(path).unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
