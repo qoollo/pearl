@@ -141,9 +141,9 @@ async fn test_storage_multithread_blob_overflow() -> Result<(), String> {
         delay_for(Duration::from_millis(10)).await;
         write_one(&storage, i, &data, None).await.unwrap();
     }
-    common::clean(storage, &path).await?;
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
+    common::clean(storage, &path).await?;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     Ok(())
 }
@@ -558,10 +558,10 @@ async fn write_one(
     let key = KeyTest::new(key);
     trace!("key: {:?}", key);
     if let Some(v) = version {
-        debug!("write with");
+        trace!("write with");
         storage.write_with(key, data, meta_with(v)).await
     } else {
-        debug!("write");
+        trace!("write");
         storage.write(key, data).await
     }
     .map_err(|e| e.to_string())
