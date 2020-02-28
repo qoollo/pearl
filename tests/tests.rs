@@ -415,11 +415,9 @@ async fn test_read_all_1000_find_one_key() {
     debug!("read all with key: {:?}", &key);
     let records_read = storage
         .read_all(&KeyTest::new(key))
-        .then(|entry| {
-            async move {
-                debug!("load entry {:?}", entry);
-                entry.load().await.unwrap()
-            }
+        .then(|entry| async move {
+            debug!("load entry {:?}", entry);
+            entry.load().await.unwrap()
         })
         .collect::<Vec<_>>()
         .await;
