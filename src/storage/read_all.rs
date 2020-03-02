@@ -48,7 +48,7 @@ impl<'a, K> Stream for ReadAll<'a, K> {
 }
 
 impl<'a, K> ReadAll<'a, K> {
-    pub(crate) fn new(inner: &'a Storage<K>, key: &'a [u8]) -> Self {
+    pub(crate) const fn new(inner: &'a Storage<K>, key: &'a [u8]) -> Self {
         Self {
             key,
             inner,
@@ -95,7 +95,7 @@ impl<'a, K> ReadAll<'a, K> {
                 let new_fut = async move {
                     let mut entries = Vec::new();
                     for blob in &safe.blobs {
-                        let read_all = blob.read_all(&key).collect::<Vec<_>>().await;
+                        let read_all = blob.read_all(key).collect::<Vec<_>>().await;
                         debug!("read all from blob finished");
                         entries.extend(read_all);
                     }

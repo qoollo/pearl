@@ -28,7 +28,7 @@ impl Blob {
     /// [`FileName`]: struct.FileName.html
     pub(crate) async fn open_new(name: FileName, filter_config: BloomConfig) -> Result<Self> {
         let file = Self::prepare_file(&name)?;
-        let index = Self::create_index(filter_config, &name);
+        let index = Self::create_index(&filter_config, &name);
         let current_offset = Self::new_offset();
         let header = Header::new();
         let mut blob = Self {
@@ -59,7 +59,7 @@ impl Blob {
     }
 
     #[inline]
-    fn create_index(filter_config: BloomConfig, name: &FileName) -> SimpleIndex {
+    fn create_index(filter_config: &BloomConfig, name: &FileName) -> SimpleIndex {
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         SimpleIndex::new(filter_config, index_name)
@@ -115,7 +115,7 @@ impl Blob {
             SimpleIndex::from_file(index_name).await?
         } else {
             debug!("file not found, create new");
-            SimpleIndex::new(filter_config, index_name)
+            SimpleIndex::new(&filter_config, index_name)
         };
         debug!("index initialized");
         let header_size = bincode::serialized_size(&header)?;
@@ -175,7 +175,7 @@ impl Blob {
 
     pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> Result<Record> {
         let loc = self
-            .lookup(&key, meta)
+            .lookup(key, meta)
             .await
             .ok_or(ErrorKind::RecordNotFound)?;
         debug!("key found");
@@ -192,7 +192,7 @@ impl Blob {
     }
 
     async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
-        if self.contains(&key) {
+        if self.contains(key) {
             let entries = self.index.get_entry(key, self.file.clone());
             Self::find_entry(entries, meta)
                 .await
@@ -225,7 +225,7 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) fn id(&self) -> usize {
+    pub(crate) const fn id(&self) -> usize {
         self.name.id
     }
 
@@ -261,7 +261,7 @@ pub struct FileName {
 }
 
 impl FileName {
-    pub fn new(name_prefix: String, id: usize, extension: String, dir: PathBuf) -> Self {
+    pub const fn new(name_prefix: String, id: usize, extension: String, dir: PathBuf) -> Self {
         Self {
             name_prefix,
             id,
@@ -317,7 +317,7 @@ struct Header {
 }
 
 impl Header {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             magic_byte: BLOB_MAGIC_BYTE,
             version: 0,
@@ -333,15 +333,15 @@ pub struct Location {
 }
 
 impl Location {
-    pub fn new(offset: u64, size: usize) -> Self {
+    pub const fn new(offset: u64, size: usize) -> Self {
         Self { offset, size }
     }
 
-    pub(crate) fn size(&self) -> usize {
+    pub(crate) const fn size(&self) -> usize {
         self.size
     }
 
-    pub(crate) fn offset(&self) -> u64 {
+    pub(crate) const fn offset(&self) -> u64 {
         self.offset
     }
 }

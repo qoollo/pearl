@@ -19,12 +19,12 @@ impl Config {
     }
 
     #[inline]
-    pub fn max_blob_size(&self) -> Option<u64> {
+    pub const fn max_blob_size(&self) -> Option<u64> {
         self.max_blob_size
     }
 
     #[inline]
-    pub fn max_data_in_blob(&self) -> Option<u64> {
+    pub const fn max_data_in_blob(&self) -> Option<u64> {
         self.max_data_in_blob
     }
 
@@ -34,12 +34,12 @@ impl Config {
     }
 
     #[inline]
-    pub fn update_interval_ms(&self) -> u64 {
+    pub const fn update_interval_ms(&self) -> u64 {
         self.update_interval_ms
     }
 
     #[inline]
-    pub fn allow_duplicates(&self) -> bool {
+    pub const fn allow_duplicates(&self) -> bool {
         self.allow_duplicates
     }
 

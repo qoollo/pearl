@@ -1,7 +1,9 @@
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
-#![allow(clippy::needless_doctest_main)]
+// #![warn(clippy::all)]
+// #![warn(clippy::nursery)]
 // #![warn(clippy::pedantic)]
+// #![warn(clippy::cargo)]
 
 //! # pearl
 //!

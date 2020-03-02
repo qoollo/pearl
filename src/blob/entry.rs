@@ -67,11 +67,11 @@ impl Entry {
         self.meta.clone()
     }
 
-    pub(crate) fn blob_offset(&self) -> u64 {
+    pub(crate) const fn blob_offset(&self) -> u64 {
         self.blob_offset
     }
 
-    pub(crate) fn full_size(&self) -> usize {
+    pub(crate) const fn full_size(&self) -> usize {
         self.full_size
     }
 }
@@ -181,7 +181,7 @@ impl<'a> Entries<'a> {
     ) -> Poll<Option<Entry>> {
         for h in it {
             if h.key() == key {
-                let entry = Self::create_entry(&file, h);
+                let entry = Self::create_entry(file, h);
                 pin_mut!(entry);
                 let entry = ready!(Future::poll(entry, cx));
                 return Poll::Ready(entry.ok());
@@ -194,7 +194,7 @@ impl<'a> Entries<'a> {
         let meta = Meta::load(file, header.meta_location())
             .await
             .map_err(Error::new)?;
-        let entry = Entry::new(meta, &header, file.clone());
+        let entry = Entry::new(meta, header, file.clone());
         debug!("entry: {:?}", entry);
         Ok(entry)
     }
