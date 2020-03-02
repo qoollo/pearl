@@ -6,7 +6,7 @@ pub(crate) struct Observer {
 }
 
 impl Observer {
-    pub(crate) fn new(update_interval: Duration, inner: Inner) -> Self {
+    pub(crate) const fn new(update_interval: Duration, inner: Inner) -> Self {
         Self {
             update_interval,
             inner,

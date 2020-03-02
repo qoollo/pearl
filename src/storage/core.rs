@@ -104,6 +104,9 @@ impl<K> Storage<K> {
     ///
     /// Storage works in directory provided to builder. If directory don't exist,
     /// storage creates it, otherwise tries to init existing storage.
+    /// # Errors
+    /// Returns error in case of failures with IO operations or
+    /// if some of the required params are missed.
     ///
     /// [`init()`]: struct.Storage.html#method.init
     pub async fn init(&mut self) -> Result<()> {
@@ -138,6 +141,10 @@ impl<K> Storage<K> {
     ///     storage.write(key, data).await
     /// }
     /// ```
+    /// # Errors
+    /// Fails with the same errors as [`write_with`]
+    ///
+    /// [`write_with`]: Storage::write_with
     pub async fn write(&self, key: impl Key, value: Vec<u8>) -> Result<()> {
         self.write_with(key, value, Meta::new()).await
     }
@@ -153,6 +160,8 @@ impl<K> Storage<K> {
     ///     storage.write_with(&key, data, meta).await
     /// }
     /// ```
+    /// # Errors
+    /// Fails if duplicates are not allowed and record already exists.
     pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
         if !self.inner.config.allow_duplicates() {
             debug!("check existing records");
@@ -203,8 +212,7 @@ impl<K> Storage<K> {
         Ok(metas)
     }
 
-    /// Reads the first found data matching given key,
-    /// if are no records with matching key, returns [`Error::RecordNotFound`]
+    /// Reads the first found data matching given key.
     /// # Examples
     /// ```no-run
     /// async fn read_data() {
@@ -212,14 +220,16 @@ impl<K> Storage<K> {
     ///     let data = storage.read(key).await;
     /// }
     /// ```
+    /// # Errors
+    /// Same as [`read_with`]
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
+    /// [`read_with`]: Storage::read_with
     #[inline]
     pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
         self.read_with_optional_meta(key, None).await
     }
-    /// Reads data matching given key and metadata,
-    /// if are no records with matching key, returns [`Error::RecordNotFound`]
+    /// Reads data matching given key and metadata
     /// # Examples
     /// ```no-run
     /// async fn read_data() {
@@ -229,6 +239,8 @@ impl<K> Storage<K> {
     ///     let data = storage.read(&key, &meta).await;
     /// }
     /// ```
+    /// # Errors
+    /// Return error if record is not found.
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
@@ -249,7 +261,7 @@ impl<K> Storage<K> {
             .active_blob
             .as_ref()
             .ok_or(ErrorKind::ActiveBlobNotSet)?
-            .read(&key, meta)
+            .read(key, meta)
             .await;
         debug!("data read from active blob");
         Ok(if let Ok(record) = active_blob_read_res {
@@ -258,7 +270,7 @@ impl<K> Storage<K> {
             let stream: FuturesUnordered<_> = inner
                 .blobs
                 .iter()
-                .map(|blob| blob.read(&key, meta))
+                .map(|blob| blob.read(key, meta))
                 .collect();
             debug!("await for stream of read futures: {}", stream.len());
             let mut task = stream.skip_while(|res| future::ready(res.is_err()));
@@ -275,6 +287,8 @@ impl<K> Storage<K> {
     }
 
     /// Stop blob updater and release lock file
+    /// # Errors
+    /// Fails because of any IO errors
     pub async fn close(&self) -> Result<()> {
         let mut safe = self.inner.safe.lock().await;
         let active_blob = safe.active_blob.take();
@@ -402,8 +416,7 @@ impl<K> Storage<K> {
         let in_active = inner
             .active_blob
             .as_ref()
-            .map(|active_blob| active_blob.contains(key.as_ref()))
-            .unwrap_or(false);
+            .map_or(false, |active_blob| active_blob.contains(key.as_ref()));
         let in_closed = inner.blobs.iter().any(|blob| blob.contains(key.as_ref()));
         in_active || in_closed
     }
@@ -465,7 +478,7 @@ impl Inner {
 }
 
 impl Safe {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             active_blob: None,
             blobs: Vec::new(),

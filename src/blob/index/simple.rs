@@ -39,7 +39,7 @@ pub(crate) enum State {
 }
 
 impl Simple {
-    pub(crate) fn new(filter_config: Config, name: FileName) -> Self {
+    pub(crate) fn new(filter_config: &Config, name: FileName) -> Self {
         let filter = Bloom::new(filter_config);
         Self {
             header: Header {
@@ -53,7 +53,7 @@ impl Simple {
         }
     }
 
-    pub(crate) fn name(&self) -> &FileName {
+    pub(crate) const fn name(&self) -> &FileName {
         &self.name
     }
 
@@ -193,7 +193,7 @@ impl Simple {
         Ok(deserialize(&buf)?)
     }
 
-    fn serialize_bunch(bunch: &mut [RecordHeader], filter: Bloom) -> Result<Vec<u8>> {
+    fn serialize_bunch(bunch: &mut [RecordHeader], filter: &Bloom) -> Result<Vec<u8>> {
         let record_header = bunch.first().ok_or(ErrorKind::EmptyIndexBunch)?;
         let record_header_size = record_header.serialized_size().try_into()?;
         debug!("record header serialized size: {}", record_header_size);
@@ -348,8 +348,7 @@ impl Index for Simple {
 
     fn dump(&mut self) -> Dump {
         if let State::InMemory(bunch) = &mut self.inner {
-            let filter = self.filter.clone();
-            let buf = Self::serialize_bunch(bunch, filter);
+            let buf = Self::serialize_bunch(bunch, &self.filter);
             match buf {
                 Ok(buf) => self.dump_in_memory(buf),
                 Err(ref e) if e.is(&ErrorKind::EmptyIndexBunch) => Dump(future::ok(()).boxed()),

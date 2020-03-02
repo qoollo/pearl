@@ -43,6 +43,8 @@ impl Builder {
 
     /// Creates `Storage` based on given configuration,
     /// returns error if not all params are set.
+    /// # Errors
+    /// Return error if some of the required params is missed
     pub fn build<K>(self) -> Result<Storage<K>> {
         let mut missed_params = String::new();
         if self.config.work_dir().is_none() {
@@ -113,12 +115,14 @@ impl Builder {
     /// Disables check existence of the record on write.
     /// Writing becomes faster because there is no additional disk access
     /// for searching for duplicates.
+    #[must_use]
     pub fn allow_duplicates(mut self) -> Self {
         self.config.set_allow_duplicates(true);
         self
     }
 
     /// Sets custom bloom filter config, if not set, use default values
+    #[must_use]
     pub fn set_filter_config(mut self, config: BloomConfig) -> Self {
         self.config.set_filter(config);
         self

@@ -50,7 +50,7 @@ fn false_positive_rate(k: f64, n: f64, m: f64) -> f64 {
 }
 
 impl Bloom {
-    pub fn new(config: Config) -> Self {
+    pub fn new(config: &Config) -> Self {
         let elements = config.elements as f64;
         debug!("bloom filter for {} elements", elements);
         let max_bit_count = config.max_buf_bits_count; // 1Mb

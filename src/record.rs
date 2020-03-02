@@ -60,7 +60,7 @@ impl Meta {
 
     #[inline]
     pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
-        let res = deserialize(&buf);
+        let res = deserialize(buf);
         trace!("meta deserialized: {:?}", res);
         res.map_err(Into::into)
     }
@@ -163,7 +163,7 @@ impl Record {
     }
 
     /// Get immutable reference to header.
-    pub fn header(&self) -> &Header {
+    pub const fn header(&self) -> &Header {
         &self.header
     }
 
@@ -256,13 +256,13 @@ impl Record {
 
 impl Header {
     pub fn new(key: Vec<u8>, meta_size: u64, data_size: u64, data_checksum: u32) -> Self {
-        let created = std::time::UNIX_EPOCH
-            .elapsed()
-            .map(|d| d.as_secs())
-            .unwrap_or_else(|e| {
+        let created = std::time::UNIX_EPOCH.elapsed().map_or_else(
+            |e| {
                 error!("{}", e);
                 0
-            });
+            },
+            |d| d.as_secs(),
+        );
         Self {
             magic_byte: RECORD_MAGIC_BYTE,
             key,
@@ -285,12 +285,12 @@ impl Header {
     }
 
     #[inline]
-    pub(crate) fn data_size(&self) -> u64 {
+    pub(crate) const fn data_size(&self) -> u64 {
         self.data_size
     }
 
     #[inline]
-    pub(crate) fn meta_size(&self) -> u64 {
+    pub(crate) const fn meta_size(&self) -> u64 {
         self.meta_size
     }
 
@@ -311,7 +311,7 @@ impl Header {
 
     #[inline]
     pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
-        deserialize(&buf).map_err(Error::new)
+        deserialize(buf).map_err(Error::new)
     }
 
     #[inline]
@@ -320,7 +320,7 @@ impl Header {
     }
 
     #[inline]
-    pub fn blob_offset(&self) -> u64 {
+    pub const fn blob_offset(&self) -> u64 {
         self.blob_offset
     }
 
