@@ -117,6 +117,7 @@ impl<K> Storage<K> {
         );
         debug!("work dir content loaded");
         if let Some(files) = cont_res? {
+            debug!("storage init from existing files");
             self.init_from_existing(files).await?
         } else {
             self.init_new().await?
@@ -141,7 +142,7 @@ impl<K> Storage<K> {
         self.write_with(key, value, Meta::new()).await
     }
 
-    /// Similar to [`write()`] but with metadata
+    /// Similar to [`write`] but with metadata
     /// # Examples
     /// ```no-run
     /// async fn write_data() {
@@ -162,17 +163,17 @@ impl<K> Storage<K> {
                 return Ok(());
             }
         }
-        debug!("record with the same meta and key does not exist");
-        let record = Record::create(key, value, meta).map_err(Error::new)?;
-        debug!("await for inner lock");
+        trace!("record with the same meta and key does not exist");
+        let record = Record::create(&key, value, meta).map_err(Error::new)?;
+        trace!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
         let blob = safe
             .active_blob
             .as_mut()
             .ok_or(ErrorKind::ActiveBlobNotSet)?;
-        debug!("get active blob");
+        trace!("get active blob");
         let res = blob.write(record).await;
-        debug!("active blob write finished");
+        trace!("active blob write finished");
         res.map_err(Error::new)
     }
 
@@ -335,24 +336,27 @@ impl<K> Storage<K> {
     async fn init_new(&mut self) -> Result<()> {
         let safe_locked = self.inner.safe.lock();
         let next = self.inner.next_blob_name()?;
-        safe_locked.await.active_blob =
-            Some(Blob::open_new(next).await.map_err(Error::new)?.boxed());
+        let config = self.filter_config();
+        safe_locked.await.active_blob = Some(
+            Blob::open_new(next, config)
+                .await
+                .map_err(Error::new)?
+                .boxed(),
+        );
         Ok(())
     }
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         trace!("init from existing: {:?}", files);
-        let mut blobs = Self::read_blobs(&files).await?;
+        let mut blobs = Self::read_blobs(self.filter_config(), &files).await?;
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
         let mut active_blob = blobs
             .pop()
             .ok_or_else(|| {
-                error!(
-                    "There are some blob files in the work dir: {:?}",
-                    self.inner.config.work_dir()
-                );
+                let wd = self.inner.config.work_dir();
+                error!("There are some blob files in the work dir: {:?}", wd);
                 error!("Creating blobs from all these files failed");
                 ErrorKind::Uninitialized
             })?
@@ -367,7 +371,7 @@ impl<K> Storage<K> {
         Ok(())
     }
 
-    async fn read_blobs(files: &[DirEntry]) -> Result<Vec<Blob>> {
+    async fn read_blobs(filter_config: BloomConfig, files: &[DirEntry]) -> Result<Vec<Blob>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
         debug!("read {} entities", dir_content.len());
@@ -381,9 +385,28 @@ impl<K> Storage<K> {
             }
         });
         debug!("init blobs from found files");
-        let futures: FuturesUnordered<_> = blob_files.map(Blob::from_file).collect();
+        let futures: FuturesUnordered<_> = blob_files
+            .map(|file| Blob::from_file(filter_config.clone(), file))
+            .collect();
         debug!("async init blobs from file");
-        futures.try_collect().await.map_err(Error::new)
+        futures.try_collect().await
+    }
+
+    /// @TODO
+    pub async fn contains(&self, key: impl Key) -> bool {
+        trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
+        let inner = self.inner.safe.lock().await;
+        let in_active = inner
+            .active_blob
+            .as_ref()
+            .map(|active_blob| active_blob.contains(&key))
+            .unwrap_or(false);
+        let in_closed = inner.blobs.iter().any(|blob| blob.contains(&key));
+        in_active || in_closed
+    }
+
+    fn filter_config(&self) -> BloomConfig {
+        self.inner.config.filter()
     }
 }
 

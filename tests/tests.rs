@@ -2,8 +2,8 @@
 extern crate log;
 
 use std::convert::TryInto;
+use std::fs;
 use std::time::{Duration, Instant};
-use std::{env, fs, path::PathBuf};
 
 use futures::{
     future::FutureExt,
@@ -21,79 +21,56 @@ use common::KeyTest;
 #[tokio::test]
 async fn test_storage_init_new() {
     let now = Instant::now();
-    debug!("run test");
-    let dir = common::init("new");
-    debug!("init storage");
-    let storage = common::default_test_storage_in(&dir).await.unwrap();
-    debug!("check count");
+    let path = common::init("new");
+    let storage = common::default_test_storage_in(&path).await.unwrap();
     assert_eq!(storage.blobs_count(), 1);
-    let path = env::temp_dir().join(&dir);
-    let blob_file_path = path.join("test.0.blob");
-    assert!(blob_file_path.exists());
-    debug!("clean");
-    common::clean(storage, dir).await.unwrap();
-    debug!("finished");
+    assert!(path.join("test.0.blob").exists());
+    common::clean(storage, path).await.unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
 #[tokio::test]
 async fn test_storage_init_from_existing() {
     let now = Instant::now();
-    let dir = common::init("existing");
-    let path = env::temp_dir().join(&dir);
-    let task = async {
-        let builder = Builder::new()
-            .work_dir(&path)
-            .blob_file_name_prefix("test")
-            .max_blob_size(900_000)
-            .max_data_in_blob(1_000);
-        let mut temp_storage: Storage<KeyTest> = builder.build()?;
-        temp_storage.init().await?;
-        let records = common::generate_records(15, 100_000);
-        for (key, data) in &records {
-            delay_for(Duration::from_millis(100)).await;
-            write_one(&temp_storage, *key, data, None).await.unwrap();
-        }
-        temp_storage.close().await
-    };
-    task.await.unwrap();
+    let path = common::init("existing");
+    let storage = common::default_test_storage_in(&path).await.unwrap();
+    let records = common::generate_records(15, 1_000);
+    for (key, data) in &records {
+        delay_for(Duration::from_millis(100)).await;
+        write_one(&storage, *key, data, None).await.unwrap();
+    }
+    storage.close().await.unwrap();
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
+    assert!(!path.join("pearl.lock").exists());
 
-    let builder = Builder::new()
-        .work_dir(&path)
-        .blob_file_name_prefix("test")
-        .max_blob_size(1_000_000)
-        .max_data_in_blob(1_000);
-    let mut storage = builder.build().unwrap();
-
-    assert!(storage.init().await.map_err(|e| error!("{:?}", e)).is_ok());
+    let storage = common::default_test_storage_in(&path).await.unwrap();
     assert_eq!(storage.blobs_count(), 2);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
-    common::clean(storage, dir).await.unwrap();
+    common::clean(storage, path).await.unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
 #[tokio::test]
 async fn test_storage_read_write() {
     let now = Instant::now();
-    let dir = common::init("read_write");
-    let storage = common::default_test_storage_in(&dir).await.unwrap();
+    let path = common::init("read_write");
+    let storage = common::default_test_storage_in(&path).await.unwrap();
     let key = 1234;
     let data = b"test data string";
     write_one(&storage, 1234, data, None).await.unwrap();
     let new_data = storage.read(KeyTest::new(key)).await.unwrap();
     assert_eq!(new_data, data);
-    common::clean(storage, dir).await.unwrap();
+    common::clean(storage, path).await.unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
 #[tokio::test]
 async fn test_storage_multiple_read_write() {
     let now = Instant::now();
-    let dir = common::init("multiple");
-    let storage = common::default_test_storage_in(&dir).await.unwrap();
+    let path = common::init("multiple");
+    let storage = common::default_test_storage_in(&path).await.unwrap();
     let keys = (0..100).collect::<Vec<u32>>();
     let data = b"test data string";
 
@@ -111,7 +88,7 @@ async fn test_storage_multiple_read_write() {
         .map(Result::unwrap)
         .collect::<Vec<_>>()
         .await;
-    common::clean(storage, dir).await.unwrap();
+    common::clean(storage, path).await.unwrap();
     assert_eq!(keys.len(), data_from_file.len());
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
@@ -119,8 +96,8 @@ async fn test_storage_multiple_read_write() {
 #[tokio::test]
 async fn test_multithread_read_write() -> Result<(), String> {
     let now = Instant::now();
-    let dir = common::init("multithread");
-    let storage = common::default_test_storage_in(&dir).await?;
+    let path = common::init("multithread");
+    let storage = common::default_test_storage_in(&path).await?;
     let indexes = common::create_indexes(10, 10);
     let (snd, rcv) = futures::channel::mpsc::channel(1024);
     let data = b"test data string";
@@ -128,22 +105,16 @@ async fn test_multithread_read_write() -> Result<(), String> {
     indexes.iter().cloned().for_each(move |mut range| {
         let st = clonned_storage.clone();
         let mut snd_cloned = snd.clone();
-        std::thread::Builder::new()
-            .name(format!("thread#{}", range[0]))
-            .spawn(move || {
-                let s = st.clone();
-                let mut rt = tokio::runtime::Runtime::new().unwrap();
-                range.shuffle(&mut rand::thread_rng());
-                let task = async {
-                    let start = range[0];
-                    for i in range {
-                        write_one(&s, i as u32, data, None).await.unwrap();
-                    }
-                    snd_cloned.send(start).await.unwrap();
-                };
-                rt.block_on(task);
-            })
-            .unwrap();
+        let task = async move {
+            let s = st.clone();
+            range.shuffle(&mut rand::thread_rng());
+            let start = range[0];
+            for i in range {
+                write_one(&s, i as u32, data, None).await.unwrap();
+            }
+            snd_cloned.send(start).await.unwrap();
+        };
+        tokio::spawn(task);
     });
     let handles = rcv.collect::<Vec<_>>().await;
     assert_eq!(handles.len(), 10);
@@ -153,7 +124,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
         .map(|i| *i as u32)
         .collect::<Vec<_>>();
     common::check_all_written(&storage, keys)?;
-    common::clean(storage, dir).await.unwrap();
+    common::clean(storage, path).await.unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     Ok(())
 }
@@ -161,51 +132,45 @@ async fn test_multithread_read_write() -> Result<(), String> {
 #[tokio::test]
 async fn test_storage_multithread_blob_overflow() -> Result<(), String> {
     let now = Instant::now();
-    let dir = common::init("overflow");
-    let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
+    let path = common::init("overflow");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let mut range: Vec<u32> = (0..90).collect();
     range.shuffle(&mut rand::thread_rng());
     let data = "test data string".repeat(16).as_bytes().to_vec();
     for i in range {
-        delay_for(Duration::from_millis(100)).await;
+        delay_for(Duration::from_millis(10)).await;
         write_one(&storage, i, &data, None).await.unwrap();
     }
-    let path = env::temp_dir().join(&dir);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
+    common::clean(storage, &path).await?;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
-    common::clean(storage, dir).await
+    Ok(())
 }
 
 #[tokio::test]
 async fn test_storage_close() {
     let now = Instant::now();
-    let dir = common::init("pearl_close");
-    let builder = Builder::new()
-        .work_dir(&dir)
-        .blob_file_name_prefix("test")
-        .max_blob_size(1_000_000)
-        .max_data_in_blob(1_000);
-    let mut storage: Storage<KeyTest> = builder.build().unwrap();
-    assert!(storage.init().await.map_err(|e| error!("{:?}", e)).is_ok());
-    let path: PathBuf = dir.into();
+    let path = common::init("pearl_close");
+    let storage = common::default_test_storage_in(&path).await.unwrap();
+    storage.close().await.unwrap();
     let blob_file_path = path.join("test.0.blob");
-    fs::remove_file(blob_file_path).unwrap();
-    fs::remove_file(path.join("pearl.lock")).unwrap();
-    fs::remove_dir(&path).unwrap();
+    let lock_file_path = path.join("pearl.lock");
+    assert!(blob_file_path.exists());
+    assert!(!lock_file_path.exists());
+    fs::remove_dir_all(path).unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
 #[tokio::test]
 async fn test_on_disk_index() -> Result<(), String> {
     let now = Instant::now();
-    let dir = common::init("index");
+    let path = common::init("index");
     let data_size = 500;
     let max_blob_size = 1500;
     let num_records_to_write = 5u32;
     let read_key = 3u32;
 
-    let path = env::temp_dir().join(&dir);
     let mut storage = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
@@ -232,22 +197,22 @@ async fn test_on_disk_index() -> Result<(), String> {
     let new_data = storage.read(KeyTest::new(read_key)).await.unwrap();
     assert_eq!(new_data, data);
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
-    common::clean(storage, dir).await
+    common::clean(storage, path).await
 }
 
 #[tokio::test]
 async fn test_work_dir_lock() {
     let now = Instant::now();
-    let dir = common::init("work_dir_lock");
-    let storage_one = common::create_test_storage(&dir, 1_000_000);
+    let path = common::init("work_dir_lock");
+    let storage_one = common::create_test_storage(&path, 1_000_000);
     let res_one = storage_one.await;
     assert!(res_one.is_ok());
     let storage = res_one.unwrap();
-    let storage_two = common::create_test_storage(&dir, 1_000_000);
+    let storage_two = common::create_test_storage(&path, 1_000_000);
     let res_two = storage_two.await;
     dbg!(&res_two);
     assert!(res_two.is_err());
-    common::clean(storage, dir)
+    common::clean(storage, path)
         .map(|res| res.expect("work dir clean failed"))
         .await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -256,19 +221,18 @@ async fn test_work_dir_lock() {
 #[tokio::test]
 async fn test_index_from_blob() {
     let now = Instant::now();
-    let dir = common::init("index_from_blob");
-    let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
+    let path = common::init("index_from_blob");
+    let storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
     let records = common::generate_records(10, 10_000);
     for (i, data) in &records {
         write_one(&storage, *i, data, None).await.unwrap();
     }
     storage.close().await.unwrap();
-    let dir_path: PathBuf = env::temp_dir().join(&dir);
-    let index_file_path = dir_path.join("test.0.index");
+    let index_file_path = path.join("test.0.index");
     fs::remove_file(&index_file_path).unwrap();
-    let new_storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
+    let new_storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
     assert!(index_file_path.exists());
-    common::clean(new_storage, dir)
+    common::clean(new_storage, path)
         .map(|res| res.expect("work dir clean failed"))
         .await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -277,14 +241,14 @@ async fn test_index_from_blob() {
 #[tokio::test]
 async fn test_write_with() {
     let now = Instant::now();
-    let dir = common::init("write_with");
-    let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
+    let path = common::init("write_with");
+    let storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
     let key = 1234;
     let data = b"data_with_empty_meta";
     write_one(&storage, key, data, None).await.unwrap();
     let data = b"data_with_meta";
     write_one(&storage, key, data, Some("1.0")).await.unwrap();
-    common::clean(storage, dir)
+    common::clean(storage, path)
         .map(|res| res.expect("work dir clean failed"))
         .await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -293,8 +257,8 @@ async fn test_write_with() {
 #[tokio::test]
 async fn test_write_with_with_on_disk_index() {
     let now = Instant::now();
-    let dir = common::init("write_with_with_on_disk_index");
-    let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
+    let path = common::init("write_with_with_on_disk_index");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
 
     let key = 1234;
     let data = b"data_with_empty_meta";
@@ -312,7 +276,7 @@ async fn test_write_with_with_on_disk_index() {
 
     // assert!(write_one(&storage, key, data, Some("1.0")).await.is_err());
 
-    common::clean(storage, dir)
+    common::clean(storage, path)
         .map(|res| res.expect("work dir clean failed"))
         .await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -321,8 +285,8 @@ async fn test_write_with_with_on_disk_index() {
 #[tokio::test]
 async fn test_write_512_records_with_same_key() {
     let now = Instant::now();
-    let dir = common::init("write_1_000_000_records_with_same_key");
-    let storage = common::create_test_storage(&dir, 10_000).await.unwrap();
+    let path = common::init("write_1_000_000_records_with_same_key");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let key = KeyTest::new(1234);
     let value = b"data_with_empty_meta".to_vec();
     for i in 0..512 {
@@ -331,7 +295,7 @@ async fn test_write_512_records_with_same_key() {
         delay_for(Duration::from_micros(1)).await;
         storage.write_with(&key, value.clone(), meta).await.unwrap();
     }
-    common::clean(storage, dir)
+    common::clean(storage, path)
         .await
         .expect("work dir clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -340,8 +304,8 @@ async fn test_write_512_records_with_same_key() {
 #[tokio::test]
 async fn test_read_with() {
     let now = Instant::now();
-    let dir = common::init("read_with");
-    let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
+    let path = common::init("read_with");
+    let storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
     debug!("storage created");
     let key = 2345;
     trace!("key: {}", key);
@@ -360,19 +324,19 @@ async fn test_read_with() {
     debug!("read finished");
     assert_ne!(data_read_with, data_read);
     assert_eq!(data_read_with, data);
-    common::clean(storage, dir)
+    common::clean(storage, path)
         .await
         .expect("work dir clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
 #[tokio::test]
-async fn test_read_all_1000() {
+async fn test_read_all_load_all() {
     let now = Instant::now();
-    let dir = common::init("read_all");
-    let storage = common::create_test_storage(&dir, 100_000).await.unwrap();
+    let path = common::init("read_all");
+    let storage = common::create_test_storage(&path, 100_000).await.unwrap();
     let key = 3456;
-    let records_write = common::generate_records(512, 9_000);
+    let records_write = common::generate_records(500, 9_000);
     for (i, data) in &records_write {
         delay_for(Duration::from_millis(1)).await;
         write_one(&storage, key, data, Some(&i.to_string()))
@@ -392,23 +356,22 @@ async fn test_read_all_1000() {
     records.sort();
     records_read.sort();
     assert_eq!(records, records_read);
-    common::clean(storage, dir)
+    common::clean(storage, path)
         .await
         .expect("work dir clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
 #[tokio::test]
-async fn test_read_all_1000_find_one_key() {
+async fn test_read_all_find_one_key() {
     let now = Instant::now();
-    let dir = common::init("read_all_1000_find_one_key");
-    let storage = common::create_test_storage(&dir, 1_000_000).await.unwrap();
+    let path = common::init("read_all_1000_find_one_key");
+    let storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
     let count = 1000;
-    let size = 30_000;
+    let size = 3_000;
     info!("generate {} records with size {}", count, size);
     let records_write = common::generate_records(count, size);
     for (i, data) in &records_write {
-        delay_for(Duration::from_millis(1)).await;
         write_one(&storage, *i, data, None).await.unwrap();
     }
     let key = records_write.last().unwrap().0;
@@ -433,7 +396,152 @@ async fn test_read_all_1000_find_one_key() {
             .unwrap(),
         &records_read[0]
     );
-    common::clean(storage, dir)
+    common::clean(storage, path)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_contains_bloom_filter_single() {
+    let now = Instant::now();
+    let path = common::init("contains_bloom_filter_single");
+    let storage = common::create_test_storage(&path, 10).await.unwrap();
+    let data = b"some_random_data";
+    let repeat = 8192;
+    for i in 0..repeat {
+        let key = KeyTest::new(i);
+        storage.write(&key, data.to_vec()).await.unwrap();
+        assert!(storage.contains(key).await);
+        let data = b"other_random_data";
+        let key = KeyTest::new(i + repeat);
+        storage.write(&key, data.to_vec()).await.unwrap();
+        assert!(storage.contains(key).await);
+        let key = KeyTest::new(i + 2 * repeat);
+        assert!(!storage.contains(key).await);
+    }
+    common::clean(storage, path)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+#[tokio::test]
+async fn test_contains_bloom_filter_multiple() {
+    let now = Instant::now();
+    let path = common::init("contains_bloom_filter_multiple");
+    let storage = common::create_test_storage(&path, 20000).await.unwrap();
+    let data =
+        b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
+    for i in 1..800 {
+        let key = KeyTest::new(i);
+        storage.write(&key, data.to_vec()).await.unwrap();
+        delay_for(Duration::from_millis(6)).await;
+        trace!("blobs count: {}", storage.blobs_count());
+    }
+    for i in 1..800 {
+        assert!(storage.contains(KeyTest::new(i)).await);
+    }
+    for i in 800..1600 {
+        assert!(!storage.contains(KeyTest::new(i)).await);
+    }
+    common::clean(storage, path)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_contains_bloom_filter_init_from_existing() {
+    let now = Instant::now();
+    let path = common::init("contains_bloom_filter_init_from_existing");
+    debug!("open new storage");
+    let base = 20_000;
+    {
+        let storage = common::create_test_storage(&path, 100_000).await.unwrap();
+        debug!("write some data");
+        let data =
+        b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
+        for i in 1..base {
+            let key = KeyTest::new(i);
+            trace!("write key: {}", i);
+            storage.write(&key, data.to_vec()).await.unwrap();
+            trace!("blobs count: {}", storage.blobs_count());
+        }
+        debug!("close storage");
+        storage.close().await.unwrap();
+    }
+
+    debug!("storage closed, await a little");
+    delay_for(Duration::from_millis(1000)).await;
+    debug!("reopen storage");
+    let storage = common::create_test_storage(&path, 100).await.unwrap();
+    debug!("check contains");
+    for i in 1..base {
+        trace!("check key: {}", i);
+        assert!(storage.contains(KeyTest::new(i)).await);
+    }
+    info!("check certainly missed keys");
+    let mut false_positive_counter = 0usize;
+    for i in base..base * 2 {
+        trace!("check key: {}", i);
+        if storage.contains(KeyTest::new(i)).await {
+            false_positive_counter += 1;
+        }
+    }
+    let fpr = false_positive_counter as f64 / base as f64;
+    info!("false positive rate: {:.6} < 0.001", fpr);
+    assert!(fpr < 0.001);
+    common::clean(storage, path)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_contains_bloom_filter_generated() {
+    let now = Instant::now();
+    let path = common::init("contains_bloom_filter_generated");
+    debug!("open new storage");
+    let base = 20_000;
+    {
+        let storage = common::create_test_storage(&path, 100_000).await.unwrap();
+        debug!("write some data");
+        let data =
+        b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
+        for i in 1..base {
+            let key = KeyTest::new(i);
+            trace!("write key: {}", i);
+            storage.write(&key, data.to_vec()).await.unwrap();
+            trace!("blobs count: {}", storage.blobs_count());
+        }
+        debug!("close storage");
+        storage.close().await.unwrap();
+        let index_file_path = path.join("test.0.index");
+        fs::remove_file(index_file_path).unwrap();
+        info!("index file removed");
+    }
+
+    debug!("storage closed, await a little");
+    delay_for(Duration::from_millis(1000)).await;
+    debug!("reopen storage");
+    let storage = common::create_test_storage(&path, 100).await.unwrap();
+    debug!("check contains");
+    for i in 1..base {
+        trace!("check key: {}", i);
+        assert!(storage.contains(KeyTest::new(i)).await);
+    }
+    info!("check certainly missed keys");
+    let mut false_positive_counter = 0usize;
+    for i in base..base * 2 {
+        trace!("check key: {}", i);
+        if storage.contains(KeyTest::new(i)).await {
+            false_positive_counter += 1;
+        }
+    }
+    let fpr = false_positive_counter as f64 / base as f64;
+    info!("false positive rate: {:.6} < 0.001", fpr);
+    assert!(fpr < 0.001);
+    common::clean(storage, path)
         .await
         .expect("work dir clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -450,10 +558,10 @@ async fn write_one(
     let key = KeyTest::new(key);
     trace!("key: {:?}", key);
     if let Some(v) = version {
-        debug!("write with");
+        trace!("write with");
         storage.write_with(key, data, meta_with(v)).await
     } else {
-        debug!("write");
+        trace!("write");
         storage.write(key, data).await
     }
     .map_err(|e| e.to_string())

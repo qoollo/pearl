@@ -40,7 +40,7 @@ impl Observer {
 
 async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
     let (active_size, active_count) = {
-        debug!("await for lock");
+        trace!("await for lock");
         let safe_locked = inner.safe.lock().await;
         debug!("lock acquired");
         let active_blob = safe_locked
@@ -71,7 +71,10 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
 async fn update_active_blob(inner: Inner) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
-    let new_active = Blob::open_new(next_name).await.map_err(Error::new)?.boxed();
+    let new_active = Blob::open_new(next_name, inner.config.filter())
+        .await
+        .map_err(Error::new)?
+        .boxed();
 
     {
         let mut safe_locked = inner.safe.lock().await;

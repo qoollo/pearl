@@ -1,8 +1,6 @@
 use super::prelude::*;
-use crate::prelude::*;
 
 use super::index::Index;
-use super::simple_index::SimpleIndex;
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
@@ -28,9 +26,9 @@ impl Blob {
     /// Panics if file with same path already exists
     ///
     /// [`FileName`]: struct.FileName.html
-    pub(crate) async fn open_new(name: FileName) -> Result<Self> {
+    pub(crate) async fn open_new(name: FileName, filter_config: BloomConfig) -> Result<Self> {
         let file = Self::prepare_file(&name)?;
-        let index = Self::create_index(&name);
+        let index = Self::create_index(filter_config, &name);
         let current_offset = Self::new_offset();
         let header = Header::new();
         let mut blob = Self {
@@ -61,10 +59,10 @@ impl Blob {
     }
 
     #[inline]
-    fn create_index(name: &FileName) -> SimpleIndex {
+    fn create_index(filter_config: BloomConfig, name: &FileName) -> SimpleIndex {
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        SimpleIndex::new(index_name)
+        SimpleIndex::new(filter_config, index_name)
     }
 
     #[inline]
@@ -102,24 +100,24 @@ impl Blob {
         Box::new(self)
     }
 
-    pub(crate) async fn from_file(path: PathBuf) -> Result<Self> {
+    pub(crate) async fn from_file(filter_config: BloomConfig, path: PathBuf) -> Result<Self> {
         debug!("create file instance");
         let file: File = File::from_std_file(Self::open_file(&path)?)?;
         let name = FileName::from_path(&path)?;
         let len = file.metadata()?.len();
         let header = Header::new();
-        debug!("    blob file size: {} MB", len / 1_000_000);
+        debug!("blob file size: {} MB", len / 1_000_000);
         let mut index_name: FileName = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        debug!("    looking for index file: [{}]", index_name.to_string());
+        debug!("looking for index file: [{}]", index_name.to_string());
         let index = if index_name.exists() {
-            debug!("        file exists");
+            debug!("file exists");
             SimpleIndex::from_file(index_name).await?
         } else {
-            debug!("        file not found, create new");
-            SimpleIndex::new(index_name)
+            debug!("file not found, create new");
+            SimpleIndex::new(filter_config, index_name)
         };
-        debug!("    index initialized");
+        debug!("index initialized");
         let header_size = bincode::serialized_size(&header)?;
         let mut blob = Self {
             header,
@@ -169,6 +167,7 @@ impl Blob {
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
         let bytes_written = self.file.write_at(buf, *offset).await?;
+        trace!("push record header");
         self.index.push(record.header().clone());
         *offset += bytes_written as u64;
         Ok(())
@@ -241,6 +240,11 @@ impl Blob {
         }
         trace!("get all headers finished");
         Ok(metas)
+    }
+
+    pub(crate) fn contains(&self, key: &impl Key) -> bool {
+        trace!("check bloom filter");
+        self.index.contains_key(key.as_ref())
     }
 }
 
@@ -375,7 +379,7 @@ impl RawRecords {
     }
 
     async fn read_at(file: File, size: u64, offset: u64) -> Result<RecordHeader> {
-        debug!("call read_at: {} bytes at {}", size, offset);
+        trace!("call read_at: {} bytes at {}", size, offset);
         let buf = file.read_at(size.try_into()?, offset).await?;
         RecordHeader::from_raw(&buf).map_err(Error::new)
     }
@@ -392,14 +396,13 @@ impl RawRecords {
         if self.file_len < self.current_offset + self.record_header_size {
             self.read_fut = None;
         } else {
-            self.read_fut = Some(
-                Self::read_at(
-                    self.file.clone(),
-                    self.record_header_size,
-                    self.current_offset,
-                )
-                .boxed(),
-            );
+            let read_fut = Self::read_at(
+                self.file.clone(),
+                self.record_header_size,
+                self.current_offset,
+            )
+            .boxed();
+            self.read_fut = Some(read_fut);
         }
     }
 }
@@ -409,16 +412,10 @@ impl Stream for RawRecords {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let res = if let Some(ref mut f) = self.read_fut {
-            match ready!(Future::poll(f.as_mut(), cx)) {
-                Ok(header) => {
-                    self.update_future(&header);
-                    Some(Ok(header))
-                }
-                Err(e) => {
-                    error!("{:?}", e);
-                    Some(Err(e))
-                }
-            }
+            Some(ready!(Future::poll(f.as_mut(), cx)).map(|h| {
+                self.update_future(&h);
+                h
+            }))
         } else {
             None
         };

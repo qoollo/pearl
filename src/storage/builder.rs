@@ -117,4 +117,10 @@ impl Builder {
         self.config.set_allow_duplicates(true);
         self
     }
+
+    /// Sets custom bloom filter config, if not set, use default values
+    pub fn set_filter_config(mut self, config: BloomConfig) -> Self {
+        self.config.set_filter(config);
+        self
+    }
 }

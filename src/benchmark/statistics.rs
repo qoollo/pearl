@@ -29,13 +29,7 @@ impl Statistics {
         let new_pile: Vec<_> = self
             .pile
             .chunks(2)
-            .map(|pair| {
-                if pair.len() == 2 {
-                    pair[0] + pair[1]
-                } else {
-                    pair[0]
-                }
-            })
+            .map(|p| if p.len() == 2 { p[0] + p[1] } else { p[0] })
             .collect();
         print!(
             "merge: before {}, after {} ",

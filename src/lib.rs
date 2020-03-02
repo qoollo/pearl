@@ -57,7 +57,7 @@ mod error;
 mod record;
 mod storage;
 
-pub use blob::{Entries, Entry};
+pub use blob::{filter, Entries, Entry};
 pub use error::{Error, Kind as ErrorKind, Result};
 pub use record::Meta;
 pub use storage::{Builder, Key, ReadAll, Storage};
@@ -66,7 +66,7 @@ mod prelude {
     pub(crate) type PinBox<T> = Pin<Box<T>>;
     pub(crate) use super::*;
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
-    pub(crate) use blob::{self, Blob, File, Location};
+    pub(crate) use blob::{self, Blob, BloomConfig, File, Location};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::{
         future::{self, Future, FutureExt, TryFutureExt},

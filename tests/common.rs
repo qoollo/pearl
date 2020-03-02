@@ -4,6 +4,8 @@ use chrono::Local;
 use env_logger::fmt::Color;
 use log::Level;
 use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 use std::{env, fs};
 
 use futures::{
@@ -33,7 +35,7 @@ impl KeyTest {
     }
 }
 
-pub fn init(dir_name: &str) -> String {
+pub fn init(dir_name: &str) -> PathBuf {
     env_logger::builder()
         .format(|buf, record: &log::Record| {
             let mut style = buf.style();
@@ -58,19 +60,21 @@ pub fn init(dir_name: &str) -> String {
         .filter_level(log::LevelFilter::Info)
         .try_init()
         .unwrap_or(());
-    format!(
-        "/tmp/pearl-test/{}/{}/",
+    env::temp_dir().join(format!(
+        "pearl_test/{}/{}",
         std::time::UNIX_EPOCH.elapsed().unwrap().as_secs() % 1_563_100_000,
         dir_name
-    )
+    ))
 }
 
-pub async fn default_test_storage_in(dir_name: &str) -> Result<Storage<KeyTest>, String> {
+pub async fn default_test_storage_in(
+    dir_name: impl AsRef<Path>,
+) -> Result<Storage<KeyTest>, String> {
     create_test_storage(dir_name, 10_000).await
 }
 
 pub async fn create_test_storage(
-    dir_name: &str,
+    dir_name: impl AsRef<Path>,
     max_blob_size: u64,
 ) -> Result<Storage<KeyTest>, String> {
     let path = env::temp_dir().join(dir_name);
@@ -78,7 +82,7 @@ pub async fn create_test_storage(
         .work_dir(&path)
         .blob_file_name_prefix("test")
         .max_blob_size(max_blob_size)
-        .max_data_in_blob(1_000)
+        .max_data_in_blob(100_000)
         .allow_duplicates();
     let mut storage = builder.build().unwrap();
     storage.init().await.map_err(|e| format!("{:?}", e))?;
@@ -91,10 +95,9 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-pub async fn clean(storage: Storage<KeyTest>, dir: String) -> Result<(), String> {
+pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<(), String> {
     std::thread::sleep(std::time::Duration::from_millis(100));
     storage.close().await.map_err(|e| e.to_string())?;
-    let path = env::temp_dir().join(dir);
     fs::remove_dir_all(path).map_err(|e| e.to_string())
 }
 
