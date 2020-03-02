@@ -392,7 +392,10 @@ impl<K> Storage<K> {
         futures.try_collect().await
     }
 
-    /// @TODO
+    /// `contains` is used to check whether a key is in storage.
+    /// Uses bloom filter under the hood, so false positive results are possible,
+    /// but false negatives are not.
+    /// In other words, `contains` returns either "possibly in storage" or "definitely not".
     pub async fn contains(&self, key: impl Key) -> bool {
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.lock().await;
