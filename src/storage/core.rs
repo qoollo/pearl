@@ -143,6 +143,8 @@ impl<K> Storage<K> {
     /// ```
     /// # Errors
     /// Fails with the same errors as [`write_with`]
+    ///
+    /// [`write_with`]: Storage::write_with
     pub async fn write(&self, key: impl Key, value: Vec<u8>) -> Result<()> {
         self.write_with(key, value, Meta::new()).await
     }
@@ -222,6 +224,7 @@ impl<K> Storage<K> {
     /// Same as [`read_with`]
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
+    /// [`read_with`]: Storage::read_with
     #[inline]
     pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
         self.read_with_optional_meta(key, None).await
