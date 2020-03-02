@@ -192,10 +192,14 @@ impl Blob {
     }
 
     async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
-        let entries = self.index.get_entry(key, self.file.clone());
-        Self::find_entry(entries, meta)
-            .await
-            .map(|entry| Location::new(entry.blob_offset(), entry.full_size()))
+        if self.contains(&key) {
+            let entries = self.index.get_entry(key, self.file.clone());
+            Self::find_entry(entries, meta)
+                .await
+                .map(|entry| Location::new(entry.blob_offset(), entry.full_size()))
+        } else {
+            None
+        }
     }
 
     async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Option<Entry> {
@@ -242,9 +246,9 @@ impl Blob {
         Ok(metas)
     }
 
-    pub(crate) fn contains(&self, key: &impl Key) -> bool {
+    pub(crate) fn contains(&self, key: &[u8]) -> bool {
         trace!("check bloom filter");
-        self.index.contains_key(key.as_ref())
+        self.index.contains_key(key)
     }
 }
 

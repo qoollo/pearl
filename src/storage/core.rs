@@ -399,9 +399,9 @@ impl<K> Storage<K> {
         let in_active = inner
             .active_blob
             .as_ref()
-            .map(|active_blob| active_blob.contains(&key))
+            .map(|active_blob| active_blob.contains(key.as_ref()))
             .unwrap_or(false);
-        let in_closed = inner.blobs.iter().any(|blob| blob.contains(&key));
+        let in_closed = inner.blobs.iter().any(|blob| blob.contains(key.as_ref()));
         in_active || in_closed
     }
 
