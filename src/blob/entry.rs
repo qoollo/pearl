@@ -40,6 +40,8 @@ pub struct Entries<'a> {
 
 impl Entry {
     /// Returns record data
+    /// # Errors
+    /// Returns the error type for I/O operations, see [`std::io::Error`]
     pub async fn load(&self) -> IOResult<Vec<u8>> {
         self.blob_file
             .read_at(self.data_size, self.data_offset)

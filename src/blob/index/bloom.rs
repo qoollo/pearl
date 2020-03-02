@@ -46,7 +46,7 @@ impl Default for Config {
 }
 
 fn false_positive_rate(k: f64, n: f64, m: f64) -> f64 {
-    (1f64 - 1f64.exp().powf(-k * n / m)).powi(k as i32)
+    (1_f64 - 1_f64.exp().powf(-k * n / m)).powi(k as i32)
 }
 
 impl Bloom {
@@ -56,9 +56,9 @@ impl Bloom {
         let max_bit_count = config.max_buf_bits_count; // 1Mb
         debug!("max bit count: {}", max_bit_count);
         let k = config.hashers_count;
-        let mut bits_count = (elements * k as f64 / 2f64.ln()) as usize;
+        let mut bits_count = (elements * k as f64 / 2_f64.ln()) as usize;
         let bits_step = config.buf_increase_step;
-        let mut fpr = 1f64;
+        let mut fpr = 1_f64;
         while fpr > config.preferred_false_positive_rate {
             if bits_count >= max_bit_count {
                 trace!("bits count EQ or GREATER max bit count");
@@ -83,7 +83,7 @@ impl Bloom {
         Self {
             inner: bitvec![0; bits_count as usize],
             hashers: Self::hashers(k),
-            ..Default::default()
+            ..Self::default()
         }
     }
 
