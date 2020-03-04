@@ -341,7 +341,10 @@ impl<K> Storage<K> {
             .write(true)
             .custom_flags(O_EXCL)
             .open(&lock_file_path)
-            .map_err(Error::new)?;
+            .map_err(|e| {
+                error!("working directory is locked: {:?}", lock_file_path);
+                e
+            })?;
         debug!("{} not locked", path.display());
         self.inner.safe.lock().await.lock_file = Some(lock_file);
         Ok(())
