@@ -343,6 +343,8 @@ impl<K> Storage<K> {
             .open(&lock_file_path)
             .map_err(|e| {
                 error!("working directory is locked: {:?}", lock_file_path);
+                error!("check if any other bob instances are running");
+                error!("or delete .lock file and try again");
                 e
             })?;
         debug!("{} not locked", path.display());
