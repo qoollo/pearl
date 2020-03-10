@@ -175,7 +175,7 @@ impl Blob {
 
     pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> Result<Record> {
         let loc = self
-            .lookup(key, meta)
+            .get_location(key, meta)
             .await
             .ok_or(ErrorKind::RecordNotFound)?;
         debug!("key found");
@@ -191,8 +191,8 @@ impl Blob {
         self.index.get_entry(key, self.file.clone())
     }
 
-    async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
-        if self.contains(key) {
+    async fn get_location(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
+        if self.fast_check(key) {
             let entries = self.index.get_entry(key, self.file.clone());
             Self::find_entry(entries, meta)
                 .await
@@ -200,6 +200,10 @@ impl Blob {
         } else {
             None
         }
+    }
+
+    pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> bool {
+        self.get_location(key, meta).await.is_some()
     }
 
     async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Option<Entry> {
@@ -246,9 +250,9 @@ impl Blob {
         Ok(metas)
     }
 
-    pub(crate) fn contains(&self, key: &[u8]) -> bool {
+    pub(crate) fn fast_check(&self, key: &[u8]) -> bool {
         trace!("check bloom filter");
-        self.index.contains_key(key)
+        self.index.fast_check_key(key)
     }
 }
 

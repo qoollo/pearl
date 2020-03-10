@@ -18,7 +18,7 @@ mod prelude {
 pub(crate) trait Index: Send + Sync {
     fn get(&self, key: &[u8]) -> Get;
     fn push(&mut self, h: RecordHeader) -> Push;
-    fn contains_key(&self, key: &[u8]) -> bool;
+    fn contains_key(&self, key: &[u8]) -> PinBox<dyn Future<Output = Result<bool>> + Send>;
     fn count(&self) -> Count;
     fn dump(&mut self) -> Dump;
     fn load(&mut self) -> Load;

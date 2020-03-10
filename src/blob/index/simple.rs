@@ -53,6 +53,10 @@ impl Simple {
         }
     }
 
+    pub fn fast_check_key(&self, key: &[u8]) -> bool {
+        self.filter.contains(key)
+    }
+
     pub(crate) const fn name(&self) -> &FileName {
         &self.name
     }
@@ -229,6 +233,14 @@ impl Simple {
         Ok(buf)
     }
 
+    fn check_result(res: Result<RecordHeader>) -> Result<bool> {
+        match res {
+            Ok(_) => Ok(true),
+            Err(ref e) if e.is(&ErrorKind::RecordNotFound) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
+
     fn deserialize_header(buf: &[u8]) -> Result<Header> {
         trace!("deserialize header from buf: {}", buf.len());
         deserialize(buf).map_err(Error::new)
@@ -309,8 +321,8 @@ impl Simple {
 }
 
 impl Index for Simple {
-    fn contains_key(&self, key: &[u8]) -> bool {
-        self.filter.contains(key)
+    fn contains_key(&self, key: &[u8]) -> PinBox<dyn Future<Output = Result<bool>> + Send> {
+        self.get(key).map(Self::check_result).boxed()
     }
 
     fn push(&mut self, h: RecordHeader) -> Push {

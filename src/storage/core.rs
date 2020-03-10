@@ -412,17 +412,38 @@ impl<K> Storage<K> {
     }
 
     /// `contains` is used to check whether a key is in storage.
+    /// Slower than `fast_check`, because doesn't prevent disk IO operations.
+    /// `contains` returns either "definitely in storage" or "definitely not".
+    pub async fn contains(&self, key: impl Key) -> bool {
+        let key = key.as_ref();
+        let inner = self.inner.safe.lock().await;
+        let in_active = if let Some(active_blob) = &inner.active_blob {
+            active_blob.contains(key, None).await
+        } else {
+            false
+        };
+        if !in_active {
+            for blob in &inner.blobs {
+                if blob.contains(key, None).await {
+                    return true;
+                }
+            }
+        }
+        in_active
+    }
+
+    /// `fast_check` is used to check whether a key is in storage.
     /// Uses bloom filter under the hood, so false positive results are possible,
     /// but false negatives are not.
-    /// In other words, `contains` returns either "possibly in storage" or "definitely not".
-    pub async fn contains(&self, key: impl Key) -> bool {
+    /// In other words, `fast_check` returns either "possibly in storage" or "definitely not".
+    pub async fn fast_check(&self, key: impl Key) -> bool {
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.lock().await;
         let in_active = inner
             .active_blob
             .as_ref()
-            .map_or(false, |active_blob| active_blob.contains(key.as_ref()));
-        let in_closed = inner.blobs.iter().any(|blob| blob.contains(key.as_ref()));
+            .map_or(false, |active_blob| active_blob.fast_check(key.as_ref()));
+        let in_closed = inner.blobs.iter().any(|blob| blob.fast_check(key.as_ref()));
         in_active || in_closed
     }
 
