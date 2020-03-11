@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 /// bloom filter for faster check record contains in blob
 pub mod bloom;
+mod btree;
 mod simple;
 
 pub(crate) use super::prelude::*;
