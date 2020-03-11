@@ -192,7 +192,7 @@ impl Blob {
     }
 
     async fn get_location(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
-        if self.fast_check(key) {
+        if self.check_bloom(key) {
             let entries = self.index.get_entry(key, self.file.clone());
             Self::find_entry(entries, meta)
                 .await
@@ -250,9 +250,9 @@ impl Blob {
         Ok(metas)
     }
 
-    pub(crate) fn fast_check(&self, key: &[u8]) -> bool {
+    pub(crate) fn check_bloom(&self, key: &[u8]) -> bool {
         trace!("check bloom filter");
-        self.index.fast_check_key(key)
+        self.index.check_bloom_key(key)
     }
 }
 

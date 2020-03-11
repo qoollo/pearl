@@ -403,7 +403,7 @@ async fn test_read_all_find_one_key() {
 }
 
 #[tokio::test]
-async fn test_fast_check_bloom_filter_single() {
+async fn test_check_bloom_filter_single() {
     let now = Instant::now();
     let path = common::init("contains_bloom_filter_single");
     let storage = common::create_test_storage(&path, 10).await.unwrap();
@@ -412,13 +412,13 @@ async fn test_fast_check_bloom_filter_single() {
     for i in 0..repeat {
         let key = KeyTest::new(i);
         storage.write(&key, data.to_vec()).await.unwrap();
-        assert!(storage.fast_check(key).await);
+        assert!(storage.check_bloom(key).await);
         let data = b"other_random_data";
         let key = KeyTest::new(i + repeat);
         storage.write(&key, data.to_vec()).await.unwrap();
-        assert!(storage.fast_check(key).await);
+        assert!(storage.check_bloom(key).await);
         let key = KeyTest::new(i + 2 * repeat);
-        assert!(!storage.fast_check(key).await);
+        assert!(!storage.check_bloom(key).await);
     }
     common::clean(storage, path)
         .await
@@ -426,9 +426,9 @@ async fn test_fast_check_bloom_filter_single() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 #[tokio::test]
-async fn test_fast_check_bloom_filter_multiple() {
+async fn test_check_bloom_filter_multiple() {
     let now = Instant::now();
-    let path = common::init("fast_check_bloom_filter_multiple");
+    let path = common::init("check_bloom_filter_multiple");
     let storage = common::create_test_storage(&path, 20000).await.unwrap();
     let data =
         b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
@@ -439,10 +439,10 @@ async fn test_fast_check_bloom_filter_multiple() {
         trace!("blobs count: {}", storage.blobs_count());
     }
     for i in 1..800 {
-        assert!(storage.fast_check(KeyTest::new(i)).await);
+        assert!(storage.check_bloom(KeyTest::new(i)).await);
     }
     for i in 800..1600 {
-        assert!(!storage.fast_check(KeyTest::new(i)).await);
+        assert!(!storage.check_bloom(KeyTest::new(i)).await);
     }
     common::clean(storage, path)
         .await
@@ -451,9 +451,9 @@ async fn test_fast_check_bloom_filter_multiple() {
 }
 
 #[tokio::test]
-async fn test_fast_check_bloom_filter_init_from_existing() {
+async fn test_check_bloom_filter_init_from_existing() {
     let now = Instant::now();
-    let path = common::init("fast_check_bloom_filter_init_from_existing");
+    let path = common::init("check_bloom_filter_init_from_existing");
     debug!("open new storage");
     let base = 20_000;
     {
@@ -475,16 +475,16 @@ async fn test_fast_check_bloom_filter_init_from_existing() {
     delay_for(Duration::from_millis(1000)).await;
     debug!("reopen storage");
     let storage = common::create_test_storage(&path, 100).await.unwrap();
-    debug!("check fast_check");
+    debug!("check check_bloom");
     for i in 1..base {
         trace!("check key: {}", i);
-        assert!(storage.fast_check(KeyTest::new(i)).await);
+        assert!(storage.check_bloom(KeyTest::new(i)).await);
     }
     info!("check certainly missed keys");
     let mut false_positive_counter = 0usize;
     for i in base..base * 2 {
         trace!("check key: {}", i);
-        if storage.fast_check(KeyTest::new(i)).await {
+        if storage.check_bloom(KeyTest::new(i)).await {
             false_positive_counter += 1;
         }
     }
@@ -498,9 +498,9 @@ async fn test_fast_check_bloom_filter_init_from_existing() {
 }
 
 #[tokio::test]
-async fn test_fast_check_bloom_filter_generated() {
+async fn test_check_bloom_filter_generated() {
     let now = Instant::now();
-    let path = common::init("fast_check_bloom_filter_generated");
+    let path = common::init("check_bloom_filter_generated");
     debug!("open new storage");
     let base = 20_000;
     {
@@ -525,16 +525,16 @@ async fn test_fast_check_bloom_filter_generated() {
     delay_for(Duration::from_millis(1000)).await;
     debug!("reopen storage");
     let storage = common::create_test_storage(&path, 100).await.unwrap();
-    debug!("check fast_check");
+    debug!("check check_bloom");
     for i in 1..base {
         trace!("check key: {}", i);
-        assert!(storage.fast_check(KeyTest::new(i)).await);
+        assert!(storage.check_bloom(KeyTest::new(i)).await);
     }
     info!("check certainly missed keys");
     let mut false_positive_counter = 0usize;
     for i in base..base * 2 {
         trace!("check key: {}", i);
-        if storage.fast_check(KeyTest::new(i)).await {
+        if storage.check_bloom(KeyTest::new(i)).await {
             false_positive_counter += 1;
         }
     }

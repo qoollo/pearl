@@ -53,7 +53,7 @@ impl Simple {
         }
     }
 
-    pub fn fast_check_key(&self, key: &[u8]) -> bool {
+    pub fn check_bloom_key(&self, key: &[u8]) -> bool {
         self.filter.contains(key)
     }
 
