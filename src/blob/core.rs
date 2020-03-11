@@ -175,7 +175,7 @@ impl Blob {
 
     pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> Result<Record> {
         let loc = self
-            .get_location(key, meta)
+            .lookup(key, meta)
             .await
             .ok_or(ErrorKind::RecordNotFound)?;
         debug!("key found");
@@ -191,7 +191,7 @@ impl Blob {
         self.index.get_entry(key, self.file.clone())
     }
 
-    async fn get_location(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
+    async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
         if self.check_bloom(key) {
             let entries = self.index.get_entry(key, self.file.clone());
             Self::find_entry(entries, meta)
@@ -203,7 +203,7 @@ impl Blob {
     }
 
     pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> bool {
-        self.get_location(key, meta).await.is_some()
+        self.lookup(key, meta).await.is_some()
     }
 
     async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Option<Entry> {
