@@ -7,6 +7,7 @@ mod simple;
 
 pub(crate) use super::prelude::*;
 pub(crate) use bloom::{Bloom, Config};
+pub(crate) use btree::BTree;
 pub(crate) use simple::{Simple, State};
 
 mod prelude {

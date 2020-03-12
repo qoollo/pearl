@@ -13,6 +13,7 @@ const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 pub(crate) struct Blob {
     header: Header,
     index: SimpleIndex,
+    test_index: BTreeIndex,
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
@@ -35,6 +36,7 @@ impl Blob {
             header,
             file,
             index,
+            test_index: BTreeIndex::new(name.clone()),
             name,
             current_offset,
         };
@@ -122,6 +124,7 @@ impl Blob {
         let mut blob = Self {
             header,
             file,
+            test_index: BTreeIndex::new(name.clone()),
             name,
             index,
             current_offset: Arc::new(Mutex::new(len)),
