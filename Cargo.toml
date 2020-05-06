@@ -37,6 +37,7 @@ version = "0.2.20"
 features = ["time", "rt-core", "macros"]
 
 [features]
+# default = ["uring"]
 benchmark = ["clap"]
 uring = ["rio"]
 

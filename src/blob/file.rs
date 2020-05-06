@@ -1,11 +1,25 @@
 use crate::prelude::*;
 
+#[cfg(feature = "uring")]
+use rio::Rio;
+use std::time::Instant;
+
 const WOULDBLOCK_RETRY_INTERVAL_MS: u64 = 10;
 
+#[cfg(not(feature = "uring"))]
 #[derive(Debug, Clone)]
 pub(crate) struct File {
     pub(crate) read_fd: Arc<fs::File>,
     pub(crate) write_fd: Arc<Mutex<fs::File>>,
+}
+
+#[cfg(feature = "uring")]
+#[derive(Debug, Clone)]
+pub(crate) struct File {
+    pub(crate) read_fd: Arc<fs::File>,
+    pub(crate) write_fd: Arc<Mutex<fs::File>>,
+
+    rio: Rio,
 }
 
 #[inline]
@@ -120,25 +134,67 @@ impl File {
         self.read_fd.metadata()
     }
 
+    #[cfg(not(feature = "uring"))]
     pub(crate) async fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> IOResult<usize> {
+        let now = Instant::now();
         let mut fd = self.write_fd.lock().await;
         let write_fut = WriteAt {
             fd: &mut fd,
             buf,
             offset,
         };
-        write_fut.await
+        let res = write_fut.await;
+        debug!("write_at elapsed: {}ms", now.elapsed().as_secs_f64());
+        res
     }
 
+    #[cfg(feature = "uring")]
+    pub(crate) async fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> IOResult<usize> {
+        let now = Instant::now();
+        debug!("io_uring feature is on, write at async");
+        let res = self.rio.write_at(self.read_fd.as_ref(), &buf, offset).await;
+        debug!("write_at elapsed: {}ms", now.elapsed().as_secs_f64());
+        res
+    }
+
+    #[cfg(not(feature = "uring"))]
     pub(crate) async fn read_at(&self, len: usize, offset: u64) -> IOResult<Vec<u8>> {
+        let now = Instant::now();
         let read_fut = ReadAt {
             fd: self.read_fd.clone(),
             len,
             offset,
         };
-        read_fut.await
+        let res = read_fut.await;
+        debug!("read_at elapsed: {}ms", now.elapsed().as_secs_f64());
+        res
     }
 
+    #[cfg(feature = "uring")]
+    pub(crate) async fn read_at(&self, len: usize, offset: u64) -> IOResult<Vec<u8>> {
+        let now = Instant::now();
+        debug!("io_uring feature is on, read at async");
+        let buf = vec![0; len];
+        let count = self
+            .rio
+            .read_at(self.read_fd.as_ref(), &buf, offset)
+            .await?;
+        assert_eq!(len, count);
+        debug!("read_at elapsed: {}ms", now.elapsed().as_secs_f64());
+        Ok(buf)
+    }
+
+    #[cfg(feature = "uring")]
+    pub(crate) fn from_std_file(fd: fs::File) -> IOResult<Self> {
+        info!("io_uring is ON");
+        fd.try_clone().map(|file| Self {
+            read_fd: Arc::new(file),
+            write_fd: Arc::new(Mutex::new(fd)),
+            rio: rio::new().unwrap(),
+        })
+    }
+
+    #[cfg(not(feature = "uring"))]
     pub(crate) fn from_std_file(fd: fs::File) -> IOResult<Self> {
         fd.try_clone().map(|file| Self {
             read_fd: Arc::new(file),

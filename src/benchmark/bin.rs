@@ -61,7 +61,7 @@ async fn main() {
             )
         })
         .filter_module("benchmark", LevelFilter::Info)
-        .filter_module("pearl", LevelFilter::Info)
+        .filter_module("pearl", LevelFilter::Debug)
         .init();
     start_app().await;
 }

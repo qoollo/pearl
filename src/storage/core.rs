@@ -356,12 +356,12 @@ impl<K> Storage<K> {
         let safe_locked = self.inner.safe.lock();
         let next = self.inner.next_blob_name()?;
         let config = self.filter_config();
-        safe_locked.await.active_blob = Some(
-            Blob::open_new(next, config)
-                .await
-                .map_err(Error::new)?
-                .boxed(),
-        );
+        let blob = Blob::open_new(next, config)
+            .await
+            .map_err(Error::new)?
+            .boxed();
+        let mut safe = safe_locked.await;
+        safe.active_blob = Some(blob);
         Ok(())
     }
 
