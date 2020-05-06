@@ -30,13 +30,15 @@ futures = "0.3.4"
 clap = { version = "2.33", optional = true }
 bitvec = "0.17"
 ahash = "0.3"
+rio = { version = "0.9.2", optional = true }
 
 [dependencies.tokio]
-version = "0.2.13"
+version = "0.2.20"
 features = ["time", "rt-core", "macros"]
 
 [features]
 benchmark = ["clap"]
+uring = ["rio"]
 
 [lib]
 name = "pearl"
