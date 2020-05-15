@@ -315,7 +315,7 @@ impl Simple {
         if let State::InMemory(index) = self.inner {
             index.len()
         } else {
-            0
+            self.header.records_count
         }
     }
 }
