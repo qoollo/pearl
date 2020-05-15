@@ -356,12 +356,12 @@ impl<K> Storage<K> {
         let safe_locked = self.inner.safe.lock();
         let next = self.inner.next_blob_name()?;
         let config = self.filter_config();
-        safe_locked.await.active_blob = Some(
-            Blob::open_new(next, config)
-                .await
-                .map_err(Error::new)?
-                .boxed(),
-        );
+        let mut safe = safe_locked.await;
+        let blob = Blob::open_new(next, config)
+            .await
+            .map_err(Error::new)?
+            .boxed();
+        safe.active_blob = Some(blob);
         Ok(())
     }
 
@@ -450,6 +450,21 @@ impl<K> Storage<K> {
         in_active || in_closed
     }
 
+    /// Total records count in storage.
+    pub async fn records_count(&self) -> usize {
+        self.inner.records_count().await
+    }
+
+    /// Records count per blob. Format: (blob_id, count). Last value is from active blob.
+    pub async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
+        self.inner.records_count_detailed().await
+    }
+
+    /// Records count in active blob. Returns None if active blob not set or any IO error occured.
+    pub async fn records_count_in_active_blob(&self) -> Option<usize> {
+        self.inner.records_count_in_active_blob().await
+    }
+
     fn filter_config(&self) -> BloomConfig {
         self.inner.config.filter()
     }
@@ -504,6 +519,18 @@ impl Inner {
             dir,
         ))
     }
+
+    pub(crate) async fn records_count(&self) -> usize {
+        self.safe.lock().await.records_count().await
+    }
+
+    pub(crate) async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
+        self.safe.lock().await.records_count_detailed().await
+    }
+
+    pub(crate) async fn records_count_in_active_blob(&self) -> Option<usize> {
+        self.safe.lock().await.records_count_in_active_blob().await
+    }
 }
 
 impl Safe {
@@ -519,6 +546,37 @@ impl Safe {
         let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
         let blobs_max_id = self.blobs.last().map(Blob::id);
         active_blob_id.max(blobs_max_id)
+    }
+
+    pub(crate) async fn records_count(&self) -> usize {
+        let details = self.records_count_detailed().await;
+        details.iter().fold(0, |acc, (_, count)| acc + count)
+    }
+
+    pub(crate) async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
+        let mut results = Vec::new();
+        for blob in self.blobs.iter() {
+            let count = blob.records_count().await;
+            if let Ok(c) = count {
+                let value = (blob.id(), c);
+                debug!("push: {:?}", value);
+                results.push(value);
+            }
+        }
+        if let Some(count) = self.records_count_in_active_blob().await {
+            let value = (self.blobs.len(), count);
+            debug!("push: {:?}", value);
+            results.push(value);
+        }
+        results
+    }
+
+    pub(crate) async fn records_count_in_active_blob(&self) -> Option<usize> {
+        if let Some(ref blob) = self.active_blob {
+            blob.records_count().await.ok()
+        } else {
+            None
+        }
     }
 }
 

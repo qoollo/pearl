@@ -127,7 +127,7 @@ async fn start_app() {
     );
     let write_limit = limit * 1000 / value_size_kb;
     let mut prev_p = 0;
-    while let Some(_) = futures_pool.next().await {
+    while futures_pool.next().await.is_some() {
         let percent = counter * 1000 / write_limit;
         if prev_p != percent {
             print!(

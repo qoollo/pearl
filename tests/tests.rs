@@ -572,3 +572,70 @@ fn meta_with(version: &str) -> Meta {
     meta.insert("version".to_owned(), version);
     meta
 }
+
+#[tokio::test]
+async fn test_records_count() {
+    let now = Instant::now();
+    let path = common::init("records_count");
+    let storage = common::create_test_storage(&path, 20000).await.unwrap();
+
+    let count = 30;
+    let records = common::generate_records(count, 1_000);
+    for (key, data) in &records {
+        write_one(&storage, *key, data, None).await.unwrap();
+        delay_for(Duration::from_millis(10)).await;
+    }
+
+    assert_eq!(storage.records_count().await, count);
+    assert!(storage.records_count_in_active_blob().await < Some(count));
+
+    common::clean(storage, path)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_records_count_in_active() {
+    let now = Instant::now();
+    let path = common::init("records_count_in_active");
+    let storage = common::create_test_storage(&path, 20000).await.unwrap();
+
+    let count = 10;
+    let records = common::generate_records(count, 1_000);
+    for (key, data) in &records {
+        write_one(&storage, *key, data, None).await.unwrap();
+        delay_for(Duration::from_millis(10)).await;
+    }
+
+    assert_eq!(storage.records_count_in_active_blob().await, Some(count));
+
+    common::clean(storage, path)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_records_count_detailed() {
+    let now = Instant::now();
+    let path = common::init("records_count_detailed");
+    let storage = common::create_test_storage(&path, 20000).await.unwrap();
+
+    let count = 30;
+    let records = common::generate_records(count, 1000);
+    for (key, data) in &records {
+        write_one(&storage, *key, data, None).await.unwrap();
+        delay_for(Duration::from_millis(10)).await;
+    }
+    delay_for(Duration::from_millis(100)).await;
+    assert_eq!(
+        storage.records_count_detailed().await,
+        vec![(0, 19), (1, 11)]
+    );
+
+    common::clean(storage, path)
+        .await
+        .expect("work dir clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
