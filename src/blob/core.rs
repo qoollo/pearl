@@ -228,6 +228,10 @@ impl Blob {
         self.index.count().await
     }
 
+    pub(crate) async fn fsync(&self) {
+        self.file.fsync().await
+    }
+
     #[inline]
     pub(crate) const fn id(&self) -> usize {
         self.name.id

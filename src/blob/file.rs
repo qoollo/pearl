@@ -145,6 +145,10 @@ impl File {
             write_fd: Arc::new(Mutex::new(fd)),
         })
     }
+
+    pub(crate) async fn fsync(&self) {
+        todo!()
+    }
 }
 
 struct WriteAt<'a> {

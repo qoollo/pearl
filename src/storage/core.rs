@@ -465,6 +465,12 @@ impl<K> Storage<K> {
         self.inner.records_count_in_active_blob().await
     }
 
+    /// Syncronizes data and metadata of the active blob with the filesystem.
+    /// Like tokio::fs::File::sync_all, this function will attempt to ensure that all in-core data reaches the filesystem before returning.
+    pub async fn fsync(&self) {
+        self.inner.fsync().await
+    }
+
     fn filter_config(&self) -> BloomConfig {
         self.inner.config.filter()
     }
@@ -520,16 +526,20 @@ impl Inner {
         ))
     }
 
-    pub(crate) async fn records_count(&self) -> usize {
+    async fn records_count(&self) -> usize {
         self.safe.lock().await.records_count().await
     }
 
-    pub(crate) async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
+    async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
         self.safe.lock().await.records_count_detailed().await
     }
 
-    pub(crate) async fn records_count_in_active_blob(&self) -> Option<usize> {
+    async fn records_count_in_active_blob(&self) -> Option<usize> {
         self.safe.lock().await.records_count_in_active_blob().await
+    }
+
+    async fn fsync(&self) {
+        self.safe.lock().await.fsync().await
     }
 }
 
@@ -548,12 +558,12 @@ impl Safe {
         active_blob_id.max(blobs_max_id)
     }
 
-    pub(crate) async fn records_count(&self) -> usize {
+    async fn records_count(&self) -> usize {
         let details = self.records_count_detailed().await;
         details.iter().fold(0, |acc, (_, count)| acc + count)
     }
 
-    pub(crate) async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
+    async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
         let mut results = Vec::new();
         for blob in self.blobs.iter() {
             let count = blob.records_count().await;
@@ -571,11 +581,17 @@ impl Safe {
         results
     }
 
-    pub(crate) async fn records_count_in_active_blob(&self) -> Option<usize> {
+    async fn records_count_in_active_blob(&self) -> Option<usize> {
         if let Some(ref blob) = self.active_blob {
             blob.records_count().await.ok()
         } else {
             None
+        }
+    }
+
+    async fn fsync(&self) {
+        if let Some(ref blob) = self.active_blob {
+            blob.fsync().await;
         }
     }
 }
