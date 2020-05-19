@@ -73,12 +73,13 @@ impl Simple {
 
     pub(crate) async fn from_file(name: FileName) -> Result<Self> {
         debug!("open index file");
-        let fd = fs::OpenOptions::new()
+        let fd = TokioOpenOptions::new()
             .create(true)
             .read(true)
             .write(true)
-            .open(name.to_path())?;
-        let mut file = File::from_std_file(fd)?;
+            .open(name.to_path())
+            .await?;
+        let mut file = File::from_tokio_file(fd).await;
         debug!("load index header");
         let mut buf = vec![0; Header::serialized_size_default()?.try_into()?];
         debug!("read header into buf: [0; {}]", buf.len());
@@ -274,7 +275,7 @@ impl Simple {
     }
 
     fn dump_in_memory(&mut self, buf: Vec<u8>) -> Dump {
-        let fd_res = fs::OpenOptions::new()
+        let fd_res = std::fs::OpenOptions::new()
             .create(true)
             .read(true)
             .write(true)

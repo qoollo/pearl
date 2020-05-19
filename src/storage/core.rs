@@ -74,8 +74,8 @@ impl<K> Clone for Storage<K> {
     }
 }
 
-fn work_dir_content(wd: &Path) -> Result<Option<Vec<fs::DirEntry>>> {
-    let files: Vec<_> = fs::read_dir(wd)
+fn work_dir_content(wd: &Path) -> Result<Option<Vec<std::fs::DirEntry>>> {
+    let files: Vec<_> = std::fs::read_dir(wd)
         .map_err(Error::new)?
         .filter_map(|res_dir_entry| res_dir_entry.map_err(|e| error!("{}", e)).ok())
         .collect();
@@ -298,7 +298,7 @@ impl<K> Storage<K> {
         self.inner.need_exit.store(false, Ordering::Relaxed);
         safe.lock_file = None;
         if let Some(work_dir) = self.inner.config.work_dir() {
-            fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
+            std::fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
         };
         info!("active blob dumped, lock released");
         Ok(())
@@ -328,7 +328,7 @@ impl<K> Storage<K> {
             debug!("work dir exists: {}", path.display());
         } else {
             debug!("creating work dir recursively: {}", path.display());
-            fs::create_dir_all(path).map_err(Error::new)?;
+            std::fs::create_dir_all(path).map_err(Error::new)?;
         }
         self.try_lock_dir(path).await
     }
@@ -466,7 +466,7 @@ impl<K> Storage<K> {
     }
 
     /// Syncronizes data and metadata of the active blob with the filesystem.
-    /// Like tokio::fs::File::sync_all, this function will attempt to ensure that all in-core data reaches the filesystem before returning.
+    /// Like tokio::std::fs::File::sync_all, this function will attempt to ensure that all in-core data reaches the filesystem before returning.
     pub async fn fsync(&self) {
         self.inner.fsync().await
     }

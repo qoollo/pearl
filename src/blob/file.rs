@@ -4,8 +4,8 @@ const WOULDBLOCK_RETRY_INTERVAL_MS: u64 = 10;
 
 #[derive(Debug, Clone)]
 pub(crate) struct File {
-    pub(crate) read_fd: Arc<fs::File>,
-    pub(crate) write_fd: Arc<Mutex<fs::File>>,
+    pub(crate) read_fd: Arc<StdFile>,
+    pub(crate) write_fd: Arc<Mutex<TokioFile>>,
 }
 
 #[inline]
@@ -116,17 +116,13 @@ impl AsyncSeek for &File {
 }
 
 impl File {
-    pub(crate) fn metadata(&self) -> IOResult<fs::Metadata> {
+    pub(crate) fn metadata(&self) -> IOResult<std::fs::Metadata> {
         self.read_fd.metadata()
     }
 
-    pub(crate) async fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> IOResult<usize> {
-        let mut fd = self.write_fd.lock().await;
-        let write_fut = WriteAt {
-            fd: &mut fd,
-            buf,
-            offset,
-        };
+    pub(crate) async fn write_at(&self, buf: Vec<u8>, offset: u64) -> IOResult<usize> {
+        let fd = self.read_fd.clone();
+        let write_fut = WriteAt { fd, buf, offset };
         write_fut.await
     }
 
@@ -139,10 +135,15 @@ impl File {
         read_fut.await
     }
 
-    pub(crate) fn from_std_file(fd: fs::File) -> IOResult<Self> {
-        fd.try_clone().map(|file| Self {
+    pub(crate) async fn from_tokio_file(file: TokioFile) -> Self {
+        todo!()
+    }
+
+    pub(crate) fn from_std_file(fd: StdFile) -> IOResult<Self> {
+        let file = fd.try_clone()?;
+        Ok(Self {
             read_fd: Arc::new(file),
-            write_fd: Arc::new(Mutex::new(fd)),
+            write_fd: Arc::new(Mutex::new(TokioFile::from_std(fd))),
         })
     }
 
@@ -151,13 +152,13 @@ impl File {
     }
 }
 
-struct WriteAt<'a> {
-    fd: &'a mut fs::File,
+struct WriteAt {
+    fd: Arc<StdFile>,
     buf: Vec<u8>,
     offset: u64,
 }
 
-impl<'a> Future for WriteAt<'a> {
+impl<'a> Future for WriteAt {
     type Output = IOResult<usize>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
@@ -176,7 +177,7 @@ impl<'a> Future for WriteAt<'a> {
 
 #[derive(Debug)]
 struct ReadAt {
-    fd: Arc<fs::File>,
+    fd: Arc<StdFile>,
     len: usize,
     offset: u64,
 }
