@@ -72,7 +72,6 @@ mod prelude {
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::{
         future::{self, Future, FutureExt, TryFutureExt},
-        io::{AsyncSeek, AsyncSeekExt, AsyncWrite, AsyncWriteExt},
         lock::{Mutex, MutexGuard},
         stream::{futures_unordered::FuturesUnordered, Stream, StreamExt, TryStreamExt},
     };
@@ -85,10 +84,7 @@ mod prelude {
         error,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
         fs::{DirEntry, File as StdFile, OpenOptions},
-        io::{
-            Error as IOError, ErrorKind as IOErrorKind, Read, Result as IOResult, Seek, SeekFrom,
-            Write,
-        },
+        io::{Error as IOError, ErrorKind as IOErrorKind, Result as IOResult, SeekFrom},
         marker::PhantomData,
         num::TryFromIntError,
         os::unix::fs::{FileExt, OpenOptionsExt},
@@ -103,7 +99,8 @@ mod prelude {
     };
     pub(crate) use tokio::{
         fs::{File as TokioFile, OpenOptions as TokioOpenOptions},
-        io::{AsyncRead, AsyncReadExt},
+        io::{AsyncReadExt, AsyncWriteExt},
+        sync::RwLock,
         time::{delay_for, interval},
     };
     pub(crate) use {Key, Meta};
