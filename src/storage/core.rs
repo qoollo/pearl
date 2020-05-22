@@ -74,11 +74,10 @@ impl<K> Clone for Storage<K> {
     }
 }
 
-fn work_dir_content(wd: &Path) -> Result<Option<Vec<std::fs::DirEntry>>> {
-    let files: Vec<_> = std::fs::read_dir(wd)
-        .map_err(Error::new)?
-        .filter_map(|res_dir_entry| res_dir_entry.map_err(|e| error!("{}", e)).ok())
-        .collect();
+async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
+    let files = read_dir(wd).await?;
+    let files = files.filter_map(IOResult::ok);
+    let files: Vec<_> = files.collect().await;
     if files
         .iter()
         .filter_map(|file| Some(file.file_name().as_os_str().to_str()?.to_owned()))
@@ -117,7 +116,8 @@ impl<K> Storage<K> {
                 .config
                 .work_dir()
                 .ok_or(ErrorKind::Uninitialized)?,
-        );
+        )
+        .await;
         debug!("work dir content loaded");
         if let Some(files) = cont_res? {
             debug!("storage init from existing files");
@@ -273,7 +273,7 @@ impl<K> Storage<K> {
                 .map(|blob| blob.read(key, meta))
                 .collect();
             debug!("await for stream of read futures: {}", stream.len());
-            let mut task = stream.skip_while(|res| future::ready(res.is_err()));
+            let mut task = stream.skip_while(Result::is_err);
             debug!("task created");
             let res = task
                 .next()
@@ -455,7 +455,7 @@ impl<K> Storage<K> {
         self.inner.records_count().await
     }
 
-    /// Records count per blob. Format: (blob_id, count). Last value is from active blob.
+    /// Records count per blob. Format: (`blob_id`, count). Last value is from active blob.
     pub async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
         self.inner.records_count_detailed().await
     }
@@ -466,7 +466,7 @@ impl<K> Storage<K> {
     }
 
     /// Syncronizes data and metadata of the active blob with the filesystem.
-    /// Like tokio::std::fs::File::sync_all, this function will attempt to ensure that all in-core data reaches the filesystem before returning.
+    /// Like `tokio::std::fs::File::sync_all`, this function will attempt to ensure that all in-core data reaches the filesystem before returning.
     pub async fn fsync(&self) {
         self.inner.fsync().await
     }
@@ -565,7 +565,7 @@ impl Safe {
 
     async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
         let mut results = Vec::new();
-        for blob in self.blobs.iter() {
+        for blob in &self.blobs {
             let count = blob.records_count().await;
             if let Ok(c) = count {
                 let value = (blob.id(), c);

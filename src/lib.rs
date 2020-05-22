@@ -1,8 +1,8 @@
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
-// #![warn(clippy::all)]
+#![warn(clippy::all)]
 // #![warn(clippy::nursery)]
-// #![warn(clippy::pedantic)]
+#![warn(clippy::pedantic)]
 // #![warn(clippy::cargo)]
 
 //! # pearl
@@ -73,7 +73,7 @@ mod prelude {
     pub(crate) use futures::{
         future::{self, Future, FutureExt, TryFutureExt},
         lock::{Mutex, MutexGuard},
-        stream::{futures_unordered::FuturesUnordered, Stream, StreamExt, TryStreamExt},
+        stream::{futures_unordered::FuturesUnordered, Stream, TryStreamExt},
     };
     pub(crate) use record::{Header as RecordHeader, Record};
     pub(crate) use std::{
@@ -83,7 +83,7 @@ mod prelude {
         convert::TryInto,
         error,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
-        fs::{DirEntry, File as StdFile, OpenOptions},
+        fs::{File as StdFile, OpenOptions},
         io::{Error as IOError, ErrorKind as IOErrorKind, Result as IOResult, SeekFrom},
         marker::PhantomData,
         num::TryFromIntError,
@@ -98,8 +98,9 @@ mod prelude {
         time::Duration,
     };
     pub(crate) use tokio::{
-        fs::{File as TokioFile, OpenOptions as TokioOpenOptions},
+        fs::{read_dir, DirEntry, File as TokioFile, OpenOptions as TokioOpenOptions},
         io::{AsyncReadExt, AsyncWriteExt},
+        stream::StreamExt,
         sync::RwLock,
         time::{delay_for, interval},
     };

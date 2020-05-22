@@ -211,12 +211,11 @@ impl Blob {
 
     async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Option<Entry> {
         ents.filter(|entry| {
-            let cmp = if let Some(m) = meta {
+            if let Some(m) = meta {
                 *m == entry.meta()
             } else {
                 true
-            };
-            future::ready(cmp)
+            }
         })
         .next()
         .await
