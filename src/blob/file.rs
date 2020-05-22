@@ -10,7 +10,7 @@ pub(crate) struct File {
 
 impl File {
     pub(crate) async fn open(path: impl AsRef<Path>) -> IOResult<Self> {
-        let file = TokioOpenOptions::new()
+        let file = OpenOptions::new()
             .create(false)
             .append(true)
             .read(true)
@@ -20,7 +20,7 @@ impl File {
     }
 
     pub(crate) async fn create(path: impl AsRef<Path>) -> IOResult<Self> {
-        let file = TokioOpenOptions::new()
+        let file = OpenOptions::new()
             .create_new(true)
             .write(true)
             .read(true)

@@ -7,8 +7,9 @@
 
 //! # pearl
 //!
-//! The `pearl` library is a Append only key-value blob storage on disk.
+//! The `pearl` library is an asyncronous Append only key-value blob storage on disk.
 //! Crate `pearl` provides [`Futures 0.3`] interface. Tokio runtime required.
+//! Storage follows no harm policy, which means that it won't delete or change any of the stored data.
 //!
 //! [`Futures 0.3`]: https://rust-lang-nursery.github.io/futures-api-docs#latest
 //!
@@ -38,6 +39,7 @@
 //!         .max_blob_size(1_000_000)
 //!         .max_data_in_blob(1_000_000_000)
 //!         .blob_file_name_prefix("pearl-test")
+//!         .allow_duplicates(true)
 //!         .build()
 //!         .unwrap();
 //!     storage.init().await.unwrap();
@@ -65,8 +67,8 @@ pub use record::Meta;
 pub use storage::{Builder, Key, ReadAll, Storage};
 
 mod prelude {
-    pub(crate) type PinBox<T> = Pin<Box<T>>;
     pub(crate) use super::*;
+    pub(crate) type PinBox<T> = Pin<Box<T>>;
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use blob::{self, Blob, BloomConfig, File, Location};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
@@ -83,7 +85,7 @@ mod prelude {
         convert::TryInto,
         error,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
-        fs::{File as StdFile, Metadata, OpenOptions},
+        fs::{File as StdFile, Metadata, OpenOptions as StdOpenOptions},
         io::{Error as IOError, ErrorKind as IOErrorKind, Result as IOResult, SeekFrom},
         marker::PhantomData,
         num::TryFromIntError,
@@ -98,11 +100,10 @@ mod prelude {
         time::Duration,
     };
     pub(crate) use tokio::{
-        fs::{read_dir, DirEntry, File as TokioFile, OpenOptions as TokioOpenOptions},
+        fs::{read_dir, DirEntry, File as TokioFile, OpenOptions},
         io::{AsyncReadExt, AsyncWriteExt},
         stream::StreamExt,
         sync::RwLock,
         time::{delay_for, interval},
     };
-    pub(crate) use {Key, Meta};
 }

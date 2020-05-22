@@ -336,7 +336,7 @@ impl<K> Storage<K> {
     async fn try_lock_dir<'a>(&'a self, path: &'a Path) -> Result<()> {
         let lock_file_path = path.join(LOCK_FILE);
         debug!("try to open lock file: {}", lock_file_path.display());
-        let lock_file = OpenOptions::new()
+        let lock_file = StdOpenOptions::new()
             .create(true)
             .write(true)
             .custom_flags(O_EXCL)
@@ -466,7 +466,8 @@ impl<K> Storage<K> {
     }
 
     /// Syncronizes data and metadata of the active blob with the filesystem.
-    /// Like `tokio::std::fs::File::sync_all`, this function will attempt to ensure that all in-core data reaches the filesystem before returning.
+    /// Like `tokio::std::fs::File::sync_data`, this function will attempt to ensure that in-core data reaches the filesystem before returning.
+    /// May not syncronize file metadata to the file system.
     pub async fn fsyncdata(&self) -> IOResult<()> {
         self.inner.fsyncdata().await
     }

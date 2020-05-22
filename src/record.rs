@@ -2,7 +2,6 @@ use crate::prelude::*;
 
 const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
-/// [`Record`] consists of header and data.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub(crate) struct Record {
     header: Header,
@@ -42,13 +41,13 @@ enum Repr {
 }
 
 impl Meta {
-    /// Create new Meta with name and bytes body.
+    /// Create new empty `Meta`.
     #[must_use]
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
-    /// Inserts new option into meta
+    /// Inserts new pair of name-value into meta.
     #[inline]
     pub fn insert(
         &mut self,
@@ -66,14 +65,13 @@ impl Meta {
     }
 
     #[inline]
-    fn serialized_size(&self) -> Result<u64> {
-        serialized_size(&self).map_err(Error::new)
+    fn serialized_size(&self) -> bincode::Result<u64> {
+        serialized_size(&self)
     }
 
     #[inline]
     pub(crate) fn to_raw(&self) -> bincode::Result<Vec<u8>> {
-        let buf = serialize(&self)?;
-        Ok(buf)
+        serialize(&self)
     }
 
     pub(crate) async fn load(file: &File, location: Location) -> Result<Self> {
@@ -153,13 +151,12 @@ impl From<ErrorKind> for Error {
 }
 
 impl Record {
-    /// Creates new `Record` with provided data and key.
-    pub fn create(key: impl Key, data: Vec<u8>, meta: Meta) -> Result<Self> {
+    /// Creates new `Record` with provided data, key and meta.
+    pub fn create(key: impl Key, data: Vec<u8>, meta: Meta) -> bincode::Result<Self> {
         let key = key.as_ref().to_vec();
-        meta.serialized_size().map(|meta_size| {
-            let header = Header::new(key, meta_size, data.len() as u64, crc32(&data));
-            Self { header, meta, data }
-        })
+        let meta_size = meta.serialized_size()?;
+        let header = Header::new(key, meta_size, data.len() as u64, crc32(&data));
+        Ok(Self { header, meta, data })
     }
 
     /// Get immutable reference to header.
@@ -278,10 +275,9 @@ impl Header {
 
     #[inline]
     pub(crate) fn meta_location(&self) -> Location {
-        Location::new(
-            self.blob_offset + self.serialized_size(),
-            self.meta_size.try_into().expect("convert to usize"),
-        )
+        let offset = self.blob_offset + self.serialized_size();
+        let size = self.meta_size.try_into().expect("convert to usize");
+        Location::new(offset, size)
     }
 
     #[inline]
@@ -310,8 +306,8 @@ impl Header {
     }
 
     #[inline]
-    pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
-        deserialize(buf).map_err(Error::new)
+    pub(crate) fn from_raw(buf: &[u8]) -> bincode::Result<Self> {
+        deserialize(buf)
     }
 
     #[inline]
