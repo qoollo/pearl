@@ -27,7 +27,7 @@ impl Blob {
     ///
     /// [`FileName`]: struct.FileName.html
     pub(crate) async fn open_new(name: FileName, filter_config: BloomConfig) -> Result<Self> {
-        let file = Self::prepare_file(&name).await?;
+        let file = File::create(name.to_path()).await?;
         let index = Self::create_index(&filter_config, &name);
         let current_offset = Self::new_offset();
         let header = Header::new();
@@ -65,12 +65,6 @@ impl Blob {
         SimpleIndex::new(filter_config, index_name)
     }
 
-    #[inline]
-    async fn prepare_file(name: &FileName) -> IOResult<File> {
-        let file = Self::create_file(&name.to_path()).await?;
-        Ok(File::from_tokio_file(file).await)
-    }
-
     pub(crate) async fn dump(&mut self) -> Result<()> {
         self.index.dump().await
     }
@@ -79,33 +73,13 @@ impl Blob {
         self.index.load().await
     }
 
-    #[inline]
-    async fn create_file(path: &Path) -> IOResult<TokioFile> {
-        TokioOpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .read(true)
-            .open(path)
-            .await
-    }
-
-    #[inline]
-    async fn open_file(path: &Path) -> IOResult<TokioFile> {
-        TokioOpenOptions::new()
-            .create(false)
-            .append(true)
-            .read(true)
-            .open(path)
-            .await
-    }
-
     pub(crate) fn boxed(self) -> Box<Self> {
         Box::new(self)
     }
 
     pub(crate) async fn from_file(filter_config: BloomConfig, path: PathBuf) -> Result<Self> {
         debug!("create file instance");
-        let file: File = File::from_tokio_file(Self::open_file(&path).await?).await;
+        let file = File::open(&path).await?;
         let name = FileName::from_path(&path)?;
         let len = file.metadata()?.len();
         let header = Header::new();

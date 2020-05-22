@@ -73,13 +73,7 @@ impl Simple {
 
     pub(crate) async fn from_file(name: FileName) -> Result<Self> {
         debug!("open index file");
-        let fd = TokioOpenOptions::new()
-            .create(true)
-            .read(true)
-            .write(true)
-            .open(name.to_path())
-            .await?;
-        let file = File::from_tokio_file(fd).await;
+        let file = File::open(name.to_path()).await?;
         debug!("load index header");
         let mut buf = vec![0; Header::serialized_size_default()?.try_into()?];
         debug!("read header into buf: [0; {}]", buf.len());
@@ -203,7 +197,7 @@ impl Simple {
         let record_header_size = record_header.serialized_size().try_into()?;
         debug!("record header serialized size: {}", record_header_size);
         bunch.sort_by_key(|h| h.key().to_vec());
-        let filter_buf = filter.to_raw();
+        let filter_buf = filter.to_raw()?;
         let header = Header {
             record_header_size,
             records_count: bunch.len(),

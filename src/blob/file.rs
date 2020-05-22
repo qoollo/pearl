@@ -9,6 +9,25 @@ pub(crate) struct File {
 }
 
 impl File {
+    pub(crate) async fn open(path: impl AsRef<Path>) -> IOResult<Self> {
+        let file = TokioOpenOptions::new()
+            .create(false)
+            .append(true)
+            .read(true)
+            .open(path.as_ref())
+            .await?;
+        Self::from_tokio_file(file).await
+    }
+
+    pub(crate) async fn create(path: impl AsRef<Path>) -> IOResult<Self> {
+        let file = TokioOpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .read(true)
+            .open(path)
+            .await?;
+        Self::from_tokio_file(file).await
+    }
     pub(crate) fn metadata(&self) -> IOResult<std::fs::Metadata> {
         self.read_fd.metadata()
     }
@@ -53,13 +72,14 @@ impl File {
         file.seek(from).await
     }
 
-    pub(crate) async fn from_tokio_file(file: TokioFile) -> Self {
-        let std_file = file.try_clone().await.unwrap();
-        let std_file = std_file.try_into_std().unwrap();
-        Self {
+    async fn from_tokio_file(file: TokioFile) -> IOResult<Self> {
+        let tokio_file = file.try_clone().await?;
+        let std_file = tokio_file.try_into_std().expect("tokio file into std");
+        let file = Self {
             read_fd: Arc::new(std_file),
             write_fd: Arc::new(RwLock::new(file)),
-        }
+        };
+        Ok(file)
     }
 
     pub(crate) fn from_std_file(fd: StdFile) -> IOResult<Self> {

@@ -2,7 +2,7 @@
 #![deny(missing_debug_implementations)]
 #![warn(clippy::all)]
 // #![warn(clippy::nursery)]
-#![warn(clippy::pedantic)]
+// #![warn(clippy::pedantic)]
 // #![warn(clippy::cargo)]
 
 //! # pearl
