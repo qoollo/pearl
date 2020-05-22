@@ -83,7 +83,7 @@ mod prelude {
         convert::TryInto,
         error,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
-        fs::{File as StdFile, OpenOptions},
+        fs::{File as StdFile, Metadata, OpenOptions},
         io::{Error as IOError, ErrorKind as IOErrorKind, Result as IOResult, SeekFrom},
         marker::PhantomData,
         num::TryFromIntError,

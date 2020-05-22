@@ -47,10 +47,9 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
             .active_blob
             .as_ref()
             .ok_or(ErrorKind::ActiveBlobNotSet)?;
-        (
-            active_blob.file_size().map_err(Error::new)?,
-            active_blob.records_count().await.map_err(Error::new)? as u64,
-        )
+        let size = active_blob.file_size().await?;
+        let count = active_blob.records_count().await.map_err(Error::new)? as u64;
+        (size, count)
     };
     debug!("lock released");
     let config_max_size = inner

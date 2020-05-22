@@ -4,7 +4,7 @@ const WOULDBLOCK_RETRY_INTERVAL_MS: u64 = 10;
 
 #[derive(Debug, Clone)]
 pub(crate) struct File {
-    read_fd: Arc<StdFile>,
+    read_fd: Arc<StdFile>, // requires only for read_at/write_at methods
     write_fd: Arc<RwLock<TokioFile>>,
 }
 
@@ -28,8 +28,9 @@ impl File {
             .await?;
         Self::from_tokio_file(file).await
     }
-    pub(crate) fn metadata(&self) -> IOResult<std::fs::Metadata> {
-        self.read_fd.metadata()
+
+    pub(crate) async fn metadata(&self) -> IOResult<Metadata> {
+        self.write_fd.read().await.metadata().await
     }
 
     pub(crate) async fn write(&self, buf: &[u8]) -> IOResult<usize> {
@@ -90,8 +91,8 @@ impl File {
         })
     }
 
-    pub(crate) async fn fsync(&self) {
-        todo!()
+    pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
+        self.write_fd.write().await.sync_data().await
     }
 }
 

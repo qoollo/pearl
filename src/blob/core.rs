@@ -81,7 +81,7 @@ impl Blob {
         debug!("create file instance");
         let file = File::open(&path).await?;
         let name = FileName::from_path(&path)?;
-        let len = file.metadata()?.len();
+        let len = file.metadata().await?.len();
         let header = Header::new();
         debug!("blob file size: {} MB", len / 1_000_000);
         let mut index_name: FileName = name.clone();
@@ -196,16 +196,16 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) fn file_size(&self) -> IOResult<u64> {
-        Ok(self.file.metadata()?.len())
+    pub(crate) async fn file_size(&self) -> IOResult<u64> {
+        Ok(self.file.metadata().await?.len())
     }
 
     pub(crate) async fn records_count(&self) -> Result<usize> {
         self.index.count().await
     }
 
-    pub(crate) async fn fsync(&self) {
-        self.file.fsync().await
+    pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
+        self.file.fsyncdata().await
     }
 
     #[inline]
@@ -356,7 +356,7 @@ impl RawRecords {
         let key_len = bincode::deserialize::<usize>(&buf)?;
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
         let read_fut = Self::read_at(file.clone(), record_header_size, current_offset).boxed();
-        let file_len = file.metadata().map(|m| m.len())?;
+        let file_len = file.metadata().await.map(|m| m.len())?;
         Ok(Self {
             current_offset,
             record_header_size,

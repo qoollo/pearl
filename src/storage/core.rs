@@ -467,8 +467,8 @@ impl<K> Storage<K> {
 
     /// Syncronizes data and metadata of the active blob with the filesystem.
     /// Like `tokio::std::fs::File::sync_all`, this function will attempt to ensure that all in-core data reaches the filesystem before returning.
-    pub async fn fsync(&self) {
-        self.inner.fsync().await
+    pub async fn fsyncdata(&self) -> IOResult<()> {
+        self.inner.fsyncdata().await
     }
 
     fn filter_config(&self) -> BloomConfig {
@@ -538,8 +538,8 @@ impl Inner {
         self.safe.lock().await.records_count_in_active_blob().await
     }
 
-    async fn fsync(&self) {
-        self.safe.lock().await.fsync().await
+    async fn fsyncdata(&self) -> IOResult<()> {
+        self.safe.lock().await.fsyncdata().await
     }
 }
 
@@ -589,10 +589,11 @@ impl Safe {
         }
     }
 
-    async fn fsync(&self) {
+    async fn fsyncdata(&self) -> IOResult<()> {
         if let Some(ref blob) = self.active_blob {
-            blob.fsync().await;
+            blob.fsyncdata().await?;
         }
+        Ok(())
     }
 }
 
