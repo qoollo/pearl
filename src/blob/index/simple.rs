@@ -4,6 +4,7 @@ use super::prelude::*;
 pub(crate) struct Simple {
     header: Header,
     filter: Bloom,
+    filter_is_on: bool,
     inner: State,
     name: FileName,
 }
@@ -39,22 +40,32 @@ pub(crate) enum State {
 }
 
 impl Simple {
-    pub(crate) fn new(filter_config: &Config, name: FileName) -> Self {
-        let filter = Bloom::new(filter_config);
+    pub(crate) fn new(filter_config: Option<Config>, name: FileName) -> Self {
+        let filter_is_on = filter_config.is_some();
+        let filter = if let Some(config) = filter_config {
+            Bloom::new(config)
+        } else {
+            Bloom::default()
+        };
         Self {
             header: Header {
                 records_count: 0,
                 record_header_size: 0,
                 filter_buf_size: 0,
             },
+            filter_is_on,
             filter,
             inner: State::InMemory(Vec::new()),
             name,
         }
     }
 
-    pub fn check_bloom_key(&self, key: &[u8]) -> bool {
-        self.filter.contains(key)
+    pub fn check_bloom_key(&self, key: &[u8]) -> Option<bool> {
+        if self.filter_is_on {
+            Some(self.filter.contains(key))
+        } else {
+            None
+        }
     }
 
     pub(crate) const fn name(&self) -> &FileName {
@@ -71,7 +82,7 @@ impl Simple {
         })
     }
 
-    pub(crate) async fn from_file(name: FileName) -> Result<Self> {
+    pub(crate) async fn from_file(name: FileName, filter_is_on: bool) -> Result<Self> {
         debug!("open index file");
         let fd = fs::OpenOptions::new()
             .create(true)
@@ -97,6 +108,7 @@ impl Simple {
             inner: State::OnDisk(file),
             name,
             filter,
+            filter_is_on,
         })
     }
 
@@ -384,7 +396,7 @@ impl Index for Simple {
     fn count(&self) -> Count {
         Count(match &self.inner {
             State::InMemory(bunch) => future::ok(bunch.len()).boxed(),
-            State::OnDisk(_) => Self::from_file(self.name.clone())
+            State::OnDisk(_) => Self::from_file(self.name.clone(), self.filter_is_on)
                 .map_ok(Self::count_inner)
                 .boxed(),
         })

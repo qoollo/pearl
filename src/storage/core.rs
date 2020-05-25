@@ -390,7 +390,10 @@ impl<K> Storage<K> {
         Ok(())
     }
 
-    async fn read_blobs(filter_config: BloomConfig, files: &[DirEntry]) -> Result<Vec<Blob>> {
+    async fn read_blobs(
+        filter_config: Option<BloomConfig>,
+        files: &[DirEntry],
+    ) -> Result<Vec<Blob>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
         debug!("read {} entities", dir_content.len());
@@ -433,21 +436,24 @@ impl<K> Storage<K> {
     }
 
     /// `check_bloom` is used to check whether a key is in storage.
+    /// If bloom filter opt out, returns `None`.
     /// Uses bloom filter under the hood, so false positive results are possible,
     /// but false negatives are not.
     /// In other words, `check_bloom` returns either "possibly in storage" or "definitely not".
-    pub async fn check_bloom(&self, key: impl Key) -> bool {
+    pub async fn check_bloom(&self, key: impl Key) -> Option<bool> {
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.lock().await;
         let in_active = inner
             .active_blob
             .as_ref()
-            .map_or(false, |active_blob| active_blob.check_bloom(key.as_ref()));
+            .map_or(Some(false), |active_blob| {
+                active_blob.check_bloom(key.as_ref())
+            })?;
         let in_closed = inner
             .blobs
             .iter()
-            .any(|blob| blob.check_bloom(key.as_ref()));
-        in_active || in_closed
+            .any(|blob| blob.check_bloom(key.as_ref()) == Some(true));
+        Some(in_active || in_closed)
     }
 
     /// Total records count in storage.
@@ -465,7 +471,7 @@ impl<K> Storage<K> {
         self.inner.records_count_in_active_blob().await
     }
 
-    fn filter_config(&self) -> BloomConfig {
+    fn filter_config(&self) -> Option<BloomConfig> {
         self.inner.config.filter()
     }
 }

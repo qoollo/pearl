@@ -412,13 +412,13 @@ async fn test_check_bloom_filter_single() {
     for i in 0..repeat {
         let key = KeyTest::new(i);
         storage.write(&key, data.to_vec()).await.unwrap();
-        assert!(storage.check_bloom(key).await);
+        assert_eq!(storage.check_bloom(key).await, Some(true));
         let data = b"other_random_data";
         let key = KeyTest::new(i + repeat);
         storage.write(&key, data.to_vec()).await.unwrap();
-        assert!(storage.check_bloom(key).await);
+        assert_eq!(storage.check_bloom(key).await, Some(true));
         let key = KeyTest::new(i + 2 * repeat);
-        assert!(!storage.check_bloom(key).await);
+        assert_eq!(storage.check_bloom(key).await, Some(false));
     }
     common::clean(storage, path)
         .await
@@ -439,10 +439,10 @@ async fn test_check_bloom_filter_multiple() {
         trace!("blobs count: {}", storage.blobs_count());
     }
     for i in 1..800 {
-        assert!(storage.check_bloom(KeyTest::new(i)).await);
+        assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(true));
     }
     for i in 800..1600 {
-        assert!(!storage.check_bloom(KeyTest::new(i)).await);
+        assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(false));
     }
     common::clean(storage, path)
         .await
@@ -478,13 +478,13 @@ async fn test_check_bloom_filter_init_from_existing() {
     debug!("check check_bloom");
     for i in 1..base {
         trace!("check key: {}", i);
-        assert!(storage.check_bloom(KeyTest::new(i)).await);
+        assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(true));
     }
     info!("check certainly missed keys");
     let mut false_positive_counter = 0usize;
     for i in base..base * 2 {
         trace!("check key: {}", i);
-        if storage.check_bloom(KeyTest::new(i)).await {
+        if storage.check_bloom(KeyTest::new(i)).await == Some(true) {
             false_positive_counter += 1;
         }
     }
@@ -528,13 +528,13 @@ async fn test_check_bloom_filter_generated() {
     debug!("check check_bloom");
     for i in 1..base {
         trace!("check key: {}", i);
-        assert!(storage.check_bloom(KeyTest::new(i)).await);
+        assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(true));
     }
     info!("check certainly missed keys");
     let mut false_positive_counter = 0usize;
     for i in base..base * 2 {
         trace!("check key: {}", i);
-        if storage.check_bloom(KeyTest::new(i)).await {
+        if storage.check_bloom(KeyTest::new(i)).await == Some(true) {
             false_positive_counter += 1;
         }
     }
