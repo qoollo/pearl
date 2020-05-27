@@ -4,8 +4,8 @@ const WOULDBLOCK_RETRY_INTERVAL_MS: u64 = 10;
 
 #[derive(Debug, Clone)]
 pub(crate) struct File {
-    pub(crate) read_fd: Arc<fs::File>,
-    pub(crate) write_fd: Arc<Mutex<fs::File>>,
+    pub(crate) no_lock_fd: Arc<fs::File>, // requires for async implementations of read_at/write_at
+    pub(crate) locked_fd: Arc<Mutex<fs::File>>,
 }
 
 #[inline]
@@ -43,7 +43,7 @@ impl AsyncRead for &File {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<IOResult<usize>> {
-        let mut file = self.read_fd.as_ref();
+        let mut file = self.no_lock_fd.as_ref();
         match file.read(buf) {
             Err(ref e)
                 if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
@@ -59,7 +59,7 @@ impl AsyncRead for &File {
 
 impl AsyncWrite for File {
     fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<IOResult<usize>> {
-        let mut file = self.read_fd.as_ref();
+        let mut file = self.no_lock_fd.as_ref();
         match file.write_all(buf) {
             Err(ref e)
                 if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
@@ -73,7 +73,7 @@ impl AsyncWrite for File {
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<IOResult<()>> {
-        let mut file = self.read_fd.as_ref();
+        let mut file = self.no_lock_fd.as_ref();
         match file.flush() {
             Err(ref e)
                 if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
@@ -91,37 +91,13 @@ impl AsyncWrite for File {
     }
 }
 
-impl AsyncSeek for File {
-    fn poll_seek(self: Pin<&mut Self>, cx: &mut Context<'_>, pos: SeekFrom) -> Poll<IOResult<u64>> {
-        let mut file_ref = Pin::get_ref(self.as_ref());
-        let pinned_file_ref = Pin::new(&mut file_ref);
-        pinned_file_ref.poll_seek(cx, pos)
-    }
-}
-
-impl AsyncSeek for &File {
-    fn poll_seek(self: Pin<&mut Self>, cx: &mut Context<'_>, pos: SeekFrom) -> Poll<IOResult<u64>> {
-        let mut file = self.read_fd.as_ref();
-        match file.seek(pos) {
-            Err(ref e)
-                if e.kind() == IOErrorKind::WouldBlock || e.kind() == IOErrorKind::Interrupted =>
-            {
-                warn_and_wake(cx.waker().clone());
-                Poll::Pending
-            }
-            Err(e) => Poll::Ready(Err(e)),
-            Ok(n) => Poll::Ready(Ok(n)),
-        }
-    }
-}
-
 impl File {
     pub(crate) fn metadata(&self) -> IOResult<fs::Metadata> {
-        self.read_fd.metadata()
+        self.no_lock_fd.metadata()
     }
 
     pub(crate) async fn write_at(&mut self, buf: Vec<u8>, offset: u64) -> IOResult<usize> {
-        let mut fd = self.write_fd.lock().await;
+        let mut fd = self.locked_fd.lock().await;
         let write_fut = WriteAt {
             fd: &mut fd,
             buf,
@@ -132,17 +108,22 @@ impl File {
 
     pub(crate) async fn read_at(&self, len: usize, offset: u64) -> IOResult<Vec<u8>> {
         let read_fut = ReadAt {
-            fd: self.read_fd.clone(),
+            fd: self.no_lock_fd.clone(),
             len,
             offset,
         };
         read_fut.await
     }
 
+    pub(crate) async fn read_all(&self) -> IOResult<Vec<u8>> {
+        let len = self.metadata()?.len(); // @TODO remove syncronous call. Will be removed after std file replacement with tokio file.
+        self.read_at(len.try_into().expect("u64 to usize"), 0).await
+    }
+
     pub(crate) fn from_std_file(fd: fs::File) -> IOResult<Self> {
         fd.try_clone().map(|file| Self {
-            read_fd: Arc::new(file),
-            write_fd: Arc::new(Mutex::new(fd)),
+            no_lock_fd: Arc::new(file),
+            locked_fd: Arc::new(Mutex::new(fd)),
         })
     }
 }

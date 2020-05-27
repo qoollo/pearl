@@ -33,7 +33,7 @@ ahash = "0.3"
 
 [dependencies.tokio]
 version = "0.2.21"
-features = ["time", "rt-core", "macros"]
+features = ["time", "rt-core", "macros", "fs"]
 
 [features]
 benchmark = ["clap"]

@@ -72,7 +72,7 @@ mod prelude {
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::{
         future::{self, Future, FutureExt, TryFutureExt},
-        io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt, AsyncWrite, AsyncWriteExt},
+        io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
         lock::{Mutex, MutexGuard},
         stream::{futures_unordered::FuturesUnordered, Stream, StreamExt, TryStreamExt},
     };
@@ -85,10 +85,7 @@ mod prelude {
         error,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
         fs::{self, DirEntry, File as StdFile, OpenOptions},
-        io::{
-            Error as IOError, ErrorKind as IOErrorKind, Read, Result as IOResult, Seek, SeekFrom,
-            Write,
-        },
+        io::{Error as IOError, ErrorKind as IOErrorKind, Read, Result as IOResult, Write},
         marker::PhantomData,
         num::TryFromIntError,
         os::unix::fs::{FileExt, OpenOptionsExt},

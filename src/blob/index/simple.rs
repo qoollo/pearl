@@ -140,12 +140,8 @@ impl Simple {
         ))
     }
 
-    pub async fn load_records(mut file: &File) -> Result<Vec<RecordHeader>> {
-        trace!("seek to file start");
-        file.seek(SeekFrom::Start(0)).await?;
-        let mut buf = Vec::new();
-        trace!("read to end index");
-        file.read_to_end(&mut buf).await?;
+    pub async fn load_records(file: &File) -> Result<Vec<RecordHeader>> {
+        let buf = file.read_all().await?;
         if buf.is_empty() {
             debug!("empty index file");
             Ok(Vec::new())
@@ -200,11 +196,7 @@ impl Simple {
     async fn read_index_header(file: &mut File) -> Result<Header> {
         let header_size = Header::serialized_size_default()?.try_into()?;
         debug!("header s: {}", header_size);
-        let mut buf = vec![0; header_size];
-        debug!("seek to file start");
-        file.seek(SeekFrom::Start(0)).await?;
-        debug!("read header");
-        file.read(&mut buf).await?;
+        let buf = file.read_at(header_size, 0).await?;
         debug!("deserialize header");
         Ok(deserialize(&buf)?)
     }
@@ -299,12 +291,8 @@ impl Simple {
         Dump(fut)
     }
 
-    async fn load_in_memory(&mut self, mut file: File) -> Result<()> {
-        let mut buf = Vec::new();
-        debug!("seek to file start");
-        file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
-        debug!("read to end index file");
-        file.read_to_end(&mut buf).map_err(Error::new).await?;
+    async fn load_in_memory(&mut self, file: File) -> Result<()> {
+        let buf = file.read_all().await?;
         trace!("read total {} bytes", buf.len());
         let header = Self::deserialize_header(&buf)?;
         debug!("header: {:?}", header);
