@@ -73,12 +73,7 @@ impl Simple {
 
     pub(crate) async fn from_file(name: FileName) -> Result<Self> {
         debug!("open index file");
-        let fd = fs::OpenOptions::new()
-            .create(true)
-            .read(true)
-            .write(true)
-            .open(name.to_path())?;
-        let mut file = File::from_std_file(fd)?;
+        let file = File::open(name.to_path()).await?;
         debug!("load index header");
         let mut buf = vec![0; Header::serialized_size_default()?.try_into()?];
         debug!("read header into buf: [0; {}]", buf.len());
@@ -128,7 +123,7 @@ impl Simple {
         ))
     }
 
-    pub async fn load_records(mut file: &File) -> Result<Vec<RecordHeader>> {
+    pub async fn load_records(file: &File) -> Result<Vec<RecordHeader>> {
         trace!("seek to file start");
         file.seek(SeekFrom::Start(0)).await?;
         let mut buf = Vec::new();
@@ -192,7 +187,7 @@ impl Simple {
         debug!("seek to file start");
         file.seek(SeekFrom::Start(0)).await?;
         debug!("read header");
-        file.read(&mut buf).await?;
+        file.read_exact(&mut buf).await?;
         debug!("deserialize header");
         Ok(deserialize(&buf)?)
     }
@@ -202,7 +197,7 @@ impl Simple {
         let record_header_size = record_header.serialized_size().try_into()?;
         debug!("record header serialized size: {}", record_header_size);
         bunch.sort_by_key(|h| h.key().to_vec());
-        let filter_buf = filter.to_raw();
+        let filter_buf = filter.to_raw()?;
         let header = Header {
             record_header_size,
             records_count: bunch.len(),
@@ -274,20 +269,20 @@ impl Simple {
     }
 
     fn dump_in_memory(&mut self, buf: Vec<u8>) -> Dump {
-        let fd_res = fs::OpenOptions::new()
+        let fd_res = std::fs::OpenOptions::new()
             .create(true)
             .read(true)
             .write(true)
             .open(self.name.to_path())
             .expect("open new index file");
-        let mut file = File::from_std_file(fd_res).expect("convert std file to own format");
+        let file = File::from_std_file(fd_res).expect("convert std file to own format");
         let inner = State::OnDisk(file.clone());
         self.inner = inner;
         let fut = async move { file.write_all(&buf).await.map_err(Into::into) }.boxed();
         Dump(fut)
     }
 
-    async fn load_in_memory(&mut self, mut file: File) -> Result<()> {
+    async fn load_in_memory(&mut self, file: File) -> Result<()> {
         let mut buf = Vec::new();
         debug!("seek to file start");
         file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
