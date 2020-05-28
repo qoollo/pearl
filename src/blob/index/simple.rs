@@ -4,6 +4,7 @@ use super::prelude::*;
 pub(crate) struct Simple {
     header: Header,
     filter: Bloom,
+    filter_is_on: bool,
     inner: State,
     name: FileName,
 }
@@ -39,22 +40,34 @@ pub(crate) enum State {
 }
 
 impl Simple {
-    pub(crate) fn new(filter_config: &Config, name: FileName) -> Self {
-        let filter = Bloom::new(filter_config);
+    pub(crate) fn new(filter_config: Option<Config>, name: FileName) -> Self {
+        let filter_is_on = filter_config.is_some();
+        let filter = if let Some(config) = filter_config {
+            debug!("create filter with config: {:?}", config);
+            Bloom::new(config)
+        } else {
+            debug!("no config, filter created with default params and won't be used");
+            Bloom::default()
+        };
         Self {
             header: Header {
                 records_count: 0,
                 record_header_size: 0,
                 filter_buf_size: 0,
             },
+            filter_is_on,
             filter,
             inner: State::InMemory(Vec::new()),
             name,
         }
     }
 
-    pub fn check_bloom_key(&self, key: &[u8]) -> bool {
-        self.filter.contains(key)
+    pub fn check_bloom_key(&self, key: &[u8]) -> Option<bool> {
+        if self.filter_is_on {
+            Some(self.filter.contains(key))
+        } else {
+            None
+        }
     }
 
     pub(crate) const fn name(&self) -> &FileName {
@@ -71,7 +84,7 @@ impl Simple {
         })
     }
 
-    pub(crate) async fn from_file(name: FileName) -> Result<Self> {
+    pub(crate) async fn from_file(name: FileName, filter_is_on: bool) -> Result<Self> {
         debug!("open index file");
         let file = File::open(name.to_path()).await?;
         debug!("load index header");
@@ -92,6 +105,7 @@ impl Simple {
             inner: State::OnDisk(file),
             name,
             filter,
+            filter_is_on,
         })
     }
 
@@ -124,11 +138,7 @@ impl Simple {
     }
 
     pub async fn load_records(file: &File) -> Result<Vec<RecordHeader>> {
-        trace!("seek to file start");
-        file.seek(SeekFrom::Start(0)).await?;
-        let mut buf = Vec::new();
-        trace!("read to end index");
-        file.read_to_end(&mut buf).await?;
+        let buf = file.read_all().await?;
         if buf.is_empty() {
             debug!("empty index file");
             Ok(Vec::new())
@@ -183,11 +193,7 @@ impl Simple {
     async fn read_index_header(file: &mut File) -> Result<Header> {
         let header_size = Header::serialized_size_default()?.try_into()?;
         debug!("header s: {}", header_size);
-        let mut buf = vec![0; header_size];
-        debug!("seek to file start");
-        file.seek(SeekFrom::Start(0)).await?;
-        debug!("read header");
-        file.read_exact(&mut buf).await?;
+        let buf = file.read_at(header_size, 0).await?;
         debug!("deserialize header");
         Ok(deserialize(&buf)?)
     }
@@ -283,11 +289,7 @@ impl Simple {
     }
 
     async fn load_in_memory(&mut self, file: File) -> Result<()> {
-        let mut buf = Vec::new();
-        debug!("seek to file start");
-        file.seek(SeekFrom::Start(0)).await.map_err(Error::new)?;
-        debug!("read to end index file");
-        file.read_to_end(&mut buf).map_err(Error::new).await?;
+        let buf = file.read_all().await?;
         trace!("read total {} bytes", buf.len());
         let header = Self::deserialize_header(&buf)?;
         debug!("header: {:?}", header);
@@ -379,7 +381,7 @@ impl Index for Simple {
     fn count(&self) -> Count {
         Count(match &self.inner {
             State::InMemory(bunch) => future::ok(bunch.len()).boxed(),
-            State::OnDisk(_) => Self::from_file(self.name.clone())
+            State::OnDisk(_) => Self::from_file(self.name.clone(), self.filter_is_on)
                 .map_ok(Self::count_inner)
                 .boxed(),
         })

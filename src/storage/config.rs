@@ -8,7 +8,7 @@ pub(crate) struct Config {
     blob_file_name_prefix: Option<String>,
     update_interval_ms: u64,
     allow_duplicates: bool,
-    filter: BloomConfig,
+    filter: Option<BloomConfig>,
 }
 
 // Getters
@@ -44,7 +44,7 @@ impl Config {
     }
 
     #[inline]
-    pub fn filter(&self) -> BloomConfig {
+    pub fn filter(&self) -> Option<BloomConfig> {
         self.filter.clone()
     }
 }
@@ -72,7 +72,7 @@ impl Config {
     }
 
     pub fn set_filter(&mut self, filter: BloomConfig) {
-        self.filter = filter;
+        self.filter = Some(filter);
     }
 }
 
@@ -86,7 +86,7 @@ impl Default for Config {
             blob_file_name_prefix: None,
             update_interval_ms: 100,
             allow_duplicates: false,
-            filter: BloomConfig::default(),
+            filter: None,
         }
     }
 }

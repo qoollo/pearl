@@ -4,7 +4,7 @@ const WOULDBLOCK_RETRY_INTERVAL_MS: u64 = 10;
 
 #[derive(Debug, Clone)]
 pub(crate) struct File {
-    read_fd: Arc<StdFile>, // requires only for read_at/write_at methods
+    no_lock_fd: Arc<StdFile>, // requires only for read_at/write_at methods
     write_fd: Arc<RwLock<TokioFile>>,
 }
 
@@ -44,9 +44,14 @@ impl File {
     }
 
     pub(crate) async fn write_at(&self, buf: Vec<u8>, offset: u64) -> IOResult<usize> {
-        let fd = self.read_fd.clone();
+        let fd = self.no_lock_fd.clone();
         let write_fut = WriteAt { fd, buf, offset };
         write_fut.await
+    }
+
+    pub(crate) async fn read_all(&self) -> IOResult<Vec<u8>> {
+        let len = self.metadata().await?.len();
+        self.read_at(len.try_into().expect("u64 to usize"), 0).await
     }
 
     pub(crate) async fn read_exact(&self, buf: &mut [u8]) -> IOResult<usize> {
@@ -54,30 +59,20 @@ impl File {
         file.read_exact(buf).await
     }
 
-    pub(crate) async fn read_to_end(&self, buf: &mut Vec<u8>) -> IOResult<usize> {
-        let mut file = self.write_fd.write().await;
-        file.read_to_end(buf).await
-    }
-
     pub(crate) async fn read_at(&self, len: usize, offset: u64) -> IOResult<Vec<u8>> {
         let read_fut = ReadAt {
-            fd: self.read_fd.clone(),
+            fd: self.no_lock_fd.clone(),
             len,
             offset,
         };
         read_fut.await
     }
 
-    pub(crate) async fn seek(&self, from: SeekFrom) -> IOResult<u64> {
-        let mut file = self.write_fd.write().await;
-        file.seek(from).await
-    }
-
     async fn from_tokio_file(file: TokioFile) -> IOResult<Self> {
         let tokio_file = file.try_clone().await?;
         let std_file = tokio_file.try_into_std().expect("tokio file into std");
         let file = Self {
-            read_fd: Arc::new(std_file),
+            no_lock_fd: Arc::new(std_file),
             write_fd: Arc::new(RwLock::new(file)),
         };
         Ok(file)
@@ -86,7 +81,7 @@ impl File {
     pub(crate) fn from_std_file(fd: StdFile) -> IOResult<Self> {
         let file = fd.try_clone()?;
         Ok(Self {
-            read_fd: Arc::new(file),
+            no_lock_fd: Arc::new(file),
             write_fd: Arc::new(RwLock::new(TokioFile::from_std(fd))),
         })
     }

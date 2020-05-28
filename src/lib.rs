@@ -86,7 +86,7 @@ mod prelude {
         error,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
         fs::{File as StdFile, Metadata, OpenOptions as StdOpenOptions},
-        io::{Error as IOError, ErrorKind as IOErrorKind, Result as IOResult, SeekFrom},
+        io::{Error as IOError, ErrorKind as IOErrorKind, Result as IOResult},
         marker::PhantomData,
         num::TryFromIntError,
         os::unix::fs::{FileExt, OpenOptionsExt},

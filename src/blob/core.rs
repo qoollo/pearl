@@ -26,9 +26,12 @@ impl Blob {
     /// Panics if file with same path already exists
     ///
     /// [`FileName`]: struct.FileName.html
-    pub(crate) async fn open_new(name: FileName, filter_config: BloomConfig) -> Result<Self> {
+    pub(crate) async fn open_new(
+        name: FileName,
+        filter_config: Option<BloomConfig>,
+    ) -> Result<Self> {
         let file = File::create(name.to_path()).await?;
-        let index = Self::create_index(&filter_config, &name);
+        let index = Self::create_index(filter_config, &name);
         let current_offset = Self::new_offset();
         let header = Header::new();
         let mut blob = Self {
@@ -59,7 +62,7 @@ impl Blob {
     }
 
     #[inline]
-    fn create_index(filter_config: &BloomConfig, name: &FileName) -> SimpleIndex {
+    fn create_index(filter_config: Option<BloomConfig>, name: &FileName) -> SimpleIndex {
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         SimpleIndex::new(filter_config, index_name)
@@ -77,7 +80,10 @@ impl Blob {
         Box::new(self)
     }
 
-    pub(crate) async fn from_file(filter_config: BloomConfig, path: PathBuf) -> Result<Self> {
+    pub(crate) async fn from_file(
+        filter_config: Option<BloomConfig>,
+        path: PathBuf,
+    ) -> Result<Self> {
         debug!("create file instance");
         let file = File::open(&path).await?;
         let name = FileName::from_path(&path)?;
@@ -89,10 +95,10 @@ impl Blob {
         debug!("looking for index file: [{}]", index_name.to_string());
         let index = if index_name.exists() {
             debug!("file exists");
-            SimpleIndex::from_file(index_name).await?
+            SimpleIndex::from_file(index_name, filter_config.is_some()).await?
         } else {
             debug!("file not found, create new");
-            SimpleIndex::new(&filter_config, index_name)
+            SimpleIndex::new(filter_config, index_name)
         };
         debug!("index initialized");
         let header_size = bincode::serialized_size(&header)?;
@@ -169,13 +175,13 @@ impl Blob {
     }
 
     async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
-        if self.check_bloom(key) {
+        if self.check_bloom(key) == Some(false) {
+            None
+        } else {
             let entries = self.index.get_entry(key, self.file.clone());
             Self::find_entry(entries, meta)
                 .await
                 .map(|entry| Location::new(entry.blob_offset(), entry.full_size()))
-        } else {
-            None
         }
     }
 
@@ -230,7 +236,7 @@ impl Blob {
         Ok(metas)
     }
 
-    pub(crate) fn check_bloom(&self, key: &[u8]) -> bool {
+    pub(crate) fn check_bloom(&self, key: &[u8]) -> Option<bool> {
         trace!("check bloom filter");
         self.index.check_bloom_key(key)
     }
