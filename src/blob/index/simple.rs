@@ -43,8 +43,10 @@ impl Simple {
     pub(crate) fn new(filter_config: Option<Config>, name: FileName) -> Self {
         let filter_is_on = filter_config.is_some();
         let filter = if let Some(config) = filter_config {
+            debug!("create filter with config: {:?}", config);
             Bloom::new(config)
         } else {
+            debug!("no config, filter created with default params and won't be used");
             Bloom::default()
         };
         Self {
