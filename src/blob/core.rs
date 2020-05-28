@@ -30,7 +30,7 @@ impl Blob {
         name: FileName,
         filter_config: Option<BloomConfig>,
     ) -> Result<Self> {
-        let file = Self::prepare_file(&name)?;
+        let file = File::create(name.to_path()).await?;
         let index = Self::create_index(filter_config, &name);
         let current_offset = Self::new_offset();
         let header = Header::new();
@@ -68,35 +68,12 @@ impl Blob {
         SimpleIndex::new(filter_config, index_name)
     }
 
-    #[inline]
-    fn prepare_file(name: &FileName) -> IOResult<File> {
-        Self::create_file(&name.to_path()).and_then(File::from_std_file)
-    }
-
     pub(crate) async fn dump(&mut self) -> Result<()> {
         self.index.dump().await
     }
 
     pub(crate) async fn load_index(&mut self) -> Result<()> {
         self.index.load().await
-    }
-
-    #[inline]
-    fn create_file(path: &Path) -> IOResult<fs::File> {
-        fs::OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .read(true)
-            .open(path)
-    }
-
-    #[inline]
-    fn open_file(path: &Path) -> IOResult<fs::File> {
-        fs::OpenOptions::new()
-            .create(false)
-            .append(true)
-            .read(true)
-            .open(path)
     }
 
     pub(crate) fn boxed(self) -> Box<Self> {
@@ -108,9 +85,9 @@ impl Blob {
         path: PathBuf,
     ) -> Result<Self> {
         debug!("create file instance");
-        let file: File = File::from_std_file(Self::open_file(&path)?)?;
+        let file = File::open(&path).await?;
         let name = FileName::from_path(&path)?;
-        let len = file.metadata()?.len();
+        let len = file.metadata().await?.len();
         let header = Header::new();
         debug!("blob file size: {} MB", len / 1_000_000);
         let mut index_name: FileName = name.clone();
@@ -214,24 +191,27 @@ impl Blob {
 
     async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Option<Entry> {
         ents.filter(|entry| {
-            let cmp = if let Some(m) = meta {
+            if let Some(m) = meta {
                 *m == entry.meta()
             } else {
                 true
-            };
-            future::ready(cmp)
+            }
         })
         .next()
         .await
     }
 
     #[inline]
-    pub(crate) fn file_size(&self) -> IOResult<u64> {
-        Ok(self.file.metadata()?.len())
+    pub(crate) async fn file_size(&self) -> IOResult<u64> {
+        Ok(self.file.metadata().await?.len())
     }
 
     pub(crate) async fn records_count(&self) -> Result<usize> {
         self.index.count().await
+    }
+
+    pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
+        self.file.fsyncdata().await
     }
 
     #[inline]
@@ -382,7 +362,7 @@ impl RawRecords {
         let key_len = bincode::deserialize::<usize>(&buf)?;
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
         let read_fut = Self::read_at(file.clone(), record_header_size, current_offset).boxed();
-        let file_len = file.metadata().map(|m| m.len())?;
+        let file_len = file.metadata().await.map(|m| m.len())?;
         Ok(Self {
             current_offset,
             record_header_size,

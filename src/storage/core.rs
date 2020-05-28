@@ -74,11 +74,10 @@ impl<K> Clone for Storage<K> {
     }
 }
 
-fn work_dir_content(wd: &Path) -> Result<Option<Vec<fs::DirEntry>>> {
-    let files: Vec<_> = fs::read_dir(wd)
-        .map_err(Error::new)?
-        .filter_map(|res_dir_entry| res_dir_entry.map_err(|e| error!("{}", e)).ok())
-        .collect();
+async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
+    let files = read_dir(wd).await?;
+    let files = files.filter_map(IOResult::ok);
+    let files: Vec<_> = files.collect().await;
     if files
         .iter()
         .filter_map(|file| Some(file.file_name().as_os_str().to_str()?.to_owned()))
@@ -117,7 +116,8 @@ impl<K> Storage<K> {
                 .config
                 .work_dir()
                 .ok_or(ErrorKind::Uninitialized)?,
-        );
+        )
+        .await;
         debug!("work dir content loaded");
         if let Some(files) = cont_res? {
             debug!("storage init from existing files");
@@ -273,7 +273,7 @@ impl<K> Storage<K> {
                 .map(|blob| blob.read(key, meta))
                 .collect();
             debug!("await for stream of read futures: {}", stream.len());
-            let mut task = stream.skip_while(|res| future::ready(res.is_err()));
+            let mut task = stream.skip_while(Result::is_err);
             debug!("task created");
             let res = task
                 .next()
@@ -298,7 +298,7 @@ impl<K> Storage<K> {
         self.inner.need_exit.store(false, Ordering::Relaxed);
         safe.lock_file = None;
         if let Some(work_dir) = self.inner.config.work_dir() {
-            fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
+            std::fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
         };
         info!("active blob dumped, lock released");
         Ok(())
@@ -328,7 +328,7 @@ impl<K> Storage<K> {
             debug!("work dir exists: {}", path.display());
         } else {
             debug!("creating work dir recursively: {}", path.display());
-            fs::create_dir_all(path).map_err(Error::new)?;
+            std::fs::create_dir_all(path).map_err(Error::new)?;
         }
         self.try_lock_dir(path).await
     }
@@ -336,7 +336,7 @@ impl<K> Storage<K> {
     async fn try_lock_dir<'a>(&'a self, path: &'a Path) -> Result<()> {
         let lock_file_path = path.join(LOCK_FILE);
         debug!("try to open lock file: {}", lock_file_path.display());
-        let lock_file = OpenOptions::new()
+        let lock_file = StdOpenOptions::new()
             .create(true)
             .write(true)
             .custom_flags(O_EXCL)
@@ -461,7 +461,7 @@ impl<K> Storage<K> {
         self.inner.records_count().await
     }
 
-    /// Records count per blob. Format: (blob_id, count). Last value is from active blob.
+    /// Records count per blob. Format: (`blob_id`, count). Last value is from active blob.
     pub async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
         self.inner.records_count_detailed().await
     }
@@ -469,6 +469,15 @@ impl<K> Storage<K> {
     /// Records count in active blob. Returns None if active blob not set or any IO error occured.
     pub async fn records_count_in_active_blob(&self) -> Option<usize> {
         self.inner.records_count_in_active_blob().await
+    }
+
+    /// Syncronizes data and metadata of the active blob with the filesystem.
+    /// Like `tokio::std::fs::File::sync_data`, this function will attempt to ensure that in-core data reaches the filesystem before returning.
+    /// May not syncronize file metadata to the file system.
+    /// # Errors
+    /// Fails because of any IO errors
+    pub async fn fsyncdata(&self) -> IOResult<()> {
+        self.inner.fsyncdata().await
     }
 
     fn filter_config(&self) -> Option<BloomConfig> {
@@ -526,16 +535,20 @@ impl Inner {
         ))
     }
 
-    pub(crate) async fn records_count(&self) -> usize {
+    async fn records_count(&self) -> usize {
         self.safe.lock().await.records_count().await
     }
 
-    pub(crate) async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
+    async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
         self.safe.lock().await.records_count_detailed().await
     }
 
-    pub(crate) async fn records_count_in_active_blob(&self) -> Option<usize> {
+    async fn records_count_in_active_blob(&self) -> Option<usize> {
         self.safe.lock().await.records_count_in_active_blob().await
+    }
+
+    async fn fsyncdata(&self) -> IOResult<()> {
+        self.safe.lock().await.fsyncdata().await
     }
 }
 
@@ -554,14 +567,14 @@ impl Safe {
         active_blob_id.max(blobs_max_id)
     }
 
-    pub(crate) async fn records_count(&self) -> usize {
+    async fn records_count(&self) -> usize {
         let details = self.records_count_detailed().await;
         details.iter().fold(0, |acc, (_, count)| acc + count)
     }
 
-    pub(crate) async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
+    async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
         let mut results = Vec::new();
-        for blob in self.blobs.iter() {
+        for blob in &self.blobs {
             let count = blob.records_count().await;
             if let Ok(c) = count {
                 let value = (blob.id(), c);
@@ -577,12 +590,19 @@ impl Safe {
         results
     }
 
-    pub(crate) async fn records_count_in_active_blob(&self) -> Option<usize> {
+    async fn records_count_in_active_blob(&self) -> Option<usize> {
         if let Some(ref blob) = self.active_blob {
             blob.records_count().await.ok()
         } else {
             None
         }
+    }
+
+    async fn fsyncdata(&self) -> IOResult<()> {
+        if let Some(ref blob) = self.active_blob {
+            blob.fsyncdata().await?;
+        }
+        Ok(())
     }
 }
 

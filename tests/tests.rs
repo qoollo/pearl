@@ -626,7 +626,7 @@ async fn test_records_count_detailed() {
     let records = common::generate_records(count, 1000);
     for (key, data) in &records {
         write_one(&storage, *key, data, None).await.unwrap();
-        delay_for(Duration::from_millis(10)).await;
+        delay_for(Duration::from_millis(32)).await;
     }
     delay_for(Duration::from_millis(100)).await;
     assert_eq!(

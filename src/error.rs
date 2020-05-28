@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-/// A specialized storage result type
+/// A specialized storage result type.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// The error type for `Storage` operations.
@@ -28,9 +28,9 @@ impl Error {
         }
     }
 
-    pub(crate) fn is(&self, othr_kind: &ErrorKind) -> bool {
+    pub(crate) fn is(&self, other: &ErrorKind) -> bool {
         if let Repr::Inner(kind) = &self.repr {
-            kind == othr_kind
+            kind == other
         } else {
             false
         }
