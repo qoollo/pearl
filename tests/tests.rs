@@ -222,15 +222,17 @@ async fn test_work_dir_lock() {
 async fn test_index_from_blob() {
     let now = Instant::now();
     let path = common::init("index_from_blob");
-    let storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
+    let storage = common::create_test_storage(&path, 70_000).await.unwrap();
     let records = common::generate_records(10, 10_000);
     for (i, data) in &records {
         write_one(&storage, *i, data, None).await.unwrap();
+        delay_for(Duration::from_millis(10)).await;
     }
     storage.close().await.unwrap();
     let index_file_path = path.join("test.0.index");
     fs::remove_file(&index_file_path).unwrap();
     let new_storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
+    assert!(!path.join("test.1.index").exists());
     assert!(index_file_path.exists());
     common::clean(new_storage, path)
         .map(|res| res.expect("work dir clean failed"))

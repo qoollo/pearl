@@ -294,6 +294,7 @@ impl<K> Storage<K> {
         let active_blob = safe.active_blob.take();
         if let Some(mut blob) = active_blob {
             blob.dump().await?;
+            debug!("active blob dumped");
         }
         self.inner.need_exit.store(false, Ordering::Relaxed);
         safe.lock_file = None;
