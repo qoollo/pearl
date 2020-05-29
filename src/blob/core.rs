@@ -134,8 +134,7 @@ impl Blob {
         let raw_r = self.raw_records().await?;
         debug!("raw records loaded");
         raw_r.try_for_each(|h| self.index.push(h)).await?;
-        debug!("index entries collected");
-        self.dump().await?;
+        debug!("skip index dump after generation");
         debug!("index successfully generated: {}", self.index.name());
         Ok(())
     }
