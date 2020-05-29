@@ -42,7 +42,7 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
     let (active_size, active_count) = {
         trace!("await for lock");
         let safe_locked = inner.safe.lock().await;
-        debug!("lock acquired");
+        trace!("lock acquired");
         let active_blob = safe_locked
             .active_blob
             .as_ref()

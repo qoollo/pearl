@@ -222,10 +222,11 @@ async fn test_work_dir_lock() {
 async fn test_index_from_blob() {
     let now = Instant::now();
     let path = common::init("index_from_blob");
-    let storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
+    let storage = common::create_test_storage(&path, 70_000).await.unwrap();
     let records = common::generate_records(10, 10_000);
     for (i, data) in &records {
         write_one(&storage, *i, data, None).await.unwrap();
+        delay_for(Duration::from_millis(10)).await;
     }
     storage.close().await.unwrap();
     let index_file_path = path.join("test.0.index");
@@ -626,7 +627,7 @@ async fn test_records_count_detailed() {
     let records = common::generate_records(count, 1000);
     for (key, data) in &records {
         write_one(&storage, *key, data, None).await.unwrap();
-        delay_for(Duration::from_millis(32)).await;
+        delay_for(Duration::from_millis(64)).await;
     }
     delay_for(Duration::from_millis(100)).await;
     assert_eq!(

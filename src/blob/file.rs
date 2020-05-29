@@ -40,6 +40,7 @@ impl File {
 
     pub(crate) async fn write_all(&self, buf: &[u8]) -> IOResult<()> {
         let mut file = self.write_fd.write().await;
+        debug!("write all {}b to file", buf.len());
         file.write_all(buf).await
     }
 

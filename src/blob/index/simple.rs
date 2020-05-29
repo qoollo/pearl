@@ -358,6 +358,7 @@ impl Index for Simple {
     fn dump(&mut self) -> Dump {
         if let State::InMemory(bunch) = &mut self.inner {
             let buf = Self::serialize_bunch(bunch, &self.filter);
+            debug!("index serialized, errors: {:?}", buf.as_ref().err());
             match buf {
                 Ok(buf) => self.dump_in_memory(buf),
                 Err(ref e) if e.is(&ErrorKind::EmptyIndexBunch) => Dump(future::ok(()).boxed()),
