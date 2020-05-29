@@ -232,7 +232,6 @@ async fn test_index_from_blob() {
     let index_file_path = path.join("test.0.index");
     fs::remove_file(&index_file_path).unwrap();
     let new_storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
-    assert!(!path.join("test.1.index").exists());
     assert!(index_file_path.exists());
     common::clean(new_storage, path)
         .map(|res| res.expect("work dir clean failed"))
@@ -628,7 +627,7 @@ async fn test_records_count_detailed() {
     let records = common::generate_records(count, 1000);
     for (key, data) in &records {
         write_one(&storage, *key, data, None).await.unwrap();
-        delay_for(Duration::from_millis(32)).await;
+        delay_for(Duration::from_millis(64)).await;
     }
     delay_for(Duration::from_millis(100)).await;
     assert_eq!(
