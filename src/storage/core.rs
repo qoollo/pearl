@@ -44,7 +44,7 @@ pub(crate) struct Inner {
     next_blob_id: Arc<AtomicUsize>,
     pub(crate) need_exit: Arc<AtomicBool>,
     twins_count: Arc<AtomicUsize>,
-    pub(crate) ioring: Rio
+    pub(crate) ioring: Rio,
 }
 
 #[derive(Debug)]
@@ -369,7 +369,8 @@ impl<K> Storage<K> {
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         trace!("init from existing: {:?}", files);
-        let mut blobs = Self::read_blobs(&files, self.inner.ioring.clone(), self.filter_config()).await?;
+        let mut blobs =
+            Self::read_blobs(&files, self.inner.ioring.clone(), self.filter_config()).await?;
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
@@ -501,7 +502,7 @@ impl Clone for Inner {
             next_blob_id: self.next_blob_id.clone(),
             need_exit: self.need_exit.clone(),
             twins_count: self.twins_count.clone(),
-            ioring: self.ioring.clone()
+            ioring: self.ioring.clone(),
         }
     }
 }
@@ -514,7 +515,7 @@ impl Inner {
             next_blob_id: Arc::new(AtomicUsize::new(0)),
             need_exit: Arc::new(AtomicBool::new(false)),
             twins_count: Arc::new(AtomicUsize::new(0)),
-            ioring
+            ioring,
         }
     }
 

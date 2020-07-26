@@ -53,7 +53,7 @@ impl Blob {
 
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
-        let offset = self.file.write(&buf).await?;
+        let offset = self.file.write_at(&buf, 0).await?;
         self.update_offset(offset).await;
         Ok(())
     }
@@ -63,13 +63,17 @@ impl Blob {
     }
 
     #[inline]
-    fn create_index(name: &FileName, ioring: Rio, filter_config: Option<BloomConfig>) -> SimpleIndex {
+    fn create_index(
+        name: &FileName,
+        ioring: Rio,
+        filter_config: Option<BloomConfig>,
+    ) -> SimpleIndex {
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         SimpleIndex::new(index_name, ioring, filter_config)
     }
 
-    pub(crate) async fn dump(&mut self) -> Result<()> {
+    pub(crate) async fn dump(&mut self) -> Result<usize> {
         self.index.dump().await
     }
 
@@ -150,7 +154,7 @@ impl Blob {
         let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
-        let bytes_written = self.file.write_at(buf, *offset).await?;
+        let bytes_written = self.file.write_at(&buf, *offset).await?;
         trace!("push record header");
         self.index.push(record.header().clone());
         *offset += bytes_written as u64;
@@ -228,10 +232,7 @@ impl Blob {
         let mut metas = Vec::new();
         for location in locations {
             let mut meta_raw = Vec::with_capacity(location.size as usize);
-            self
-                .file
-                .read_at(&mut meta_raw, location.offset)
-                .await?; // TODO: verify amount of data readed
+            self.file.read_at(&mut meta_raw, location.offset).await?; // TODO: verify amount of data readed
             let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
             metas.push(meta);
         }
@@ -360,8 +361,7 @@ impl RawRecords {
         // plus size of usize because serialized
         // vector contains usize len in front
         let mut buf = Vec::with_capacity(size_of_usize);
-        file
-            .read_at(&mut buf, current_offset + size_of_usize as u64)
+        file.read_at(&mut buf, current_offset + size_of_usize as u64)
             .await?;
         let key_len = bincode::deserialize::<usize>(&buf)?;
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;

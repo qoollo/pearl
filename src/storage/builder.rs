@@ -31,7 +31,7 @@ use super::prelude::*;
 /// [`key_size`]: struct.Builder.html#method.key_size
 #[derive(Default, Debug)]
 pub struct Builder {
-    config: Config
+    config: Config,
 }
 
 impl Builder {

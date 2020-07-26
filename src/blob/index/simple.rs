@@ -7,7 +7,7 @@ pub(crate) struct Simple {
     filter_is_on: bool,
     inner: State,
     name: FileName,
-    ioring: Rio
+    ioring: Rio,
 }
 
 #[derive(Debug, Deserialize, Default, Serialize, Clone)]
@@ -60,7 +60,7 @@ impl Simple {
             filter,
             inner: State::InMemory(Vec::new()),
             name,
-            ioring
+            ioring,
         }
     }
 
@@ -90,15 +90,15 @@ impl Simple {
         debug!("open index file");
         let file = File::open(name.to_path(), ioring.clone()).await?;
         debug!("load index header");
-        let mut buf = vec![0; Header::serialized_size_default()?.try_into()?];
-        debug!("read header into buf: [0; {}]", buf.len());
-        file.read_exact(&mut buf).await?;
+        let mut header_buf = vec![0; Header::serialized_size_default()?.try_into()?];
+        debug!("read header into buf: [0; {}]", header_buf.len());
+        file.read_at(&mut header_buf, 0).await?;
         debug!("serialize header from bytes");
-        let header = Header::from_raw(&buf)?;
+        let header = Header::from_raw(&header_buf)?;
         debug!("load filter");
         let mut buf = vec![0; header.filter_buf_size];
         debug!("read filter into buf: [0; {}]", buf.len());
-        file.read_exact(&mut buf).await?;
+        file.read_at(&mut buf, header_buf.len() as u64).await?;
         let filter = Bloom::from_raw(&buf)?;
         debug!("index restored successfuly");
         error!("@TODO check consistency");
@@ -108,7 +108,7 @@ impl Simple {
             name,
             filter,
             filter_is_on,
-            ioring
+            ioring,
         })
     }
 
@@ -289,7 +289,7 @@ impl Simple {
         let file = File::from_std_file(fd_res, ioring).expect("convert std file to own format");
         let inner = State::OnDisk(file.clone());
         self.inner = inner;
-        let fut = async move { file.write_all(&buf).await.map_err(Into::into) }.boxed();
+        let fut = async move { file.write_at(&buf, 0).await.map_err(Into::into) }.boxed();
         Dump(fut)
     }
 
@@ -366,11 +366,11 @@ impl Index for Simple {
             debug!("index serialized, errors: {:?}", buf.as_ref().err());
             match buf {
                 Ok(buf) => self.dump_in_memory(buf, self.ioring.clone()),
-                Err(ref e) if e.is(&ErrorKind::EmptyIndexBunch) => Dump(future::ok(()).boxed()),
+                Err(ref e) if e.is(&ErrorKind::EmptyIndexBunch) => Dump(future::ok(0).boxed()),
                 Err(e) => Dump(future::err(e).boxed()),
             }
         } else {
-            Dump(future::ok(()).boxed())
+            Dump(future::ok(0).boxed())
         }
     }
 
@@ -387,9 +387,11 @@ impl Index for Simple {
     fn count(&self) -> Count {
         Count(match &self.inner {
             State::InMemory(bunch) => future::ok(bunch.len()).boxed(),
-            State::OnDisk(_) => Self::from_file(self.name.clone(), self.filter_is_on, self.ioring.clone())
-                .map_ok(Self::count_inner)
-                .boxed(),
+            State::OnDisk(_) => {
+                Self::from_file(self.name.clone(), self.filter_is_on, self.ioring.clone())
+                    .map_ok(Self::count_inner)
+                    .boxed()
+            }
         })
     }
 }

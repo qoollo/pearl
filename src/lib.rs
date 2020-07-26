@@ -78,6 +78,7 @@ mod prelude {
         stream::{futures_unordered::FuturesUnordered, Stream, TryStreamExt},
     };
     pub(crate) use record::{Header as RecordHeader, Record};
+    pub(crate) use rio::Rio;
     pub(crate) use std::{
         cell::RefCell,
         cmp::Ordering as CmpOrdering,
@@ -106,5 +107,4 @@ mod prelude {
         sync::RwLock,
         time::{delay_for, interval},
     };
-    pub(crate) use rio::Rio;
 }
