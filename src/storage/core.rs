@@ -44,6 +44,7 @@ pub(crate) struct Inner {
     next_blob_id: Arc<AtomicUsize>,
     pub(crate) need_exit: Arc<AtomicBool>,
     twins_count: Arc<AtomicUsize>,
+    pub(crate) ioring: Rio
 }
 
 #[derive(Debug)]
@@ -92,9 +93,9 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     }
 }
 impl<K> Storage<K> {
-    pub(crate) fn new(config: Config) -> Self {
+    pub(crate) fn new(config: Config, ioring: Rio) -> Self {
         Self {
-            inner: Inner::new(config),
+            inner: Inner::new(config, ioring),
             marker: PhantomData,
         }
     }
@@ -358,7 +359,7 @@ impl<K> Storage<K> {
         let next = self.inner.next_blob_name()?;
         let config = self.filter_config();
         let mut safe = safe_locked.await;
-        let blob = Blob::open_new(next, config)
+        let blob = Blob::open_new(next, self.inner.ioring.clone(), config)
             .await
             .map_err(Error::new)?
             .boxed();
@@ -368,7 +369,7 @@ impl<K> Storage<K> {
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         trace!("init from existing: {:?}", files);
-        let mut blobs = Self::read_blobs(self.filter_config(), &files).await?;
+        let mut blobs = Self::read_blobs(&files, self.inner.ioring.clone(), self.filter_config()).await?;
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
@@ -396,8 +397,9 @@ impl<K> Storage<K> {
     }
 
     async fn read_blobs(
-        filter_config: Option<BloomConfig>,
         files: &[DirEntry],
+        ioring: Rio,
+        filter_config: Option<BloomConfig>,
     ) -> Result<Vec<Blob>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
@@ -413,7 +415,7 @@ impl<K> Storage<K> {
         });
         debug!("init blobs from found files");
         let futures: FuturesUnordered<_> = blob_files
-            .map(|file| Blob::from_file(filter_config.clone(), file))
+            .map(|file| Blob::from_file(file, ioring.clone(), filter_config.clone()))
             .collect();
         debug!("async init blobs from file");
         futures.try_collect().await
@@ -499,18 +501,20 @@ impl Clone for Inner {
             next_blob_id: self.next_blob_id.clone(),
             need_exit: self.need_exit.clone(),
             twins_count: self.twins_count.clone(),
+            ioring: self.ioring.clone()
         }
     }
 }
 
 impl Inner {
-    fn new(config: Config) -> Self {
+    fn new(config: Config, ioring: Rio) -> Self {
         Self {
             config,
             safe: Arc::new(Mutex::new(Safe::new())),
             next_blob_id: Arc::new(AtomicUsize::new(0)),
             need_exit: Arc::new(AtomicBool::new(false)),
             twins_count: Arc::new(AtomicUsize::new(0)),
+            ioring
         }
     }
 

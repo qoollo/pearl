@@ -28,10 +28,11 @@ impl Blob {
     /// [`FileName`]: struct.FileName.html
     pub(crate) async fn open_new(
         name: FileName,
+        ioring: Rio,
         filter_config: Option<BloomConfig>,
     ) -> Result<Self> {
-        let file = File::create(name.to_path()).await?;
-        let index = Self::create_index(filter_config, &name);
+        let file = File::create(name.to_path(), ioring.clone()).await?;
+        let index = Self::create_index(&name, ioring, filter_config);
         let current_offset = Self::new_offset();
         let header = Header::new();
         let mut blob = Self {
@@ -62,10 +63,10 @@ impl Blob {
     }
 
     #[inline]
-    fn create_index(filter_config: Option<BloomConfig>, name: &FileName) -> SimpleIndex {
+    fn create_index(name: &FileName, ioring: Rio, filter_config: Option<BloomConfig>) -> SimpleIndex {
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        SimpleIndex::new(filter_config, index_name)
+        SimpleIndex::new(index_name, ioring, filter_config)
     }
 
     pub(crate) async fn dump(&mut self) -> Result<()> {
@@ -81,11 +82,12 @@ impl Blob {
     }
 
     pub(crate) async fn from_file(
-        filter_config: Option<BloomConfig>,
         path: PathBuf,
+        ioring: Rio,
+        filter_config: Option<BloomConfig>,
     ) -> Result<Self> {
         debug!("create file instance");
-        let file = File::open(&path).await?;
+        let file = File::open(&path, ioring.clone()).await?;
         let name = FileName::from_path(&path)?;
         let len = file.metadata().await?.len();
         let header = Header::new();
@@ -95,10 +97,10 @@ impl Blob {
         debug!("looking for index file: [{}]", index_name.to_string());
         let index = if index_name.exists() {
             debug!("file exists");
-            SimpleIndex::from_file(index_name, filter_config.is_some()).await?
+            SimpleIndex::from_file(index_name, filter_config.is_some(), ioring).await?
         } else {
             debug!("file not found, create new");
-            SimpleIndex::new(filter_config, index_name)
+            SimpleIndex::new(index_name, ioring, filter_config)
         };
         debug!("index initialized");
         let header_size = bincode::serialized_size(&header)?;
@@ -161,7 +163,8 @@ impl Blob {
             .await
             .ok_or(ErrorKind::RecordNotFound)?;
         debug!("key found");
-        let buf = self.file.read_at(loc.size as usize, loc.offset).await?;
+        let mut buf = Vec::with_capacity(loc.size as usize);
+        self.file.read_at(&mut buf, loc.offset).await?;
         debug!("buf read finished");
         let record = Record::from_raw(&buf).expect("from raw");
         debug!("record deserialized");
@@ -224,10 +227,11 @@ impl Blob {
         trace!("gotten all meta locations");
         let mut metas = Vec::new();
         for location in locations {
-            let meta_raw = self
+            let mut meta_raw = Vec::with_capacity(location.size as usize);
+            self
                 .file
-                .read_at(location.size as usize, location.offset)
-                .await?;
+                .read_at(&mut meta_raw, location.offset)
+                .await?; // TODO: verify amount of data readed
             let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
             metas.push(meta);
         }
@@ -355,8 +359,9 @@ impl RawRecords {
         );
         // plus size of usize because serialized
         // vector contains usize len in front
-        let buf = file
-            .read_at(size_of_usize, current_offset + size_of_usize as u64)
+        let mut buf = Vec::with_capacity(size_of_usize);
+        file
+            .read_at(&mut buf, current_offset + size_of_usize as u64)
             .await?;
         let key_len = bincode::deserialize::<usize>(&buf)?;
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
@@ -373,7 +378,8 @@ impl RawRecords {
 
     async fn read_at(file: File, size: u64, offset: u64) -> Result<RecordHeader> {
         trace!("call read_at: {} bytes at {}", size, offset);
-        let buf = file.read_at(size.try_into()?, offset).await?;
+        let mut buf = Vec::with_capacity(size.try_into()?);
+        file.read_at(&mut buf, offset).await?; // TODO: verify amount of data readed
         RecordHeader::from_raw(&buf).map_err(Error::new)
     }
 

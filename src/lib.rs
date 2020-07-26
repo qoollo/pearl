@@ -106,4 +106,5 @@ mod prelude {
         sync::RwLock,
         time::{delay_for, interval},
     };
+    pub(crate) use rio::Rio;
 }

@@ -75,7 +75,8 @@ impl Meta {
     }
 
     pub(crate) async fn load(file: &File, location: Location) -> Result<Self> {
-        let buf = file.read_at(location.size(), location.offset()).await?;
+        let mut buf = Vec::with_capacity(location.size());
+        file.read_at(&mut buf, location.offset()).await?;
         Self::from_raw(&buf)
     }
 }

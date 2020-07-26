@@ -7,6 +7,7 @@ pub(crate) struct Simple {
     filter_is_on: bool,
     inner: State,
     name: FileName,
+    ioring: Rio
 }
 
 #[derive(Debug, Deserialize, Default, Serialize, Clone)]
@@ -40,7 +41,7 @@ pub(crate) enum State {
 }
 
 impl Simple {
-    pub(crate) fn new(filter_config: Option<Config>, name: FileName) -> Self {
+    pub(crate) fn new(name: FileName, ioring: Rio, filter_config: Option<Config>) -> Self {
         let filter_is_on = filter_config.is_some();
         let filter = if let Some(config) = filter_config {
             debug!("create filter with config: {:?}", config);
@@ -59,6 +60,7 @@ impl Simple {
             filter,
             inner: State::InMemory(Vec::new()),
             name,
+            ioring
         }
     }
 
@@ -84,9 +86,9 @@ impl Simple {
         })
     }
 
-    pub(crate) async fn from_file(name: FileName, filter_is_on: bool) -> Result<Self> {
+    pub(crate) async fn from_file(name: FileName, filter_is_on: bool, ioring: Rio) -> Result<Self> {
         debug!("open index file");
-        let file = File::open(name.to_path()).await?;
+        let file = File::open(name.to_path(), ioring.clone()).await?;
         debug!("load index header");
         let mut buf = vec![0; Header::serialized_size_default()?.try_into()?];
         debug!("read header into buf: [0; {}]", buf.len());
@@ -106,6 +108,7 @@ impl Simple {
             name,
             filter,
             filter_is_on,
+            ioring
         })
     }
 
@@ -185,7 +188,8 @@ impl Simple {
     async fn read_at(file: &mut File, index: usize, header: &Header) -> Result<RecordHeader> {
         let header_size = bincode::serialized_size(&header)?;
         let offset = header_size + (header.record_header_size * index) as u64;
-        let buf = file.read_at(header.record_header_size, offset).await?;
+        let mut buf = Vec::with_capacity(header.record_header_size);
+        file.read_at(&mut buf, offset).await?;
         debug!("file read at: {}, buf len: {}", offset, buf.len());
         Ok(deserialize(&buf)?)
     }
@@ -193,7 +197,8 @@ impl Simple {
     async fn read_index_header(file: &mut File) -> Result<Header> {
         let header_size = Header::serialized_size_default()?.try_into()?;
         debug!("header s: {}", header_size);
-        let buf = file.read_at(header_size, 0).await?;
+        let mut buf = Vec::with_capacity(header_size);
+        file.read_at(&mut buf, 0).await?;
         debug!("deserialize header");
         Ok(deserialize(&buf)?)
     }
@@ -274,14 +279,14 @@ impl Simple {
         )
     }
 
-    fn dump_in_memory(&mut self, buf: Vec<u8>) -> Dump {
+    fn dump_in_memory(&mut self, buf: Vec<u8>, ioring: Rio) -> Dump {
         let fd_res = std::fs::OpenOptions::new()
             .create(true)
             .read(true)
             .write(true)
             .open(self.name.to_path())
             .expect("open new index file");
-        let file = File::from_std_file(fd_res).expect("convert std file to own format");
+        let file = File::from_std_file(fd_res, ioring).expect("convert std file to own format");
         let inner = State::OnDisk(file.clone());
         self.inner = inner;
         let fut = async move { file.write_all(&buf).await.map_err(Into::into) }.boxed();
@@ -360,7 +365,7 @@ impl Index for Simple {
             let buf = Self::serialize_bunch(bunch, &self.filter);
             debug!("index serialized, errors: {:?}", buf.as_ref().err());
             match buf {
-                Ok(buf) => self.dump_in_memory(buf),
+                Ok(buf) => self.dump_in_memory(buf, self.ioring.clone()),
                 Err(ref e) if e.is(&ErrorKind::EmptyIndexBunch) => Dump(future::ok(()).boxed()),
                 Err(e) => Dump(future::err(e).boxed()),
             }
@@ -382,7 +387,7 @@ impl Index for Simple {
     fn count(&self) -> Count {
         Count(match &self.inner {
             State::InMemory(bunch) => future::ok(bunch.len()).boxed(),
-            State::OnDisk(_) => Self::from_file(self.name.clone(), self.filter_is_on)
+            State::OnDisk(_) => Self::from_file(self.name.clone(), self.filter_is_on, self.ioring.clone())
                 .map_ok(Self::count_inner)
                 .boxed(),
         })

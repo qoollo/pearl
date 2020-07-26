@@ -171,12 +171,13 @@ async fn test_on_disk_index() -> Result<(), String> {
     let num_records_to_write = 5u32;
     let read_key = 3u32;
 
+    let ioring = rio::new().expect("create uring");
     let mut storage = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
         .max_blob_size(max_blob_size)
         .max_data_in_blob(1_000)
-        .build()
+        .build(ioring)
         .unwrap();
     let slice = [17, 40, 29, 7, 75];
     let mut data = Vec::new();

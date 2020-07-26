@@ -85,7 +85,8 @@ pub async fn create_test_storage(
         .max_data_in_blob(100_000)
         .set_filter_config(Default::default())
         .allow_duplicates();
-    let mut storage = builder.build().unwrap();
+    let ioring = rio::new().expect("create uring");
+    let mut storage = builder.build(ioring).unwrap();
     storage.init().await.map_err(|e| format!("{:?}", e))?;
     Ok(storage)
 }
