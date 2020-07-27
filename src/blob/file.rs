@@ -3,7 +3,7 @@ use crate::prelude::*;
 // const WOULDBLOCK_RETRY_INTERVAL_MS: u64 = 10;
 
 #[derive(Debug, Clone)]
-pub(crate) struct File {
+pub struct File {
     ioring: Rio,
     no_lock_fd: Arc<StdFile>, // requires only for read_at/write_at methods
     write_fd: Arc<RwLock<TokioFile>>,

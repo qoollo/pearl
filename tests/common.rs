@@ -57,7 +57,7 @@ pub fn init(dir_name: &str) -> PathBuf {
                 record.args(),
             )
         })
-        .filter_level(log::LevelFilter::Info)
+        .filter_level(log::LevelFilter::Trace)
         .try_init()
         .unwrap_or(());
     env::temp_dir().join(format!(

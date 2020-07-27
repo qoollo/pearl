@@ -90,7 +90,7 @@ impl Bloom {
     pub fn hashers(k: usize) -> Vec<AHasher> {
         debug!("@TODO create configurable hashers");
         (0..k)
-            .map(|i| AHasher::new_with_keys((i + 1) as u64, (i + 2) as u64))
+            .map(|i| AHasher::new_with_keys((i + 1) as u128, (i + 2) as u128))
             .collect()
     }
 
@@ -136,7 +136,6 @@ impl Bloom {
                 .expect("impossible due to mod by len") = true;
             trace!("set true to {}", h);
         }
-        trace!("filter add: {:#?}", self.inner);
     }
 
     pub fn contains(&self, item: impl AsRef<[u8]>) -> bool {

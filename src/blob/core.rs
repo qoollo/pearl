@@ -10,7 +10,7 @@ const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 ///
 /// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
-pub(crate) struct Blob {
+pub struct Blob {
     header: Header,
     index: SimpleIndex,
     name: FileName,
@@ -145,7 +145,7 @@ impl Blob {
         Ok(())
     }
 
-    pub(crate) fn check_data_consistency() -> Result<()> {
+    pub(crate) const fn check_data_consistency() -> Result<()> {
         // @TODO implement
         Ok(())
     }
@@ -196,15 +196,9 @@ impl Blob {
     }
 
     async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Option<Entry> {
-        ents.filter(|entry| {
-            if let Some(m) = meta {
-                *m == entry.meta()
-            } else {
-                true
-            }
-        })
-        .next()
-        .await
+        ents.filter(|entry| meta.map_or(true, |m| *m == entry.meta()))
+            .next()
+            .await
     }
 
     #[inline]
