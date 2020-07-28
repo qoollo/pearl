@@ -103,22 +103,23 @@ pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<
     fs::remove_dir_all(path).map_err(|e| e.to_string())
 }
 
-pub fn check_all_written(storage: &Storage<KeyTest>, keys: Vec<u32>) -> Result<(), String> {
-    let read_futures: FuturesUnordered<_> = keys
+pub async fn check_all_written(storage: &Storage<KeyTest>, keys: Vec<u32>) -> Result<(), String> {
+    let mut read_futures: FuturesUnordered<_> = keys
         .iter()
         .map(|key| storage.read(KeyTest::new(*key)))
         .collect();
-    let futures = read_futures.collect::<Vec<_>>();
-    let expected_len = keys.len();
-    let future_obj = FutureObj::new(Box::new(futures.map(move |records| {
-        assert_eq!(records.len(), expected_len);
-        records
-            .iter()
-            .filter_map(|res| res.as_ref().err())
-            .for_each(|r| println!("{:?}", r))
-    })));
-    block_on(future_obj);
-    Ok(())
+    let mut ok_count: usize = 0;
+    while let Some(res) = read_futures.next().await {
+        match res {
+            Ok(_) => ok_count += 1,
+            Err(e) => println!("error reading {}", e),
+        }
+    }
+    if ok_count == keys.len() {
+        Ok(())
+    } else {
+        Err("Failed to read all keys".to_string())
+    }
 }
 
 pub fn generate_records(count: usize, avg_size: usize) -> Vec<(u32, Vec<u8>)> {

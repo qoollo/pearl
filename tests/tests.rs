@@ -122,7 +122,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
         .flatten()
         .map(|i| *i as u32)
         .collect::<Vec<_>>();
-    common::check_all_written(&storage, keys)?;
+    common::check_all_written(&storage, keys).await?;
     common::clean(storage, path).await.unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     Ok(())
