@@ -45,14 +45,14 @@ impl File {
     //     file.write_all(buf).await
     // }
 
-    pub(crate) async fn write_at(&self, buf: &Vec<u8>, offset: u64) -> IOResult<usize> {
-        let compl = self.ioring.write_at(&*self.no_lock_fd, buf, offset);
+    pub(crate) async fn write_at(&self, buf: &[u8], offset: u64) -> IOResult<usize> {
+        let compl = self.ioring.write_at(&*self.no_lock_fd, &buf, offset);
         compl.await
     }
 
     pub(crate) async fn read_all(&self) -> IOResult<Vec<u8>> {
         let len = self.metadata().await?.len();
-        let mut buf = Vec::with_capacity(len as usize);
+        let mut buf = vec![0; len as usize];
         self.read_at(&mut buf, 0).await?; // TODO: verify read size
         Ok(buf)
     }
@@ -62,8 +62,11 @@ impl File {
     //     file.read_exact(buf).await
     // }
 
-    pub(crate) async fn read_at(&self, buf: &mut Vec<u8>, offset: u64) -> IOResult<usize> {
-        let compl = self.ioring.read_at(&*self.no_lock_fd, buf, offset);
+    pub(crate) async fn read_at(&self, buf: &mut [u8], offset: u64) -> IOResult<usize> {
+        if buf.is_empty() {
+            warn!("file read_at empty buf");
+        }
+        let compl = self.ioring.read_at(&*self.no_lock_fd, &buf, offset);
         compl.await
     }
 

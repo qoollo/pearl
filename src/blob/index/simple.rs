@@ -86,9 +86,15 @@ impl Simple {
         })
     }
 
-    pub(crate) async fn from_file(name: FileName, filter_is_on: bool, ioring: Rio) -> Result<Self> {
+    pub(crate) async fn from_file(
+        name: FileName,
+        filter_is_on: bool,
+        ioring: Rio,
+    ) -> AnyResult<Self> {
         debug!("open index file");
-        let file = File::open(name.to_path(), ioring.clone()).await?;
+        let file = File::open(name.to_path(), ioring.clone())
+            .await
+            .context(format!("failed to open index file: {}", name))?;
         debug!("load index header");
         let mut header_buf = vec![0; Header::serialized_size_default()?.try_into()?];
         debug!("read header into buf: [0; {}]", header_buf.len());
@@ -101,7 +107,7 @@ impl Simple {
         file.read_at(&mut buf, header_buf.len() as u64).await?;
         let filter = Bloom::from_raw(&buf)?;
         debug!("index restored successfuly");
-        error!("@TODO check consistency");
+        warn!("@TODO check consistency");
         Ok(Self {
             header,
             inner: State::OnDisk(file),
@@ -188,7 +194,7 @@ impl Simple {
     async fn read_at(file: &mut File, index: usize, header: &Header) -> Result<RecordHeader> {
         let header_size = bincode::serialized_size(&header)?;
         let offset = header_size + (header.record_header_size * index) as u64;
-        let mut buf = Vec::with_capacity(header.record_header_size);
+        let mut buf = vec![0; header.record_header_size];
         file.read_at(&mut buf, offset).await?;
         debug!("file read at: {}, buf len: {}", offset, buf.len());
         Ok(deserialize(&buf)?)
@@ -197,7 +203,7 @@ impl Simple {
     async fn read_index_header(file: &mut File) -> Result<Header> {
         let header_size = Header::serialized_size_default()?.try_into()?;
         debug!("header s: {}", header_size);
-        let mut buf = Vec::with_capacity(header_size);
+        let mut buf = vec![0; header_size];
         file.read_at(&mut buf, 0).await?;
         debug!("deserialize header");
         Ok(deserialize(&buf)?)

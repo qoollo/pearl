@@ -109,20 +109,22 @@ impl<K> Storage<K> {
     /// if some of the required params are missed.
     ///
     /// [`init()`]: struct.Storage.html#method.init
-    pub async fn init(&mut self) -> Result<()> {
+    pub async fn init(&mut self) -> AnyResult<()> {
         // @TODO implement work dir validation
         self.prepare_work_dir().await?;
         let cont_res = work_dir_content(
             self.inner
                 .config
                 .work_dir()
-                .ok_or(ErrorKind::Uninitialized)?,
+                .ok_or(Error::from(ErrorKind::Uninitialized))?,
         )
         .await;
         debug!("work dir content loaded");
         if let Some(files) = cont_res? {
             debug!("storage init from existing files");
-            self.init_from_existing(files).await?
+            self.init_from_existing(files)
+                .await
+                .context("failed to init from existing blobs")?
         } else {
             self.init_new().await?
         };
@@ -205,7 +207,6 @@ impl<K> Storage<K> {
         for blob in blobs {
             trace!("look into next blob");
             let meta = blob.get_all_metas(key.as_ref()).await.map_err(Error::new)?;
-            trace!("get all meta from blob {:?} finished", blob);
             metas.extend(meta);
             debug!("extend finished");
         }
@@ -367,10 +368,11 @@ impl<K> Storage<K> {
         Ok(())
     }
 
-    async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
-        trace!("init from existing: {:?}", files);
-        let mut blobs =
-            Self::read_blobs(&files, self.inner.ioring.clone(), self.filter_config()).await?;
+    async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> AnyResult<()> {
+        trace!("init from existing: {:#?}", files);
+        let mut blobs = Self::read_blobs(&files, self.inner.ioring.clone(), self.filter_config())
+            .await
+            .context("failed to read blobs")?;
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
@@ -380,7 +382,7 @@ impl<K> Storage<K> {
                 let wd = self.inner.config.work_dir();
                 error!("There are some blob files in the work dir: {:?}", wd);
                 error!("Creating blobs from all these files failed");
-                ErrorKind::Uninitialized
+                Error::from(ErrorKind::Uninitialized)
             })?
             .boxed();
         let mut safe_locked = self.inner.safe.lock().await;
@@ -401,7 +403,7 @@ impl<K> Storage<K> {
         files: &[DirEntry],
         ioring: Rio,
         filter_config: Option<BloomConfig>,
-    ) -> Result<Vec<Blob>> {
+    ) -> AnyResult<Vec<Blob>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
         debug!("read {} entities", dir_content.len());
@@ -419,7 +421,10 @@ impl<K> Storage<K> {
             .map(|file| Blob::from_file(file, ioring.clone(), filter_config.clone()))
             .collect();
         debug!("async init blobs from file");
-        futures.try_collect().await
+        futures
+            .try_collect()
+            .await
+            .context("failed to read existing blobs")
     }
 
     /// `contains` is used to check whether a key is in storage.

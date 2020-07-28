@@ -43,7 +43,7 @@ impl Entry {
     /// # Errors
     /// Returns the error type for I/O operations, see [`std::io::Error`]
     pub async fn load(&self) -> IOResult<Vec<u8>> {
-        let mut buf = Vec::with_capacity(self.data_size as usize);
+        let mut buf = vec![0; self.data_size as usize];
         self.blob_file.read_at(&mut buf, self.data_offset).await?; // TODO: verify read size
         Ok(buf)
     }

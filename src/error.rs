@@ -4,7 +4,7 @@ use crate::prelude::*;
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// The error type for `Storage` operations.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub struct Error {
     repr: Repr,
 }
@@ -33,16 +33,6 @@ impl Error {
             kind == other
         } else {
             false
-        }
-    }
-}
-
-impl error::Error for Error {
-    #[must_use]
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match &self.repr {
-            Repr::Inner(_) => None,
-            Repr::Other(src) => Some(src.as_ref()),
         }
     }
 }

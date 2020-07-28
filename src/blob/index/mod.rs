@@ -30,14 +30,14 @@ pub(crate) struct Get {
 
 pub(crate) struct Push(pub(crate) PinBox<dyn Future<Output = Result<()>> + Send>);
 
-pub(crate) struct Count(pub(crate) PinBox<dyn Future<Output = Result<usize>> + Send>);
+pub(crate) struct Count(pub(crate) PinBox<dyn Future<Output = AnyResult<usize>> + Send>);
 
 pub(crate) struct Dump(pub(crate) PinBox<dyn Future<Output = Result<usize>> + Send>);
 
 pub(crate) struct Load<'a>(pub(crate) PinBox<dyn Future<Output = Result<()>> + Send + 'a>);
 
 impl Future for Count {
-    type Output = Result<usize>;
+    type Output = AnyResult<usize>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         Future::poll(self.0.as_mut(), cx)

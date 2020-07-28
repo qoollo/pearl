@@ -89,7 +89,7 @@ impl Blob {
         path: PathBuf,
         ioring: Rio,
         filter_config: Option<BloomConfig>,
-    ) -> Result<Self> {
+    ) -> AnyResult<Self> {
         debug!("create file instance");
         let file = File::open(&path, ioring.clone()).await?;
         let name = FileName::from_path(&path)?;
@@ -117,7 +117,9 @@ impl Blob {
         };
         debug!("call update index");
         if len > header_size {
-            blob.try_regenerate_index().await?;
+            blob.try_regenerate_index()
+                .await
+                .context("failed to regenerate index")?;
         } else {
             warn!("empty or corrupted blob: {:?}", path);
         }
@@ -126,20 +128,28 @@ impl Blob {
         Ok(blob)
     }
 
-    async fn raw_records(&mut self) -> Result<RawRecords> {
-        RawRecords::start(self.file.clone(), bincode::serialized_size(&self.header)?).await
+    async fn raw_records(&mut self) -> AnyResult<RawRecords> {
+        RawRecords::start(self.file.clone(), bincode::serialized_size(&self.header)?)
+            .await
+            .context("failed to create iterator for raw records")
     }
 
-    pub(crate) async fn try_regenerate_index(&mut self) -> Result<()> {
+    pub(crate) async fn try_regenerate_index(&mut self) -> AnyResult<()> {
         info!("try regenerate index for blob: {}", self.name);
         if self.index.on_disk() {
             debug!("index already updated");
             return Ok(());
         }
         debug!("index file missed");
-        let raw_r = self.raw_records().await?;
+        let raw_r = self
+            .raw_records()
+            .await
+            .context("failed to read raw records")?;
         debug!("raw records loaded");
-        raw_r.try_for_each(|h| self.index.push(h)).await?;
+        raw_r
+            .try_for_each(|h| self.index.push(h))
+            .await
+            .context("failed to collect headers from blob")?;
         debug!("skip index dump after generation");
         debug!("index successfully generated: {}", self.index.name());
         Ok(())
@@ -167,7 +177,7 @@ impl Blob {
             .await
             .ok_or(ErrorKind::RecordNotFound)?;
         debug!("key found");
-        let mut buf = Vec::with_capacity(loc.size as usize);
+        let mut buf = vec![0; loc.size as usize];
         self.file.read_at(&mut buf, loc.offset).await?;
         debug!("buf read finished");
         let record = Record::from_raw(&buf).expect("from raw");
@@ -206,8 +216,11 @@ impl Blob {
         Ok(self.file.metadata().await?.len())
     }
 
-    pub(crate) async fn records_count(&self) -> Result<usize> {
-        self.index.count().await
+    pub(crate) async fn records_count(&self) -> AnyResult<usize> {
+        self.index
+            .count()
+            .await
+            .context("failed to get records count from index")
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
@@ -225,7 +238,7 @@ impl Blob {
         trace!("gotten all meta locations");
         let mut metas = Vec::new();
         for location in locations {
-            let mut meta_raw = Vec::with_capacity(location.size as usize);
+            let mut meta_raw = vec![0; location.size as usize];
             self.file.read_at(&mut meta_raw, location.offset).await?; // TODO: verify amount of data readed
             let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
             metas.push(meta);
@@ -343,7 +356,7 @@ struct RawRecords {
 }
 
 impl RawRecords {
-    async fn start(file: File, blob_header_size: u64) -> Result<Self> {
+    async fn start(file: File, blob_header_size: u64) -> AnyResult<Self> {
         let current_offset = blob_header_size;
         trace!("current offset: {}", current_offset);
         let size_of_usize = std::mem::size_of::<usize>();
@@ -354,11 +367,14 @@ impl RawRecords {
         );
         // plus size of usize because serialized
         // vector contains usize len in front
-        let mut buf = Vec::with_capacity(size_of_usize);
+        let mut buf = vec![0; size_of_usize];
         file.read_at(&mut buf, current_offset + size_of_usize as u64)
             .await?;
-        let key_len = bincode::deserialize::<usize>(&buf)?;
+        trace!("read {} bytes", buf.len());
+        let key_len = bincode::deserialize::<usize>(&buf)
+            .context("failed to deserialize index buf vec length")?;
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
+        trace!("record header size: {}", record_header_size);
         let read_fut = Self::read_at(file.clone(), record_header_size, current_offset).boxed();
         let file_len = file.metadata().await.map(|m| m.len())?;
         Ok(Self {
@@ -372,7 +388,7 @@ impl RawRecords {
 
     async fn read_at(file: File, size: u64, offset: u64) -> Result<RecordHeader> {
         trace!("call read_at: {} bytes at {}", size, offset);
-        let mut buf = Vec::with_capacity(size.try_into()?);
+        let mut buf = vec![0; size.try_into()?];
         file.read_at(&mut buf, offset).await?; // TODO: verify amount of data readed
         RecordHeader::from_raw(&buf).map_err(Error::new)
     }

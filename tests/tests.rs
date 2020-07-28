@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate log;
 
-use std::convert::TryInto;
 use std::fs;
 use std::time::{Duration, Instant};
 
@@ -214,7 +213,7 @@ async fn test_work_dir_lock() {
     dbg!(&res_two);
     assert!(res_two.is_err());
     common::clean(storage, path)
-        .map(|res| res.expect("work dir clean failed"))
+        .map(|res| res.expect("clean failed"))
         .await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
@@ -235,7 +234,7 @@ async fn test_index_from_blob() {
     let new_storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
     assert!(index_file_path.exists());
     common::clean(new_storage, path)
-        .map(|res| res.expect("work dir clean failed"))
+        .map(|res| res.expect("clean failed"))
         .await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
@@ -251,7 +250,7 @@ async fn test_write_with() {
     let data = b"data_with_meta";
     write_one(&storage, key, data, Some("1.0")).await.unwrap();
     common::clean(storage, path)
-        .map(|res| res.expect("work dir clean failed"))
+        .map(|res| res.expect("clean failed"))
         .await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
@@ -279,7 +278,7 @@ async fn test_write_with_with_on_disk_index() {
     // assert!(write_one(&storage, key, data, Some("1.0")).await.is_err());
 
     common::clean(storage, path)
-        .map(|res| res.expect("work dir clean failed"))
+        .map(|res| res.expect("clean failed"))
         .await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
@@ -297,9 +296,7 @@ async fn test_write_512_records_with_same_key() {
         delay_for(Duration::from_micros(1)).await;
         storage.write_with(&key, value.clone(), meta).await.unwrap();
     }
-    common::clean(storage, path)
-        .await
-        .expect("work dir clean failed");
+    common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -326,9 +323,7 @@ async fn test_read_with() {
     debug!("read finished");
     assert_ne!(data_read_with, data_read);
     assert_eq!(data_read_with, data);
-    common::clean(storage, path)
-        .await
-        .expect("work dir clean failed");
+    common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -358,9 +353,7 @@ async fn test_read_all_load_all() {
     records.sort();
     records_read.sort();
     assert_eq!(records, records_read);
-    common::clean(storage, path)
-        .await
-        .expect("work dir clean failed");
+    common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -390,17 +383,11 @@ async fn test_read_all_find_one_key() {
     assert_eq!(
         records_write
             .iter()
-            .find_map(|(i, data)| if *i == key.try_into().unwrap() {
-                Some(data)
-            } else {
-                None
-            })
+            .find_map(|(i, data)| if *i == key { Some(data) } else { None })
             .unwrap(),
         &records_read[0]
     );
-    common::clean(storage, path)
-        .await
-        .expect("work dir clean failed");
+    common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -412,19 +399,18 @@ async fn test_check_bloom_filter_single() {
     let data = b"some_random_data";
     let repeat = 8192;
     for i in 0..repeat {
+        let pos_key = KeyTest::new(i + repeat);
+        let neg_key = KeyTest::new(i + 2 * repeat);
+        debug!("key: {}, pos: {:?}, negative: {:?}", i, pos_key, neg_key);
         let key = KeyTest::new(i);
         storage.write(&key, data.to_vec()).await.unwrap();
         assert_eq!(storage.check_bloom(key).await, Some(true));
         let data = b"other_random_data";
-        let key = KeyTest::new(i + repeat);
-        storage.write(&key, data.to_vec()).await.unwrap();
-        assert_eq!(storage.check_bloom(key).await, Some(true));
-        let key = KeyTest::new(i + 2 * repeat);
-        assert_eq!(storage.check_bloom(key).await, Some(false));
+        storage.write(&pos_key, data.to_vec()).await.unwrap();
+        assert_eq!(storage.check_bloom(pos_key).await, Some(true));
+        assert_eq!(storage.check_bloom(neg_key).await, Some(false));
     }
-    common::clean(storage, path)
-        .await
-        .expect("work dir clean failed");
+    common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 #[tokio::test]
@@ -446,9 +432,7 @@ async fn test_check_bloom_filter_multiple() {
     for i in 800..1600 {
         assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(false));
     }
-    common::clean(storage, path)
-        .await
-        .expect("work dir clean failed");
+    common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -493,9 +477,7 @@ async fn test_check_bloom_filter_init_from_existing() {
     let fpr = false_positive_counter as f64 / base as f64;
     info!("false positive rate: {:.6} < 0.001", fpr);
     assert!(fpr < 0.001);
-    common::clean(storage, path)
-        .await
-        .expect("work dir clean failed");
+    common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -543,9 +525,7 @@ async fn test_check_bloom_filter_generated() {
     let fpr = false_positive_counter as f64 / base as f64;
     info!("false positive rate: {:.6} < 0.001", fpr);
     assert!(fpr < 0.001);
-    common::clean(storage, path)
-        .await
-        .expect("work dir clean failed");
+    common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -556,7 +536,6 @@ async fn write_one(
     version: Option<&str>,
 ) -> Result<(), String> {
     let data = data.to_vec();
-    trace!("data: {:?}", data);
     let key = KeyTest::new(key);
     trace!("key: {:?}", key);
     if let Some(v) = version {
@@ -591,9 +570,7 @@ async fn test_records_count() {
     assert_eq!(storage.records_count().await, count);
     assert!(storage.records_count_in_active_blob().await < Some(count));
 
-    common::clean(storage, path)
-        .await
-        .expect("work dir clean failed");
+    common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -612,9 +589,7 @@ async fn test_records_count_in_active() {
 
     assert_eq!(storage.records_count_in_active_blob().await, Some(count));
 
-    common::clean(storage, path)
-        .await
-        .expect("work dir clean failed");
+    common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -636,8 +611,6 @@ async fn test_records_count_detailed() {
         vec![(0, 19), (1, 11)]
     );
 
-    common::clean(storage, path)
-        .await
-        .expect("work dir clean failed");
+    common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }

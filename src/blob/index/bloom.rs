@@ -38,7 +38,7 @@ impl Default for Config {
         Self {
             elements: 100_000,
             hashers_count: 2,
-            max_buf_bits_count: 4_194_304, // 500kb
+            max_buf_bits_count: 8_388_608, // 1Mb
             buf_increase_step: 8196,
             preferred_false_positive_rate: 0.001,
         }
@@ -61,16 +61,12 @@ impl Bloom {
         let mut fpr = 1_f64;
         while fpr > config.preferred_false_positive_rate {
             if bits_count >= max_bit_count {
-                trace!("bits count EQ or GREATER max bit count");
                 fpr = false_positive_rate(k as f64, elements, bits_count as f64);
                 trace!("false positive: {:.6}", fpr,);
                 break;
             } else {
-                trace!("bits count LESSER max bit count");
                 fpr = false_positive_rate(k as f64, elements, bits_count as f64);
-                trace!("bloom false positive rate: {:.6}", fpr,);
                 bits_count = max_bit_count.min(bits_step + bits_count);
-                trace!("increased bits count to: {}", bits_count);
             }
         }
         debug!(
@@ -139,7 +135,6 @@ impl Bloom {
     }
 
     pub fn contains(&self, item: impl AsRef<[u8]>) -> bool {
-        trace!("filter: {:#?}", self.inner);
         let mut hashers = self.hashers.clone();
         let len = self.inner.len() as u64;
         let res = hashers
