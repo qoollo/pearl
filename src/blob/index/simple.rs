@@ -76,7 +76,7 @@ impl Simple {
         &self.name
     }
 
-    pub(crate) async fn get_all_meta_locations(&self, key: &[u8]) -> Result<Vec<Location>> {
+    pub(crate) async fn get_all_meta_locations(&self, key: &[u8]) -> AnyResult<Vec<Location>> {
         Ok(match &self.inner {
             State::InMemory(bunch) => Self::extract_matching_meta_locations(bunch, key),
             State::OnDisk(file) => {
@@ -119,10 +119,7 @@ impl Simple {
     }
 
     pub(crate) fn on_disk(&self) -> bool {
-        match self.inner {
-            State::OnDisk(_) => true,
-            _ => false,
-        }
+        matches!(&self.inner, State::OnDisk(_))
     }
 
     pub(crate) fn get_entry<'a, 'b: 'a>(&'b self, key: &'a [u8], file: File) -> Entries<'a> {
@@ -146,11 +143,11 @@ impl Simple {
         ))
     }
 
-    pub async fn load_records(file: &File) -> Result<Vec<RecordHeader>> {
+    pub async fn load_records(file: &File) -> AnyResult<Vec<RecordHeader>> {
         let buf = file.read_all().await?;
-        if buf.is_empty() {
+        let headers = if buf.is_empty() {
             debug!("empty index file");
-            Ok(Vec::new())
+            Vec::new()
         } else {
             trace!("deserialize bunch");
             let header = Self::deserialize_header(&buf)?;
@@ -158,11 +155,12 @@ impl Simple {
                 &buf[header.serialized_size()? as usize + header.filter_buf_size..],
                 header.records_count,
                 header.record_header_size,
-            )
-        }
+            )?
+        };
+        Ok(headers)
     }
 
-    async fn binary_search(mut file: File, key: Vec<u8>) -> Result<RecordHeader> {
+    async fn binary_search(mut file: File, key: Vec<u8>) -> AnyResult<RecordHeader> {
         let header: Header = Self::read_index_header(&mut file).await?;
 
         let mut size = header.records_count;
@@ -188,10 +186,10 @@ impl Simple {
             size -= half;
         }
         info!("record with key: {:?} not found", key);
-        Err(ErrorKind::RecordNotFound.into())
+        Err(Error::from(ErrorKind::RecordNotFound).into())
     }
 
-    async fn read_at(file: &mut File, index: usize, header: &Header) -> Result<RecordHeader> {
+    async fn read_at(file: &mut File, index: usize, header: &Header) -> AnyResult<RecordHeader> {
         let header_size = bincode::serialized_size(&header)?;
         let offset = header_size + (header.record_header_size * index) as u64;
         let mut buf = vec![0; header.record_header_size];
@@ -200,7 +198,7 @@ impl Simple {
         Ok(deserialize(&buf)?)
     }
 
-    async fn read_index_header(file: &mut File) -> Result<Header> {
+    async fn read_index_header(file: &mut File) -> AnyResult<Header> {
         let header_size = Header::serialized_size_default()?.try_into()?;
         debug!("header s: {}", header_size);
         let mut buf = vec![0; header_size];
@@ -245,11 +243,17 @@ impl Simple {
         Ok(buf)
     }
 
-    fn check_result(res: Result<RecordHeader>) -> Result<bool> {
+    fn check_result(res: AnyResult<RecordHeader>) -> AnyResult<bool> {
         match res {
             Ok(_) => Ok(true),
-            Err(ref e) if e.is(&ErrorKind::RecordNotFound) => Ok(false),
-            Err(e) => Err(e),
+            Err(e) => {
+                if let Some(err) = e.source().and_then(|src| src.downcast_ref::<Error>()) {
+                    if !(err.is(&ErrorKind::RecordNotFound)) {
+                        return Err(e);
+                    }
+                }
+                Ok(false)
+            }
         }
     }
 
@@ -275,13 +279,13 @@ impl Simple {
     fn get_from_bunch(
         bunch: &[RecordHeader],
         key: &[u8],
-    ) -> impl Future<Output = Result<RecordHeader>> {
+    ) -> impl Future<Output = AnyResult<RecordHeader>> {
         future::ready(
             bunch
                 .iter()
                 .find(|h| h.key() == key)
                 .cloned()
-                .ok_or_else(|| ErrorKind::RecordNotFound.into()),
+                .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into()),
         )
     }
 
@@ -299,7 +303,7 @@ impl Simple {
         Dump(fut)
     }
 
-    async fn load_in_memory(&mut self, file: File) -> Result<()> {
+    async fn load_in_memory(&mut self, file: File) -> AnyResult<()> {
         let buf = file.read_all().await?;
         trace!("read total {} bytes", buf.len());
         let header = Self::deserialize_header(&buf)?;
@@ -329,7 +333,7 @@ impl Simple {
 }
 
 impl Index for Simple {
-    fn contains_key(&self, key: &[u8]) -> PinBox<dyn Future<Output = Result<bool>> + Send> {
+    fn contains_key(&self, key: &[u8]) -> PinBox<dyn Future<Output = AnyResult<bool>> + Send> {
         self.get(key).map(Self::check_result).boxed()
     }
 
@@ -342,7 +346,10 @@ impl Index for Simple {
                 future::ok(()).boxed()
             }
             State::OnDisk(_) => future::err(
-                ErrorKind::Index("Index is closed, push is unavalaible".to_string()).into(),
+                Error::from(ErrorKind::Index(
+                    "Index is closed, push is unavalaible".to_string(),
+                ))
+                .into(),
             )
             .boxed(),
         };

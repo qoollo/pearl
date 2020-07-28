@@ -2,8 +2,8 @@
 #![deny(missing_debug_implementations)]
 #![warn(clippy::all)]
 // #![warn(clippy::nursery)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::cargo)]
+// #![warn(clippy::pedantic)]
+// #![warn(clippy::cargo)]
 
 //! # pearl
 //!
@@ -69,13 +69,12 @@ pub use storage::{Builder, Key, ReadAll, Storage};
 mod prelude {
     pub(crate) use super::*;
     pub(crate) type PinBox<T> = Pin<Box<T>>;
-    pub(crate) use anyhow::Context as ErrorContexts;
-    pub(crate) use anyhow::Result as AnyResult;
+    pub(crate) use anyhow::{Context as ErrorContexts, Result as AnyResult};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use blob::{self, Blob, BloomConfig, File, Location};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::{
-        future::{self, Future, FutureExt, TryFutureExt},
+        future::{self, BoxFuture, Future, FutureExt, TryFutureExt},
         lock::{Mutex, MutexGuard},
         stream::{futures_unordered::FuturesUnordered, Stream, TryStreamExt},
     };

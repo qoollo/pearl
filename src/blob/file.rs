@@ -50,9 +50,9 @@ impl File {
         compl.await
     }
 
-    pub(crate) async fn read_all(&self) -> IOResult<Vec<u8>> {
+    pub(crate) async fn read_all(&self) -> AnyResult<Vec<u8>> {
         let len = self.metadata().await?.len();
-        let mut buf = vec![0; len as usize];
+        let mut buf = vec![0; len.try_into()?];
         self.read_at(&mut buf, 0).await?; // TODO: verify read size
         Ok(buf)
     }
@@ -62,12 +62,17 @@ impl File {
     //     file.read_exact(buf).await
     // }
 
-    pub(crate) async fn read_at(&self, buf: &mut [u8], offset: u64) -> IOResult<usize> {
+    pub(crate) async fn read_at(&self, buf: &mut [u8], offset: u64) -> AnyResult<usize> {
+        debug!("file read at");
         if buf.is_empty() {
             warn!("file read_at empty buf");
         }
+        debug!("buf len: {}", buf.len());
         let compl = self.ioring.read_at(&*self.no_lock_fd, &buf, offset);
-        compl.await
+        debug!("io uring completion created");
+        let size = compl.await.with_context(|| "read at failed")?;
+        debug!("read finished: {} bytes", size);
+        Ok(size)
     }
 
     async fn from_tokio_file(file: TokioFile, ioring: Rio) -> IOResult<Self> {

@@ -184,16 +184,16 @@ async fn test_on_disk_index() -> Result<(), String> {
         data.extend(&slice);
     }
     storage.init().await.unwrap();
+    info!("write (0..{})", num_records_to_write);
     for i in 0..num_records_to_write {
-        delay_for(Duration::from_millis(100))
-            .then(|_| write_one(&storage, i, &data, None))
-            .await
-            .unwrap();
+        delay_for(Duration::from_millis(100)).await;
+        write_one(&storage, i, &data, None).await.unwrap();
     }
     while storage.blobs_count() < 2 {
         delay_for(Duration::from_millis(200)).await;
     }
     assert!(path.join("test.1.blob").exists());
+    info!("read {}", read_key);
     let new_data = storage.read(KeyTest::new(read_key)).await.unwrap();
     assert_eq!(new_data, data);
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -342,7 +342,7 @@ async fn test_read_all_load_all() {
     }
     let mut records_read = storage
         .read_all(&KeyTest::new(key))
-        .then(|entry| async move { entry.load().await.unwrap() })
+        .then(|entry| async { entry.unwrap().load().await.unwrap() })
         .collect::<Vec<_>>()
         .await;
     assert_eq!(records_write.len(), records_read.len());
@@ -375,7 +375,7 @@ async fn test_read_all_find_one_key() {
         .read_all(&KeyTest::new(key))
         .then(|entry| async move {
             debug!("load entry {:?}", entry);
-            entry.load().await.unwrap()
+            entry.unwrap().load().await.unwrap()
         })
         .collect::<Vec<_>>()
         .await;

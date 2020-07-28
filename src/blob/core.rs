@@ -77,7 +77,7 @@ impl Blob {
         self.index.dump().await
     }
 
-    pub(crate) async fn load_index(&mut self) -> Result<()> {
+    pub(crate) async fn load_index(&mut self) -> AnyResult<()> {
         self.index.load().await
     }
 
@@ -161,24 +161,28 @@ impl Blob {
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
+        debug!("write: {:?} to blob {}", record.header().key(), self.id());
         let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
         let bytes_written = self.file.write_at(&buf, *offset).await?;
-        trace!("push record header");
         self.index.push(record.header().clone());
         *offset += bytes_written as u64;
         Ok(())
     }
 
-    pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> Result<Record> {
+    pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> AnyResult<Record> {
+        debug!("lookup for key in {} blob", self.id());
         let loc = self
             .lookup(key, meta)
-            .await
-            .ok_or(ErrorKind::RecordNotFound)?;
+            .await?
+            .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
         debug!("key found");
         let mut buf = vec![0; loc.size as usize];
-        self.file.read_at(&mut buf, loc.offset).await?;
+        self.file
+            .read_at(&mut buf, loc.offset)
+            .await
+            .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?;
         debug!("buf read finished");
         let record = Record::from_raw(&buf).expect("from raw");
         debug!("record deserialized");
@@ -190,25 +194,33 @@ impl Blob {
         self.index.get_entry(key, self.file.clone())
     }
 
-    async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
+    async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Location>> {
         if self.check_bloom(key) == Some(false) {
-            None
+            debug!("bloom filter returned false");
+            Ok(None)
         } else {
+            debug!("lookup in index");
             let entries = self.index.get_entry(key, self.file.clone());
-            Self::find_entry(entries, meta)
-                .await
-                .map(|entry| Location::new(entry.blob_offset(), entry.full_size()))
+            debug!("entries get");
+            let entry = Self::find_entry(entries, meta).await?;
+            debug!("entry found");
+            Ok(entry.map(|entry| Location::new(entry.blob_offset(), entry.full_size())))
         }
     }
 
-    pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> bool {
-        self.lookup(key, meta).await.is_some()
+    pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
+        Ok(self.lookup(key, meta).await?.is_some())
     }
 
-    async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Option<Entry> {
-        ents.filter(|entry| meta.map_or(true, |m| *m == entry.meta()))
-            .next()
-            .await
+    async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Result<Option<Entry>> {
+        debug!("find entry with meta: {:?}", meta);
+        TryStreamExt::try_next(&mut ents.try_filter(|entry| {
+            future::ready(meta.map_or(true, |m| {
+                debug!("check meta: {:?} == {:?}", m, entry.meta());
+                *m == entry.meta()
+            }))
+        }))
+        .await
     }
 
     #[inline]
@@ -232,14 +244,17 @@ impl Blob {
         self.name.id
     }
 
-    pub(crate) async fn get_all_metas(&self, key: &[u8]) -> Result<Vec<Meta>> {
+    pub(crate) async fn get_all_metas(&self, key: &[u8]) -> AnyResult<Vec<Meta>> {
         debug!("get_all_metas");
         let locations = self.index.get_all_meta_locations(key).await?;
         trace!("gotten all meta locations");
         let mut metas = Vec::new();
         for location in locations {
             let mut meta_raw = vec![0; location.size as usize];
-            self.file.read_at(&mut meta_raw, location.offset).await?; // TODO: verify amount of data readed
+            self.file
+                .read_at(&mut meta_raw, location.offset)
+                .await
+                .with_context(|| format!("failed to get all metas for key {:?}", key))?; // TODO: verify amount of data readed
             let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
             metas.push(meta);
         }
@@ -352,7 +367,7 @@ struct RawRecords {
     record_header_size: u64,
     file: File,
     file_len: u64,
-    read_fut: Option<PinBox<dyn Future<Output = Result<RecordHeader>> + Send>>,
+    read_fut: Option<PinBox<dyn Future<Output = AnyResult<RecordHeader>> + Send>>,
 }
 
 impl RawRecords {
@@ -386,11 +401,12 @@ impl RawRecords {
         })
     }
 
-    async fn read_at(file: File, size: u64, offset: u64) -> Result<RecordHeader> {
+    async fn read_at(file: File, size: u64, offset: u64) -> AnyResult<RecordHeader> {
         trace!("call read_at: {} bytes at {}", size, offset);
         let mut buf = vec![0; size.try_into()?];
         file.read_at(&mut buf, offset).await?; // TODO: verify amount of data readed
-        RecordHeader::from_raw(&buf).map_err(Error::new)
+        let header = RecordHeader::from_raw(&buf).map_err(Error::new)?;
+        Ok(header)
     }
 
     fn update_future(&mut self, header: &RecordHeader) {
@@ -417,7 +433,7 @@ impl RawRecords {
 }
 
 impl Stream for RawRecords {
-    type Item = Result<RecordHeader>;
+    type Item = AnyResult<RecordHeader>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let res = if let Some(ref mut f) = self.read_fut {

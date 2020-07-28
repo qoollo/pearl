@@ -116,7 +116,7 @@ impl<K> Storage<K> {
             self.inner
                 .config
                 .work_dir()
-                .ok_or(Error::from(ErrorKind::Uninitialized))?,
+                .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?,
         )
         .await;
         debug!("work dir content loaded");
@@ -191,7 +191,6 @@ impl<K> Storage<K> {
 
     async fn get_all_existing_metas(&self, key: impl Key) -> Result<Vec<Meta>> {
         let mut safe = self.inner.safe.lock().await;
-        debug!("lock acquired");
         let active_blob = safe
             .active_blob
             .as_mut()
@@ -257,7 +256,6 @@ impl<K> Storage<K> {
 
     async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {
         let inner = self.inner.safe.lock().await;
-        debug!("lock acquired");
         let key = key.as_ref();
         let active_blob_read_res = inner
             .active_blob
@@ -269,21 +267,17 @@ impl<K> Storage<K> {
         Ok(if let Ok(record) = active_blob_read_res {
             record
         } else {
+            debug!("data not found in active blob, check closed");
             let stream: FuturesUnordered<_> = inner
                 .blobs
                 .iter()
                 .map(|blob| blob.read(key, meta))
                 .collect();
-            debug!("await for stream of read futures: {}", stream.len());
-            let mut task = stream.skip_while(Result::is_err);
-            debug!("task created");
-            let res = task
-                .next()
+            let mut task = stream.skip_while(AnyResult::is_err);
+            task.next()
                 .await
                 .ok_or(ErrorKind::RecordNotFound)?
-                .map_err(Error::new)?;
-            debug!("task completed");
-            res
+                .map_err(Error::new)?
         }
         .into_data())
     }
@@ -430,22 +424,24 @@ impl<K> Storage<K> {
     /// `contains` is used to check whether a key is in storage.
     /// Slower than `check_bloom`, because doesn't prevent disk IO operations.
     /// `contains` returns either "definitely in storage" or "definitely not".
-    pub async fn contains(&self, key: impl Key) -> bool {
+    /// # Errors
+    /// Fails because of any IO errors
+    pub async fn contains(&self, key: impl Key) -> Result<bool> {
         let key = key.as_ref();
         let inner = self.inner.safe.lock().await;
         let in_active = if let Some(active_blob) = &inner.active_blob {
-            active_blob.contains(key, None).await
+            active_blob.contains(key, None).await?
         } else {
             false
         };
         if !in_active {
             for blob in &inner.blobs {
-                if blob.contains(key, None).await {
-                    return true;
+                if blob.contains(key, None).await? {
+                    return Ok(true);
                 }
             }
         }
-        in_active
+        Ok(in_active)
     }
 
     /// `check_bloom` is used to check whether a key is in storage.
