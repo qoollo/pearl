@@ -32,20 +32,26 @@ pub struct Entry {
 pub struct Entries<'a> {
     inner: &'a State,
     key: &'a [u8],
+    token: Option<()>,
     in_memory_iter: Option<Iter<'a, RecordHeader>>,
-    load_fut: Option<PinBox<dyn Future<Output = Result<Vec<RecordHeader>>> + 'a + Send>>,
+    loading_entries: FuturesUnordered<BoxFuture<'a, Result<Entry>>>,
+    load_fut: Option<PinBox<dyn Future<Output = AnyResult<Vec<RecordHeader>>> + 'a + Send>>,
     blob_file: File,
     loaded_headers: Option<VecDeque<RecordHeader>>,
+    entries_fut: Option<BoxFuture<'a, Result<Entry>>>,
 }
 
 impl Entry {
     /// Returns record data
     /// # Errors
     /// Returns the error type for I/O operations, see [`std::io::Error`]
-    pub async fn load(&self) -> IOResult<Vec<u8>> {
+    pub async fn load(&self) -> AnyResult<Vec<u8>> {
+        let mut buf = vec![0; self.data_size as usize];
         self.blob_file
-            .read_at(self.data_size, self.data_offset)
+            .read_at(&mut buf, self.data_offset)
             .await
+            .with_context(|| "blob load failed")?; // TODO: verify read size
+        Ok(buf)
     }
 
     pub(crate) fn new(meta: Meta, header: &RecordHeader, blob_file: File) -> Self {
@@ -77,20 +83,35 @@ impl Entry {
 }
 
 impl<'a> Stream for Entries<'a> {
-    type Item = Entry;
+    type Item = Result<Entry>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        if let Some(headers) = &mut self.loaded_headers {
-            let next = if let Some(header) = headers.pop_front() {
-                debug!("{} headers loaded, create entries from them", headers.len());
-                let entry = Self::create_entry(&self.blob_file, &header);
-                pin_mut!(entry);
-                let entry = ready!(entry.poll(cx));
-                entry.map_err(|e| error!("{}", e.to_string())).ok()
+        trace!("entries poll next");
+        if let Some(fut) = self.entries_fut.as_mut() {
+            trace!("poll entries future");
+            match fut.as_mut().poll(cx) {
+                Poll::Ready(res) => {
+                    self.entries_fut = None;
+                    Poll::Ready(Some(res))
+                }
+                Poll::Pending => Poll::Pending,
+            }
+        } else if let Some(headers) = &mut self.loaded_headers {
+            trace!("headers loaded");
+            if let Some(header) = headers.pop_front() {
+                trace!("{} headers loaded, create entries from them", headers.len());
+                let mut entry = Self::create_entry(self.blob_file.clone(), header).boxed();
+                match entry.as_mut().poll(cx) {
+                    Poll::Ready(entry) => Poll::Ready(Some(entry)),
+                    Poll::Pending => {
+                        self.entries_fut = Some(entry.boxed());
+                        Poll::Pending
+                    }
+                }
             } else {
-                None
-            };
-            Poll::Ready(next)
+                trace!("no headers left, finish entries future");
+                Poll::Ready(None)
+            }
         } else {
             cx.waker().wake_by_ref();
             self.get_headers_from_index(cx)
@@ -103,10 +124,13 @@ impl<'a> Entries<'a> {
         Self {
             inner,
             key,
+            token: Some(()),
             in_memory_iter: None,
+            loading_entries: FuturesUnordered::new(),
             load_fut: None,
             blob_file,
             loaded_headers: None,
+            entries_fut: None,
         }
     }
 
@@ -114,6 +138,7 @@ impl<'a> Entries<'a> {
         self: Pin<&mut Self>,
         cx: &mut Context,
     ) -> Poll<Option<<Self as Stream>::Item>> {
+        trace!("get headers from index");
         match self.inner {
             State::InMemory(headers) => self.get_next_poll(cx, headers),
             State::OnDisk(file) => self.load_headers_from_file(cx, file),
@@ -125,13 +150,12 @@ impl<'a> Entries<'a> {
         cx: &mut Context,
         file: &'a File,
     ) -> Poll<Option<<Self as Stream>::Item>> {
+        trace!("load headers from file");
         if let Some(fut) = &mut self.load_fut {
-            let headers = ready!(fut.as_mut().poll(cx)).map_err(|e| error!("{}", e.to_string()));
-            trace!("load future ready");
+            let headers = ready!(fut.as_mut().poll(cx));
             if let Ok(headers) = headers {
-                debug!("load future finished");
+                trace!("{} headers loaded", headers.len());
                 self.reset_load_future(headers);
-                debug!("load future reset");
             }
         } else {
             let fut = SimpleIndex::load_records(file);
@@ -145,57 +169,46 @@ impl<'a> Entries<'a> {
         self.loaded_headers = Some(
             headers
                 .into_iter()
-                .filter(|h| h.key() == self.key)
+                .filter(|h| {
+                    trace!("check {:?}", h.key());
+                    h.key() == self.key
+                })
                 .collect(),
         );
-        debug!("loaded headers set");
         self.load_fut = None;
-        debug!("load future is none");
     }
 
     fn get_next_poll(
         mut self: Pin<&mut Self>,
         cx: &mut Context,
         headers: &'a [RecordHeader],
-    ) -> Poll<Option<Entry>> {
+    ) -> Poll<Option<Result<Entry>>> {
+        trace!("get next poll");
         let key = self.key;
-        let file = self.blob_file.clone();
-        if let Some(it) = &mut self.in_memory_iter {
-            trace!("find in iterator");
-            Self::try_find_record_header(it, key, &file, cx)
-        } else {
-            trace!("iterator not set");
-            let rec_iter = headers.iter();
-            self.in_memory_iter = Some(rec_iter);
-            cx.waker().wake_by_ref();
-            trace!("wake scheduled");
-            Poll::Pending
-        }
-    }
-
-    fn try_find_record_header(
-        it: &mut Iter<RecordHeader>,
-        key: &[u8],
-        file: &File,
-        cx: &mut Context,
-    ) -> Poll<Option<Entry>> {
-        for h in it {
-            if h.key() == key {
-                let entry = Self::create_entry(file, h);
-                pin_mut!(entry);
-                let entry = ready!(Future::poll(entry, cx));
-                return Poll::Ready(entry.ok());
+        if self.token.take().is_some() {
+            trace!("first entries poll, create entries futures");
+            for h in headers {
+                if h.key() == key {
+                    trace!("key matched");
+                    let entry = Self::create_entry(self.blob_file.clone(), h.clone());
+                    self.loading_entries.push(entry.boxed());
+                }
             }
+            cx.waker().wake_by_ref();
         }
-        Poll::Ready(None)
+
+        let fut = Pin::new(&mut self.loading_entries);
+        Stream::poll_next(fut, cx)
     }
 
-    async fn create_entry(file: &File, header: &RecordHeader) -> Result<Entry> {
-        let meta = Meta::load(file, header.meta_location())
+    async fn create_entry(file: File, header: RecordHeader) -> Result<Entry> {
+        trace!("create entry");
+        let meta = Meta::load(&file, header.meta_location())
             .await
             .map_err(Error::new)?;
-        let entry = Entry::new(meta, header, file.clone());
-        debug!("entry: {:?}", entry);
+        trace!("meta loaded");
+        let entry = Entry::new(meta, &header, file);
+        trace!("entry created");
         Ok(entry)
     }
 }

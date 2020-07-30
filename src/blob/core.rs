@@ -10,7 +10,7 @@ const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 ///
 /// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
-pub(crate) struct Blob {
+pub struct Blob {
     header: Header,
     index: SimpleIndex,
     name: FileName,
@@ -28,10 +28,11 @@ impl Blob {
     /// [`FileName`]: struct.FileName.html
     pub(crate) async fn open_new(
         name: FileName,
+        ioring: Rio,
         filter_config: Option<BloomConfig>,
     ) -> Result<Self> {
-        let file = File::create(name.to_path()).await?;
-        let index = Self::create_index(filter_config, &name);
+        let file = File::create(name.to_path(), ioring.clone()).await?;
+        let index = Self::create_index(&name, ioring, filter_config);
         let current_offset = Self::new_offset();
         let header = Header::new();
         let mut blob = Self {
@@ -52,7 +53,7 @@ impl Blob {
 
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
-        let offset = self.file.write(&buf).await?;
+        let offset = self.file.write_at(&buf, 0).await?;
         self.update_offset(offset).await;
         Ok(())
     }
@@ -62,17 +63,21 @@ impl Blob {
     }
 
     #[inline]
-    fn create_index(filter_config: Option<BloomConfig>, name: &FileName) -> SimpleIndex {
+    fn create_index(
+        name: &FileName,
+        ioring: Rio,
+        filter_config: Option<BloomConfig>,
+    ) -> SimpleIndex {
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        SimpleIndex::new(filter_config, index_name)
+        SimpleIndex::new(index_name, ioring, filter_config)
     }
 
-    pub(crate) async fn dump(&mut self) -> Result<()> {
+    pub(crate) async fn dump(&mut self) -> Result<usize> {
         self.index.dump().await
     }
 
-    pub(crate) async fn load_index(&mut self) -> Result<()> {
+    pub(crate) async fn load_index(&mut self) -> AnyResult<()> {
         self.index.load().await
     }
 
@@ -81,26 +86,27 @@ impl Blob {
     }
 
     pub(crate) async fn from_file(
-        filter_config: Option<BloomConfig>,
         path: PathBuf,
-    ) -> Result<Self> {
-        debug!("create file instance");
-        let file = File::open(&path).await?;
+        ioring: Rio,
+        filter_config: Option<BloomConfig>,
+    ) -> AnyResult<Self> {
+        trace!("create file instance");
+        let file = File::open(&path, ioring.clone()).await?;
         let name = FileName::from_path(&path)?;
         let len = file.metadata().await?.len();
         let header = Header::new();
-        debug!("blob file size: {} MB", len / 1_000_000);
+        trace!("blob file size: {} MB", len / 1_000_000);
         let mut index_name: FileName = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        debug!("looking for index file: [{}]", index_name.to_string());
+        trace!("looking for index file: [{}]", index_name.to_string());
         let index = if index_name.exists() {
-            debug!("file exists");
-            SimpleIndex::from_file(index_name, filter_config.is_some()).await?
+            trace!("file exists");
+            SimpleIndex::from_file(index_name, filter_config.is_some(), ioring).await?
         } else {
-            debug!("file not found, create new");
-            SimpleIndex::new(filter_config, index_name)
+            trace!("file not found, create new");
+            SimpleIndex::new(index_name, ioring, filter_config)
         };
-        debug!("index initialized");
+        trace!("index initialized");
         let header_size = bincode::serialized_size(&header)?;
         let mut blob = Self {
             header,
@@ -109,62 +115,77 @@ impl Blob {
             index,
             current_offset: Arc::new(Mutex::new(len)),
         };
-        debug!("call update index");
+        trace!("call update index");
         if len > header_size {
-            blob.try_regenerate_index().await?;
+            blob.try_regenerate_index()
+                .await
+                .context("failed to regenerate index")?;
         } else {
             warn!("empty or corrupted blob: {:?}", path);
         }
-        debug!("check data consistency");
+        trace!("check data consistency");
         Self::check_data_consistency()?;
         Ok(blob)
     }
 
-    async fn raw_records(&mut self) -> Result<RawRecords> {
-        RawRecords::start(self.file.clone(), bincode::serialized_size(&self.header)?).await
+    async fn raw_records(&mut self) -> AnyResult<RawRecords> {
+        RawRecords::start(self.file.clone(), bincode::serialized_size(&self.header)?)
+            .await
+            .context("failed to create iterator for raw records")
     }
 
-    pub(crate) async fn try_regenerate_index(&mut self) -> Result<()> {
+    pub(crate) async fn try_regenerate_index(&mut self) -> AnyResult<()> {
         info!("try regenerate index for blob: {}", self.name);
         if self.index.on_disk() {
             debug!("index already updated");
             return Ok(());
         }
         debug!("index file missed");
-        let raw_r = self.raw_records().await?;
+        let raw_r = self
+            .raw_records()
+            .await
+            .context("failed to read raw records")?;
         debug!("raw records loaded");
-        raw_r.try_for_each(|h| self.index.push(h)).await?;
+        raw_r
+            .try_for_each(|h| self.index.push(h))
+            .await
+            .context("failed to collect headers from blob")?;
         debug!("skip index dump after generation");
         debug!("index successfully generated: {}", self.index.name());
         Ok(())
     }
 
-    pub(crate) fn check_data_consistency() -> Result<()> {
+    pub(crate) const fn check_data_consistency() -> Result<()> {
         // @TODO implement
         Ok(())
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
+        trace!("write: {:?} to blob {}", record.header().key(), self.id());
         let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
-        let bytes_written = self.file.write_at(buf, *offset).await?;
-        trace!("push record header");
+        let bytes_written = self.file.write_at(&buf, *offset).await?;
         self.index.push(record.header().clone());
         *offset += bytes_written as u64;
         Ok(())
     }
 
-    pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> Result<Record> {
+    pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> AnyResult<Record> {
+        trace!("lookup for key in {} blob", self.id());
         let loc = self
             .lookup(key, meta)
+            .await?
+            .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
+        trace!("key found");
+        let mut buf = vec![0; loc.size as usize];
+        self.file
+            .read_at(&mut buf, loc.offset)
             .await
-            .ok_or(ErrorKind::RecordNotFound)?;
-        debug!("key found");
-        let buf = self.file.read_at(loc.size as usize, loc.offset).await?;
-        debug!("buf read finished");
+            .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?;
+        trace!("buf read finished");
         let record = Record::from_raw(&buf).expect("from raw");
-        debug!("record deserialized");
+        trace!("record deserialized");
         Ok(record)
     }
 
@@ -173,30 +194,32 @@ impl Blob {
         self.index.get_entry(key, self.file.clone())
     }
 
-    async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Option<Location> {
+    async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Location>> {
         if self.check_bloom(key) == Some(false) {
-            None
+            trace!("bloom filter returned false");
+            Ok(None)
         } else {
+            trace!("lookup in index");
             let entries = self.index.get_entry(key, self.file.clone());
-            Self::find_entry(entries, meta)
-                .await
-                .map(|entry| Location::new(entry.blob_offset(), entry.full_size()))
+            trace!("entries get");
+            let entry = Self::find_entry(entries, meta).await?;
+            trace!("entry found");
+            Ok(entry.map(|entry| Location::new(entry.blob_offset(), entry.full_size())))
         }
     }
 
-    pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> bool {
-        self.lookup(key, meta).await.is_some()
+    pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
+        Ok(self.lookup(key, meta).await?.is_some())
     }
 
-    async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Option<Entry> {
-        ents.filter(|entry| {
-            if let Some(m) = meta {
+    async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Result<Option<Entry>> {
+        trace!("find entry with meta: {:?}", meta);
+        TryStreamExt::try_next(&mut ents.try_filter(|entry| {
+            future::ready(meta.map_or(true, |m| {
+                trace!("check meta: {:?} == {:?}", m, entry.meta());
                 *m == entry.meta()
-            } else {
-                true
-            }
-        })
-        .next()
+            }))
+        }))
         .await
     }
 
@@ -205,8 +228,11 @@ impl Blob {
         Ok(self.file.metadata().await?.len())
     }
 
-    pub(crate) async fn records_count(&self) -> Result<usize> {
-        self.index.count().await
+    pub(crate) async fn records_count(&self) -> AnyResult<usize> {
+        self.index
+            .count()
+            .await
+            .context("failed to get records count from index")
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
@@ -218,16 +244,17 @@ impl Blob {
         self.name.id
     }
 
-    pub(crate) async fn get_all_metas(&self, key: &[u8]) -> Result<Vec<Meta>> {
+    pub(crate) async fn get_all_metas(&self, key: &[u8]) -> AnyResult<Vec<Meta>> {
         debug!("get_all_metas");
         let locations = self.index.get_all_meta_locations(key).await?;
         trace!("gotten all meta locations");
         let mut metas = Vec::new();
         for location in locations {
-            let meta_raw = self
-                .file
-                .read_at(location.size as usize, location.offset)
-                .await?;
+            let mut meta_raw = vec![0; location.size as usize];
+            self.file
+                .read_at(&mut meta_raw, location.offset)
+                .await
+                .with_context(|| format!("failed to get all metas for key {:?}", key))?; // TODO: verify amount of data readed
             let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
             metas.push(meta);
         }
@@ -340,11 +367,11 @@ struct RawRecords {
     record_header_size: u64,
     file: File,
     file_len: u64,
-    read_fut: Option<PinBox<dyn Future<Output = Result<RecordHeader>> + Send>>,
+    read_fut: Option<PinBox<dyn Future<Output = AnyResult<RecordHeader>> + Send>>,
 }
 
 impl RawRecords {
-    async fn start(file: File, blob_header_size: u64) -> Result<Self> {
+    async fn start(file: File, blob_header_size: u64) -> AnyResult<Self> {
         let current_offset = blob_header_size;
         trace!("current offset: {}", current_offset);
         let size_of_usize = std::mem::size_of::<usize>();
@@ -355,11 +382,14 @@ impl RawRecords {
         );
         // plus size of usize because serialized
         // vector contains usize len in front
-        let buf = file
-            .read_at(size_of_usize, current_offset + size_of_usize as u64)
+        let mut buf = vec![0; size_of_usize];
+        file.read_at(&mut buf, current_offset + size_of_usize as u64)
             .await?;
-        let key_len = bincode::deserialize::<usize>(&buf)?;
+        trace!("read {} bytes", buf.len());
+        let key_len = bincode::deserialize::<usize>(&buf)
+            .context("failed to deserialize index buf vec length")?;
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
+        trace!("record header size: {}", record_header_size);
         let read_fut = Self::read_at(file.clone(), record_header_size, current_offset).boxed();
         let file_len = file.metadata().await.map(|m| m.len())?;
         Ok(Self {
@@ -371,10 +401,12 @@ impl RawRecords {
         })
     }
 
-    async fn read_at(file: File, size: u64, offset: u64) -> Result<RecordHeader> {
+    async fn read_at(file: File, size: u64, offset: u64) -> AnyResult<RecordHeader> {
         trace!("call read_at: {} bytes at {}", size, offset);
-        let buf = file.read_at(size.try_into()?, offset).await?;
-        RecordHeader::from_raw(&buf).map_err(Error::new)
+        let mut buf = vec![0; size.try_into()?];
+        file.read_at(&mut buf, offset).await?; // TODO: verify amount of data readed
+        let header = RecordHeader::from_raw(&buf).map_err(Error::new)?;
+        Ok(header)
     }
 
     fn update_future(&mut self, header: &RecordHeader) {
@@ -401,7 +433,7 @@ impl RawRecords {
 }
 
 impl Stream for RawRecords {
-    type Item = Result<RecordHeader>;
+    type Item = AnyResult<RecordHeader>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let res = if let Some(ref mut f) = self.read_fut {

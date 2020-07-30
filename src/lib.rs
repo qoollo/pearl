@@ -69,15 +69,17 @@ pub use storage::{Builder, Key, ReadAll, Storage};
 mod prelude {
     pub(crate) use super::*;
     pub(crate) type PinBox<T> = Pin<Box<T>>;
+    pub(crate) use anyhow::{Context as ErrorContexts, Result as AnyResult};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use blob::{self, Blob, BloomConfig, File, Location};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::{
-        future::{self, Future, FutureExt, TryFutureExt},
+        future::{self, BoxFuture, Future, FutureExt, TryFutureExt},
         lock::{Mutex, MutexGuard},
         stream::{futures_unordered::FuturesUnordered, Stream, TryStreamExt},
     };
     pub(crate) use record::{Header as RecordHeader, Record};
+    pub(crate) use rio::Rio;
     pub(crate) use std::{
         cell::RefCell,
         cmp::Ordering as CmpOrdering,
@@ -86,24 +88,24 @@ mod prelude {
         error,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
         fs::{File as StdFile, Metadata, OpenOptions as StdOpenOptions},
-        io::{Error as IOError, ErrorKind as IOErrorKind, Result as IOResult},
+        io::{Error as IOError, Result as IOResult},
         marker::PhantomData,
         num::TryFromIntError,
-        os::unix::fs::{FileExt, OpenOptionsExt},
+        os::unix::fs::OpenOptionsExt,
         path::{Path, PathBuf},
         pin::Pin,
         sync::{
             atomic::{AtomicBool, AtomicUsize, Ordering},
             Arc,
         },
-        task::{Context, Poll, Waker},
+        task::{Context, Poll},
         time::Duration,
     };
+    pub(crate) use thiserror::Error;
     pub(crate) use tokio::{
         fs::{read_dir, DirEntry, File as TokioFile, OpenOptions},
-        io::{AsyncReadExt, AsyncWriteExt},
         stream::StreamExt,
         sync::RwLock,
-        time::{delay_for, interval},
+        time::interval,
     };
 }

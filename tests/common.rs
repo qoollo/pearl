@@ -8,10 +8,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use futures::{
-    executor::block_on, future::FutureObj, stream::futures_unordered::FuturesUnordered, FutureExt,
-    StreamExt,
-};
+use futures::{stream::futures_unordered::FuturesUnordered, StreamExt};
 use rand::Rng;
 
 use pearl::{Builder, Key, Storage};
@@ -85,8 +82,9 @@ pub async fn create_test_storage(
         .max_data_in_blob(100_000)
         .set_filter_config(Default::default())
         .allow_duplicates();
-    let mut storage = builder.build().unwrap();
-    storage.init().await.map_err(|e| format!("{:?}", e))?;
+    let ioring = rio::new().expect("create uring");
+    let mut storage = builder.build(ioring).unwrap();
+    storage.init().await.map_err(|e| e.to_string())?;
     Ok(storage)
 }
 
@@ -102,22 +100,23 @@ pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<
     fs::remove_dir_all(path).map_err(|e| e.to_string())
 }
 
-pub fn check_all_written(storage: &Storage<KeyTest>, keys: Vec<u32>) -> Result<(), String> {
-    let read_futures: FuturesUnordered<_> = keys
+pub async fn check_all_written(storage: &Storage<KeyTest>, keys: Vec<u32>) -> Result<(), String> {
+    let mut read_futures: FuturesUnordered<_> = keys
         .iter()
         .map(|key| storage.read(KeyTest::new(*key)))
         .collect();
-    let futures = read_futures.collect::<Vec<_>>();
-    let expected_len = keys.len();
-    let future_obj = FutureObj::new(Box::new(futures.map(move |records| {
-        assert_eq!(records.len(), expected_len);
-        records
-            .iter()
-            .filter_map(|res| res.as_ref().err())
-            .for_each(|r| println!("{:?}", r))
-    })));
-    block_on(future_obj);
-    Ok(())
+    let mut ok_count: usize = 0;
+    while let Some(res) = read_futures.next().await {
+        match res {
+            Ok(_) => ok_count += 1,
+            Err(e) => println!("error reading {}", e),
+        }
+    }
+    if ok_count == keys.len() {
+        Ok(())
+    } else {
+        Err("Failed to read all keys".to_string())
+    }
 }
 
 pub fn generate_records(count: usize, avg_size: usize) -> Vec<(u32, Vec<u8>)> {

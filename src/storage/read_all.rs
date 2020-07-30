@@ -13,9 +13,9 @@ enum State<'a> {
     Initial,
     LockStorage,
     ActiveBlob(PinBox<dyn Future<Output = MutexGuard<'a, Safe>> + 'a + Send>),
-    CollectFromActiveBlob(PinBox<(dyn Future<Output = Option<Vec<Entry>>> + 'a)>),
+    CollectFromActiveBlob(PinBox<(dyn Future<Output = Option<Result<Vec<Entry>>>> + 'a)>),
     ClosedBlobs(PinBox<dyn Future<Output = MutexGuard<'a, Safe>> + 'a + Send>),
-    CollectFromClosedBlobs(PinBox<(dyn Future<Output = Vec<Entry>> + 'a)>),
+    CollectFromClosedBlobs(PinBox<(dyn Future<Output = Result<Vec<Entry>>> + 'a)>),
     Finished,
 }
 
@@ -34,14 +34,14 @@ impl<'a> Debug for State<'a> {
 }
 
 impl<'a, K> Stream for ReadAll<'a, K> {
-    type Item = Entry;
+    type Item = Result<Entry>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Some(entry) = self.ready_entries.pop() {
             cx.waker().wake_by_ref();
-            Poll::Ready(Some(entry))
+            Poll::Ready(Some(Ok(entry)))
         } else {
-            debug!("match stream state");
+            trace!("match stream state");
             self.match_state(cx)
         }
     }
@@ -61,6 +61,7 @@ impl<'a, K> ReadAll<'a, K> {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<<Self as Stream>::Item>> {
+        trace!("ReadAll state: {:?}", self.state);
         let key = self.key;
         let state = self.state.get_mut();
         match state {
@@ -77,13 +78,13 @@ impl<'a, K> ReadAll<'a, K> {
                 let key = key.to_vec();
                 let new_fut = async move {
                     let active_blob = safe.active_blob.as_ref()?;
-                    Some(active_blob.read_all(&key).collect().await)
+                    Some(active_blob.read_all(&key).try_collect().await)
                 };
                 self.state
                     .replace(State::CollectFromActiveBlob(new_fut.boxed()));
             }
             State::CollectFromActiveBlob(fut) => {
-                if let Some(entries) = ready!(fut.as_mut().poll(cx)) {
+                if let Some(Ok(entries)) = ready!(fut.as_mut().poll(cx)) {
                     self.ready_entries.extend(entries);
                 };
                 let storage_fut = self.inner.inner.safe.lock();
@@ -95,25 +96,35 @@ impl<'a, K> ReadAll<'a, K> {
                 let new_fut = async move {
                     let mut entries = Vec::new();
                     for blob in &safe.blobs {
-                        let read_all = blob.read_all(key).collect::<Vec<_>>().await;
-                        debug!("read all from blob finished");
+                        let read_all = blob.read_all(key).try_collect::<Vec<_>>().await?;
+                        trace!("read all from blob finished, {} entries", read_all.len());
                         entries.extend(read_all);
                     }
-                    debug!("read all from all blobs finished");
-                    entries
+                    trace!("read all from all blobs finished");
+                    Ok(entries)
                 }
                 .boxed();
                 self.state.replace(State::CollectFromClosedBlobs(new_fut));
             }
             State::CollectFromClosedBlobs(fut) => {
-                debug!("enter collect from closed blobs state");
+                trace!("enter collect from closed blobs state");
                 let entries = ready!(fut.as_mut().poll(cx));
-                self.ready_entries.extend(entries);
-                self.state.replace(State::Finished);
-                debug!("collect from closed blobs finished");
+                match entries {
+                    Ok(entries) => {
+                        trace!(
+                            "collect from closed blobs finished, {} entries",
+                            entries.len()
+                        );
+                        self.ready_entries.extend(entries);
+                        self.state.replace(State::Finished);
+                    }
+                    Err(e) => {
+                        return Poll::Ready(Some(Err(e)));
+                    }
+                }
             }
             State::Finished => {
-                debug!("state finished, return None");
+                trace!("state finished, return None");
                 return Poll::Ready(None);
             }
         }

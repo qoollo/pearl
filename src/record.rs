@@ -74,9 +74,20 @@ impl Meta {
         serialize(&self)
     }
 
-    pub(crate) async fn load(file: &File, location: Location) -> Result<Self> {
-        let buf = file.read_at(location.size(), location.offset()).await?;
-        Self::from_raw(&buf)
+    pub(crate) async fn load(file: &File, location: Location) -> AnyResult<Self> {
+        trace!("meta load");
+        let mut buf = vec![0; location.size()];
+        trace!(
+            "file read at: {} bytes, offset: {}",
+            location.size(),
+            location.offset()
+        );
+        let n = file
+            .read_at(&mut buf, location.offset())
+            .await
+            .context("failed to load record from file")?;
+        trace!("read {} bytes", n);
+        Ok(Self::from_raw(&buf)?)
     }
 }
 
@@ -191,7 +202,6 @@ impl Record {
         let raw_meta = self.meta.to_raw()?;
         buf.extend(&raw_meta);
         buf.extend(&self.data);
-        trace!("len: {}", buf.len());
         Ok(buf)
     }
 
