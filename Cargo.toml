@@ -8,7 +8,7 @@ documentation = "https://docs.rs/pearl"
 keywords = ["blob", "blob-storage", "append-only", "key-value", "async"]
 categories = ["data-structures", "filesystem"]
 license = "MIT"
-authors = ["Pavel Yakushin <p.yakushin@qoollo.com>"]
+authors = ["Pavel Yakushin <p.yakushin@qoollo.com>", "Kirill Bushminkin <kbushminkin@gmail.com"]
 edition = "2018"
 readme = "README.md"
 

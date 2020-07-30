@@ -602,7 +602,7 @@ async fn test_records_count_detailed() {
         write_one(&storage, *key, data, None).await.unwrap();
         delay_for(Duration::from_millis(64)).await;
     }
-    delay_for(Duration::from_millis(100)).await;
+    delay_for(Duration::from_millis(1000)).await;
     assert_eq!(
         storage.records_count_detailed().await,
         vec![(0, 19), (1, 11)]
