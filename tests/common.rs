@@ -8,10 +8,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use futures::{
-    executor::block_on, future::FutureObj, stream::futures_unordered::FuturesUnordered, FutureExt,
-    StreamExt,
-};
+use futures::{stream::futures_unordered::FuturesUnordered, StreamExt};
 use rand::Rng;
 
 use pearl::{Builder, Key, Storage};

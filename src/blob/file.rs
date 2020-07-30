@@ -69,7 +69,7 @@ impl File {
         }
         debug!("buf len: {}", buf.len());
         let compl = self.ioring.read_at(&*self.no_lock_fd, &buf, offset);
-        debug!("io uring completion created");
+        trace!("io uring completion created");
         let size = compl.await.with_context(|| "read at failed")?;
         debug!("read finished: {} bytes", size);
         Ok(size)

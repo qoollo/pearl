@@ -61,6 +61,7 @@ impl<'a, K> ReadAll<'a, K> {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<<Self as Stream>::Item>> {
+        debug!("ReadAll state: {:?}", self.state);
         let key = self.key;
         let state = self.state.get_mut();
         match state {
@@ -96,7 +97,7 @@ impl<'a, K> ReadAll<'a, K> {
                     let mut entries = Vec::new();
                     for blob in &safe.blobs {
                         let read_all = blob.read_all(key).try_collect::<Vec<_>>().await?;
-                        debug!("read all from blob finished");
+                        debug!("read all from blob finished, {} entries", read_all.len());
                         entries.extend(read_all);
                     }
                     debug!("read all from all blobs finished");
@@ -110,9 +111,12 @@ impl<'a, K> ReadAll<'a, K> {
                 let entries = ready!(fut.as_mut().poll(cx));
                 match entries {
                     Ok(entries) => {
+                        debug!(
+                            "collect from closed blobs finished, {} entries",
+                            entries.len()
+                        );
                         self.ready_entries.extend(entries);
                         self.state.replace(State::Finished);
-                        debug!("collect from closed blobs finished");
                     }
                     Err(e) => {
                         return Poll::Ready(Some(Err(e)));

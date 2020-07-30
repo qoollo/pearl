@@ -340,6 +340,7 @@ async fn test_read_all_load_all() {
             .await
             .unwrap();
     }
+    delay_for(Duration::from_millis(1000)).await;
     let mut records_read = storage
         .read_all(&KeyTest::new(key))
         .then(|entry| async { entry.unwrap().load().await.unwrap() })

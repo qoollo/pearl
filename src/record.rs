@@ -75,9 +75,9 @@ impl Meta {
     }
 
     pub(crate) async fn load(file: &File, location: Location) -> AnyResult<Self> {
-        debug!("meta load");
+        trace!("meta load");
         let mut buf = vec![0; location.size()];
-        debug!(
+        trace!(
             "file read at: {} bytes, offset: {}",
             location.size(),
             location.offset()
@@ -85,10 +85,9 @@ impl Meta {
         let n = file
             .read_at(&mut buf, location.offset())
             .await
-            .context("failed to load record from file")
-            .unwrap();
+            .context("failed to load record from file")?;
         debug!("read {} bytes", n);
-        let meta = Self::from_raw(&buf)?;
+        let meta = Self::from_raw(&buf).unwrap();
         Ok(meta)
     }
 }
