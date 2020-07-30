@@ -41,7 +41,7 @@ impl<'a, K> Stream for ReadAll<'a, K> {
             cx.waker().wake_by_ref();
             Poll::Ready(Some(Ok(entry)))
         } else {
-            debug!("match stream state");
+            trace!("match stream state");
             self.match_state(cx)
         }
     }
@@ -61,7 +61,7 @@ impl<'a, K> ReadAll<'a, K> {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<<Self as Stream>::Item>> {
-        debug!("ReadAll state: {:?}", self.state);
+        trace!("ReadAll state: {:?}", self.state);
         let key = self.key;
         let state = self.state.get_mut();
         match state {
@@ -97,21 +97,21 @@ impl<'a, K> ReadAll<'a, K> {
                     let mut entries = Vec::new();
                     for blob in &safe.blobs {
                         let read_all = blob.read_all(key).try_collect::<Vec<_>>().await?;
-                        debug!("read all from blob finished, {} entries", read_all.len());
+                        trace!("read all from blob finished, {} entries", read_all.len());
                         entries.extend(read_all);
                     }
-                    debug!("read all from all blobs finished");
+                    trace!("read all from all blobs finished");
                     Ok(entries)
                 }
                 .boxed();
                 self.state.replace(State::CollectFromClosedBlobs(new_fut));
             }
             State::CollectFromClosedBlobs(fut) => {
-                debug!("enter collect from closed blobs state");
+                trace!("enter collect from closed blobs state");
                 let entries = ready!(fut.as_mut().poll(cx));
                 match entries {
                     Ok(entries) => {
-                        debug!(
+                        trace!(
                             "collect from closed blobs finished, {} entries",
                             entries.len()
                         );
@@ -124,7 +124,7 @@ impl<'a, K> ReadAll<'a, K> {
                 }
             }
             State::Finished => {
-                debug!("state finished, return None");
+                trace!("state finished, return None");
                 return Poll::Ready(None);
             }
         }

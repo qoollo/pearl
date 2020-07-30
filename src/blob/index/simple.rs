@@ -44,10 +44,10 @@ impl Simple {
     pub(crate) fn new(name: FileName, ioring: Rio, filter_config: Option<Config>) -> Self {
         let filter_is_on = filter_config.is_some();
         let filter = if let Some(config) = filter_config {
-            debug!("create filter with config: {:?}", config);
+            trace!("create filter with config: {:?}", config);
             Bloom::new(config)
         } else {
-            debug!("no config, filter created with default params and won't be used");
+            trace!("no config, filter created with default params and won't be used");
             Bloom::default()
         };
         Self {
@@ -91,22 +91,22 @@ impl Simple {
         filter_is_on: bool,
         ioring: Rio,
     ) -> AnyResult<Self> {
-        debug!("open index file");
+        trace!("open index file");
         let file = File::open(name.to_path(), ioring.clone())
             .await
             .context(format!("failed to open index file: {}", name))?;
-        debug!("load index header");
+        trace!("load index header");
         let mut header_buf = vec![0; Header::serialized_size_default()?.try_into()?];
-        debug!("read header into buf: [0; {}]", header_buf.len());
+        trace!("read header into buf: [0; {}]", header_buf.len());
         file.read_at(&mut header_buf, 0).await?;
-        debug!("serialize header from bytes");
+        trace!("serialize header from bytes");
         let header = Header::from_raw(&header_buf)?;
-        debug!("load filter");
+        trace!("load filter");
         let mut buf = vec![0; header.filter_buf_size];
-        debug!("read filter into buf: [0; {}]", buf.len());
+        trace!("read filter into buf: [0; {}]", buf.len());
         file.read_at(&mut buf, header_buf.len() as u64).await?;
         let filter = Bloom::from_raw(&buf)?;
-        debug!("index restored successfuly");
+        trace!("index restored successfuly");
         warn!("@TODO check consistency");
         Ok(Self {
             header,
@@ -123,7 +123,7 @@ impl Simple {
     }
 
     pub(crate) fn get_entry<'a, 'b: 'a>(&'b self, key: &'a [u8], file: File) -> Entries<'a> {
-        debug!("create iterator");
+        trace!("create iterator");
         Entries::new(&self.inner, key, file)
     }
 
@@ -210,7 +210,7 @@ impl Simple {
     fn serialize_bunch(bunch: &mut [RecordHeader], filter: &Bloom) -> Result<Vec<u8>> {
         let record_header = bunch.first().ok_or(ErrorKind::EmptyIndexBunch)?;
         let record_header_size = record_header.serialized_size().try_into()?;
-        debug!("record header serialized size: {}", record_header_size);
+        trace!("record header serialized size: {}", record_header_size);
         bunch.sort_by_key(|h| h.key().to_vec());
         let filter_buf = filter.to_raw()?;
         let header = Header {
@@ -219,23 +219,20 @@ impl Simple {
             filter_buf_size: filter_buf.len(),
         };
         let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
-        debug!("index header size: {}b", hs);
+        trace!("index header size: {}b", hs);
         let mut buf = Vec::with_capacity(hs + bunch.len() * record_header_size);
         serialize_into(&mut buf, &header)?;
-        debug!(
+        trace!(
             "filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
             filter_buf.len(),
             header.filter_buf_size,
             buf.len()
         );
         buf.extend_from_slice(&filter_buf);
-        debug!("buf len after: {}", buf.len());
+        trace!("buf len after: {}", buf.len());
         bunch
             .iter()
-            .filter_map(|h| {
-                trace!("write key: {:?}", h.key());
-                serialize(&h).ok()
-            })
+            .filter_map(|h| serialize(&h).ok())
             .fold(&mut buf, |acc, h_buf| {
                 acc.extend_from_slice(&h_buf);
                 acc
@@ -340,7 +337,6 @@ impl Index for Simple {
     fn push(&mut self, h: RecordHeader) -> Push {
         let fut = match &mut self.inner {
             State::InMemory(bunch) => {
-                trace!("add header to filter");
                 self.filter.add(h.key());
                 bunch.push(h);
                 future::ok(()).boxed()
@@ -376,7 +372,7 @@ impl Index for Simple {
     fn dump(&mut self) -> Dump {
         if let State::InMemory(bunch) = &mut self.inner {
             let buf = Self::serialize_bunch(bunch, &self.filter);
-            debug!("index serialized, errors: {:?}", buf.as_ref().err());
+            trace!("index serialized, errors: {:?}", buf.as_ref().err());
             match buf {
                 Ok(buf) => self.dump_in_memory(buf, self.ioring.clone()),
                 Err(ref e) if e.is(&ErrorKind::EmptyIndexBunch) => Dump(future::ok(0).boxed()),

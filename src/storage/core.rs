@@ -119,18 +119,18 @@ impl<K> Storage<K> {
                 .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?,
         )
         .await;
-        debug!("work dir content loaded");
+        trace!("work dir content loaded");
         if let Some(files) = cont_res? {
-            debug!("storage init from existing files");
+            trace!("storage init from existing files");
             self.init_from_existing(files)
                 .await
                 .context("failed to init from existing blobs")?
         } else {
             self.init_new().await?
         };
-        debug!("new storage initialized");
+        trace!("new storage initialized");
         launch_observer(self.inner.clone());
-        debug!("observer started");
+        trace!("observer started");
         Ok(())
     }
 
@@ -195,21 +195,21 @@ impl<K> Storage<K> {
             .active_blob
             .as_mut()
             .ok_or(ErrorKind::ActiveBlobNotSet)?;
-        debug!("active blob extracted");
+        trace!("active blob extracted");
         let mut metas = active_blob
             .get_all_metas(key.as_ref())
             .await
             .map_err(Error::new)?;
-        debug!("active blob meta loaded");
+        trace!("active blob meta loaded");
         let blobs: &Vec<Blob> = &safe.blobs;
-        debug!("closed blobs extracted");
+        trace!("closed blobs extracted");
         for blob in blobs {
             trace!("look into next blob");
             let meta = blob.get_all_metas(key.as_ref()).await.map_err(Error::new)?;
             metas.extend(meta);
-            debug!("extend finished");
+            trace!("extend finished");
         }
-        debug!("all metas collected");
+        trace!("all metas collected");
         Ok(metas)
     }
 
@@ -263,11 +263,11 @@ impl<K> Storage<K> {
             .ok_or(ErrorKind::ActiveBlobNotSet)?
             .read(key, meta)
             .await;
-        debug!("data read from active blob");
+        trace!("data read from active blob");
         Ok(if let Ok(record) = active_blob_read_res {
             record
         } else {
-            debug!("data not found in active blob, check closed");
+            trace!("data not found in active blob, check closed");
             let stream: FuturesUnordered<_> = inner
                 .blobs
                 .iter()

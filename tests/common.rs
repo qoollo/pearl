@@ -84,7 +84,7 @@ pub async fn create_test_storage(
         .allow_duplicates();
     let ioring = rio::new().expect("create uring");
     let mut storage = builder.build(ioring).unwrap();
-    storage.init().await.unwrap();
+    storage.init().await.map_err(|e| e.to_string())?;
     Ok(storage)
 }
 

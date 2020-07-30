@@ -374,10 +374,7 @@ async fn test_read_all_find_one_key() {
     debug!("read all with key: {:?}", &key);
     let records_read = storage
         .read_all(&KeyTest::new(key))
-        .then(|entry| async move {
-            debug!("load entry {:?}", entry);
-            entry.unwrap().load().await.unwrap()
-        })
+        .then(|entry| async move { entry.unwrap().load().await.unwrap() })
         .collect::<Vec<_>>()
         .await;
     debug!("storage read all finished");
@@ -402,7 +399,7 @@ async fn test_check_bloom_filter_single() {
     for i in 0..repeat {
         let pos_key = KeyTest::new(i + repeat);
         let neg_key = KeyTest::new(i + 2 * repeat);
-        debug!("key: {}, pos: {:?}, negative: {:?}", i, pos_key, neg_key);
+        trace!("key: {}, pos: {:?}, negative: {:?}", i, pos_key, neg_key);
         let key = KeyTest::new(i);
         storage.write(&key, data.to_vec()).await.unwrap();
         assert_eq!(storage.check_bloom(key).await, Some(true));
@@ -464,7 +461,6 @@ async fn test_check_bloom_filter_init_from_existing() {
     let storage = common::create_test_storage(&path, 100).await.unwrap();
     debug!("check check_bloom");
     for i in 1..base {
-        trace!("check key: {}", i);
         assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(true));
     }
     info!("check certainly missed keys");

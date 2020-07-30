@@ -52,9 +52,9 @@ fn false_positive_rate(k: f64, n: f64, m: f64) -> f64 {
 impl Bloom {
     pub fn new(config: Config) -> Self {
         let elements = config.elements as f64;
-        debug!("bloom filter for {} elements", elements);
+        trace!("bloom filter for {} elements", elements);
         let max_bit_count = config.max_buf_bits_count; // 1Mb
-        debug!("max bit count: {}", max_bit_count);
+        trace!("max bit count: {}", max_bit_count);
         let k = config.hashers_count;
         let mut bits_count = (elements * k as f64 / 2_f64.ln()) as usize;
         let bits_step = config.buf_increase_step;
@@ -69,7 +69,7 @@ impl Bloom {
                 bits_count = max_bit_count.min(bits_step + bits_count);
             }
         }
-        debug!(
+        trace!(
             "result fpr: {:.6}, k: {}, m: {}, n: {}",
             false_positive_rate(k as f64, elements, bits_count as f64),
             k,
@@ -84,7 +84,7 @@ impl Bloom {
     }
 
     pub fn hashers(k: usize) -> Vec<AHasher> {
-        debug!("@TODO create configurable hashers");
+        trace!("@TODO create configurable hashers???");
         (0..k)
             .map(|i| AHasher::new_with_keys((i + 1) as u128, (i + 2) as u128))
             .collect()
@@ -123,29 +123,24 @@ impl Bloom {
         let len = self.inner.len() as u64;
         for h in hashers.iter_mut().map(|hasher| {
             hasher.write(item.as_ref());
-            trace!("hasher: {:?}", hasher);
             hasher.finish() % len
         }) {
             *self
                 .inner
                 .get_mut(h as usize)
                 .expect("impossible due to mod by len") = true;
-            trace!("set true to {}", h);
         }
     }
 
     pub fn contains(&self, item: impl AsRef<[u8]>) -> bool {
         let mut hashers = self.hashers.clone();
         let len = self.inner.len() as u64;
-        let res = hashers
+        hashers
             .iter_mut()
             .map(|hasher| {
                 hasher.write(item.as_ref());
-                trace!("hasher: {:?}", hasher);
                 hasher.finish() % len
             })
-            .all(|i| *self.inner.get(i as usize).expect("unreachable"));
-        trace!("item definitely missed: {}", !res);
-        res
+            .all(|i| *self.inner.get(i as usize).expect("unreachable"))
     }
 }

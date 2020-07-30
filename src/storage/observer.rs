@@ -29,7 +29,7 @@ impl Observer {
     }
 
     async fn try_update(&mut self) -> Result<()> {
-        debug!("try update active blob");
+        trace!("try update active blob");
         let inner_cloned = self.inner.clone();
         if let Some(inner) = active_blob_check(inner_cloned).await? {
             update_active_blob(inner).await?;
@@ -51,7 +51,7 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
         let count = active_blob.records_count().await.map_err(Error::new)? as u64;
         (size, count)
     };
-    debug!("lock released");
+    trace!("lock released");
     let config_max_size = inner
         .config
         .max_blob_size()
@@ -77,7 +77,7 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
 
     {
         let mut safe_locked = inner.safe.lock().await;
-        debug!("lock acquired");
+        trace!("lock acquired");
         let mut old_active = safe_locked
             .active_blob
             .replace(new_active)
@@ -85,6 +85,6 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
         old_active.dump().await.map_err(Error::new)?;
         safe_locked.blobs.push(*old_active);
     }
-    debug!("lock released");
+    trace!("lock released");
     Ok(())
 }

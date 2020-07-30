@@ -86,9 +86,9 @@ impl<'a> Stream for Entries<'a> {
     type Item = Result<Entry>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        debug!("entries poll next");
+        trace!("entries poll next");
         if let Some(fut) = self.entries_fut.as_mut() {
-            debug!("poll entries future");
+            trace!("poll entries future");
             match fut.as_mut().poll(cx) {
                 Poll::Ready(res) => {
                     self.entries_fut = None;
@@ -97,9 +97,9 @@ impl<'a> Stream for Entries<'a> {
                 Poll::Pending => Poll::Pending,
             }
         } else if let Some(headers) = &mut self.loaded_headers {
-            debug!("headers loaded");
+            trace!("headers loaded");
             if let Some(header) = headers.pop_front() {
-                debug!("{} headers loaded, create entries from them", headers.len());
+                trace!("{} headers loaded, create entries from them", headers.len());
                 let mut entry = Self::create_entry(self.blob_file.clone(), header).boxed();
                 match entry.as_mut().poll(cx) {
                     Poll::Ready(entry) => Poll::Ready(Some(entry)),
@@ -109,7 +109,7 @@ impl<'a> Stream for Entries<'a> {
                     }
                 }
             } else {
-                debug!("no headers left, finish entries future");
+                trace!("no headers left, finish entries future");
                 Poll::Ready(None)
             }
         } else {
@@ -138,7 +138,7 @@ impl<'a> Entries<'a> {
         self: Pin<&mut Self>,
         cx: &mut Context,
     ) -> Poll<Option<<Self as Stream>::Item>> {
-        debug!("get headers from index");
+        trace!("get headers from index");
         match self.inner {
             State::InMemory(headers) => self.get_next_poll(cx, headers),
             State::OnDisk(file) => self.load_headers_from_file(cx, file),
@@ -150,11 +150,11 @@ impl<'a> Entries<'a> {
         cx: &mut Context,
         file: &'a File,
     ) -> Poll<Option<<Self as Stream>::Item>> {
-        debug!("load headers from file");
+        trace!("load headers from file");
         if let Some(fut) = &mut self.load_fut {
             let headers = ready!(fut.as_mut().poll(cx));
             if let Ok(headers) = headers {
-                debug!("{} headers loaded", headers.len());
+                trace!("{} headers loaded", headers.len());
                 self.reset_load_future(headers);
             }
         } else {
@@ -175,10 +175,6 @@ impl<'a> Entries<'a> {
                 })
                 .collect(),
         );
-        debug!(
-            "{} loaded headers set",
-            self.loaded_headers.as_ref().unwrap().len()
-        );
         self.load_fut = None;
     }
 
@@ -187,14 +183,13 @@ impl<'a> Entries<'a> {
         cx: &mut Context,
         headers: &'a [RecordHeader],
     ) -> Poll<Option<Result<Entry>>> {
-        debug!("get next poll");
+        trace!("get next poll");
         let key = self.key;
         if self.token.take().is_some() {
-            debug!("first entries poll, create entries futures");
+            trace!("first entries poll, create entries futures");
             for h in headers {
-                debug!("check key: {:?} == {:?}", h.key(), key);
                 if h.key() == key {
-                    debug!("key matched");
+                    trace!("key matched");
                     let entry = Self::create_entry(self.blob_file.clone(), h.clone());
                     self.loading_entries.push(entry.boxed());
                 }
@@ -207,13 +202,13 @@ impl<'a> Entries<'a> {
     }
 
     async fn create_entry(file: File, header: RecordHeader) -> Result<Entry> {
-        debug!("create entry");
+        trace!("create entry");
         let meta = Meta::load(&file, header.meta_location())
             .await
             .map_err(Error::new)?;
-        debug!("meta loaded");
+        trace!("meta loaded");
         let entry = Entry::new(meta, &header, file);
-        debug!("entry created");
+        trace!("entry created");
         Ok(entry)
     }
 }

@@ -90,23 +90,23 @@ impl Blob {
         ioring: Rio,
         filter_config: Option<BloomConfig>,
     ) -> AnyResult<Self> {
-        debug!("create file instance");
+        trace!("create file instance");
         let file = File::open(&path, ioring.clone()).await?;
         let name = FileName::from_path(&path)?;
         let len = file.metadata().await?.len();
         let header = Header::new();
-        debug!("blob file size: {} MB", len / 1_000_000);
+        trace!("blob file size: {} MB", len / 1_000_000);
         let mut index_name: FileName = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        debug!("looking for index file: [{}]", index_name.to_string());
+        trace!("looking for index file: [{}]", index_name.to_string());
         let index = if index_name.exists() {
-            debug!("file exists");
+            trace!("file exists");
             SimpleIndex::from_file(index_name, filter_config.is_some(), ioring).await?
         } else {
-            debug!("file not found, create new");
+            trace!("file not found, create new");
             SimpleIndex::new(index_name, ioring, filter_config)
         };
-        debug!("index initialized");
+        trace!("index initialized");
         let header_size = bincode::serialized_size(&header)?;
         let mut blob = Self {
             header,
@@ -115,7 +115,7 @@ impl Blob {
             index,
             current_offset: Arc::new(Mutex::new(len)),
         };
-        debug!("call update index");
+        trace!("call update index");
         if len > header_size {
             blob.try_regenerate_index()
                 .await
@@ -123,7 +123,7 @@ impl Blob {
         } else {
             warn!("empty or corrupted blob: {:?}", path);
         }
-        debug!("check data consistency");
+        trace!("check data consistency");
         Self::check_data_consistency()?;
         Ok(blob)
     }
@@ -161,7 +161,7 @@ impl Blob {
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
-        debug!("write: {:?} to blob {}", record.header().key(), self.id());
+        trace!("write: {:?} to blob {}", record.header().key(), self.id());
         let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
@@ -172,20 +172,20 @@ impl Blob {
     }
 
     pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> AnyResult<Record> {
-        debug!("lookup for key in {} blob", self.id());
+        trace!("lookup for key in {} blob", self.id());
         let loc = self
             .lookup(key, meta)
             .await?
             .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
-        debug!("key found");
+        trace!("key found");
         let mut buf = vec![0; loc.size as usize];
         self.file
             .read_at(&mut buf, loc.offset)
             .await
             .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?;
-        debug!("buf read finished");
+        trace!("buf read finished");
         let record = Record::from_raw(&buf).expect("from raw");
-        debug!("record deserialized");
+        trace!("record deserialized");
         Ok(record)
     }
 
@@ -196,14 +196,14 @@ impl Blob {
 
     async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Location>> {
         if self.check_bloom(key) == Some(false) {
-            debug!("bloom filter returned false");
+            trace!("bloom filter returned false");
             Ok(None)
         } else {
-            debug!("lookup in index");
+            trace!("lookup in index");
             let entries = self.index.get_entry(key, self.file.clone());
-            debug!("entries get");
+            trace!("entries get");
             let entry = Self::find_entry(entries, meta).await?;
-            debug!("entry found");
+            trace!("entry found");
             Ok(entry.map(|entry| Location::new(entry.blob_offset(), entry.full_size())))
         }
     }
@@ -213,10 +213,10 @@ impl Blob {
     }
 
     async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Result<Option<Entry>> {
-        debug!("find entry with meta: {:?}", meta);
+        trace!("find entry with meta: {:?}", meta);
         TryStreamExt::try_next(&mut ents.try_filter(|entry| {
             future::ready(meta.map_or(true, |m| {
-                debug!("check meta: {:?} == {:?}", m, entry.meta());
+                trace!("check meta: {:?} == {:?}", m, entry.meta());
                 *m == entry.meta()
             }))
         }))

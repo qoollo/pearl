@@ -63,15 +63,14 @@ impl File {
     // }
 
     pub(crate) async fn read_at(&self, buf: &mut [u8], offset: u64) -> AnyResult<usize> {
-        debug!("file read at");
+        trace!("file read at");
         if buf.is_empty() {
             warn!("file read_at empty buf");
         }
-        debug!("buf len: {}", buf.len());
         let compl = self.ioring.read_at(&*self.no_lock_fd, &buf, offset);
         trace!("io uring completion created");
         let size = compl.await.with_context(|| "read at failed")?;
-        debug!("read finished: {} bytes", size);
+        trace!("read finished: {} bytes", size);
         Ok(size)
     }
 

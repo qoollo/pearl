@@ -86,9 +86,8 @@ impl Meta {
             .read_at(&mut buf, location.offset())
             .await
             .context("failed to load record from file")?;
-        debug!("read {} bytes", n);
-        let meta = Self::from_raw(&buf).unwrap();
-        Ok(meta)
+        trace!("read {} bytes", n);
+        Ok(Self::from_raw(&buf)?)
     }
 }
 
@@ -203,7 +202,6 @@ impl Record {
         let raw_meta = self.meta.to_raw()?;
         buf.extend(&raw_meta);
         buf.extend(&self.data);
-        trace!("len: {}", buf.len());
         Ok(buf)
     }
 
