@@ -1,6 +1,8 @@
 Pearl
 =====
 [![Build Status](https://travis-ci.org/qoollo/pearl.svg?branch=master)](https://travis-ci.org/qoollo/pearl)
+[![Crate Status](https://img.shields.io/crates/v/pearl.svg)](https://crates.io/crates/pearl)
+[![Docs Status](https://docs.rs/pearl/badge.svg)](https://docs.rs/crate/pearl)
 
 
 Append only key-value blob storage on disk
