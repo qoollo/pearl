@@ -47,7 +47,7 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
             .active_blob
             .as_ref()
             .ok_or(ErrorKind::ActiveBlobNotSet)?;
-        let size = active_blob.file_size().await?;
+        let size = active_blob.file_size();
         let count = active_blob.records_count().await.map_err(Error::new)? as u64;
         (size, count)
     };
@@ -60,7 +60,7 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
         .config
         .max_data_in_blob()
         .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
-    if active_size > config_max_size || active_count >= config_max_count {
+    if active_size as u64 > config_max_size || active_count >= config_max_count {
         Ok(Some(inner))
     } else {
         Ok(None)

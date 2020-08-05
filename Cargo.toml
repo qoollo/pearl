@@ -27,7 +27,9 @@ rand = "0.7"
 serde = "1.0"
 serde_derive = "1.0"
 futures = "0.3.5"
-clap = { version = "2.33", optional = true }
+clap = { version = "2.33" }
+#optional = true 
+
 bitvec = "0.17"
 ahash = "0.4.4"
 rio = { git="https://github.com/agend/rio/", branch="fix_compiling_for_musl" }
@@ -39,7 +41,7 @@ version = "0.2.22"
 features = ["time", "rt-core", "macros", "fs", "io-util", "sync", "stream"]
 
 [features]
-benchmark = ["clap"]
+# benchmark = ["clap"]
 
 [lib]
 name = "pearl"
@@ -47,4 +49,4 @@ name = "pearl"
 [[bin]]
 name = "benchmark"
 path = "src/benchmark/bin.rs"
-required-features = ["benchmark"]
+# required-features = ["benchmark"]
