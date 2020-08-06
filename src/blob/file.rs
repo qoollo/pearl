@@ -56,16 +56,14 @@ impl File {
             warn!("file read_at empty buf");
         }
         let compl = self.ioring.read_at(&*self.no_lock_fd, &buf, offset);
-        trace!("io uring completion created");
         let size = compl.await.with_context(|| "read at failed")?;
-        trace!("read finished: {} bytes", size);
         Ok(size)
     }
 
     async fn from_tokio_file(file: TokioFile, ioring: Rio) -> IOResult<Self> {
         let tokio_file = file.try_clone().await?;
         let size = tokio_file.metadata().await?.len();
-        let size = Self::size_from_u64(size);
+        let size = Arc::new(AtomicU64::new(size));
         let std_file = tokio_file.try_into_std().expect("tokio file into std");
         let file = Self {
             ioring,
@@ -79,7 +77,7 @@ impl File {
     pub(crate) fn from_std_file(fd: StdFile, ioring: Rio) -> IOResult<Self> {
         let file = fd.try_clone()?;
         let size = file.metadata()?.len();
-        let size = Self::size_from_u64(size);
+        let size = Arc::new(AtomicU64::new(size));
         let file = Self {
             ioring,
             no_lock_fd: Arc::new(file),
@@ -92,9 +90,5 @@ impl File {
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
         let compl = self.ioring.fdatasync(&*self.no_lock_fd);
         compl.await
-    }
-
-    fn size_from_u64(len: u64) -> Arc<AtomicU64> {
-        Arc::new(AtomicU64::new(len))
     }
 }
