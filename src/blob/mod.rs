@@ -13,5 +13,5 @@ pub(crate) use super::prelude::*;
 mod prelude {
     pub(crate) use super::*;
     pub(crate) use index::{Simple as SimpleIndex, State};
-    pub(crate) use std::collections::VecDeque;
+    pub(crate) use std::{collections::VecDeque, sync::atomic::AtomicU64};
 }

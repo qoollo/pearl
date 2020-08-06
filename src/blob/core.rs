@@ -53,13 +53,13 @@ impl Blob {
 
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
-        let offset = self.file.write_at(&buf, 0).await?;
+        let offset = self.file.write_append(&buf).await? as u64;
         self.update_offset(offset).await;
         Ok(())
     }
 
-    async fn update_offset(&self, offset: usize) {
-        *self.current_offset.lock().await = offset as u64;
+    async fn update_offset(&self, offset: u64) {
+        *self.current_offset.lock().await = offset;
     }
 
     #[inline]
@@ -93,9 +93,8 @@ impl Blob {
         trace!("create file instance");
         let file = File::open(&path, ioring.clone()).await?;
         let name = FileName::from_path(&path)?;
-        let len = file.metadata().await?.len();
+        let size = file.size();
         let header = Header::new();
-        trace!("blob file size: {} MB", len / 1_000_000);
         let mut index_name: FileName = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         trace!("looking for index file: [{}]", index_name.to_string());
@@ -113,10 +112,10 @@ impl Blob {
             file,
             name,
             index,
-            current_offset: Arc::new(Mutex::new(len)),
+            current_offset: Arc::new(Mutex::new(size)),
         };
         trace!("call update index");
-        if len > header_size {
+        if size as u64 > header_size {
             blob.try_regenerate_index()
                 .await
                 .context("failed to regenerate index")?;
@@ -165,9 +164,9 @@ impl Blob {
         let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
-        let bytes_written = self.file.write_at(&buf, *offset).await?;
+        let bytes_written = self.file.write_append(&buf).await? as u64;
         self.index.push(record.header().clone());
-        *offset += bytes_written as u64;
+        *offset += bytes_written;
         Ok(())
     }
 
@@ -224,8 +223,8 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) async fn file_size(&self) -> IOResult<u64> {
-        Ok(self.file.metadata().await?.len())
+    pub(crate) fn file_size(&self) -> u64 {
+        self.file.size()
     }
 
     pub(crate) async fn records_count(&self) -> AnyResult<usize> {
@@ -366,7 +365,7 @@ struct RawRecords {
     current_offset: u64,
     record_header_size: u64,
     file: File,
-    file_len: u64,
+    file_size: u64,
     read_fut: Option<PinBox<dyn Future<Output = AnyResult<RecordHeader>> + Send>>,
 }
 
@@ -391,12 +390,12 @@ impl RawRecords {
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
         trace!("record header size: {}", record_header_size);
         let read_fut = Self::read_at(file.clone(), record_header_size, current_offset).boxed();
-        let file_len = file.metadata().await.map(|m| m.len())?;
+        let file_size = file.size();
         Ok(Self {
             current_offset,
             record_header_size,
             file,
-            file_len,
+            file_size,
             read_fut: Some(read_fut),
         })
     }
@@ -413,12 +412,7 @@ impl RawRecords {
         self.current_offset += self.record_header_size;
         self.current_offset += header.meta_size();
         self.current_offset += header.data_size();
-        trace!(
-            "file len: {}, current offset: {}",
-            self.file_len,
-            self.current_offset,
-        );
-        if self.file_len < self.current_offset + self.record_header_size {
+        if self.file_size < self.current_offset + self.record_header_size {
             self.read_fut = None;
         } else {
             let read_fut = Self::read_at(

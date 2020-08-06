@@ -56,11 +56,11 @@ pub(crate) struct Safe {
 
 impl<K> Drop for Storage<K> {
     fn drop(&mut self) {
-        let twins = self.inner.twins_count.fetch_sub(1, Ordering::Relaxed);
+        let twins = self.inner.twins_count.fetch_sub(1, ORD);
         // 1 is because twin#0 - in observer thread, twin#1 - self
         if twins <= 1 {
             trace!("stop observer thread");
-            self.inner.need_exit.store(false, Ordering::Relaxed);
+            self.inner.need_exit.store(false, ORD);
         }
     }
 }
@@ -292,7 +292,7 @@ impl<K> Storage<K> {
             blob.dump().await?;
             debug!("active blob dumped");
         }
-        self.inner.need_exit.store(false, Ordering::Relaxed);
+        self.inner.need_exit.store(false, ORD);
         safe.lock_file = None;
         if let Some(work_dir) = self.inner.config.work_dir() {
             std::fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
@@ -312,7 +312,7 @@ impl<K> Storage<K> {
     /// ```
     #[must_use]
     pub fn blobs_count(&self) -> usize {
-        self.inner.next_blob_id.load(Ordering::Relaxed)
+        self.inner.next_blob_id.load(ORD)
     }
 
     async fn prepare_work_dir(&mut self) -> Result<()> {
@@ -389,7 +389,7 @@ impl<K> Storage<K> {
         safe_locked.blobs = blobs;
         self.inner
             .next_blob_id
-            .store(safe_locked.max_id().map_or(0, |i| i + 1), Ordering::Relaxed);
+            .store(safe_locked.max_id().map_or(0, |i| i + 1), ORD);
         Ok(())
     }
 
@@ -496,7 +496,7 @@ impl<K> Storage<K> {
 
 impl Clone for Inner {
     fn clone(&self) -> Self {
-        self.twins_count.fetch_add(1, Ordering::Relaxed);
+        self.twins_count.fetch_add(1, ORD);
         Self {
             config: self.config.clone(),
             safe: self.safe.clone(),
@@ -521,7 +521,7 @@ impl Inner {
     }
 
     pub(crate) fn next_blob_name(&self) -> Result<blob::FileName> {
-        let next_id = self.next_blob_id.fetch_add(1, Ordering::Relaxed);
+        let next_id = self.next_blob_id.fetch_add(1, ORD);
         let prefix = self
             .config
             .blob_file_name_prefix()
