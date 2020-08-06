@@ -40,7 +40,8 @@ impl File {
     pub(crate) async fn write_at(&self, buf: &[u8], offset: u64) -> IOResult<usize> {
         let compl = self.ioring.write_at(&*self.no_lock_fd, &buf, offset);
         let add_len = compl.await?;
-        self.size.fetch_add(add_len as u64, ORD);
+        self.size
+            .fetch_max(offset + add_len as u64, Ordering::SeqCst);
         Ok(add_len)
     }
 
