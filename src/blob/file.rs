@@ -1,13 +1,11 @@
 use super::prelude::*;
 
-// const WOULDBLOCK_RETRY_INTERVAL_MS: u64 = 10;
-
 #[derive(Debug, Clone)]
 pub struct File {
     ioring: Rio,
     no_lock_fd: Arc<StdFile>, // requires only for read_at/write_at methods
     write_fd: Arc<RwLock<TokioFile>>,
-    len: Arc<AtomicU64>,
+    size: Arc<AtomicU64>,
 }
 
 impl File {
@@ -31,8 +29,8 @@ impl File {
         Self::from_tokio_file(file, ioring).await
     }
 
-    pub fn len(&self) -> u64 {
-        self.len.load(ORD)
+    pub fn size(&self) -> u64 {
+        self.size.load(ORD)
     }
 
     pub(crate) async fn _metadata(&self) -> IOResult<Metadata> {
@@ -42,12 +40,12 @@ impl File {
     pub(crate) async fn write_at(&self, buf: &[u8], offset: u64) -> IOResult<usize> {
         let compl = self.ioring.write_at(&*self.no_lock_fd, &buf, offset);
         let add_len = compl.await?;
-        self.len.fetch_add(add_len as u64, ORD);
+        self.size.fetch_add(add_len as u64, ORD);
         Ok(add_len)
     }
 
     pub(crate) async fn read_all(&self) -> AnyResult<Vec<u8>> {
-        let mut buf = vec![0; self.len() as usize];
+        let mut buf = vec![0; self.size() as usize];
         self.read_at(&mut buf, 0).await?; // TODO: verify read size
         Ok(buf)
     }
@@ -66,27 +64,27 @@ impl File {
 
     async fn from_tokio_file(file: TokioFile, ioring: Rio) -> IOResult<Self> {
         let tokio_file = file.try_clone().await?;
-        let len = tokio_file.metadata().await?.len();
-        let len = Self::len_from_u64(len);
+        let size = tokio_file.metadata().await?.len();
+        let size = Self::size_from_u64(size);
         let std_file = tokio_file.try_into_std().expect("tokio file into std");
         let file = Self {
             ioring,
             no_lock_fd: Arc::new(std_file),
             write_fd: Arc::new(RwLock::new(file)),
-            len,
+            size,
         };
         Ok(file)
     }
 
     pub(crate) fn from_std_file(fd: StdFile, ioring: Rio) -> IOResult<Self> {
         let file = fd.try_clone()?;
-        let len = file.metadata()?.len();
-        let len = Self::len_from_u64(len);
+        let size = file.metadata()?.len();
+        let size = Self::size_from_u64(size);
         let file = Self {
             ioring,
             no_lock_fd: Arc::new(file),
             write_fd: Arc::new(RwLock::new(TokioFile::from_std(fd))),
-            len,
+            size,
         };
         Ok(file)
     }
@@ -96,7 +94,7 @@ impl File {
         compl.await
     }
 
-    fn len_from_u64(len: u64) -> Arc<AtomicU64> {
+    fn size_from_u64(len: u64) -> Arc<AtomicU64> {
         Arc::new(AtomicU64::new(len))
     }
 }

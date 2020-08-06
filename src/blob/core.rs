@@ -93,9 +93,8 @@ impl Blob {
         trace!("create file instance");
         let file = File::open(&path, ioring.clone()).await?;
         let name = FileName::from_path(&path)?;
-        let len = file.len();
+        let size = file.size();
         let header = Header::new();
-        trace!("blob file size: {} MB", len / 1_000_000);
         let mut index_name: FileName = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         trace!("looking for index file: [{}]", index_name.to_string());
@@ -113,10 +112,10 @@ impl Blob {
             file,
             name,
             index,
-            current_offset: Arc::new(Mutex::new(len)),
+            current_offset: Arc::new(Mutex::new(size)),
         };
         trace!("call update index");
-        if len as u64 > header_size {
+        if size as u64 > header_size {
             blob.try_regenerate_index()
                 .await
                 .context("failed to regenerate index")?;
@@ -225,7 +224,7 @@ impl Blob {
 
     #[inline]
     pub(crate) fn file_size(&self) -> u64 {
-        self.file.len()
+        self.file.size()
     }
 
     pub(crate) async fn records_count(&self) -> AnyResult<usize> {
@@ -366,7 +365,7 @@ struct RawRecords {
     current_offset: u64,
     record_header_size: u64,
     file: File,
-    file_len: u64,
+    file_size: u64,
     read_fut: Option<PinBox<dyn Future<Output = AnyResult<RecordHeader>> + Send>>,
 }
 
@@ -391,12 +390,12 @@ impl RawRecords {
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
         trace!("record header size: {}", record_header_size);
         let read_fut = Self::read_at(file.clone(), record_header_size, current_offset).boxed();
-        let file_len = file.len();
+        let file_size = file.size();
         Ok(Self {
             current_offset,
             record_header_size,
             file,
-            file_len,
+            file_size,
             read_fut: Some(read_fut),
         })
     }
@@ -413,12 +412,7 @@ impl RawRecords {
         self.current_offset += self.record_header_size;
         self.current_offset += header.meta_size();
         self.current_offset += header.data_size();
-        trace!(
-            "file len: {}, current offset: {}",
-            self.file_len,
-            self.current_offset,
-        );
-        if self.file_len < self.current_offset + self.record_header_size {
+        if self.file_size < self.current_offset + self.record_header_size {
             self.read_fut = None;
         } else {
             let read_fut = Self::read_at(
