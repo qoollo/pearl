@@ -171,20 +171,19 @@ impl Blob {
         Ok(())
     }
 
-    pub(crate) async fn read(&self, key: &[u8], meta: Option<&Meta>) -> AnyResult<Record> {
+    pub(crate) async fn read_any(&self, key: &[u8], meta: Option<&Meta>) -> AnyResult<Record> {
         trace!("lookup for key in {} blob", self.id());
-        let loc = self
-            .lookup(key, meta)
+        let entry = self
+            .get_any_entry(key, meta)
             .await?
             .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
         trace!("key found");
-        let mut buf = vec![0; loc.size as usize];
-        self.file
-            .read_at(&mut buf, loc.offset)
+        let buf = entry
+            .load()
             .await
             .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?;
         trace!("buf read finished");
-        let record = Record::from_raw(&buf).expect("from raw");
+        let record = Record::from_raw(&buf).with_context(|| "record deserialization failed")?;
         trace!("record deserialized");
         Ok(record)
     }
@@ -194,33 +193,26 @@ impl Blob {
         self.index.get_entry(key, self.file.clone())
     }
 
-    async fn lookup(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Location>> {
+    async fn get_any_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {
         if self.check_bloom(key) == Some(false) {
-            trace!("bloom filter returned false");
             Ok(None)
-        } else {
-            trace!("lookup in index");
+        } else if let Some(meta) = meta {
             let entries = self.index.get_entry(key, self.file.clone());
-            trace!("entries get");
             let entry = Self::find_entry(entries, meta).await?;
-            trace!("entry found");
-            Ok(entry.map(|entry| Location::new(entry.blob_offset(), entry.full_size())))
+            Ok(entry)
+        } else {
+            unimplemented!()
         }
     }
 
     pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
-        Ok(self.lookup(key, meta).await?.is_some())
+        Ok(self.get_any_entry(key, meta).await?.is_some())
     }
 
-    async fn find_entry<'a>(ents: Entries<'a>, meta: Option<&'a Meta>) -> Result<Option<Entry>> {
+    async fn find_entry<'a>(ents: Entries<'a>, meta: &'a Meta) -> Result<Option<Entry>> {
         trace!("find entry with meta: {:?}", meta);
-        TryStreamExt::try_next(&mut ents.try_filter(|entry| {
-            future::ready(meta.map_or(true, |m| {
-                trace!("check meta: {:?} == {:?}", m, entry.meta());
-                *m == entry.meta()
-            }))
-        }))
-        .await
+        TryStreamExt::try_next(&mut ents.try_filter(|entry| future::ready(*meta == entry.meta())))
+            .await
     }
 
     #[inline]

@@ -261,7 +261,7 @@ impl<K> Storage<K> {
             .active_blob
             .as_ref()
             .ok_or(ErrorKind::ActiveBlobNotSet)?
-            .read(key, meta)
+            .read_any(key, meta)
             .await;
         trace!("data read from active blob");
         Ok(if let Ok(record) = active_blob_read_res {
@@ -271,7 +271,7 @@ impl<K> Storage<K> {
             let stream: FuturesUnordered<_> = inner
                 .blobs
                 .iter()
-                .map(|blob| blob.read(key, meta))
+                .map(|blob| blob.read_any(key, meta))
                 .collect();
             let mut task = stream.skip_while(AnyResult::is_err);
             task.next()

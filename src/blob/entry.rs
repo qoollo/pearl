@@ -72,14 +72,6 @@ impl Entry {
     pub(crate) fn meta(&self) -> Meta {
         self.meta.clone()
     }
-
-    pub(crate) const fn blob_offset(&self) -> u64 {
-        self.blob_offset
-    }
-
-    pub(crate) const fn full_size(&self) -> usize {
-        self.full_size
-    }
 }
 
 impl<'a> Stream for Entries<'a> {
