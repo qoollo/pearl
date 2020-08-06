@@ -37,12 +37,11 @@ impl File {
         self.write_fd.read().await.metadata().await
     }
 
-    pub(crate) async fn write_at(&self, buf: &[u8], offset: u64) -> IOResult<usize> {
+    pub(crate) async fn write_append(&self, buf: &[u8]) -> IOResult<usize> {
+        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
         let compl = self.ioring.write_at(&*self.no_lock_fd, &buf, offset);
-        let add_len = compl.await?;
-        self.size
-            .fetch_max(offset + add_len as u64, Ordering::SeqCst);
-        Ok(add_len)
+        let bytes_written = compl.await?;
+        Ok(bytes_written)
     }
 
     pub(crate) async fn read_all(&self) -> AnyResult<Vec<u8>> {

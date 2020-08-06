@@ -53,7 +53,7 @@ impl Blob {
 
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
-        let offset = self.file.write_at(&buf, 0).await? as u64;
+        let offset = self.file.write_append(&buf).await? as u64;
         self.update_offset(offset).await;
         Ok(())
     }
@@ -164,7 +164,7 @@ impl Blob {
         let mut offset = self.current_offset.lock().await;
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
-        let bytes_written = self.file.write_at(&buf, *offset).await? as u64;
+        let bytes_written = self.file.write_append(&buf).await? as u64;
         self.index.push(record.header().clone());
         *offset += bytes_written;
         Ok(())
