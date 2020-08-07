@@ -1,3 +1,5 @@
+#![feature(map_first_last)]
+use std::collections::BTreeMap;
 use super::prelude::*;
 
 #[derive(Debug)]
@@ -34,9 +36,11 @@ impl Header {
     }
 }
 
+type InMemoryIndex = BTreeMap<Vec<u8>, Vec<RecordHeader>>;
+
 #[derive(Debug, Clone)]
 pub(crate) enum State {
-    InMemory(Vec<RecordHeader>),
+    InMemory(InMemoryIndex),
     OnDisk(File),
 }
 
@@ -58,7 +62,7 @@ impl Simple {
             },
             filter_is_on,
             filter,
-            inner: State::InMemory(Vec::new()),
+            inner: State::InMemory(BTreeMap::new()),
             name,
             ioring,
         }
@@ -78,10 +82,14 @@ impl Simple {
 
     pub(crate) async fn get_all_meta_locations(&self, key: &[u8]) -> AnyResult<Vec<Location>> {
         Ok(match &self.inner {
-            State::InMemory(bunch) => Self::extract_matching_meta_locations(bunch, key),
+            State::InMemory(bunch) => {
+                let t = Self::get_all_from_in_memory(bunch, key).await?;
+                t.map(Self::try_create_location)
+            },
             State::OnDisk(file) => {
                 let record_headers = Self::load_records(file).await?;
-                Self::extract_matching_meta_locations(&record_headers, key)
+                let t = Self::get_all_from_in_memory(&record_headers, key).await?;
+                t.map(Self::try_create_location)
             }
         })
     }
@@ -128,40 +136,12 @@ impl Simple {
     }
 
     pub(crate) async fn get_any(&self, key: &[u8], file: File) -> AnyResult<Option<Entry>> {
-        debug!("index get any");
-        match &self.inner {
-            State::InMemory(headers) => {
-                debug!("index get any in memory headers: {}", headers.len());
-                if let Some(header) = headers.iter().find(|h| h.key() == key) {
-                    debug!("index get any in memory header found");
-                    let entry = Entry::new(Meta::default(), header, file);
-                    debug!("index get any in memory new entry created");
-                    Ok(Some(entry))
-                } else {
-                    Ok(None)
-                }
-            }
-            State::OnDisk(index_file) => {
-                debug!("index get any on disk");
-                if let Some(header) = Self::binary_search(index_file.clone(), key.to_vec()).await? {
-                    debug!("index get any on disk header found");
-                    let entry = Entry::new(Meta::default(), &header, file);
-                    debug!("index get any on disk new entry created");
-                    Ok(Some(entry))
-                } else {
-                    Ok(None)
-                }
-            }
+        if let Ok(header) = self.get(key).await {
+            let entry = Entry::new(Meta::default(), &header, file);
+            Ok(Some(entry))
+        } else {
+            Ok(None)
         }
-    }
-
-    #[inline]
-    fn extract_matching_meta_locations(rec_hdrs: &[RecordHeader], key: &[u8]) -> Vec<Location> {
-        rec_hdrs
-            .iter()
-            .filter(|h| h.has_key(key))
-            .filter_map(Self::try_create_location)
-            .collect()
     }
 
     fn try_create_location(h: &RecordHeader) -> Option<Location> {
@@ -171,11 +151,11 @@ impl Simple {
         ))
     }
 
-    pub async fn load_records(file: &File) -> AnyResult<Vec<RecordHeader>> {
+    pub async fn load_records(file: &File) -> AnyResult<InMemoryIndex> {
         let buf = file.read_all().await?;
         let headers = if buf.is_empty() {
             debug!("empty index file");
-            Vec::new()
+            InMemoryIndex::new()
         } else {
             trace!("deserialize bunch");
             let header = Self::deserialize_header(&buf)?;
@@ -251,16 +231,16 @@ impl Simple {
         Ok(deserialize(&buf)?)
     }
 
-    fn serialize_bunch(bunch: &mut [RecordHeader], filter: &Bloom) -> Result<Vec<u8>> {
+    fn serialize_bunch(bunch: &mut InMemoryIndex, filter: &Bloom) -> Result<Vec<u8>> {
         debug!("blob index simple serialize bunch");
-        let record_header = bunch.first().ok_or(ErrorKind::EmptyIndexBunch)?;
+        let record_header = bunch.first_key_value().ok_or(ErrorKind::EmptyIndexBunch)?.1.first().ok_or(ErrorKind::EmptyIndexBunch)?;
         debug!(
             "blob index simple serialize bunch first header {:?}",
             record_header
         );
         let record_header_size = record_header.serialized_size().try_into()?;
         trace!("record header serialized size: {}", record_header_size);
-        bunch.sort_by_key(|h| h.key().to_vec());
+        //bunch.sort_by_key(|h| h.key().to_vec());
         let filter_buf = filter.to_raw()?;
         let header = Header {
             record_header_size,
@@ -315,27 +295,45 @@ impl Simple {
         buf: &[u8],
         count: usize,
         record_header_size: usize,
-    ) -> Result<Vec<RecordHeader>> {
-        (0..count).try_fold(Vec::new(), |mut record_headers, i| {
+    ) -> Result<InMemoryIndex> {
+        (0..count).try_fold(InMemoryIndex::new(), |mut bunch, i| {
             let offset = i * record_header_size;
             trace!("at: {}", offset);
-            let header = deserialize(&buf[offset..])?;
-            record_headers.push(header);
-            Ok(record_headers)
+            let header: RecordHeader = deserialize(&buf[offset..])?;
+            if bunch.contains_key(header.key()) {
+                bunch.get_mut(header.key()).unwrap().push(header);
+            } else {
+                bunch.insert(header.key().to_vec(), vec![header]);
+            }
+            Ok(bunch)
         })
     }
 
     fn get_from_bunch(
-        bunch: &[RecordHeader],
+        bunch: &InMemoryIndex,
         key: &[u8],
     ) -> impl Future<Output = AnyResult<RecordHeader>> {
         future::ready(
-            bunch
-                .iter()
-                .find(|h| h.key() == key)
-                .cloned()
-                .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into()),
+            {
+                if let Some(res) = bunch.get(key) {
+                    res.first()
+                } else {
+                    None
+                }                
+            }  
+            .cloned()
+            .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into()),
         )
+    }
+
+    fn get_all_from_in_memory(m: &InMemoryIndex,
+        key: &[u8],
+    ) -> impl Future<Output = AnyResult<Vec<RecordHeader>>> {
+        future::ready(
+            m.get(key) 
+            .cloned()
+            .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into()),
+        )        
     }
 
     fn dump_in_memory(&mut self, buf: Vec<u8>, ioring: Rio) -> Dump {
@@ -392,7 +390,11 @@ impl Index for Simple {
             State::InMemory(bunch) => {
                 self.filter.add(h.key());
                 debug!("blob index simple push key: {:?}", h.key());
-                bunch.push(h);
+                if bunch.contains_key(h.key()) {
+                    bunch.get_mut(h.key()).unwrap().push(h);
+                } else {
+                    bunch.insert(h.key().to_vec(), vec![h]);
+                }
                 future::ok(()).boxed()
             }
             State::OnDisk(_) => future::err(
