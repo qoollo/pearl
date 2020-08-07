@@ -1,9 +1,6 @@
 #[macro_use]
 extern crate log;
 
-use std::fs;
-use std::time::{Duration, Instant};
-
 use futures::{
     future::FutureExt,
     sink::SinkExt,
@@ -11,6 +8,10 @@ use futures::{
 };
 use pearl::{Builder, Meta, Storage};
 use rand::seq::SliceRandom;
+use std::{
+    fs,
+    time::{Duration, Instant},
+};
 use tokio::time::delay_for;
 
 mod common;
@@ -97,7 +98,8 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let now = Instant::now();
     let path = common::init("multithread");
     let storage = common::default_test_storage_in(&path).await?;
-    let indexes = common::create_indexes(10, 10);
+    let threads = 10;
+    let indexes = common::create_indexes(threads, 100);
     let (snd, rcv) = futures::channel::mpsc::channel(1024);
     let data = b"test data string";
     let clonned_storage = storage.clone();
@@ -116,7 +118,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
         tokio::spawn(task);
     });
     let handles = rcv.collect::<Vec<_>>().await;
-    assert_eq!(handles.len(), 10);
+    assert_eq!(handles.len(), threads);
     let keys = indexes
         .iter()
         .flatten()
@@ -603,10 +605,9 @@ async fn test_records_count_detailed() {
         delay_for(Duration::from_millis(64)).await;
     }
     delay_for(Duration::from_millis(1000)).await;
-    assert_eq!(
-        storage.records_count_detailed().await,
-        vec![(0, 19), (1, 11)]
-    );
+    let details = storage.records_count_detailed().await;
+    assert!(details[0].1 > 18);
+    assert_eq!(details.iter().fold(0, |acc, d| acc + d.1), count);
 
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());

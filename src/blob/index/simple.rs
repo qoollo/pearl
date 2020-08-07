@@ -122,9 +122,27 @@ impl Simple {
         matches!(&self.inner, State::OnDisk(_))
     }
 
-    pub(crate) fn get_entry<'a, 'b: 'a>(&'b self, key: &'a [u8], file: File) -> Entries<'a> {
+    pub(crate) fn get_entries<'a, 'b: 'a>(&'b self, key: &'a [u8], file: File) -> Entries<'a> {
         trace!("create iterator");
         Entries::new(&self.inner, key, file)
+    }
+
+    pub(crate) fn get_any(&self, key: &[u8], file: File) -> Option<Entry> {
+        debug!("index get any");
+        match &self.inner {
+            State::InMemory(headers) => {
+                debug!("index get any in memory headers: {}", headers.len());
+                let header = headers.iter().find(|h| h.key() == key)?;
+                debug!("index get any in memory key found");
+                let entry = Entry::new(Meta::default(), header, file);
+                debug!("index get any in memory new entry created");
+                Some(entry)
+            }
+            State::OnDisk(file) => {
+                debug!("index get any on disk");
+                unimplemented!()
+            }
+        }
     }
 
     #[inline]

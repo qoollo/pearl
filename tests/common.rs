@@ -2,16 +2,15 @@
 
 use chrono::Local;
 use env_logger::fmt::Color;
-use log::Level;
-use std::io::Write;
-use std::path::Path;
-use std::path::PathBuf;
-use std::{env, fs};
+use log::{Level, LevelFilter};
+use std::{env, fs, io::Write, path::Path, path::PathBuf};
 
 use futures::{stream::futures_unordered::FuturesUnordered, StreamExt};
 use rand::Rng;
 
 use pearl::{Builder, Key, Storage};
+
+const LOG_LEVEL: LevelFilter = LevelFilter::Debug;
 
 #[derive(Debug, Clone)]
 pub struct KeyTest(Vec<u8>);
@@ -54,7 +53,7 @@ pub fn init(dir_name: &str) -> PathBuf {
                 record.args(),
             )
         })
-        .filter_level(log::LevelFilter::Info)
+        .filter_level(LOG_LEVEL)
         .try_init()
         .unwrap_or(());
     env::temp_dir().join(format!(

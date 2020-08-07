@@ -161,52 +161,63 @@ impl Blob {
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
-        trace!("write: {:?} to blob {}", record.header().key(), self.id());
+        debug!("blob write");
         let mut offset = self.current_offset.lock().await;
+        debug!("blob write record offset: {}", *offset);
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
         let bytes_written = self.file.write_at(&buf, *offset).await?;
+        debug!("blob write bytes written: {}", bytes_written);
         self.index.push(record.header().clone());
+        debug!("blob write data offset: {}", record.header().data_offset());
         *offset += bytes_written as u64;
         Ok(())
     }
 
-    pub(crate) async fn read_any(&self, key: &[u8], meta: Option<&Meta>) -> AnyResult<Record> {
-        trace!("lookup for key in {} blob", self.id());
+    pub(crate) async fn read_any(&self, key: &[u8], meta: Option<&Meta>) -> AnyResult<Vec<u8>> {
+        debug!("blob read any");
         let entry = self
             .get_any_entry(key, meta)
             .await?
             .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
-        trace!("key found");
+        debug!("blob read any entry found");
         let buf = entry
             .load()
             .await
             .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?;
-        trace!("buf read finished");
-        let record = Record::from_raw(&buf).with_context(|| "record deserialization failed")?;
-        trace!("record deserialized");
-        Ok(record)
+        debug!("blob read any entry loaded bytes: {}", buf.len());
+        Ok(buf)
     }
 
     #[inline]
     pub(crate) fn read_all<'a>(&'a self, key: &'a [u8]) -> Entries<'a> {
-        self.index.get_entry(key, self.file.clone())
+        self.index.get_entries(key, self.file.clone())
     }
 
     async fn get_any_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {
+        debug!("blob get any entry");
         if self.check_bloom(key) == Some(false) {
             Ok(None)
         } else if let Some(meta) = meta {
-            let entries = self.index.get_entry(key, self.file.clone());
+            let entries = self.index.get_entries(key, self.file.clone());
             let entry = Self::find_entry(entries, meta).await?;
             Ok(entry)
         } else {
-            unimplemented!()
+            debug!("blob get any entry bloom true no meta");
+            let entry = self.index.get_any(key, self.file.clone());
+            debug!(
+                "blob get any entry bloom true no meta got any entry: {}",
+                entry.is_some()
+            );
+            Ok(entry)
         }
     }
 
     pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
-        Ok(self.get_any_entry(key, meta).await?.is_some())
+        debug!("blob contains");
+        let contains = self.get_any_entry(key, meta).await?.is_some();
+        debug!("blob contains any: {}", contains);
+        Ok(contains)
     }
 
     async fn find_entry<'a>(ents: Entries<'a>, meta: &'a Meta) -> Result<Option<Entry>> {

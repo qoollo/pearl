@@ -255,6 +255,7 @@ impl<K> Storage<K> {
     }
 
     async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {
+        debug!("storage read with optional meta");
         let inner = self.inner.safe.lock().await;
         let key = key.as_ref();
         let active_blob_read_res = inner
@@ -263,23 +264,30 @@ impl<K> Storage<K> {
             .ok_or(ErrorKind::ActiveBlobNotSet)?
             .read_any(key, meta)
             .await;
-        trace!("data read from active blob");
-        Ok(if let Ok(record) = active_blob_read_res {
-            record
-        } else {
-            trace!("data not found in active blob, check closed");
-            let stream: FuturesUnordered<_> = inner
-                .blobs
-                .iter()
-                .map(|blob| blob.read_any(key, meta))
-                .collect();
-            let mut task = stream.skip_while(AnyResult::is_err);
-            task.next()
-                .await
-                .ok_or(ErrorKind::RecordNotFound)?
-                .map_err(Error::new)?
-        }
-        .into_data())
+        debug!("storage read with optional meta from active blob finished");
+        let record = match active_blob_read_res {
+            Ok(record) => {
+                debug!("storage read with optional meta active blob returned record");
+                record
+            }
+            Err(e) => {
+                debug!(
+                    "storage read with optional meta active blob returned: {:#?}",
+                    e
+                );
+                let stream: FuturesUnordered<_> = inner
+                    .blobs
+                    .iter()
+                    .map(|blob| blob.read_any(key, meta))
+                    .collect();
+                let mut task = stream.skip_while(AnyResult::is_err);
+                task.next()
+                    .await
+                    .ok_or(ErrorKind::RecordNotFound)?
+                    .map_err(Error::new)?
+            }
+        };
+        Ok(record)
     }
 
     /// Stop blob updater and release lock file

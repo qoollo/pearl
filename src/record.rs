@@ -31,13 +31,7 @@ type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub(crate) struct Error {
-    repr: Repr,
-}
-
-#[derive(Debug)]
-enum Repr {
-    Inner(ErrorKind),
-    Other(Box<dyn error::Error + 'static + Send + Sync>),
+    kind: ErrorKind,
 }
 
 impl Meta {
@@ -91,38 +85,15 @@ impl Meta {
     }
 }
 
-impl Error {
-    pub(crate) fn new<E>(error: E) -> Self
-    where
-        E: Into<Box<dyn error::Error + Send + Sync>>,
-    {
-        Self {
-            repr: Repr::Other(error.into()),
-        }
-    }
-}
-
 impl error::Error for Error {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match &self.repr {
-            Repr::Inner(_) => None,
-            Repr::Other(src) => Some(src.as_ref()),
-        }
+        None
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        Debug::fmt(&self.repr, f)
-    }
-}
-
-impl Display for Repr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Self::Inner(kind) => write!(f, "{:?}", kind),
-            Self::Other(e) => Debug::fmt(e, f),
-        }
+        Debug::fmt(&self, f)
     }
 }
 
@@ -155,9 +126,7 @@ pub enum ErrorKind {
 
 impl From<ErrorKind> for Error {
     fn from(kind: ErrorKind) -> Self {
-        Self {
-            repr: Repr::Inner(kind),
-        }
+        Self { kind }
     }
 }
 
@@ -177,11 +146,11 @@ impl Record {
 
     /// # Description
     /// Init new `Record` from raw buffer
-    pub fn from_raw(buf: &[u8]) -> Result<Self> {
-        trace!("len: {}, buf: {:?}", buf.len(), buf);
+    pub fn from_raw(buf: &[u8]) -> AnyResult<Self> {
+        debug!("record from raw");
         // @TODO Header validation
         let header = Header::from_raw(buf)?;
-        trace!("header from raw created");
+        debug!("record from raw header from raw created");
         let meta_offset = header.serialized_size().try_into()?;
         let meta_size: usize = header.meta_size.try_into()?;
         trace!("meta offset {} len {}", meta_offset, meta_size);
@@ -191,7 +160,9 @@ impl Record {
         trace!("data offset {}", data_offset);
         let data = buf[data_offset..].to_vec();
         let record = Self { header, meta, data };
-        record.validate()
+        record
+            .validate()
+            .with_context(|| "record validation failed")
     }
 
     /// # Description
@@ -214,10 +185,11 @@ impl Record {
         self.data
     }
 
-    fn validate(self) -> Result<Self> {
+    fn validate(self) -> AnyResult<Self> {
         self.check_magic_byte()?;
         self.check_data_checksum()?;
-        self.check_header_checksum()?;
+        self.check_header_checksum()
+            .with_context(|| "check header checksum failed")?;
         Ok(self)
     }
 
@@ -244,10 +216,12 @@ impl Record {
         }
     }
 
-    fn check_header_checksum(&self) -> Result<()> {
+    fn check_header_checksum(&self) -> AnyResult<()> {
         let mut header = self.header.clone();
         header.header_checksum = 0;
-        let calc_crc = header.crc32().map_err(Error::new)?;
+        let calc_crc = header
+            .crc32()
+            .with_context(|| "header checksum calculation failed")?;
         if calc_crc == self.header.header_checksum {
             Ok(())
         } else {
@@ -256,7 +230,7 @@ impl Record {
                 calc_crc, self.header.header_checksum
             ));
             error!("{:?}", e);
-            Err(e.into())
+            Err(Error::from(e).into())
         }
     }
 }
