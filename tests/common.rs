@@ -5,12 +5,10 @@ use env_logger::fmt::Color;
 use log::{Level, LevelFilter};
 use std::{env, fs, io::Write, path::Path, path::PathBuf};
 
-use futures::{stream::futures_unordered::FuturesUnordered, StreamExt};
+use futures::{future, stream::futures_unordered::FuturesUnordered, FutureExt, StreamExt};
 use rand::Rng;
 
 use pearl::{Builder, Key, Storage};
-
-const LOG_LEVEL: LevelFilter = LevelFilter::Debug;
 
 #[derive(Debug, Clone)]
 pub struct KeyTest(Vec<u8>);
@@ -53,7 +51,6 @@ pub fn init(dir_name: &str) -> PathBuf {
                 record.args(),
             )
         })
-        .filter_level(LOG_LEVEL)
         .try_init()
         .unwrap_or(());
     env::temp_dir().join(format!(
@@ -102,13 +99,17 @@ pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<
 pub async fn check_all_written(storage: &Storage<KeyTest>, keys: Vec<u32>) -> Result<(), String> {
     let mut read_futures: FuturesUnordered<_> = keys
         .iter()
-        .map(|key| storage.read(KeyTest::new(*key)))
+        .map(|key| {
+            storage
+                .read(KeyTest::new(*key))
+                .then(move |res| future::ready((res, *key)))
+        })
         .collect();
     let mut ok_count: usize = 0;
-    while let Some(res) = read_futures.next().await {
+    while let Some((res, key)) = read_futures.next().await {
         match res {
             Ok(_) => ok_count += 1,
-            Err(e) => println!("error reading {}", e),
+            Err(e) => println!("[{}] error reading {}", key, e),
         }
     }
     if ok_count == keys.len() {

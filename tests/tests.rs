@@ -99,25 +99,33 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let path = common::init("multithread");
     let storage = common::default_test_storage_in(&path).await?;
     let threads = 10;
-    let indexes = common::create_indexes(threads, 100);
-    let (snd, rcv) = futures::channel::mpsc::channel(1024);
-    let data = b"test data string";
+    let indexes = common::create_indexes(threads, 2);
+    let data = vec![184u8; 3000];
     let clonned_storage = storage.clone();
-    indexes.iter().cloned().for_each(move |mut range| {
-        let st = clonned_storage.clone();
-        let mut snd_cloned = snd.clone();
-        let task = async move {
-            let s = st.clone();
-            range.shuffle(&mut rand::thread_rng());
-            let start = range[0];
-            for i in range {
-                write_one(&s, i as u32, data, None).await.unwrap();
-            }
-            snd_cloned.send(start).await.unwrap();
-        };
-        tokio::spawn(task);
-    });
-    let handles = rcv.collect::<Vec<_>>().await;
+    let handles: FuturesUnordered<_> = indexes
+        .iter()
+        .cloned()
+        .map(|mut range| {
+            let st = clonned_storage.clone();
+            let data = data.clone();
+            let task = async move {
+                let s = st.clone();
+                let clonned_data = data.clone();
+                range.shuffle(&mut rand::thread_rng());
+                for i in range {
+                    write_one(&s, i as u32, &clonned_data, None).await.unwrap();
+                    let res = s.read(KeyTest::new(i as u32)).await.unwrap();
+                    assert_eq!(data.to_vec(), res);
+                }
+            };
+            tokio::spawn(task)
+        })
+        .collect();
+    let handles = handles.try_collect::<Vec<_>>().await.unwrap();
+    let index = path.join("test.0.index");
+    error!("{:?}", index);
+    delay_for(Duration::from_millis(32)).await;
+    assert!(index.exists());
     assert_eq!(handles.len(), threads);
     let keys = indexes
         .iter()

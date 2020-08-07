@@ -194,7 +194,7 @@ impl Blob {
         self.index.get_entries(key, self.file.clone())
     }
 
-    async fn get_any_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {
+    async fn get_any_entry(&self, key: &[u8], meta: Option<&Meta>) -> AnyResult<Option<Entry>> {
         debug!("blob get any entry");
         if self.check_bloom(key) == Some(false) {
             Ok(None)
@@ -204,7 +204,11 @@ impl Blob {
             Ok(entry)
         } else {
             debug!("blob get any entry bloom true no meta");
-            let entry = self.index.get_any(key, self.file.clone());
+            let entry = self
+                .index
+                .get_any(key, self.file.clone())
+                .await
+                .with_context(|| "blob index get any failed")?;
             debug!(
                 "blob get any entry bloom true no meta got any entry: {}",
                 entry.is_some()
@@ -213,7 +217,7 @@ impl Blob {
         }
     }
 
-    pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
+    pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> AnyResult<bool> {
         debug!("blob contains");
         let contains = self.get_any_entry(key, meta).await?.is_some();
         debug!("blob contains any: {}", contains);

@@ -47,7 +47,15 @@ impl File {
 
     pub(crate) async fn write_at(&self, buf: &[u8], offset: u64) -> IOResult<usize> {
         let compl = self.ioring.write_at(&*self.no_lock_fd, &buf, offset);
-        compl.await
+        let count = compl.await?;
+        if count < buf.len() {
+            panic!(
+                "internal IO error, written bytes: {}, buf len: {}",
+                count,
+                buf.len()
+            );
+        }
+        Ok(count)
     }
 
     pub(crate) async fn read_all(&self) -> AnyResult<Vec<u8>> {

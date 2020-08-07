@@ -127,20 +127,30 @@ impl Simple {
         Entries::new(&self.inner, key, file)
     }
 
-    pub(crate) fn get_any(&self, key: &[u8], file: File) -> Option<Entry> {
+    pub(crate) async fn get_any(&self, key: &[u8], file: File) -> AnyResult<Option<Entry>> {
         debug!("index get any");
         match &self.inner {
             State::InMemory(headers) => {
                 debug!("index get any in memory headers: {}", headers.len());
-                let header = headers.iter().find(|h| h.key() == key)?;
-                debug!("index get any in memory key found");
-                let entry = Entry::new(Meta::default(), header, file);
-                debug!("index get any in memory new entry created");
-                Some(entry)
+                if let Some(header) = headers.iter().find(|h| h.key() == key) {
+                    debug!("index get any in memory header found");
+                    let entry = Entry::new(Meta::default(), header, file);
+                    debug!("index get any in memory new entry created");
+                    Ok(Some(entry))
+                } else {
+                    Ok(None)
+                }
             }
-            State::OnDisk(file) => {
+            State::OnDisk(index_file) => {
                 debug!("index get any on disk");
-                unimplemented!()
+                if let Some(header) = Self::binary_search(index_file.clone(), key.to_vec()).await? {
+                    debug!("index get any on disk header found");
+                    let entry = Entry::new(Meta::default(), &header, file);
+                    debug!("index get any on disk new entry created");
+                    Ok(Some(entry))
+                } else {
+                    Ok(None)
+                }
             }
         }
     }
@@ -178,8 +188,10 @@ impl Simple {
         Ok(headers)
     }
 
-    async fn binary_search(mut file: File, key: Vec<u8>) -> AnyResult<RecordHeader> {
+    async fn binary_search(mut file: File, key: Vec<u8>) -> AnyResult<Option<RecordHeader>> {
+        debug!("blob index simple binary search");
         let header: Header = Self::read_index_header(&mut file).await?;
+        debug!("blob index simple binary search header {:?}", header);
 
         let mut size = header.records_count;
         if key.is_empty() {
@@ -192,28 +204,42 @@ impl Simple {
             let half = size / 2;
             let mid = start + half;
             let mid_record_header = Self::read_at(&mut file, mid, &header).await?;
+            debug!(
+                "blob index simple binary search mid header: {:?}",
+                mid_record_header
+            );
             let cmp = mid_record_header.key().cmp(&key);
-            debug!("mid read: {:?}", mid_record_header.key());
+            debug!("mid read: {:?}, key: {:?}", mid_record_header.key(), key);
             start = match cmp {
                 CmpOrdering::Greater => start,
                 CmpOrdering::Equal => {
-                    return Ok(mid_record_header);
+                    return Ok(Some(mid_record_header));
                 }
                 CmpOrdering::Less => mid,
             };
             size -= half;
         }
         info!("record with key: {:?} not found", key);
-        Err(Error::from(ErrorKind::RecordNotFound).into())
+        Ok(None)
     }
 
     async fn read_at(file: &mut File, index: usize, header: &Header) -> AnyResult<RecordHeader> {
+        debug!("blob index simple read at");
         let header_size = bincode::serialized_size(&header)?;
-        let offset = header_size + (header.record_header_size * index) as u64;
+        debug!("blob index simple read at header size {}", header_size);
+        let offset = header_size
+            + header.filter_buf_size as u64
+            + (header.record_header_size * index) as u64;
         let mut buf = vec![0; header.record_header_size];
+        debug!(
+            "blob index simple offset: {}, buf len: {}",
+            offset,
+            buf.len()
+        );
         file.read_at(&mut buf, offset).await?;
-        debug!("file read at: {}, buf len: {}", offset, buf.len());
-        Ok(deserialize(&buf)?)
+        let header = deserialize(&buf)?;
+        debug!("blob index simple header: {:?}", header);
+        Ok(header)
     }
 
     async fn read_index_header(file: &mut File) -> AnyResult<Header> {
@@ -226,7 +252,12 @@ impl Simple {
     }
 
     fn serialize_bunch(bunch: &mut [RecordHeader], filter: &Bloom) -> Result<Vec<u8>> {
+        debug!("blob index simple serialize bunch");
         let record_header = bunch.first().ok_or(ErrorKind::EmptyIndexBunch)?;
+        debug!(
+            "blob index simple serialize bunch first header {:?}",
+            record_header
+        );
         let record_header_size = record_header.serialized_size().try_into()?;
         trace!("record header serialized size: {}", record_header_size);
         bunch.sort_by_key(|h| h.key().to_vec());
@@ -240,14 +271,13 @@ impl Simple {
         trace!("index header size: {}b", hs);
         let mut buf = Vec::with_capacity(hs + bunch.len() * record_header_size);
         serialize_into(&mut buf, &header)?;
-        trace!(
-            "filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
+        debug!(
+            "blob index simple serialize bunch filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
             filter_buf.len(),
             header.filter_buf_size,
             buf.len()
         );
         buf.extend_from_slice(&filter_buf);
-        trace!("buf len after: {}", buf.len());
         bunch
             .iter()
             .filter_map(|h| serialize(&h).ok())
@@ -255,6 +285,10 @@ impl Simple {
                 acc.extend_from_slice(&h_buf);
                 acc
             });
+        debug!(
+            "blob index simple serialize bunch buf len after: {}",
+            buf.len()
+        );
         Ok(buf)
     }
 
@@ -353,9 +387,11 @@ impl Index for Simple {
     }
 
     fn push(&mut self, h: RecordHeader) -> Push {
+        debug!("blob index simple push");
         let fut = match &mut self.inner {
             State::InMemory(bunch) => {
                 self.filter.add(h.key());
+                debug!("blob index simple push key: {:?}", h.key());
                 bunch.push(h);
                 future::ok(()).boxed()
             }
@@ -381,7 +417,14 @@ impl Index for Simple {
                 debug!("index state on disk");
                 let cloned_key = key.to_vec();
                 let file = f.clone();
-                let inner = async { Self::binary_search(file, cloned_key).await }.boxed();
+                let inner = async {
+                    if let Some(header) = Self::binary_search(file, cloned_key).await? {
+                        Ok(header)
+                    } else {
+                        Err(Error::from(ErrorKind::RecordNotFound).into())
+                    }
+                }
+                .boxed();
                 Get { inner }
             }
         }
@@ -389,6 +432,7 @@ impl Index for Simple {
 
     fn dump(&mut self) -> Dump {
         if let State::InMemory(bunch) = &mut self.inner {
+            debug!("blob index simple in memory bunch {:?}", bunch);
             let buf = Self::serialize_bunch(bunch, &self.filter);
             trace!("index serialized, errors: {:?}", buf.as_ref().err());
             match buf {

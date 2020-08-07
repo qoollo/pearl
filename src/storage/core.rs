@@ -434,7 +434,7 @@ impl<K> Storage<K> {
     /// `contains` returns either "definitely in storage" or "definitely not".
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn contains(&self, key: impl Key) -> Result<bool> {
+    pub async fn contains(&self, key: impl Key) -> AnyResult<bool> {
         let key = key.as_ref();
         let inner = self.inner.safe.lock().await;
         let in_active = if let Some(active_blob) = &inner.active_blob {
