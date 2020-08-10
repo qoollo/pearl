@@ -196,18 +196,23 @@ impl<K> Storage<K> {
             .as_mut()
             .ok_or(ErrorKind::ActiveBlobNotSet)?;
         trace!("active blob extracted");
-        let mut metas = active_blob
+        let mut metas = Vec::new();
+        if let Some(meta) = active_blob
             .get_all_metas(key.as_ref())
             .await
-            .map_err(Error::new)?;
+            .map_err(Error::new)?
+        {
+            metas.extend(meta);
+        }
         trace!("active blob meta loaded");
         let blobs: &Vec<Blob> = &safe.blobs;
         trace!("closed blobs extracted");
         for blob in blobs {
             trace!("look into next blob");
-            let meta = blob.get_all_metas(key.as_ref()).await.map_err(Error::new)?;
-            metas.extend(meta);
-            trace!("extend finished");
+            if let Some(meta) = blob.get_all_metas(key.as_ref()).await.map_err(Error::new)? {
+                metas.extend(meta);
+                trace!("extend finished");
+            }
         }
         trace!("all metas collected");
         Ok(metas)

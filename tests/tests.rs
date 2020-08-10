@@ -543,12 +543,12 @@ async fn write_one(
 ) -> Result<(), String> {
     let data = data.to_vec();
     let key = KeyTest::new(key);
-    trace!("key: {:?}", key);
+    debug!("tests write one key: {:?}", key);
     if let Some(v) = version {
-        trace!("write with");
+        debug!("tests write one write with");
         storage.write_with(key, data, meta_with(v)).await
     } else {
-        trace!("write");
+        debug!("tests write one write");
         storage.write(key, data).await
     }
     .map_err(|e| e.to_string())

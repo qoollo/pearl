@@ -78,18 +78,24 @@ impl Simple {
         &self.name
     }
 
-    pub(crate) async fn get_all_meta_locations(&self, key: &[u8]) -> AnyResult<Vec<Location>> {
-        Ok(match &self.inner {
+    pub(crate) async fn get_all_meta_locations(&self, key: &[u8]) -> Option<Vec<Location>> {
+        debug!("blob index simple get all meta locations");
+        match &self.inner {
             State::InMemory(bunch) => {
-                Self::get_all_from_in_memory(bunch, key)?;
-                unimplemented!()
-                // .map(Self::try_create_location)
+                debug!("blob index simple get all meta locations from in memory state");
+                let headers = Self::get_all_from_in_memory(bunch, key)?;
+                let locations = headers
+                    .iter()
+                    .filter_map(Self::try_create_location)
+                    .collect();
+                Some(locations)
             }
             State::OnDisk(file) => {
+                debug!("blob index simple get all meta locations from on disk state");
                 // put binary search here
                 unimplemented!()
             }
-        })
+        }
     }
 
     pub(crate) async fn from_file(
@@ -346,10 +352,15 @@ impl Simple {
         .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into())
     }
 
-    fn get_all_from_in_memory(m: &InMemoryIndex, key: &[u8]) -> AnyResult<Vec<RecordHeader>> {
+    fn get_all_from_in_memory<'a>(
+        m: &'a InMemoryIndex,
+        key: &[u8],
+    ) -> Option<&'a Vec<RecordHeader>> {
+        debug!(
+            "blob index simple get all from in memory, keys: {:?}",
+            m.keys().collect::<Vec<_>>()
+        );
         m.get(key)
-            .cloned()
-            .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into())
     }
 
     fn dump_in_memory(&mut self, buf: Vec<u8>, ioring: Rio) -> Dump {

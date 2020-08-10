@@ -68,8 +68,6 @@ pub use rio;
 pub use storage::{Builder, Key, ReadAll, Storage};
 
 mod prelude {
-
-    #![feature(map_first_last)]
     pub(crate) use super::*;
     pub(crate) use std::collections::BTreeMap;
     pub(crate) type PinBox<T> = Pin<Box<T>>;

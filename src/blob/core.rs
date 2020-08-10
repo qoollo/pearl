@@ -249,22 +249,29 @@ impl Blob {
         self.name.id
     }
 
-    pub(crate) async fn get_all_metas(&self, key: &[u8]) -> AnyResult<Vec<Meta>> {
-        debug!("get_all_metas");
-        let locations = self.index.get_all_meta_locations(key).await?;
-        trace!("gotten all meta locations");
-        let mut metas = Vec::new();
-        for location in locations {
-            let mut meta_raw = vec![0; location.size as usize];
-            self.file
-                .read_at(&mut meta_raw, location.offset)
-                .await
-                .with_context(|| format!("failed to get all metas for key {:?}", key))?; // TODO: verify amount of data readed
-            let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
-            metas.push(meta);
+    pub(crate) async fn get_all_metas(&self, key: &[u8]) -> AnyResult<Option<Vec<Meta>>> {
+        debug!("blob core get all metas");
+        if let Some(locations) = self.index.get_all_meta_locations(key).await {
+            debug!("blob core get all metas got all meta locations");
+            if locations.is_empty() {
+                Ok(None)
+            } else {
+                let mut metas = Vec::new();
+                for location in locations {
+                    let mut meta_raw = vec![0; location.size as usize];
+                    self.file
+                        .read_at(&mut meta_raw, location.offset)
+                        .await
+                        .with_context(|| format!("failed to get all metas for key {:?}", key))?;
+                    let meta = Meta::from_raw(&meta_raw).map_err(Error::new)?;
+                    metas.push(meta);
+                }
+                trace!("get all headers finished");
+                Ok(Some(metas))
+            }
+        } else {
+            Ok(None)
         }
-        trace!("get all headers finished");
-        Ok(metas)
     }
 
     pub(crate) fn check_bloom(&self, key: &[u8]) -> Option<bool> {
