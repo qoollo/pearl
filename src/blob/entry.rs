@@ -43,7 +43,7 @@ impl Entry {
     /// # Errors
     /// Returns the error type for I/O operations, see [`std::io::Error`]
     pub async fn load(self) -> AnyResult<Record> {
-        let mut buf = vec![0; self.header.data_size() as usize];
+        let mut buf = vec![0; self.header.data_size().try_into()?];
         self.blob_file
             .read_at(&mut buf, self.header.data_offset())
             .await

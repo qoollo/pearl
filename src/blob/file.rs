@@ -52,7 +52,7 @@ impl File {
     }
 
     pub(crate) async fn read_all(&self) -> AnyResult<Vec<u8>> {
-        let mut buf = vec![0; self.size() as usize];
+        let mut buf = vec![0; self.size().try_into()?];
         self.read_at(&mut buf, 0).await?; // TODO: verify read size
         Ok(buf)
     }

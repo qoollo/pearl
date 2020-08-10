@@ -267,7 +267,7 @@ impl Simple {
         bunch.sort_by_key(|h| h.key().to_vec());
         debug!(
             "blob index simple serialize bunch sorted keys {:?}",
-            bunch.iter().map(|h| h.key()).collect::<Vec<_>>()
+            bunch.iter().map(RecordHeader::key).collect::<Vec<_>>()
         );
         let filter_buf = filter.to_raw()?;
         let header = Header {
@@ -426,11 +426,9 @@ impl Index for Simple {
                 let cloned_key = key.to_vec();
                 let file = f.clone();
                 let inner = async {
-                    if let Some(header) = Self::binary_search(file, cloned_key).await? {
-                        Ok(header)
-                    } else {
-                        Err(Error::from(ErrorKind::RecordNotFound).into())
-                    }
+                    Self::binary_search(file, cloned_key)
+                        .await?
+                        .map_or(Err(Error::from(ErrorKind::RecordNotFound).into()), Ok)
                 }
                 .boxed();
                 Get { inner }
