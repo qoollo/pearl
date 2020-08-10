@@ -200,7 +200,7 @@ impl Simple {
 
         let mut start = 0;
 
-        while size > 1 {
+        while size > 0 {
             let half = size / 2;
             let mid = start + half;
             let mid_record_header = Self::read_at(&mut file, mid, &header).await?;
@@ -218,6 +218,10 @@ impl Simple {
                 CmpOrdering::Less => mid,
             };
             size -= half;
+            debug!(
+                "blob index simple binary search start/mid: {}/{}",
+                start, mid
+            )
         }
         info!("record with key: {:?} not found", key);
         Ok(None)
@@ -261,6 +265,10 @@ impl Simple {
         let record_header_size = record_header.serialized_size().try_into()?;
         trace!("record header serialized size: {}", record_header_size);
         bunch.sort_by_key(|h| h.key().to_vec());
+        debug!(
+            "blob index simple serialize bunch sorted keys {:?}",
+            bunch.iter().map(|h| h.key()).collect::<Vec<_>>()
+        );
         let filter_buf = filter.to_raw()?;
         let header = Header {
             record_header_size,
