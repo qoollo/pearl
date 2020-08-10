@@ -123,10 +123,7 @@ impl<'a> Entries<'a> {
     ) -> Poll<Option<<Self as Stream>::Item>> {
         trace!("get headers from index");
         match self.inner {
-            State::InMemory(headers) => {
-                // self.get_next_poll(cx, headers)
-                unimplemented!()
-            }
+            State::InMemory(headers) => self.get_next_poll(cx, headers),
             State::OnDisk(file) => self.load_headers_from_file(cx, file),
         }
     }
@@ -168,17 +165,19 @@ impl<'a> Entries<'a> {
     fn get_next_poll(
         mut self: Pin<&mut Self>,
         cx: &mut Context,
-        headers: &'a [RecordHeader],
+        all_headers: &'a BTreeMap<Vec<u8>, Vec<RecordHeader>>,
     ) -> Poll<Option<Result<Entry>>> {
         trace!("get next poll");
         let key = self.key;
         if self.token.take().is_some() {
             trace!("first entries poll, create entries futures");
-            for h in headers {
-                if h.key() == key {
-                    trace!("key matched");
-                    let entry = Self::create_entry(self.blob_file.clone(), h.clone());
-                    self.loading_entries.push(entry.boxed());
+            if let Some(headers) = all_headers.get(key) {
+                for h in headers {
+                    if h.key() == key {
+                        trace!("key matched");
+                        let entry = Self::create_entry(self.blob_file.clone(), h.clone());
+                        self.loading_entries.push(entry.boxed());
+                    }
                 }
             }
             cx.waker().wake_by_ref();

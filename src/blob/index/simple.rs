@@ -138,15 +138,14 @@ impl Simple {
         match &self.inner {
             State::InMemory(headers) => {
                 debug!("index get any in memory headers: {}", headers.len());
-                // if let Some(header) = headers.iter().find(|h| h.key() == key) {
-                //     debug!("index get any in memory header found");
-                //     let entry = Entry::new(Meta::default(), header.clone(), file);
-                //     debug!("index get any in memory new entry created");
-                //     Ok(Some(entry))
-                // } else {
-                //     Ok(None)
-                // }
-                unimplemented!()
+                if let Some(header) = headers.get(key).and_then(|h| h.first()) {
+                    debug!("index get any in memory header found");
+                    let entry = Entry::new(Meta::default(), header.clone(), file);
+                    debug!("index get any in memory new entry created");
+                    Ok(Some(entry))
+                } else {
+                    Ok(None)
+                }
             }
             State::OnDisk(index_file) => {
                 debug!("index get any on disk");
@@ -255,53 +254,49 @@ impl Simple {
 
     fn serialize_bunch(bunch: &mut InMemoryIndex, filter: &Bloom) -> Result<Vec<u8>> {
         debug!("blob index simple serialize bunch");
-        // let record_header = bunch
-        //     .first_key_value()
-        //     .ok_or(ErrorKind::EmptyIndexBunch)?
-        //     .1
-        //     .first()
-        //     .ok_or(ErrorKind::EmptyIndexBunch)?;
-        // debug!(
-        //     "blob index simple serialize bunch first header {:?}",
-        //     record_header
-        // );
-        // let record_header_size = record_header.serialized_size().try_into()?;
-        // trace!("record header serialized size: {}", record_header_size);
-        // bunch.sort_by_key(|h| h.key().to_vec());
-        // debug!(
-        //     "blob index simple serialize bunch sorted keys {:?}",
-        //     bunch.iter().map(RecordHeader::key).collect::<Vec<_>>()
-        // );
-        // let filter_buf = filter.to_raw()?;
-        // let header = Header {
-        //     record_header_size,
-        //     records_count: bunch.len(),
-        //     filter_buf_size: filter_buf.len(),
-        // };
-        // let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
-        // trace!("index header size: {}b", hs);
-        // let mut buf = Vec::with_capacity(hs + bunch.len() * record_header_size);
-        // serialize_into(&mut buf, &header)?;
-        // debug!(
-        //     "blob index simple serialize bunch filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
-        //     filter_buf.len(),
-        //     header.filter_buf_size,
-        //     buf.len()
-        // );
-        // buf.extend_from_slice(&filter_buf);
-        // bunch
-        //     .iter()
-        //     .filter_map(|h| serialize(&h).ok())
-        //     .fold(&mut buf, |acc, h_buf| {
-        //         acc.extend_from_slice(&h_buf);
-        //         acc
-        //     });
-        // debug!(
-        //     "blob index simple serialize bunch buf len after: {}",
-        //     buf.len()
-        // );
-        // Ok(buf)
-        unimplemented!();
+        let record_header = bunch
+            .values()
+            .next()
+            .and_then(|v| v.first())
+            .ok_or(ErrorKind::EmptyIndexBunch)?;
+        debug!(
+            "blob index simple serialize bunch first header {:?}",
+            record_header
+        );
+        let record_header_size = record_header.serialized_size().try_into()?;
+        trace!("record header serialized size: {}", record_header_size);
+        let mut bunch = bunch.values().into_iter().flatten().collect::<Vec<_>>();
+        debug!("blob index simple serialize bunch transform BTreeMap into Vec");
+        bunch.sort_by_key(|h| h.key().to_vec());
+        let filter_buf = filter.to_raw()?;
+        let header = Header {
+            record_header_size,
+            records_count: bunch.len(),
+            filter_buf_size: filter_buf.len(),
+        };
+        let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
+        trace!("index header size: {}b", hs);
+        let mut buf = Vec::with_capacity(hs + bunch.len() * record_header_size);
+        serialize_into(&mut buf, &header)?;
+        debug!(
+            "blob index simple serialize bunch filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
+            filter_buf.len(),
+            header.filter_buf_size,
+            buf.len()
+        );
+        buf.extend_from_slice(&filter_buf);
+        bunch
+            .iter()
+            .filter_map(|h| serialize(&h).ok())
+            .fold(&mut buf, |acc, h_buf| {
+                acc.extend_from_slice(&h_buf);
+                acc
+            });
+        debug!(
+            "blob index simple serialize bunch buf len after: {}",
+            buf.len()
+        );
+        Ok(buf)
     }
 
     fn check_result(res: AnyResult<RecordHeader>) -> AnyResult<bool> {
