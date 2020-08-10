@@ -16,7 +16,8 @@ mod prelude {
 }
 
 pub(crate) trait Index: Send + Sync {
-    fn get(&self, key: &[u8]) -> Get;
+    //TODO: get_all
+    fn get(&self, key: &[u8]) -> Get; //TODO: rename to get_any
     fn push(&mut self, h: RecordHeader) -> Push;
     fn contains_key(&self, key: &[u8]) -> PinBox<dyn Future<Output = AnyResult<bool>> + Send>;
     fn count(&self) -> Count;

@@ -1,5 +1,3 @@
-#![feature(map_first_last)]
-use std::collections::BTreeMap;
 use super::prelude::*;
 
 #[derive(Debug)]
@@ -83,13 +81,10 @@ impl Simple {
     pub(crate) async fn get_all_meta_locations(&self, key: &[u8]) -> AnyResult<Vec<Location>> {
         Ok(match &self.inner {
             State::InMemory(bunch) => {
-                let t = Self::get_all_from_in_memory(bunch, key).await?;
-                t.map(Self::try_create_location)
+                Self::get_all_from_in_memory(bunch, key)?.map(Self::try_create_location)
             },
             State::OnDisk(file) => {
-                let record_headers = Self::load_records(file).await?;
-                let t = Self::get_all_from_in_memory(&record_headers, key).await?;
-                t.map(Self::try_create_location)
+                // put binary search here
             }
         })
     }
@@ -130,10 +125,10 @@ impl Simple {
         matches!(&self.inner, State::OnDisk(_))
     }
 
-    pub(crate) fn get_entries<'a, 'b: 'a>(&'b self, key: &'a [u8], file: File) -> Entries<'a> {
-        trace!("create iterator");
-        Entries::new(&self.inner, key, file)
-    }
+    // pub(crate) fn get_entries<'a, 'b: 'a>(&'b self, key: &'a [u8], file: File) -> Entries<'a> {
+    //     trace!("create iterator");
+    //     Entries::new(&self.inner, key, file)
+    // }
 
     pub(crate) async fn get_any(&self, key: &[u8], file: File) -> AnyResult<Option<Entry>> {
         if let Ok(header) = self.get(key).await {
@@ -309,31 +304,25 @@ impl Simple {
         })
     }
 
-    fn get_from_bunch(
+    fn get_any_from_in_memory(
         bunch: &InMemoryIndex,
         key: &[u8],
-    ) -> impl Future<Output = AnyResult<RecordHeader>> {
-        future::ready(
-            {
-                if let Some(res) = bunch.get(key) {
-                    res.first()
-                } else {
-                    None
-                }                
-            }  
-            .cloned()
-            .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into()),
-        )
+    ) -> AnyResult<RecordHeader> {
+        if let Some(res) = bunch.get(key) {
+            res.first()
+        } else {
+            None
+        }                
+        .cloned()
+        .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into())
     }
 
     fn get_all_from_in_memory(m: &InMemoryIndex,
         key: &[u8],
-    ) -> impl Future<Output = AnyResult<Vec<RecordHeader>>> {
-        future::ready(
-            m.get(key) 
-            .cloned()
-            .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into()),
-        )        
+    ) -> AnyResult<Vec<RecordHeader>> {
+        m.get(key) 
+        .cloned()
+        .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into())
     }
 
     fn dump_in_memory(&mut self, buf: Vec<u8>, ioring: Rio) -> Dump {
@@ -412,7 +401,8 @@ impl Index for Simple {
     fn get(&self, key: &[u8]) -> Get {
         match &self.inner {
             State::InMemory(bunch) => {
-                let inner = Self::get_from_bunch(bunch, key).boxed();
+                let inner = future::ok(Self::get_any_from_in_memory(bunch, key)
+                                        .into());
                 Get { inner }
             }
             State::OnDisk(f) => {

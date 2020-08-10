@@ -67,6 +67,9 @@ pub use record::Meta;
 pub use storage::{Builder, Key, ReadAll, Storage};
 
 mod prelude {
+
+    #![feature(map_first_last)]
+    pub(crate) use std::collections::BTreeMap;
     pub(crate) use super::*;
     pub(crate) type PinBox<T> = Pin<Box<T>>;
     pub(crate) use anyhow::{Context as ErrorContexts, Result as AnyResult};
