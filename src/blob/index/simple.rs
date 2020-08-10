@@ -356,7 +356,7 @@ impl Simple {
         let file = File::from_std_file(fd_res, ioring).expect("convert std file to own format");
         let inner = State::OnDisk(file.clone());
         self.inner = inner;
-        let fut = async move { file.write_at(&buf, 0).await.map_err(Into::into) }.boxed();
+        let fut = async move { file.write_append(&buf).await.map_err(Into::into) }.boxed();
         Dump(fut)
     }
 

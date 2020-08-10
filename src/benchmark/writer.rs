@@ -1,4 +1,5 @@
 use super::prelude::*;
+use pearl::rio;
 
 pub struct Writer<K> {
     storage: Storage<K>,
@@ -21,7 +22,8 @@ impl<K> Writer<K> {
             builder = builder.allow_duplicates();
         }
 
-        let storage = builder.build().unwrap();
+        let rio = rio::new().unwrap();
+        let storage = builder.build(rio).unwrap();
         Self { storage }
     }
 
