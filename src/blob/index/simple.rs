@@ -134,7 +134,7 @@ impl Simple {
                 debug!("index get any in memory headers: {}", headers.len());
                 if let Some(header) = headers.iter().find(|h| h.key() == key) {
                     debug!("index get any in memory header found");
-                    let entry = Entry::new(Meta::default(), header, file);
+                    let entry = Entry::new(Meta::default(), header.clone(), file);
                     debug!("index get any in memory new entry created");
                     Ok(Some(entry))
                 } else {
@@ -145,7 +145,7 @@ impl Simple {
                 debug!("index get any on disk");
                 if let Some(header) = Self::binary_search(index_file.clone(), key.to_vec()).await? {
                     debug!("index get any on disk header found");
-                    let entry = Entry::new(Meta::default(), &header, file);
+                    let entry = Entry::new(Meta::default(), header, file);
                     debug!("index get any on disk new entry created");
                     Ok(Some(entry))
                 } else {

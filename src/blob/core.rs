@@ -181,7 +181,8 @@ impl Blob {
         let buf = entry
             .load()
             .await
-            .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?;
+            .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?
+            .into_data();
         debug!("blob read any entry loaded bytes: {}", buf.len());
         Ok(buf)
     }

@@ -3,7 +3,7 @@ use crate::prelude::*;
 const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-pub(crate) struct Record {
+pub struct Record {
     header: Header,
     meta: Meta,
     data: Vec<u8>,
@@ -131,6 +131,14 @@ impl From<ErrorKind> for Error {
 }
 
 impl Record {
+    pub(crate) fn new(header: Header, meta: Meta, data: Vec<u8>) -> Self {
+        Self { header, meta, data }
+    }
+
+    pub fn into_data(self) -> Vec<u8> {
+        self.data
+    }
+
     /// Creates new `Record` with provided data, key and meta.
     pub fn create(key: impl Key, data: Vec<u8>, meta: Meta) -> bincode::Result<Self> {
         let key = key.as_ref().to_vec();
@@ -142,27 +150,6 @@ impl Record {
     /// Get immutable reference to header.
     pub const fn header(&self) -> &Header {
         &self.header
-    }
-
-    /// # Description
-    /// Init new `Record` from raw buffer
-    pub fn from_raw(buf: &[u8]) -> AnyResult<Self> {
-        debug!("record from raw");
-        // @TODO Header validation
-        let header = Header::from_raw(buf)?;
-        debug!("record from raw header from raw created");
-        let meta_offset = header.serialized_size().try_into()?;
-        let meta_size: usize = header.meta_size.try_into()?;
-        trace!("meta offset {} len {}", meta_offset, meta_size);
-        let meta = Meta::from_raw(&buf[meta_offset..])?;
-        trace!("meta from raw created: {:?}", meta);
-        let data_offset = meta_offset + meta_size;
-        trace!("data offset {}", data_offset);
-        let data = buf[data_offset..].to_vec();
-        let record = Self { header, meta, data };
-        record
-            .validate()
-            .with_context(|| "record validation failed")
     }
 
     /// # Description
@@ -181,11 +168,7 @@ impl Record {
         self.header.update_checksum()
     }
 
-    pub(crate) fn into_data(self) -> Vec<u8> {
-        self.data
-    }
-
-    fn validate(self) -> AnyResult<Self> {
+    pub(crate) fn validate(self) -> AnyResult<Self> {
         self.check_magic_byte()?;
         self.check_data_checksum()?;
         self.check_header_checksum()
@@ -272,11 +255,6 @@ impl Header {
     #[inline]
     pub(crate) const fn meta_size(&self) -> u64 {
         self.meta_size
-    }
-
-    #[inline]
-    pub(crate) fn full_size(&self) -> u64 {
-        self.serialized_size() + self.meta_size + self.data_size
     }
 
     #[inline]

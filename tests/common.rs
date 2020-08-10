@@ -2,7 +2,7 @@
 
 use chrono::Local;
 use env_logger::fmt::Color;
-use log::{Level, LevelFilter};
+use log::Level;
 use std::{env, fs, io::Write, path::Path, path::PathBuf};
 
 use futures::{future, stream::futures_unordered::FuturesUnordered, FutureExt, StreamExt};

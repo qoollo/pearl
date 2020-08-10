@@ -3,7 +3,6 @@ extern crate log;
 
 use futures::{
     future::FutureExt,
-    sink::SinkExt,
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
 };
 use pearl::{Builder, Meta, Storage};
@@ -353,7 +352,7 @@ async fn test_read_all_load_all() {
     delay_for(Duration::from_millis(1000)).await;
     let mut records_read = storage
         .read_all(&KeyTest::new(key))
-        .then(|entry| async { entry.unwrap().load().await.unwrap() })
+        .then(|entry| async { entry.unwrap().load().await.unwrap().into_data() })
         .collect::<Vec<_>>()
         .await;
     assert_eq!(records_write.len(), records_read.len());
@@ -384,7 +383,7 @@ async fn test_read_all_find_one_key() {
     debug!("read all with key: {:?}", &key);
     let records_read = storage
         .read_all(&KeyTest::new(key))
-        .then(|entry| async move { entry.unwrap().load().await.unwrap() })
+        .then(|entry| async move { entry.unwrap().load().await.unwrap().into_data() })
         .collect::<Vec<_>>()
         .await;
     debug!("storage read all finished");
