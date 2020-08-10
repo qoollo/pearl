@@ -69,13 +69,6 @@ impl Bloom {
                 bits_count = max_bit_count.min(bits_step + bits_count);
             }
         }
-        trace!(
-            "result fpr: {:.6}, k: {}, m: {}, n: {}",
-            false_positive_rate(k as f64, elements, bits_count as f64),
-            k,
-            bits_count,
-            elements
-        );
         Self {
             inner: bitvec![0; bits_count as usize],
             hashers: Self::hashers(k),

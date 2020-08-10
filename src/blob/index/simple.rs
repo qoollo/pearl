@@ -81,10 +81,13 @@ impl Simple {
     pub(crate) async fn get_all_meta_locations(&self, key: &[u8]) -> AnyResult<Vec<Location>> {
         Ok(match &self.inner {
             State::InMemory(bunch) => {
-                Self::get_all_from_in_memory(bunch, key)?.map(Self::try_create_location)
-            },
+                Self::get_all_from_in_memory(bunch, key)?;
+                unimplemented!()
+                // .map(Self::try_create_location)
+            }
             State::OnDisk(file) => {
                 // put binary search here
+                unimplemented!()
             }
         })
     }
@@ -125,17 +128,37 @@ impl Simple {
         matches!(&self.inner, State::OnDisk(_))
     }
 
-    // pub(crate) fn get_entries<'a, 'b: 'a>(&'b self, key: &'a [u8], file: File) -> Entries<'a> {
-    //     trace!("create iterator");
-    //     Entries::new(&self.inner, key, file)
-    // }
+    pub(crate) fn get_entries<'a, 'b: 'a>(&'b self, key: &'a [u8], file: File) -> Entries<'a> {
+        trace!("create iterator");
+        Entries::new(&self.inner, key, file)
+    }
 
     pub(crate) async fn get_any(&self, key: &[u8], file: File) -> AnyResult<Option<Entry>> {
-        if let Ok(header) = self.get(key).await {
-            let entry = Entry::new(Meta::default(), &header, file);
-            Ok(Some(entry))
-        } else {
-            Ok(None)
+        debug!("index get any");
+        match &self.inner {
+            State::InMemory(headers) => {
+                debug!("index get any in memory headers: {}", headers.len());
+                // if let Some(header) = headers.iter().find(|h| h.key() == key) {
+                //     debug!("index get any in memory header found");
+                //     let entry = Entry::new(Meta::default(), header.clone(), file);
+                //     debug!("index get any in memory new entry created");
+                //     Ok(Some(entry))
+                // } else {
+                //     Ok(None)
+                // }
+                unimplemented!()
+            }
+            State::OnDisk(index_file) => {
+                debug!("index get any on disk");
+                if let Some(header) = Self::binary_search(index_file.clone(), key.to_vec()).await? {
+                    debug!("index get any on disk header found");
+                    let entry = Entry::new(Meta::default(), header, file);
+                    debug!("index get any on disk new entry created");
+                    Ok(Some(entry))
+                } else {
+                    Ok(None)
+                }
+            }
         }
     }
 
@@ -175,7 +198,7 @@ impl Simple {
 
         let mut start = 0;
 
-        while size > 1 {
+        while size > 0 {
             let half = size / 2;
             let mid = start + half;
             let mid_record_header = Self::read_at(&mut file, mid, &header).await?;
@@ -193,6 +216,10 @@ impl Simple {
                 CmpOrdering::Less => mid,
             };
             size -= half;
+            debug!(
+                "blob index simple binary search start/mid: {}/{}",
+                start, mid
+            )
         }
         info!("record with key: {:?} not found", key);
         Ok(None)
@@ -228,43 +255,53 @@ impl Simple {
 
     fn serialize_bunch(bunch: &mut InMemoryIndex, filter: &Bloom) -> Result<Vec<u8>> {
         debug!("blob index simple serialize bunch");
-        let record_header = bunch.first_key_value().ok_or(ErrorKind::EmptyIndexBunch)?.1.first().ok_or(ErrorKind::EmptyIndexBunch)?;
-        debug!(
-            "blob index simple serialize bunch first header {:?}",
-            record_header
-        );
-        let record_header_size = record_header.serialized_size().try_into()?;
-        trace!("record header serialized size: {}", record_header_size);
-        //bunch.sort_by_key(|h| h.key().to_vec());
-        let filter_buf = filter.to_raw()?;
-        let header = Header {
-            record_header_size,
-            records_count: bunch.len(),
-            filter_buf_size: filter_buf.len(),
-        };
-        let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
-        trace!("index header size: {}b", hs);
-        let mut buf = Vec::with_capacity(hs + bunch.len() * record_header_size);
-        serialize_into(&mut buf, &header)?;
-        debug!(
-            "blob index simple serialize bunch filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
-            filter_buf.len(),
-            header.filter_buf_size,
-            buf.len()
-        );
-        buf.extend_from_slice(&filter_buf);
-        bunch
-            .iter()
-            .filter_map(|h| serialize(&h).ok())
-            .fold(&mut buf, |acc, h_buf| {
-                acc.extend_from_slice(&h_buf);
-                acc
-            });
-        debug!(
-            "blob index simple serialize bunch buf len after: {}",
-            buf.len()
-        );
-        Ok(buf)
+        // let record_header = bunch
+        //     .first_key_value()
+        //     .ok_or(ErrorKind::EmptyIndexBunch)?
+        //     .1
+        //     .first()
+        //     .ok_or(ErrorKind::EmptyIndexBunch)?;
+        // debug!(
+        //     "blob index simple serialize bunch first header {:?}",
+        //     record_header
+        // );
+        // let record_header_size = record_header.serialized_size().try_into()?;
+        // trace!("record header serialized size: {}", record_header_size);
+        // bunch.sort_by_key(|h| h.key().to_vec());
+        // debug!(
+        //     "blob index simple serialize bunch sorted keys {:?}",
+        //     bunch.iter().map(RecordHeader::key).collect::<Vec<_>>()
+        // );
+        // let filter_buf = filter.to_raw()?;
+        // let header = Header {
+        //     record_header_size,
+        //     records_count: bunch.len(),
+        //     filter_buf_size: filter_buf.len(),
+        // };
+        // let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
+        // trace!("index header size: {}b", hs);
+        // let mut buf = Vec::with_capacity(hs + bunch.len() * record_header_size);
+        // serialize_into(&mut buf, &header)?;
+        // debug!(
+        //     "blob index simple serialize bunch filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
+        //     filter_buf.len(),
+        //     header.filter_buf_size,
+        //     buf.len()
+        // );
+        // buf.extend_from_slice(&filter_buf);
+        // bunch
+        //     .iter()
+        //     .filter_map(|h| serialize(&h).ok())
+        //     .fold(&mut buf, |acc, h_buf| {
+        //         acc.extend_from_slice(&h_buf);
+        //         acc
+        //     });
+        // debug!(
+        //     "blob index simple serialize bunch buf len after: {}",
+        //     buf.len()
+        // );
+        // Ok(buf)
+        unimplemented!();
     }
 
     fn check_result(res: AnyResult<RecordHeader>) -> AnyResult<bool> {
@@ -304,25 +341,20 @@ impl Simple {
         })
     }
 
-    fn get_any_from_in_memory(
-        bunch: &InMemoryIndex,
-        key: &[u8],
-    ) -> AnyResult<RecordHeader> {
+    fn get_any_from_in_memory(bunch: &InMemoryIndex, key: &[u8]) -> AnyResult<RecordHeader> {
         if let Some(res) = bunch.get(key) {
             res.first()
         } else {
             None
-        }                
+        }
         .cloned()
         .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into())
     }
 
-    fn get_all_from_in_memory(m: &InMemoryIndex,
-        key: &[u8],
-    ) -> AnyResult<Vec<RecordHeader>> {
-        m.get(key) 
-        .cloned()
-        .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into())
+    fn get_all_from_in_memory(m: &InMemoryIndex, key: &[u8]) -> AnyResult<Vec<RecordHeader>> {
+        m.get(key)
+            .cloned()
+            .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into())
     }
 
     fn dump_in_memory(&mut self, buf: Vec<u8>, ioring: Rio) -> Dump {
@@ -335,7 +367,7 @@ impl Simple {
         let file = File::from_std_file(fd_res, ioring).expect("convert std file to own format");
         let inner = State::OnDisk(file.clone());
         self.inner = inner;
-        let fut = async move { file.write_at(&buf, 0).await.map_err(Into::into) }.boxed();
+        let fut = async move { file.write_append(&buf).await.map_err(Into::into) }.boxed();
         Dump(fut)
     }
 
@@ -401,20 +433,18 @@ impl Index for Simple {
     fn get(&self, key: &[u8]) -> Get {
         match &self.inner {
             State::InMemory(bunch) => {
-                let inner = future::ok(Self::get_any_from_in_memory(bunch, key)
-                                        .into());
-                Get { inner }
+                // let inner = future::ok(Self::get_any_from_in_memory(bunch, key).into());
+                // Get { inner }
+                unimplemented!()
             }
             State::OnDisk(f) => {
                 debug!("index state on disk");
                 let cloned_key = key.to_vec();
                 let file = f.clone();
                 let inner = async {
-                    if let Some(header) = Self::binary_search(file, cloned_key).await? {
-                        Ok(header)
-                    } else {
-                        Err(Error::from(ErrorKind::RecordNotFound).into())
-                    }
+                    Self::binary_search(file, cloned_key)
+                        .await?
+                        .map_or(Err(Error::from(ErrorKind::RecordNotFound).into()), Ok)
                 }
                 .boxed();
                 Get { inner }

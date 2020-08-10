@@ -13,11 +13,8 @@ use std::slice::Iter;
 /// [`load`]: struct.Entry.html#method.load
 #[derive(Debug)]
 pub struct Entry {
+    header: RecordHeader,
     meta: Meta,
-    blob_offset: u64,
-    full_size: usize,
-    data_offset: u64,
-    data_size: usize,
     blob_file: File,
 }
 
@@ -45,26 +42,20 @@ impl Entry {
     /// Returns record data
     /// # Errors
     /// Returns the error type for I/O operations, see [`std::io::Error`]
-    pub async fn load(&self) -> AnyResult<Vec<u8>> {
-        let mut buf = vec![0; self.data_size as usize];
+    pub async fn load(self) -> AnyResult<Record> {
+        let mut buf = vec![0; self.header.data_size().try_into()?];
         self.blob_file
-            .read_at(&mut buf, self.data_offset)
+            .read_at(&mut buf, self.header.data_offset())
             .await
             .with_context(|| "blob load failed")?; // TODO: verify read size
-        Ok(buf)
+        let record = Record::new(self.header, self.meta, buf);
+        record.validate()
     }
 
-    pub(crate) fn new(meta: Meta, header: &RecordHeader, blob_file: File) -> Self {
-        let data_size = header.data_size().try_into().expect("u64 to usize");
-        let data_offset = header.data_offset();
-        let blob_offset = header.blob_offset();
-        let full_size = header.full_size().try_into().expect("u64 to usize");
+    pub(crate) fn new(meta: Meta, header: RecordHeader, blob_file: File) -> Self {
         Self {
             meta,
-            data_offset,
-            data_size,
-            blob_offset,
-            full_size,
+            header,
             blob_file,
         }
     }
@@ -132,7 +123,10 @@ impl<'a> Entries<'a> {
     ) -> Poll<Option<<Self as Stream>::Item>> {
         trace!("get headers from index");
         match self.inner {
-            State::InMemory(headers) => self.get_next_poll(cx, headers),
+            State::InMemory(headers) => {
+                // self.get_next_poll(cx, headers)
+                unimplemented!()
+            }
             State::OnDisk(file) => self.load_headers_from_file(cx, file),
         }
     }
@@ -151,7 +145,8 @@ impl<'a> Entries<'a> {
             }
         } else {
             let fut = SimpleIndex::load_records(file);
-            self.load_fut = Some(fut.boxed());
+            // self.load_fut = Some(fut.boxed());
+            unimplemented!();
             cx.waker().wake_by_ref();
         }
         Poll::Pending
@@ -199,7 +194,7 @@ impl<'a> Entries<'a> {
             .await
             .map_err(Error::new)?;
         trace!("meta loaded");
-        let entry = Entry::new(meta, &header, file);
+        let entry = Entry::new(meta, header, file);
         trace!("entry created");
         Ok(entry)
     }
