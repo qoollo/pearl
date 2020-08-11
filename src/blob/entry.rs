@@ -32,9 +32,9 @@ pub struct Entries<'a> {
     token: Option<()>,
     in_memory_iter: Option<Iter<'a, RecordHeader>>,
     loading_entries: FuturesUnordered<BoxFuture<'a, Result<Entry>>>,
-    load_fut: Option<PinBox<dyn Future<Output = AnyResult<Vec<RecordHeader>>> + 'a + Send>>,
+    load_fut: Option<PinBox<dyn Future<Output = AnyResult<InMemoryIndex>> + 'a + Send>>,
     blob_file: File,
-    loaded_headers: Option<VecDeque<RecordHeader>>,
+    loaded_headers: Option<Vec<RecordHeader>>,
     entries_fut: Option<BoxFuture<'a, Result<Entry>>>,
 }
 
@@ -81,7 +81,7 @@ impl<'a> Stream for Entries<'a> {
             }
         } else if let Some(headers) = &mut self.loaded_headers {
             trace!("headers loaded");
-            if let Some(header) = headers.pop_front() {
+            if let Some(header) = headers.pop() {
                 trace!("{} headers loaded, create entries from them", headers.len());
                 let mut entry = Self::create_entry(self.blob_file.clone(), header).boxed();
                 match entry.as_mut().poll(cx) {
@@ -142,23 +142,14 @@ impl<'a> Entries<'a> {
             }
         } else {
             let fut = SimpleIndex::load_records(file);
-            // self.load_fut = Some(fut.boxed());
-            unimplemented!();
+            self.load_fut = Some(fut.boxed());
             cx.waker().wake_by_ref();
         }
         Poll::Pending
     }
 
-    fn reset_load_future(mut self: Pin<&mut Self>, headers: Vec<RecordHeader>) {
-        self.loaded_headers = Some(
-            headers
-                .into_iter()
-                .filter(|h| {
-                    trace!("check {:?}", h.key());
-                    h.key() == self.key
-                })
-                .collect(),
-        );
+    fn reset_load_future(mut self: Pin<&mut Self>, mut headers: InMemoryIndex) {
+        self.loaded_headers = headers.remove(self.key);
         self.load_fut = None;
     }
 

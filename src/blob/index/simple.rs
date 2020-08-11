@@ -34,7 +34,7 @@ impl IndexHeader {
     }
 }
 
-type InMemoryIndex = BTreeMap<Vec<u8>, Vec<RecordHeader>>;
+pub type InMemoryIndex = BTreeMap<Vec<u8>, Vec<RecordHeader>>;
 
 #[derive(Debug, Clone)]
 pub(crate) enum State {

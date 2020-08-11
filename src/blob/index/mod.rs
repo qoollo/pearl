@@ -6,7 +6,7 @@ mod simple;
 
 pub(crate) use super::prelude::*;
 pub(crate) use bloom::{Bloom, Config};
-pub(crate) use simple::{Simple, State};
+pub(crate) use simple::{InMemoryIndex, Simple, State};
 
 mod prelude {
     pub(crate) use super::*;
