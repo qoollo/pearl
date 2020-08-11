@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate log;
 
+use anyhow::Result as AnyResult;
 use futures::{
     future::FutureExt,
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
@@ -97,8 +98,8 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let now = Instant::now();
     let path = common::init("multithread");
     let storage = common::default_test_storage_in(&path).await?;
-    let threads = 2;
-    let indexes = common::create_indexes(threads, 2);
+    let threads = 10;
+    let indexes = common::create_indexes(threads, 10);
     let data = vec![184u8; 3000];
     let clonned_storage = storage.clone();
     let handles: FuturesUnordered<_> = indexes
@@ -138,7 +139,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
 }
 
 #[tokio::test]
-async fn test_storage_multithread_blob_overflow() -> Result<(), String> {
+async fn test_storage_multithread_blob_overflow() -> AnyResult<()> {
     let now = Instant::now();
     let path = common::init("overflow");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
@@ -171,7 +172,7 @@ async fn test_storage_close() {
 }
 
 #[tokio::test]
-async fn test_on_disk_index() -> Result<(), String> {
+async fn test_on_disk_index() -> AnyResult<()> {
     let now = Instant::now();
     let path = common::init("index");
     let data_size = 500;

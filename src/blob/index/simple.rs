@@ -314,51 +314,53 @@ impl Simple {
         Ok(deserialize(&buf)?)
     }
 
-    fn serialize_record_headers(headers: &mut InMemoryIndex, filter: &Bloom) -> Result<Vec<u8>> {
+    fn serialize_record_headers(
+        headers: &InMemoryIndex,
+        filter: &Bloom,
+    ) -> Result<Option<(IndexHeader, Vec<u8>)>> {
         debug!("blob index simple serialize headers");
-        let record_header = headers
-            .values()
-            .next()
-            .and_then(|v| v.first())
-            .ok_or(ErrorKind::EmptyIndexBunch)?;
-        debug!(
-            "blob index simple serialize headers first header {:?}",
-            record_header
-        );
-        let record_header_size = record_header.serialized_size().try_into()?;
-        trace!("record header serialized size: {}", record_header_size);
-        let mut headers = headers.iter().map(|r| r.1).flatten().collect::<Vec<_>>(); // produce sorted
-        debug!("blob index simple serialize bunch transform BTreeMap into Vec");
-        //bunch.sort_by_key(|h| h.key().to_vec());
-        let filter_buf = filter.to_raw()?;
-        let header = IndexHeader {
-            record_header_size,
-            records_count: headers.len(),
-            filter_buf_size: filter_buf.len(),
-        };
-        let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
-        trace!("index header size: {}b", hs);
-        let mut buf = Vec::with_capacity(hs + headers.len() * record_header_size);
-        serialize_into(&mut buf, &header)?;
-        debug!(
+        if let Some(record_header) = headers.values().next().and_then(|v| v.first()) {
+            debug!(
+                "blob index simple serialize headers first header {:?}",
+                record_header
+            );
+            let record_header_size = record_header.serialized_size().try_into()?;
+            trace!("record header serialized size: {}", record_header_size);
+            let headers = headers.iter().map(|r| r.1).flatten().collect::<Vec<_>>(); // produce sorted
+            debug!("blob index simple serialize bunch transform BTreeMap into Vec");
+            //bunch.sort_by_key(|h| h.key().to_vec());
+            let filter_buf = filter.to_raw()?;
+            let header = IndexHeader {
+                record_header_size,
+                records_count: headers.len(),
+                filter_buf_size: filter_buf.len(),
+            };
+            let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
+            trace!("index header size: {}b", hs);
+            let mut buf = Vec::with_capacity(hs + headers.len() * record_header_size);
+            serialize_into(&mut buf, &header)?;
+            debug!(
             "blob index simple serialize headers filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
             filter_buf.len(),
             header.filter_buf_size,
             buf.len()
         );
-        buf.extend_from_slice(&filter_buf);
-        headers
-            .iter()
-            .filter_map(|h| serialize(&h).ok())
-            .fold(&mut buf, |acc, h_buf| {
-                acc.extend_from_slice(&h_buf);
-                acc
-            });
-        debug!(
-            "blob index simple serialize headers buf len after: {}",
-            buf.len()
-        );
-        Ok(buf)
+            buf.extend_from_slice(&filter_buf);
+            headers
+                .iter()
+                .filter_map(|h| serialize(&h).ok())
+                .fold(&mut buf, |acc, h_buf| {
+                    acc.extend_from_slice(&h_buf);
+                    acc
+                });
+            debug!(
+                "blob index simple serialize headers buf len after: {}",
+                buf.len()
+            );
+            Ok(Some((header, buf)))
+        } else {
+            Ok(None)
+        }
     }
 
     fn check_result(res: AnyResult<RecordHeader>) -> AnyResult<bool> {
@@ -421,7 +423,14 @@ impl Simple {
 
     fn dump_in_memory(&mut self, buf: Vec<u8>) -> Dump {
         let fut = async move {
-            let file = File::create(self.name.to_path(), self.ioring.clone()).await?;
+            let file = File::create(self.name.to_path(), self.ioring.clone())
+                .await
+                .with_context(|| {
+                    format!(
+                        "blob index simple dump in memory open index file {:?}",
+                        self.name.to_path()
+                    )
+                })?;
             let inner = State::OnDisk(file.clone());
             self.inner = inner;
             file.write_append(&buf).await.map_err(Into::into)
@@ -516,11 +525,13 @@ impl Index for Simple {
     fn dump(&mut self) -> Dump {
         if let State::InMemory(headers) = &mut self.inner {
             debug!("blob index simple in memory headers {:?}", headers);
-            let buf = Self::serialize_record_headers(headers, &self.filter);
-            trace!("index serialized, errors: {:?}", buf.as_ref().err());
-            match buf {
-                Ok(buf) => self.dump_in_memory(buf),
-                Err(ref e) if e.is(&ErrorKind::EmptyIndexBunch) => Dump(future::ok(0).boxed()),
+            let res = Self::serialize_record_headers(headers, &self.filter);
+            match res {
+                Ok(Some((header, buf))) => {
+                    self.header = header;
+                    self.dump_in_memory(buf)
+                }
+                Ok(None) => Dump(future::ok(0).boxed()),
                 Err(e) => Dump(future::err(e.into()).boxed()),
             }
         } else {

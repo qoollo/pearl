@@ -46,6 +46,10 @@ impl Blob {
         Ok(blob)
     }
 
+    pub fn name(&self) -> String {
+        self.name.to_string()
+    }
+
     #[inline]
     fn new_offset() -> Arc<Mutex<u64>> {
         Arc::new(Mutex::new(0))
@@ -74,7 +78,10 @@ impl Blob {
     }
 
     pub(crate) async fn dump(&mut self) -> AnyResult<usize> {
-        self.index.dump().await
+        self.index
+            .dump()
+            .await
+            .with_context(|| "blob index dump failed")
     }
 
     pub(crate) async fn load_index(&mut self) -> AnyResult<()> {

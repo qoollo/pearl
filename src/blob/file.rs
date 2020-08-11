@@ -21,7 +21,7 @@ impl File {
 
     pub(crate) async fn create(path: impl AsRef<Path>, ioring: Rio) -> IOResult<Self> {
         let file = OpenOptions::new()
-            .create_new(true)
+            .create(true)
             .write(true)
             .read(true)
             .open(path)

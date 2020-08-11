@@ -302,7 +302,9 @@ impl<K> Storage<K> {
         let mut safe = self.inner.safe.lock().await;
         let active_blob = safe.active_blob.take();
         if let Some(mut blob) = active_blob {
-            blob.dump().await?;
+            blob.dump()
+                .await
+                .with_context(|| format!("blob {} dump failed", blob.name()))?;
             debug!("active blob dumped");
         }
         self.inner.need_exit.store(false, ORD);
