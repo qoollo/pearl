@@ -211,20 +211,17 @@ impl Simple {
         key: &[u8],
         header: IndexHeader,
     ) -> AnyResult<Option<(RecordHeader, usize)>> {
-        debug!("blob index simple binary search");
-        //let header: Header = Self::read_index_header(&mut file).await?;
         debug!("blob index simple binary search header {:?}", header);
 
-        let mut size = header.records_count;
         if key.is_empty() {
             error!("empty key was provided");
         }
 
         let mut start = 0;
+        let mut end = header.records_count - 1;
 
-        while size > 0 {
-            let half = size / 2;
-            let mid = start + half;
+        while start <= end {
+            let mid = (start + end) / 2;
             let mid_record_header = Self::read_at(file, mid, &header).await?;
             debug!(
                 "blob index simple binary search mid header: {:?}",
@@ -232,20 +229,17 @@ impl Simple {
             );
             let cmp = mid_record_header.key().cmp(&key);
             debug!("mid read: {:?}, key: {:?}", mid_record_header.key(), key);
-            start = match cmp {
-                CmpOrdering::Greater => start,
+            debug!("before mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
+            match cmp {
+                CmpOrdering::Greater => end = mid - 1,
                 CmpOrdering::Equal => {
                     return Ok(Some((mid_record_header, mid)));
                 }
-                CmpOrdering::Less => mid,
+                CmpOrdering::Less => start = mid + 1,
             };
-            size -= half;
-            debug!(
-                "blob index simple binary search start/mid: {}/{}",
-                start, mid
-            )
+            debug!("after mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
         }
-        info!("record with key: {:?} not found", key);
+        debug!("record with key: {:?} not found", key);
         Ok(None)
     }
 
@@ -254,17 +248,17 @@ impl Simple {
         key: &[u8],
         index_header: IndexHeader,
     ) -> AnyResult<Option<Vec<RecordHeader>>> {
-        let mut file2 = file.clone();
+        let file2 = file.clone();
         if let Some(header_pos) = Self::binary_search(file, key, index_header.clone()).await? {
             let orig_pos = header_pos.1;
             let mut headers: Vec<RecordHeader> = vec![header_pos.0];
             // go left
             let mut pos = orig_pos - 1;
             while pos > 0 {
-                let rh = Self::read_at(&mut file2, pos, &index_header).await?;
+                let rh = Self::read_at(&file2, pos, &index_header).await?;
                 if rh.key() == key {
                     headers.push(rh);
-                    pos = pos - 1;
+                    pos -= 1;
                 } else {
                     break;
                 }
@@ -272,16 +266,17 @@ impl Simple {
             //go right
             pos = orig_pos + 1;
             while pos < index_header.records_count {
-                let rh = Self::read_at(&mut file2, pos, &index_header).await?;
+                let rh = Self::read_at(&file2, pos, &index_header).await?;
                 if rh.key() == key {
                     headers.push(rh);
-                    pos = pos + 1;
+                    pos += 1;
                 } else {
                     break;
                 }
             }
             Ok(Some(headers))
         } else {
+            debug!("Record not found by binary search on disk");
             Err(Error::from(ErrorKind::RecordNotFound).into())
         }
     }

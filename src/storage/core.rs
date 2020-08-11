@@ -169,7 +169,7 @@ impl<K> Storage<K> {
         if !self.inner.config.allow_duplicates() {
             debug!("check existing records");
             let existing_metas = self.get_all_existing_metas(&key).await?;
-            debug!("all existing meta received");
+            debug!("all existing meta received {:?}", existing_metas);
             if existing_metas.contains(&meta) {
                 warn!("record with key {:?} and meta {:?} exists", key, meta);
                 return Ok(());
