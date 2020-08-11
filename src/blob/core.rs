@@ -251,7 +251,7 @@ impl Blob {
 
     pub(crate) async fn get_all_metas(&self, key: &[u8]) -> AnyResult<Option<Vec<Meta>>> {
         debug!("blob core get all metas");
-        if let Some(locations) = self.index.get_all_meta_locations(key).await {
+        if let Some(locations) = self.index.get_all_meta_locations(key).await? {
             debug!("blob core get all metas got all meta locations");
             if locations.is_empty() {
                 Ok(None)

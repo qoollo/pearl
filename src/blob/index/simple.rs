@@ -78,25 +78,35 @@ impl Simple {
         &self.name
     }
 
-    pub(crate) async fn get_all_meta_locations(&self, key: &[u8]) -> Option<Vec<Location>> {
+    pub(crate) async fn get_all_meta_locations(
+        &self,
+        key: &[u8],
+    ) -> AnyResult<Option<Vec<Location>>> {
         debug!("blob index simple get all meta locations");
         match &self.inner {
             State::InMemory(headers) => {
                 debug!("blob index simple get all meta locations from in memory state");
-                let headers = Self::get_all_from_in_memory(headers, key)?;
-                let locations = headers
-                    .iter()
-                    .filter_map(Self::try_create_location)
-                    .collect();
-                Some(locations)
+                if let Some(headers) = Self::get_all_from_in_memory(headers, key) {
+                    let locations = headers
+                        .iter()
+                        .filter_map(Self::try_create_location)
+                        .collect();
+                    Ok(Some(locations))
+                } else {
+                    Ok(None)
+                }
             }
             State::OnDisk(file) => {
                 debug!("blob index simple get all meta locations from on disk state");
-                Self::search_all(file, key, self.header).await
-                .iter()
-                .filter_map(Self::try_create_location)
-                .collect();
-                Some(locations)
+                if let Some(headers) = Self::search_all(file, key, self.header).await? {
+                    let locations = headers
+                        .iter()
+                        .filter_map(Self::try_create_location)
+                        .collect();
+                    Ok(Some(locations))
+                } else {
+                    Ok(None)
+                }
             }
         }
     }
@@ -158,7 +168,9 @@ impl Simple {
             }
             State::OnDisk(index_file) => {
                 debug!("index get any on disk");
-                if let Some(header_pos) = Self::binary_search(index_file, &key.to_vec(), self.header).await? {
+                if let Some(header_pos) =
+                    Self::binary_search(index_file, &key.to_vec(), self.header).await?
+                {
                     debug!("index get any on disk header found");
                     let entry = Entry::new(Meta::default(), header_pos.0, file);
                     debug!("index get any on disk new entry created");
@@ -194,7 +206,11 @@ impl Simple {
         Ok(headers)
     }
 
-    async fn binary_search(file: &File, key: &Vec<u8>, header: IndexHeader) -> AnyResult<Option<(RecordHeader, usize)>> {
+    async fn binary_search(
+        file: &File,
+        key: &[u8],
+        header: IndexHeader,
+    ) -> AnyResult<Option<(RecordHeader, usize)>> {
         debug!("blob index simple binary search");
         //let header: Header = Self::read_index_header(&mut file).await?;
         debug!("blob index simple binary search header {:?}", header);
@@ -233,9 +249,13 @@ impl Simple {
         Ok(None)
     }
 
-    async fn search_all(file: &File, key: Vec<u8>, index_header: IndexHeader) -> AnyResult<Option<Vec<RecordHeader>>> {
+    async fn search_all(
+        file: &File,
+        key: &[u8],
+        index_header: IndexHeader,
+    ) -> AnyResult<Option<Vec<RecordHeader>>> {
         let mut file2 = file.clone();
-        if let Some(header_pos) = Self::binary_search(file, &key, index_header).await? {
+        if let Some(header_pos) = Self::binary_search(file, key, index_header).await? {
             let orig_pos = header_pos.1;
             let mut headers: Vec<RecordHeader> = vec![header_pos.0];
             // go left
@@ -307,9 +327,9 @@ impl Simple {
         );
         let record_header_size = record_header.serialized_size().try_into()?;
         trace!("record header serialized size: {}", record_header_size);
-        let mut headers = headers.iter().map(|r| r.1 ).flatten().collect::<Vec<_>>(); // produce sorted
+        let mut headers = headers.iter().map(|r| r.1).flatten().collect::<Vec<_>>(); // produce sorted
         debug!("blob index simple serialize bunch transform BTreeMap into Vec");
-        //bunch.sort_by_key(|h| h.key().to_vec()); 
+        //bunch.sort_by_key(|h| h.key().to_vec());
         let filter_buf = filter.to_raw()?;
         let header = IndexHeader {
             record_header_size,
@@ -483,10 +503,13 @@ impl Index for Simple {
                 debug!("index state on disk");
                 let cloned_key = key.to_vec();
                 let index_header = self.header;
-                let inner = async {
-                    Self::binary_search(&f, &key.to_vec(), index_header)
+                let file = f.clone();
+                let inner = async move {
+                    Self::binary_search(&file, &cloned_key, index_header)
                         .await?
-                        .map_or(Err(Error::from(ErrorKind::RecordNotFound).into()), |r| Ok(r.0))
+                        .map_or(Err(Error::from(ErrorKind::RecordNotFound).into()), |r| {
+                            Ok(r.0)
+                        })
                 }
                 .boxed();
                 Get { inner }
