@@ -10,7 +10,7 @@ pub(crate) struct Simple {
     ioring: Rio,
 }
 
-#[derive(Debug, Deserialize, Default, Serialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Default, Serialize, Clone)]
 struct IndexHeader {
     records_count: usize,
     record_header_size: usize,
@@ -98,7 +98,7 @@ impl Simple {
             }
             State::OnDisk(file) => {
                 debug!("blob index simple get all meta locations from on disk state");
-                if let Some(headers) = Self::search_all(file, key, self.header).await? {
+                if let Some(headers) = Self::search_all(file, key, self.header.clone()).await? {
                     let locations = headers
                         .iter()
                         .filter_map(Self::try_create_location)
@@ -169,7 +169,7 @@ impl Simple {
             State::OnDisk(index_file) => {
                 debug!("index get any on disk");
                 if let Some(header_pos) =
-                    Self::binary_search(index_file, &key.to_vec(), self.header).await?
+                    Self::binary_search(index_file, &key.to_vec(), self.header.clone()).await?
                 {
                     debug!("index get any on disk header found");
                     let entry = Entry::new(Meta::default(), header_pos.0, file);
@@ -255,7 +255,7 @@ impl Simple {
         index_header: IndexHeader,
     ) -> AnyResult<Option<Vec<RecordHeader>>> {
         let mut file2 = file.clone();
-        if let Some(header_pos) = Self::binary_search(file, key, index_header).await? {
+        if let Some(header_pos) = Self::binary_search(file, key, index_header.clone()).await? {
             let orig_pos = header_pos.1;
             let mut headers: Vec<RecordHeader> = vec![header_pos.0];
             // go left
@@ -419,18 +419,14 @@ impl Simple {
         m.get(key)
     }
 
-    fn dump_in_memory(&mut self, buf: Vec<u8>, ioring: Rio) -> Dump {
-        let fd_res = std::fs::OpenOptions::new()
-            .create(true)
-            .read(true)
-            .write(true)
-            .open(self.name.to_path())
-            .expect("open new index file");
-        let file = File::from_std_file(fd_res, ioring).expect("convert std file to own format");
-        let inner = State::OnDisk(file.clone());
-        self.inner = inner;
-        let fut = async move { file.write_append(&buf).await.map_err(Into::into) }.boxed();
-        Dump(fut)
+    fn dump_in_memory(&mut self, buf: Vec<u8>) -> Dump {
+        let fut = async move {
+            let file = File::create(self.name.to_path(), self.ioring.clone()).await?;
+            let inner = State::OnDisk(file.clone());
+            self.inner = inner;
+            file.write_append(&buf).await.map_err(Into::into)
+        };
+        Dump(fut.boxed())
     }
 
     async fn load_in_memory(&mut self, file: File) -> AnyResult<()> {
@@ -502,7 +498,7 @@ impl Index for Simple {
             State::OnDisk(f) => {
                 debug!("index state on disk");
                 let cloned_key = key.to_vec();
-                let index_header = self.header;
+                let index_header = self.header.clone();
                 let file = f.clone();
                 let inner = async move {
                     Self::binary_search(&file, &cloned_key, index_header)
@@ -523,9 +519,9 @@ impl Index for Simple {
             let buf = Self::serialize_record_headers(headers, &self.filter);
             trace!("index serialized, errors: {:?}", buf.as_ref().err());
             match buf {
-                Ok(buf) => self.dump_in_memory(buf, self.ioring.clone()),
+                Ok(buf) => self.dump_in_memory(buf),
                 Err(ref e) if e.is(&ErrorKind::EmptyIndexBunch) => Dump(future::ok(0).boxed()),
-                Err(e) => Dump(future::err(e).boxed()),
+                Err(e) => Dump(future::err(e.into()).boxed()),
             }
         } else {
             Dump(future::ok(0).boxed())

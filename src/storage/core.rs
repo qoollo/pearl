@@ -298,7 +298,7 @@ impl<K> Storage<K> {
     /// Stop blob updater and release lock file
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn close(&self) -> Result<()> {
+    pub async fn close(&self) -> AnyResult<()> {
         let mut safe = self.inner.safe.lock().await;
         let active_blob = safe.active_blob.take();
         if let Some(mut blob) = active_blob {

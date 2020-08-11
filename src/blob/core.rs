@@ -73,7 +73,7 @@ impl Blob {
         SimpleIndex::new(index_name, ioring, filter_config)
     }
 
-    pub(crate) async fn dump(&mut self) -> Result<usize> {
+    pub(crate) async fn dump(&mut self) -> AnyResult<usize> {
         self.index.dump().await
     }
 
