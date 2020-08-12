@@ -210,16 +210,18 @@ impl Blob {
             Ok(entry)
         } else {
             debug!("blob get any entry bloom true no meta");
-            let entry = self
+            if let Some(header) = self
                 .index
-                .get_any(key, self.file.clone())
+                .get_any(key)
                 .await
-                .with_context(|| "blob index get any failed")?;
-            debug!(
-                "blob get any entry bloom true no meta got any entry: {}",
-                entry.is_some()
-            );
-            Ok(entry)
+                .with_context(|| "blob index get any failed")?
+            {
+                let entry = Entry::new(Meta::default(), header, self.file.clone());
+                debug!("blob, get any entry, bloom true no meta, entry found");
+                Ok(Some(entry))
+            } else {
+                Ok(None)
+            }
         }
     }
 

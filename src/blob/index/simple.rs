@@ -150,36 +150,6 @@ impl Simple {
         Entries::new(&self.inner, key, file)
     }
 
-    pub(crate) async fn get_any(&self, key: &[u8], file: File) -> Result<Option<Entry>> {
-        debug!("index get any");
-        match &self.inner {
-            State::InMemory(headers) => {
-                debug!("index get any in memory headers: {}", headers.len());
-                if let Some(header) = headers.get(key).and_then(|h| h.first()) {
-                    debug!("index get any in memory header found");
-                    let entry = Entry::new(Meta::default(), header.clone(), file);
-                    debug!("index get any in memory new entry created");
-                    Ok(Some(entry))
-                } else {
-                    Ok(None)
-                }
-            }
-            State::OnDisk(index_file) => {
-                debug!("index get any on disk");
-                if let Some(header_pos) =
-                    Self::binary_search(index_file, &key.to_vec(), self.header.clone()).await?
-                {
-                    debug!("index get any on disk header found");
-                    let entry = Entry::new(Meta::default(), header_pos.0, file);
-                    debug!("index get any on disk new entry created");
-                    Ok(Some(entry))
-                } else {
-                    Ok(None)
-                }
-            }
-        }
-    }
-
     fn try_create_location(h: &RecordHeader) -> Option<Location> {
         Some(Location::new(
             h.blob_offset() + h.serialized_size(),
@@ -467,7 +437,7 @@ impl Simple {
 #[async_trait::async_trait]
 impl Index for Simple {
     async fn contains_key(&self, key: &[u8]) -> Result<bool> {
-        self.get(key).map(Self::check_result).await
+        self.get_any(key).await.map(|h| h.is_some())
     }
 
     fn push(&mut self, h: RecordHeader) -> Result<()> {
@@ -490,21 +460,28 @@ impl Index for Simple {
         }
     }
 
-    async fn get(&self, key: &[u8]) -> Result<RecordHeader> {
+    async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
+        debug!("index get any");
         match &self.inner {
             State::InMemory(headers) => {
-                // let inner = future::ok(Self::get_any_from_in_memory(bunch, key).into());
-                // Get { inner }
-                unimplemented!()
+                debug!("index get any in memory headers: {}", headers.len());
+                if let Some(header) = headers.get(key).and_then(|h| h.first()) {
+                    debug!("index get any in memory header found");
+                    Ok(Some(header.clone()))
+                } else {
+                    Ok(None)
+                }
             }
-            State::OnDisk(f) => {
-                debug!("index state on disk");
-                let cloned_key = key.to_vec();
-                let index_header = self.header.clone();
-                let file = f.clone();
-                Self::binary_search(&file, &cloned_key, index_header)
-                    .await?
-                    .map_or(Err(Error::not_found().into()), |r| Ok(r.0))
+            State::OnDisk(index_file) => {
+                debug!("index get any on disk");
+                if let Some((header, _)) =
+                    Self::binary_search(index_file, &key.to_vec(), self.header.clone()).await?
+                {
+                    debug!("index get any on disk header found");
+                    Ok(Some(header))
+                } else {
+                    Ok(None)
+                }
             }
         }
     }
