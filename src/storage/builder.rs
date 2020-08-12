@@ -35,7 +35,7 @@ pub struct Builder {
 }
 
 impl Builder {
-    /// Create new unitialized `Builder`
+    /// Create new uninitialized `Builder`
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -60,7 +60,7 @@ impl Builder {
             Ok(Storage::new(self.config, ioring))
         } else {
             error!("{}", missed_params);
-            Err(Error::unitialized().into())
+            Err(Error::uninitialized().into())
         }
     }
 

@@ -25,7 +25,7 @@ impl Error {
         Self::new(Kind::Validation(cause.into()))
     }
 
-    pub(crate) fn unitialized() -> Self {
+    pub(crate) fn uninitialized() -> Self {
         Self::new(Kind::Uninitialized)
     }
 

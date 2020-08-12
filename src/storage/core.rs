@@ -85,7 +85,7 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
         .find(|name| name.ends_with(BLOB_FILE_EXTENSION))
         .is_none()
     {
-        debug!("working dir is unitialized, starting empty storage");
+        debug!("working dir is uninitialized, starting empty storage");
         Ok(None)
     } else {
         debug!("working dir contains files, try init existing");
@@ -325,7 +325,7 @@ impl<K> Storage<K> {
     async fn prepare_work_dir(&mut self) -> Result<()> {
         let work_dir = self.inner.config.work_dir().ok_or_else(|| {
             error!("Work dir is not set");
-            Error::unitialized()
+            Error::uninitialized()
         })?;
         let path = Path::new(work_dir);
         if path.exists() {
@@ -533,7 +533,7 @@ impl Inner {
             .blob_file_name_prefix()
             .ok_or_else(|| {
                 error!("Blob file name prefix is not set");
-                Error::unitialized()
+                Error::uninitialized()
             })?
             .to_owned();
         let dir = self
@@ -541,7 +541,7 @@ impl Inner {
             .work_dir()
             .ok_or_else(|| {
                 error!("Work dir is not set");
-                Error::unitialized()
+                Error::uninitialized()
             })?
             .to_owned();
         Ok(blob::FileName::new(
