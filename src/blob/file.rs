@@ -21,7 +21,7 @@ impl File {
 
     pub(crate) async fn create(path: impl AsRef<Path>, ioring: Rio) -> IOResult<Self> {
         let file = OpenOptions::new()
-            .create_new(true)
+            .create(true)
             .write(true)
             .read(true)
             .open(path)
@@ -51,13 +51,13 @@ impl File {
         Ok(count)
     }
 
-    pub(crate) async fn read_all(&self) -> AnyResult<Vec<u8>> {
+    pub(crate) async fn read_all(&self) -> Result<Vec<u8>> {
         let mut buf = vec![0; self.size().try_into()?];
         self.read_at(&mut buf, 0).await?; // TODO: verify read size
         Ok(buf)
     }
 
-    pub(crate) async fn read_at(&self, buf: &mut [u8], offset: u64) -> AnyResult<usize> {
+    pub(crate) async fn read_at(&self, buf: &mut [u8], offset: u64) -> Result<usize> {
         debug!("blob file read at");
         if buf.is_empty() {
             warn!("file read_at empty buf");
@@ -82,19 +82,6 @@ impl File {
             ioring,
             no_lock_fd: Arc::new(std_file),
             write_fd: Arc::new(RwLock::new(file)),
-            size,
-        };
-        Ok(file)
-    }
-
-    pub(crate) fn from_std_file(fd: StdFile, ioring: Rio) -> IOResult<Self> {
-        let file = fd.try_clone()?;
-        let size = file.metadata()?.len();
-        let size = Arc::new(AtomicU64::new(size));
-        let file = Self {
-            ioring,
-            no_lock_fd: Arc::new(file),
-            write_fd: Arc::new(RwLock::new(TokioFile::from_std(fd))),
             size,
         };
         Ok(file)

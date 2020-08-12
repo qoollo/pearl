@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate log;
 
+use anyhow::Result as AnyResult;
 use futures::{
     future::FutureExt,
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
@@ -122,7 +123,6 @@ async fn test_multithread_read_write() -> Result<(), String> {
         .collect();
     let handles = handles.try_collect::<Vec<_>>().await.unwrap();
     let index = path.join("test.0.index");
-    error!("{:?}", index);
     delay_for(Duration::from_millis(32)).await;
     // assert!(index.exists());
     assert_eq!(handles.len(), threads);
@@ -138,7 +138,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
 }
 
 #[tokio::test]
-async fn test_storage_multithread_blob_overflow() -> Result<(), String> {
+async fn test_storage_multithread_blob_overflow() -> AnyResult<()> {
     let now = Instant::now();
     let path = common::init("overflow");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
@@ -171,7 +171,7 @@ async fn test_storage_close() {
 }
 
 #[tokio::test]
-async fn test_on_disk_index() -> Result<(), String> {
+async fn test_on_disk_index() -> AnyResult<()> {
     let now = Instant::now();
     let path = common::init("index");
     let data_size = 500;
@@ -540,18 +540,17 @@ async fn write_one(
     key: u32,
     data: &[u8],
     version: Option<&str>,
-) -> Result<(), String> {
+) -> AnyResult<()> {
     let data = data.to_vec();
     let key = KeyTest::new(key);
-    trace!("key: {:?}", key);
+    debug!("tests write one key: {:?}", key);
     if let Some(v) = version {
-        trace!("write with");
+        debug!("tests write one write with");
         storage.write_with(key, data, meta_with(v)).await
     } else {
-        trace!("write");
+        debug!("tests write one write");
         storage.write(key, data).await
     }
-    .map_err(|e| e.to_string())
 }
 
 fn meta_with(version: &str) -> Meta {

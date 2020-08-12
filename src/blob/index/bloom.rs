@@ -103,7 +103,7 @@ impl Bloom {
 
     pub fn to_raw(&self) -> Result<Vec<u8>> {
         let save = self.save();
-        bincode::serialize(&save).map_err(Error::new)
+        bincode::serialize(&save).map_err(Into::into)
     }
 
     pub fn from_raw(buf: &[u8]) -> Result<Self> {

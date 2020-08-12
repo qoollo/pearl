@@ -18,21 +18,22 @@ lto = true
 codegen-units = 1
 
 [dependencies]
+ahash = "0.4.4"
+anyhow = "1.0"
+async-trait = "0.1"
 bincode = "1.3.1"
+bitvec = "0.17"
 chrono = "0.4"
 crc = "1.8"
 env_logger = "0.7"
+futures = "0.3.5"
 log = "0.4"
 rand = "0.7"
+rio = { git="https://github.com/agend/rio/", branch="fix_compiling_for_musl" }
 serde = "1.0"
 serde_derive = "1.0"
-futures = "0.3.5"
-clap = { version = "2.33", optional = true }
-bitvec = "0.17"
-ahash = "0.4.4"
-rio = { git="https://github.com/agend/rio/", branch="fix_compiling_for_musl" }
 thiserror = "1.0"
-anyhow = "1.0"
+clap = { version = "2.33", optional = true }
 
 [dependencies.tokio]
 version = "0.2.22"

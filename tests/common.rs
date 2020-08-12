@@ -1,12 +1,12 @@
 #![allow(unused_attributes)]
 
+use anyhow::Result as AnyResult;
 use chrono::Local;
 use env_logger::fmt::Color;
-use log::Level;
-use std::{env, fs, io::Write, path::Path, path::PathBuf};
-
 use futures::{future, stream::futures_unordered::FuturesUnordered, FutureExt, StreamExt};
+use log::Level;
 use rand::Rng;
+use std::{env, fs, io::Write, path::Path, path::PathBuf};
 
 use pearl::{Builder, Key, Storage};
 
@@ -90,10 +90,10 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<(), String> {
+pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> AnyResult<()> {
     std::thread::sleep(std::time::Duration::from_millis(100));
-    storage.close().await.map_err(|e| e.to_string())?;
-    fs::remove_dir_all(path).map_err(|e| e.to_string())
+    storage.close().await?;
+    fs::remove_dir_all(path).map_err(Into::into)
 }
 
 pub async fn check_all_written(storage: &Storage<KeyTest>, keys: Vec<u32>) -> Result<(), String> {
