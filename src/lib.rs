@@ -62,7 +62,7 @@ mod record;
 mod storage;
 
 pub use blob::{filter, Entries, Entry};
-pub use error::{Error, Kind as ErrorKind, Result};
+pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
 pub use storage::{Builder, Key, ReadAll, Storage};
@@ -73,7 +73,7 @@ mod prelude {
     pub(crate) type PinBox<T> = Pin<Box<T>>;
     pub(crate) const ORD: Ordering = Ordering::Relaxed;
 
-    pub(crate) use anyhow::{Context as ErrorContexts, Result as AnyResult};
+    pub(crate) use anyhow::{Context as ErrorContexts, Result};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use blob::{self, Blob, BloomConfig, File, Location};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;

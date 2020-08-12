@@ -32,7 +32,7 @@ pub struct Entries<'a> {
     token: Option<()>,
     in_memory_iter: Option<Iter<'a, RecordHeader>>,
     loading_entries: FuturesUnordered<BoxFuture<'a, Result<Entry>>>,
-    load_fut: Option<PinBox<dyn Future<Output = AnyResult<InMemoryIndex>> + 'a + Send>>,
+    load_fut: Option<PinBox<dyn Future<Output = Result<InMemoryIndex>> + 'a + Send>>,
     blob_file: File,
     loaded_headers: Option<Vec<RecordHeader>>,
     entries_fut: Option<BoxFuture<'a, Result<Entry>>>,
@@ -42,7 +42,7 @@ impl Entry {
     /// Returns record data
     /// # Errors
     /// Returns the error type for I/O operations, see [`std::io::Error`]
-    pub async fn load(self) -> AnyResult<Record> {
+    pub async fn load(self) -> Result<Record> {
         let mut buf = vec![0; self.header.data_size().try_into()?];
         self.blob_file
             .read_at(&mut buf, self.header.data_offset())
@@ -180,13 +180,9 @@ impl<'a> Entries<'a> {
 
     async fn create_entry(file: File, header: RecordHeader) -> Result<Entry> {
         trace!("create entry");
-        let meta = Meta::load(&file, header.meta_location())
-            .await
-            .map_err(Error::new)?;
+        let meta = Meta::load(&file, header.meta_location()).await?;
         trace!("meta loaded");
-        let entry = Entry::new(meta, header, file);
-        trace!("entry created");
-        Ok(entry)
+        Ok(Entry::new(meta, header, file))
     }
 }
 

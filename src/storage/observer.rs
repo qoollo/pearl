@@ -46,9 +46,9 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
         let active_blob = safe_locked
             .active_blob
             .as_ref()
-            .ok_or(ErrorKind::ActiveBlobNotSet)?;
+            .ok_or_else(|| Error::active_blob_not_set())?;
         let size = active_blob.file_size();
-        let count = active_blob.records_count().await.map_err(Error::new)? as u64;
+        let count = active_blob.records_count().await? as u64;
         (size, count)
     };
     trace!("lock released");
@@ -71,8 +71,7 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
     let new_active = Blob::open_new(next_name, inner.ioring, inner.config.filter())
-        .await
-        .map_err(Error::new)?
+        .await?
         .boxed();
 
     {
@@ -81,8 +80,8 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
         let mut old_active = safe_locked
             .active_blob
             .replace(new_active)
-            .ok_or(ErrorKind::ActiveBlobNotSet)?;
-        old_active.dump().await.map_err(Error::new)?;
+            .ok_or_else(|| Error::active_blob_not_set())?;
+        old_active.dump().await?;
         safe_locked.blobs.push(*old_active);
     }
     trace!("lock released");

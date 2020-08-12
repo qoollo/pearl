@@ -51,13 +51,13 @@ impl File {
         Ok(count)
     }
 
-    pub(crate) async fn read_all(&self) -> AnyResult<Vec<u8>> {
+    pub(crate) async fn read_all(&self) -> Result<Vec<u8>> {
         let mut buf = vec![0; self.size().try_into()?];
         self.read_at(&mut buf, 0).await?; // TODO: verify read size
         Ok(buf)
     }
 
-    pub(crate) async fn read_at(&self, buf: &mut [u8], offset: u64) -> AnyResult<usize> {
+    pub(crate) async fn read_at(&self, buf: &mut [u8], offset: u64) -> Result<usize> {
         debug!("blob file read at");
         if buf.is_empty() {
             warn!("file read_at empty buf");

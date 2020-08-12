@@ -60,7 +60,7 @@ impl Builder {
             Ok(Storage::new(self.config, ioring))
         } else {
             error!("{}", missed_params);
-            Err(ErrorKind::Uninitialized.into())
+            Err(Error::unitialized().into())
         }
     }
 

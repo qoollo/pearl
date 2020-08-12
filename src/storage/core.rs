@@ -109,7 +109,7 @@ impl<K> Storage<K> {
     /// if some of the required params are missed.
     ///
     /// [`init()`]: struct.Storage.html#method.init
-    pub async fn init(&mut self) -> AnyResult<()> {
+    pub async fn init(&mut self) -> Result<()> {
         // @TODO implement work dir validation
         self.prepare_work_dir().await?;
         let cont_res = work_dir_content(
@@ -176,17 +176,15 @@ impl<K> Storage<K> {
             }
         }
         trace!("record with the same meta and key does not exist");
-        let record = Record::create(&key, value, meta).map_err(Error::new)?;
+        let record = Record::create(&key, value, meta)?;
         trace!("await for inner lock");
         let mut safe = self.inner.safe.lock().await;
         let blob = safe
             .active_blob
             .as_mut()
-            .ok_or(ErrorKind::ActiveBlobNotSet)?;
+            .ok_or_else(|| Error::active_blob_not_set())?;
         trace!("get active blob");
-        let res = blob.write(record).await;
-        trace!("active blob write finished");
-        res.map_err(Error::new)
+        blob.write(record).await
     }
 
     async fn get_all_existing_metas(&self, key: impl Key) -> Result<Vec<Meta>> {
@@ -194,14 +192,10 @@ impl<K> Storage<K> {
         let active_blob = safe
             .active_blob
             .as_mut()
-            .ok_or(ErrorKind::ActiveBlobNotSet)?;
+            .ok_or_else(|| Error::active_blob_not_set())?;
         trace!("active blob extracted");
         let mut metas = Vec::new();
-        if let Some(meta) = active_blob
-            .get_all_metas(key.as_ref())
-            .await
-            .map_err(Error::new)?
-        {
+        if let Some(meta) = active_blob.get_all_metas(key.as_ref()).await? {
             metas.extend(meta);
         }
         trace!("active blob meta loaded");
@@ -209,7 +203,7 @@ impl<K> Storage<K> {
         trace!("closed blobs extracted");
         for blob in blobs {
             trace!("look into next blob");
-            if let Some(meta) = blob.get_all_metas(key.as_ref()).await.map_err(Error::new)? {
+            if let Some(meta) = blob.get_all_metas(key.as_ref()).await? {
                 metas.extend(meta);
                 trace!("extend finished");
             }
@@ -266,7 +260,7 @@ impl<K> Storage<K> {
         let active_blob_read_res = inner
             .active_blob
             .as_ref()
-            .ok_or(ErrorKind::ActiveBlobNotSet)?
+            .ok_or_else(|| Error::active_blob_not_set())?
             .read_any(key, meta)
             .await;
         debug!("storage read with optional meta from active blob finished");
@@ -285,11 +279,8 @@ impl<K> Storage<K> {
                     .iter()
                     .map(|blob| blob.read_any(key, meta))
                     .collect();
-                let mut task = stream.skip_while(AnyResult::is_err);
-                task.next()
-                    .await
-                    .ok_or(ErrorKind::RecordNotFound)?
-                    .map_err(Error::new)?
+                let mut task = stream.skip_while(Result::is_err);
+                task.next().await.ok_or_else(|| Error::not_found())??
             }
         };
         Ok(record)
@@ -298,7 +289,7 @@ impl<K> Storage<K> {
     /// Stop blob updater and release lock file
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn close(&self) -> AnyResult<()> {
+    pub async fn close(&self) -> Result<()> {
         let mut safe = self.inner.safe.lock().await;
         let active_blob = safe.active_blob.take();
         if let Some(mut blob) = active_blob {
@@ -310,8 +301,8 @@ impl<K> Storage<K> {
         self.inner.need_exit.store(false, ORD);
         safe.lock_file = None;
         if let Some(work_dir) = self.inner.config.work_dir() {
-            std::fs::remove_file(work_dir.join(LOCK_FILE)).map_err(Error::new)?;
-        };
+            std::fs::remove_file(work_dir.join(LOCK_FILE))?;
+        }
         info!("active blob dumped, lock released");
         Ok(())
     }
@@ -333,14 +324,14 @@ impl<K> Storage<K> {
     async fn prepare_work_dir(&mut self) -> Result<()> {
         let work_dir = self.inner.config.work_dir().ok_or_else(|| {
             error!("Work dir is not set");
-            ErrorKind::Uninitialized
+            Error::unitialized()
         })?;
         let path = Path::new(work_dir);
         if path.exists() {
             debug!("work dir exists: {}", path.display());
         } else {
             debug!("creating work dir recursively: {}", path.display());
-            std::fs::create_dir_all(path).map_err(Error::new)?;
+            std::fs::create_dir_all(path)?;
         }
         self.try_lock_dir(path).await
     }
@@ -370,14 +361,13 @@ impl<K> Storage<K> {
         let config = self.filter_config();
         let mut safe = safe_locked.await;
         let blob = Blob::open_new(next, self.inner.ioring.clone(), config)
-            .await
-            .map_err(Error::new)?
+            .await?
             .boxed();
         safe.active_blob = Some(blob);
         Ok(())
     }
 
-    async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> AnyResult<()> {
+    async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         trace!("init from existing: {:#?}", files);
         let mut blobs = Self::read_blobs(&files, self.inner.ioring.clone(), self.filter_config())
             .await
@@ -395,7 +385,7 @@ impl<K> Storage<K> {
             })?
             .boxed();
         let mut safe_locked = self.inner.safe.lock().await;
-        active_blob.load_index().await.map_err(Error::new)?;
+        active_blob.load_index().await?;
         for blob in &mut blobs {
             debug!("dump all blobs except active blob");
             blob.dump().await?;
@@ -412,7 +402,7 @@ impl<K> Storage<K> {
         files: &[DirEntry],
         ioring: Rio,
         filter_config: Option<BloomConfig>,
-    ) -> AnyResult<Vec<Blob>> {
+    ) -> Result<Vec<Blob>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
         debug!("read {} entities", dir_content.len());
@@ -441,7 +431,7 @@ impl<K> Storage<K> {
     /// `contains` returns either "definitely in storage" or "definitely not".
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn contains(&self, key: impl Key) -> AnyResult<bool> {
+    pub async fn contains(&self, key: impl Key) -> Result<bool> {
         let key = key.as_ref();
         let inner = self.inner.safe.lock().await;
         let in_active = if let Some(active_blob) = &inner.active_blob {
@@ -542,7 +532,7 @@ impl Inner {
             .blob_file_name_prefix()
             .ok_or_else(|| {
                 error!("Blob file name prefix is not set");
-                ErrorKind::Uninitialized
+                Error::unitialized()
             })?
             .to_owned();
         let dir = self
@@ -550,7 +540,7 @@ impl Inner {
             .work_dir()
             .ok_or_else(|| {
                 error!("Work dir is not set");
-                ErrorKind::Uninitialized
+                Error::unitialized()
             })?
             .to_owned();
         Ok(blob::FileName::new(

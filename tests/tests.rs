@@ -541,7 +541,7 @@ async fn write_one(
     key: u32,
     data: &[u8],
     version: Option<&str>,
-) -> Result<(), String> {
+) -> AnyResult<(), String> {
     let data = data.to_vec();
     let key = KeyTest::new(key);
     debug!("tests write one key: {:?}", key);
@@ -552,7 +552,7 @@ async fn write_one(
         debug!("tests write one write");
         storage.write(key, data).await
     }
-    .map_err(|e| e.to_string())
+    .map_err(|e| format!("{}", e))
 }
 
 fn meta_with(version: &str) -> Meta {

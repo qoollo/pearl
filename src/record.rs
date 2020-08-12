@@ -27,13 +27,6 @@ pub struct Header {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Meta(HashMap<String, Vec<u8>>);
 
-type Result<T> = std::result::Result<T, Error>;
-
-#[derive(Debug)]
-pub(crate) struct Error {
-    kind: ErrorKind,
-}
-
 impl Meta {
     /// Create new empty `Meta`.
     #[must_use]
@@ -68,7 +61,7 @@ impl Meta {
         serialize(&self)
     }
 
-    pub(crate) async fn load(file: &File, location: Location) -> AnyResult<Self> {
+    pub(crate) async fn load(file: &File, location: Location) -> Result<Self> {
         trace!("meta load");
         let mut buf = vec![0; location.size()];
         trace!(
@@ -82,51 +75,6 @@ impl Meta {
             .context("failed to load record from file")?;
         trace!("read {} bytes", n);
         Ok(Self::from_raw(&buf)?)
-    }
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        Debug::fmt(&self, f)
-    }
-}
-
-impl From<Box<bincode::ErrorKind>> for Error {
-    fn from(e: Box<bincode::ErrorKind>) -> Self {
-        ErrorKind::Bincode(e.to_string()).into()
-    }
-}
-
-impl From<IOError> for Error {
-    fn from(e: IOError) -> Self {
-        ErrorKind::IO(e.to_string()).into()
-    }
-}
-
-impl From<TryFromIntError> for Error {
-    #[must_use]
-    fn from(e: TryFromIntError) -> Self {
-        ErrorKind::Conversion(e.to_string()).into()
-    }
-}
-
-#[derive(Debug)]
-pub enum ErrorKind {
-    Validation(String),
-    Bincode(String),
-    IO(String),
-    Conversion(String),
-}
-
-impl From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Self {
-        Self { kind }
     }
 }
 
@@ -168,7 +116,7 @@ impl Record {
         self.header.update_checksum()
     }
 
-    pub(crate) fn validate(self) -> AnyResult<Self> {
+    pub(crate) fn validate(self) -> Result<Self> {
         self.check_magic_byte()?;
         self.check_data_checksum()?;
         self.check_header_checksum()
@@ -180,7 +128,7 @@ impl Record {
         if self.header().magic_byte == RECORD_MAGIC_BYTE {
             Ok(())
         } else {
-            Err(ErrorKind::Validation("wrong magic byte".to_owned()).into())
+            Err(Error::validation("wrong magic byte").into())
         }
     }
 
@@ -189,17 +137,17 @@ impl Record {
         if calc_crc == self.header.data_checksum {
             Ok(())
         } else {
-            let msg = format!(
+            let cause = format!(
                 "wrong data checksum {} vs {}",
                 calc_crc, self.header.data_checksum
             );
-            let e = ErrorKind::Validation(msg);
+            let e = Error::validation(cause);
             error!("{:?}", e);
             Err(e.into())
         }
     }
 
-    fn check_header_checksum(&self) -> AnyResult<()> {
+    fn check_header_checksum(&self) -> Result<()> {
         let mut header = self.header.clone();
         header.header_checksum = 0;
         let calc_crc = header

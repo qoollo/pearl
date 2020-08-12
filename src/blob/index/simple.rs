@@ -78,10 +78,7 @@ impl Simple {
         &self.name
     }
 
-    pub(crate) async fn get_all_meta_locations(
-        &self,
-        key: &[u8],
-    ) -> AnyResult<Option<Vec<Location>>> {
+    pub(crate) async fn get_all_meta_locations(&self, key: &[u8]) -> Result<Option<Vec<Location>>> {
         debug!("blob index simple get all meta locations");
         match &self.inner {
             State::InMemory(headers) => {
@@ -111,11 +108,7 @@ impl Simple {
         }
     }
 
-    pub(crate) async fn from_file(
-        name: FileName,
-        filter_is_on: bool,
-        ioring: Rio,
-    ) -> AnyResult<Self> {
+    pub(crate) async fn from_file(name: FileName, filter_is_on: bool, ioring: Rio) -> Result<Self> {
         trace!("open index file");
         let file = File::open(name.to_path(), ioring.clone())
             .await
@@ -152,7 +145,7 @@ impl Simple {
         Entries::new(&self.inner, key, file)
     }
 
-    pub(crate) async fn get_any(&self, key: &[u8], file: File) -> AnyResult<Option<Entry>> {
+    pub(crate) async fn get_any(&self, key: &[u8], file: File) -> Result<Option<Entry>> {
         debug!("index get any");
         match &self.inner {
             State::InMemory(headers) => {
@@ -189,7 +182,7 @@ impl Simple {
         ))
     }
 
-    pub async fn load_records(file: &File) -> AnyResult<InMemoryIndex> {
+    pub async fn load_records(file: &File) -> Result<InMemoryIndex> {
         let buf = file.read_all().await?;
         let headers = if buf.is_empty() {
             debug!("empty index file");
@@ -210,7 +203,7 @@ impl Simple {
         file: &File,
         key: &[u8],
         header: IndexHeader,
-    ) -> AnyResult<Option<(RecordHeader, usize)>> {
+    ) -> Result<Option<(RecordHeader, usize)>> {
         debug!("blob index simple binary search header {:?}", header);
 
         if key.is_empty() {
@@ -247,7 +240,7 @@ impl Simple {
         file: &File,
         key: &[u8],
         index_header: IndexHeader,
-    ) -> AnyResult<Option<Vec<RecordHeader>>> {
+    ) -> Result<Option<Vec<RecordHeader>>> {
         let file2 = file.clone();
         if let Some(header_pos) = Self::binary_search(file, key, index_header.clone()).await? {
             let orig_pos = header_pos.1;
@@ -281,7 +274,7 @@ impl Simple {
         }
     }
 
-    async fn read_at(file: &File, index: usize, header: &IndexHeader) -> AnyResult<RecordHeader> {
+    async fn read_at(file: &File, index: usize, header: &IndexHeader) -> Result<RecordHeader> {
         debug!("blob index simple read at");
         let header_size = bincode::serialized_size(&header)?;
         debug!("blob index simple read at header size {}", header_size);
@@ -300,7 +293,7 @@ impl Simple {
         Ok(header)
     }
 
-    async fn read_index_header(file: &mut File) -> AnyResult<IndexHeader> {
+    async fn read_index_header(file: &mut File) -> Result<IndexHeader> {
         let header_size = IndexHeader::serialized_size_default()?.try_into()?;
         debug!("header s: {}", header_size);
         let mut buf = vec![0; header_size];
@@ -358,7 +351,7 @@ impl Simple {
         }
     }
 
-    fn check_result(res: AnyResult<RecordHeader>) -> AnyResult<bool> {
+    fn check_result(res: Result<RecordHeader>) -> Result<bool> {
         match res {
             Ok(_) => Ok(true),
             Err(e) => {
@@ -372,9 +365,9 @@ impl Simple {
         }
     }
 
-    fn deserialize_header(buf: &[u8]) -> Result<IndexHeader> {
+    fn deserialize_header(buf: &[u8]) -> bincode::Result<IndexHeader> {
         trace!("deserialize header from buf: {}", buf.len());
-        deserialize(buf).map_err(Error::new)
+        deserialize(buf)
     }
 
     fn deserialize_record_headers(
@@ -395,7 +388,7 @@ impl Simple {
         })
     }
 
-    fn get_any_from_in_memory(headers: &InMemoryIndex, key: &[u8]) -> AnyResult<RecordHeader> {
+    fn get_any_from_in_memory(headers: &InMemoryIndex, key: &[u8]) -> Result<RecordHeader> {
         if let Some(res) = headers.get(key) {
             res.first()
         } else {
@@ -433,7 +426,7 @@ impl Simple {
         Dump(fut.boxed())
     }
 
-    async fn load_in_memory(&mut self, file: File) -> AnyResult<()> {
+    async fn load_in_memory(&mut self, file: File) -> Result<()> {
         let buf = file.read_all().await?;
         trace!("read total {} bytes", buf.len());
         let header = Self::deserialize_header(&buf)?;
@@ -463,7 +456,7 @@ impl Simple {
 }
 
 impl Index for Simple {
-    fn contains_key(&self, key: &[u8]) -> PinBox<dyn Future<Output = AnyResult<bool>> + Send> {
+    fn contains_key(&self, key: &[u8]) -> PinBox<dyn Future<Output = Result<bool>> + Send> {
         self.get(key).map(Self::check_result).boxed()
     }
 
