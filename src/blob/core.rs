@@ -267,26 +267,29 @@ impl Blob {
             .await
             .with_context(|| "blob get all meta locations failed")?
         {
-            debug!("blob core get all metas got all meta locations");
-            if locations.is_empty() {
-                Ok(None)
-            } else {
-                let mut metas = Vec::new();
-                for location in locations {
-                    let mut meta_raw = vec![0; location.size as usize];
-                    self.file
-                        .read_at(&mut meta_raw, location.offset)
-                        .await
-                        .with_context(|| format!("failed to get all metas for key {:?}", key))?;
-                    let meta = Meta::from_raw(&meta_raw)
-                        .with_context(|| "blob get all metas meta creation failed")?;
-                    metas.push(meta);
-                }
-                Ok(Some(metas))
+            if !locations.is_empty() {
+                return self.metadata_from_locations(locations).await.map(Some);
             }
-        } else {
-            Ok(None)
         }
+        Ok(None)
+    }
+
+    async fn metadata_from_locations(&self, locations: Vec<Location>) -> Result<Vec<Meta>> {
+        debug!("blob core get all metas got all meta locations");
+        locations
+            .iter()
+            .map(|l| self.location_to_meta(l))
+            .collect::<FuturesUnordered<_>>()
+            .try_collect::<Vec<_>>()
+            .await
+    }
+
+    async fn location_to_meta(&self, location: &Location) -> Result<Meta> {
+        let mut buf = vec![0; location.size as usize];
+        self.file.read_at(&mut buf, location.offset).await?;
+        let meta =
+            Meta::from_raw(&buf).with_context(|| "blob get all metas meta creation failed")?;
+        Ok(meta)
     }
 
     pub(crate) fn check_bloom(&self, key: &[u8]) -> Option<bool> {
