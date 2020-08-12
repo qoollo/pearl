@@ -33,6 +33,7 @@ ahash = "0.4.4"
 rio = { git="https://github.com/agend/rio/", branch="fix_compiling_for_musl" }
 thiserror = "1.0"
 anyhow = "1.0"
+async-trait = "0.1"
 
 [dependencies.tokio]
 version = "0.2.22"

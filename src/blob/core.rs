@@ -152,11 +152,12 @@ impl Blob {
             .await
             .context("failed to read raw records")?;
         debug!("raw records loaded");
-        raw_r
-            .try_for_each(|h| self.index.push(h))
-            .await
-            .context("failed to collect headers from blob")?;
-        debug!("skip index dump after generation");
+        let headers = raw_r.try_collect::<Vec<_>>().await?;
+        for header in headers {
+            self.index
+                .push(header)
+                .context("failed to push header to index")?;
+        }
         debug!("index successfully generated: {}", self.index.name());
         Ok(())
     }
@@ -173,7 +174,7 @@ impl Blob {
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
         let bytes_written = self.file.write_append(&buf).await? as u64;
-        self.index.push(record.header().clone());
+        self.index.push(record.header().clone())?;
         *offset += bytes_written;
         Ok(())
     }

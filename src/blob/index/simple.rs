@@ -421,21 +421,18 @@ impl Simple {
         m.get(key)
     }
 
-    fn dump_in_memory(&mut self, buf: Vec<u8>) -> Dump {
-        let fut = async move {
-            let file = File::create(self.name.to_path(), self.ioring.clone())
-                .await
-                .with_context(|| {
-                    format!(
-                        "blob index simple dump in memory open index file {:?}",
-                        self.name.to_path()
-                    )
-                })?;
-            let inner = State::OnDisk(file.clone());
-            self.inner = inner;
-            file.write_append(&buf).await.map_err(Into::into)
-        };
-        Dump(fut.boxed())
+    async fn dump_in_memory(&mut self, buf: Vec<u8>) -> Result<usize> {
+        let file = File::create(self.name.to_path(), self.ioring.clone())
+            .await
+            .with_context(|| {
+                format!(
+                    "blob index simple dump in memory open index file {:?}",
+                    self.name.to_path()
+                )
+            })?;
+        let inner = State::OnDisk(file.clone());
+        self.inner = inner;
+        file.write_append(&buf).await.map_err(Into::into)
     }
 
     async fn load_in_memory(&mut self, file: File) -> Result<()> {
@@ -467,14 +464,15 @@ impl Simple {
     }
 }
 
+#[async_trait::async_trait]
 impl Index for Simple {
-    fn contains_key(&self, key: &[u8]) -> PinBox<dyn Future<Output = Result<bool>> + Send> {
-        self.get(key).map(Self::check_result).boxed()
+    async fn contains_key(&self, key: &[u8]) -> Result<bool> {
+        self.get(key).map(Self::check_result).await
     }
 
-    fn push(&mut self, h: RecordHeader) -> Push {
+    fn push(&mut self, h: RecordHeader) -> Result<()> {
         debug!("blob index simple push");
-        let fut = match &mut self.inner {
+        match &mut self.inner {
             State::InMemory(headers) => {
                 self.filter.add(h.key());
                 debug!("blob index simple push key: {:?}", h.key());
@@ -483,21 +481,16 @@ impl Index for Simple {
                 } else {
                     headers.insert(h.key().to_vec(), vec![h]);
                 }
-                future::ok(()).boxed()
+                Ok(())
             }
-            State::OnDisk(_) => future::err(
-                Error::from(ErrorKind::Index(
-                    "Index is closed, push is unavalaible".to_string(),
-                ))
-                .into(),
-            )
-            .boxed(),
-        };
-        trace!("future created");
-        Push(fut)
+            State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
+                "Index is closed, push is unavalaible".to_string(),
+            ))
+            .into()),
+        }
     }
 
-    fn get(&self, key: &[u8]) -> Get {
+    async fn get(&self, key: &[u8]) -> Result<RecordHeader> {
         match &self.inner {
             State::InMemory(headers) => {
                 // let inner = future::ok(Self::get_any_from_in_memory(bunch, key).into());
@@ -509,54 +502,48 @@ impl Index for Simple {
                 let cloned_key = key.to_vec();
                 let index_header = self.header.clone();
                 let file = f.clone();
-                let inner = async move {
-                    Self::binary_search(&file, &cloned_key, index_header)
-                        .await?
-                        .map_or(Err(Error::from(ErrorKind::RecordNotFound).into()), |r| {
-                            Ok(r.0)
-                        })
-                }
-                .boxed();
-                Get { inner }
+                Self::binary_search(&file, &cloned_key, index_header)
+                    .await?
+                    .map_or(Err(Error::not_found().into()), |r| Ok(r.0))
             }
         }
     }
 
-    fn dump(&mut self) -> Dump {
+    async fn dump(&mut self) -> Result<usize> {
         if let State::InMemory(headers) = &mut self.inner {
             debug!("blob index simple in memory headers {:?}", headers);
             let res = Self::serialize_record_headers(headers, &self.filter);
             match res {
                 Ok(Some((header, buf))) => {
                     self.header = header;
-                    self.dump_in_memory(buf)
+                    self.dump_in_memory(buf).await
                 }
-                Ok(None) => Dump(future::ok(0).boxed()),
-                Err(e) => Dump(future::err(e.into()).boxed()),
+                Ok(None) => Ok(0),
+                Err(e) => Err(e.into()),
             }
         } else {
-            Dump(future::ok(0).boxed())
+            Ok(0)
         }
     }
 
-    fn load(&mut self) -> Load {
+    async fn load(&mut self) -> Result<()> {
         match &self.inner {
-            State::InMemory(_) => Load(future::ok(()).boxed()),
+            State::InMemory(_) => Ok(()),
             State::OnDisk(file) => {
                 let file = file.clone();
-                Load(self.load_in_memory(file).boxed())
+                self.load_in_memory(file).await
             }
         }
     }
 
-    fn count(&self) -> Count {
-        Count(match &self.inner {
-            State::InMemory(headers) => future::ok(headers.len()).boxed(),
+    async fn count(&self) -> Result<usize> {
+        match &self.inner {
+            State::InMemory(headers) => Ok(headers.len()),
             State::OnDisk(_) => {
                 Self::from_file(self.name.clone(), self.filter_is_on, self.ioring.clone())
                     .map_ok(Self::count_inner)
-                    .boxed()
+                    .await
             }
-        })
+        }
     }
 }

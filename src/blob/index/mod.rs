@@ -15,64 +15,13 @@ mod prelude {
     pub(crate) use std::hash::Hasher;
 }
 
+#[async_trait::async_trait]
 pub(crate) trait Index: Send + Sync {
     //TODO: get_all
-    fn get(&self, key: &[u8]) -> Get; //TODO: rename to get_any
-    fn push(&mut self, h: RecordHeader) -> Push;
-    fn contains_key(&self, key: &[u8]) -> PinBox<dyn Future<Output = Result<bool>> + Send>;
-    fn count(&self) -> Count;
-    fn dump(&mut self) -> Dump;
-    fn load(&mut self) -> Load;
-}
-
-pub(crate) struct Get {
-    pub(crate) inner: PinBox<dyn Future<Output = Result<RecordHeader>> + Send>,
-}
-
-pub(crate) struct Push(pub(crate) PinBox<dyn Future<Output = Result<()>> + Send>);
-
-pub(crate) struct Count(pub(crate) PinBox<dyn Future<Output = Result<usize>> + Send>);
-
-pub(crate) struct Dump<'a>(pub(crate) PinBox<dyn Future<Output = Result<usize>> + Send + 'a>);
-
-pub(crate) struct Load<'a>(pub(crate) PinBox<dyn Future<Output = Result<()>> + Send + 'a>);
-
-impl Future for Count {
-    type Output = Result<usize>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Future::poll(self.0.as_mut(), cx)
-    }
-}
-
-impl Future for Get {
-    type Output = Result<RecordHeader>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Future::poll(self.inner.as_mut(), cx)
-    }
-}
-
-impl<'a> Future for Dump<'a> {
-    type Output = Result<usize>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Future::poll(self.0.as_mut(), cx)
-    }
-}
-
-impl Future for Push {
-    type Output = Result<()>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Future::poll(self.0.as_mut(), cx)
-    }
-}
-
-impl<'a> Future for Load<'a> {
-    type Output = Result<()>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Future::poll(self.0.as_mut(), cx)
-    }
+    async fn get(&self, key: &[u8]) -> Result<RecordHeader>; //TODO: rename to get_any
+    fn push(&mut self, h: RecordHeader) -> Result<()>;
+    async fn contains_key(&self, key: &[u8]) -> Result<bool>;
+    async fn count(&self) -> Result<usize>;
+    async fn dump(&mut self) -> Result<usize>;
+    async fn load(&mut self) -> Result<()>;
 }
