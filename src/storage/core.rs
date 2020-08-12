@@ -167,23 +167,22 @@ impl<K> Storage<K> {
     /// Fails if duplicates are not allowed and record already exists.
     pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
         if !self.inner.config.allow_duplicates() {
-            debug!("check existing records");
-            let existing_metas = self.get_all_existing_metas(&key).await?;
-            debug!("all existing meta received {:?}", existing_metas);
+            let existing_metas = self
+                .get_all_existing_metas(&key)
+                .await
+                .with_context(|| "storage write with get all existing metas failed")?;
             if existing_metas.contains(&meta) {
                 warn!("record with key {:?} and meta {:?} exists", key, meta);
                 return Ok(());
             }
         }
-        trace!("record with the same meta and key does not exist");
-        let record = Record::create(&key, value, meta)?;
-        trace!("await for inner lock");
+        let record = Record::create(&key, value, meta)
+            .with_context(|| "storage write with record creation failed")?;
         let mut safe = self.inner.safe.lock().await;
         let blob = safe
             .active_blob
             .as_mut()
-            .ok_or_else(|| Error::active_blob_not_set())?;
-        trace!("get active blob");
+            .ok_or_else(Error::active_blob_not_set)?;
         blob.write(record).await
     }
 
@@ -192,23 +191,25 @@ impl<K> Storage<K> {
         let active_blob = safe
             .active_blob
             .as_mut()
-            .ok_or_else(|| Error::active_blob_not_set())?;
-        trace!("active blob extracted");
+            .ok_or_else(Error::active_blob_not_set)?;
         let mut metas = Vec::new();
-        if let Some(meta) = active_blob.get_all_metas(key.as_ref()).await? {
+        if let Some(meta) = active_blob
+            .get_all_metas(key.as_ref())
+            .await
+            .with_context(|| "storage get all existing metas from active blob failed")?
+        {
             metas.extend(meta);
         }
-        trace!("active blob meta loaded");
-        let blobs: &Vec<Blob> = &safe.blobs;
-        trace!("closed blobs extracted");
-        for blob in blobs {
-            trace!("look into next blob");
-            if let Some(meta) = blob.get_all_metas(key.as_ref()).await? {
+        for blob in &safe.blobs {
+            if let Some(meta) = blob.get_all_metas(key.as_ref()).await.with_context(|| {
+                format!(
+                    "storage get all existing metas from blob failed: {}",
+                    blob.name()
+                )
+            })? {
                 metas.extend(meta);
-                trace!("extend finished");
             }
         }
-        trace!("all metas collected");
         Ok(metas)
     }
 

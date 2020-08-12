@@ -95,7 +95,12 @@ impl Simple {
             }
             State::OnDisk(file) => {
                 debug!("blob index simple get all meta locations from on disk state");
-                if let Some(headers) = Self::search_all(file, key, self.header.clone()).await? {
+                if let Some(headers) = Self::search_all(file, key, self.header.clone())
+                    .await
+                    .with_context(|| {
+                        "blob, index simple, get all meta locations, search all failed"
+                    })?
+                {
                     let locations = headers
                         .iter()
                         .filter_map(Self::try_create_location)
@@ -242,13 +247,18 @@ impl Simple {
         index_header: IndexHeader,
     ) -> Result<Option<Vec<RecordHeader>>> {
         let file2 = file.clone();
-        if let Some(header_pos) = Self::binary_search(file, key, index_header.clone()).await? {
+        if let Some(header_pos) = Self::binary_search(file, key, index_header.clone())
+            .await
+            .with_context(|| "blob, index simple, search all, binary search failed")?
+        {
             let orig_pos = header_pos.1;
             let mut headers: Vec<RecordHeader> = vec![header_pos.0];
             // go left
             let mut pos = orig_pos - 1;
             while pos > 0 {
-                let rh = Self::read_at(&file2, pos, &index_header).await?;
+                let rh = Self::read_at(&file2, pos, &index_header)
+                    .await
+                    .with_context(|| "blob, index simple, search all, read at failed")?;
                 if rh.key() == key {
                     headers.push(rh);
                     pos -= 1;
@@ -259,7 +269,9 @@ impl Simple {
             //go right
             pos = orig_pos + 1;
             while pos < index_header.records_count {
-                let rh = Self::read_at(&file2, pos, &index_header).await?;
+                let rh = Self::read_at(&file2, pos, &index_header)
+                    .await
+                    .with_context(|| "blob, index simple, search all, read at failed")?;
                 if rh.key() == key {
                     headers.push(rh);
                     pos += 1;
@@ -270,7 +282,7 @@ impl Simple {
             Ok(Some(headers))
         } else {
             debug!("Record not found by binary search on disk");
-            Err(Error::from(ErrorKind::RecordNotFound).into())
+            Ok(None)
         }
     }
 

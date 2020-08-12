@@ -258,7 +258,12 @@ impl Blob {
 
     pub(crate) async fn get_all_metas(&self, key: &[u8]) -> Result<Option<Vec<Meta>>> {
         debug!("blob core get all metas");
-        if let Some(locations) = self.index.get_all_meta_locations(key).await? {
+        if let Some(locations) = self
+            .index
+            .get_all_meta_locations(key)
+            .await
+            .with_context(|| "blob get all meta locations failed")?
+        {
             debug!("blob core get all metas got all meta locations");
             if locations.is_empty() {
                 Ok(None)
@@ -270,10 +275,10 @@ impl Blob {
                         .read_at(&mut meta_raw, location.offset)
                         .await
                         .with_context(|| format!("failed to get all metas for key {:?}", key))?;
-                    let meta = Meta::from_raw(&meta_raw)?;
+                    let meta = Meta::from_raw(&meta_raw)
+                        .with_context(|| "blob get all metas meta creation failed")?;
                     metas.push(meta);
                 }
-                trace!("get all headers finished");
                 Ok(Some(metas))
             }
         } else {
