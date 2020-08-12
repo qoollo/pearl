@@ -87,19 +87,6 @@ impl File {
         Ok(file)
     }
 
-    pub(crate) fn from_std_file(fd: StdFile, ioring: Rio) -> IOResult<Self> {
-        let file = fd.try_clone()?;
-        let size = file.metadata()?.len();
-        let size = Arc::new(AtomicU64::new(size));
-        let file = Self {
-            ioring,
-            no_lock_fd: Arc::new(file),
-            write_fd: Arc::new(RwLock::new(TokioFile::from_std(fd))),
-            size,
-        };
-        Ok(file)
-    }
-
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
         let compl = self.ioring.fdatasync(&*self.no_lock_fd);
         compl.await

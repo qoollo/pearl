@@ -17,10 +17,6 @@ impl Error {
         Self { kind }
     }
 
-    pub(crate) fn is(&self, other: &Kind) -> bool {
-        &self.kind == other
-    }
-
     pub(crate) fn file_pattern(path: PathBuf) -> Self {
         Self::new(Kind::WrongFileNamePattern(path))
     }

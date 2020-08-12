@@ -261,7 +261,7 @@ impl<K> Storage<K> {
         let active_blob_read_res = inner
             .active_blob
             .as_ref()
-            .ok_or_else(|| Error::active_blob_not_set())?
+            .ok_or_else(Error::active_blob_not_set)?
             .read_any(key, meta)
             .await;
         debug!("storage read with optional meta from active blob finished");
@@ -281,7 +281,7 @@ impl<K> Storage<K> {
                     .map(|blob| blob.read_any(key, meta))
                     .collect();
                 let mut task = stream.skip_while(Result::is_err);
-                task.next().await.ok_or_else(|| Error::not_found())??
+                task.next().await.ok_or_else(Error::not_found)??
             }
         };
         Ok(record)

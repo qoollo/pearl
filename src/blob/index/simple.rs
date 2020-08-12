@@ -83,51 +83,44 @@ impl Simple {
         match &self.inner {
             State::InMemory(headers) => {
                 debug!("blob index simple get all meta locations from in memory state");
-                if let Some(headers) = Self::get_all_from_in_memory(headers, key) {
+                let locations = Self::get_all_from_in_memory(headers, key).map(|headers| {
                     let locations = headers
                         .iter()
                         .filter_map(Self::try_create_location)
                         .collect();
-                    Ok(Some(locations))
-                } else {
-                    Ok(None)
-                }
+                    locations
+                });
+                Ok(locations)
             }
             State::OnDisk(file) => {
                 debug!("blob index simple get all meta locations from on disk state");
-                if let Some(headers) = Self::search_all(file, key, self.header.clone())
+                Ok(Self::search_all(file, key, self.header.clone())
                     .await
                     .with_context(|| {
                         "blob, index simple, get all meta locations, search all failed"
                     })?
-                {
-                    let locations = headers
-                        .iter()
-                        .filter_map(Self::try_create_location)
-                        .collect();
-                    Ok(Some(locations))
-                } else {
-                    Ok(None)
-                }
+                    .map(|headers| {
+                        let locations = headers
+                            .iter()
+                            .filter_map(Self::try_create_location)
+                            .collect();
+                        locations
+                    }))
             }
         }
     }
 
     pub(crate) async fn from_file(name: FileName, filter_is_on: bool, ioring: Rio) -> Result<Self> {
         trace!("open index file");
-        let file = File::open(name.to_path(), ioring.clone())
+        let mut file = File::open(name.to_path(), ioring.clone())
             .await
             .context(format!("failed to open index file: {}", name))?;
         trace!("load index header");
-        let mut header_buf = vec![0; IndexHeader::serialized_size_default()?.try_into()?];
-        trace!("read header into buf: [0; {}]", header_buf.len());
-        file.read_at(&mut header_buf, 0).await?;
-        trace!("serialize header from bytes");
-        let header = IndexHeader::from_raw(&header_buf)?;
+        let header = Self::read_index_header(&mut file).await?;
         trace!("load filter");
         let mut buf = vec![0; header.filter_buf_size];
         trace!("read filter into buf: [0; {}]", buf.len());
-        file.read_at(&mut buf, header_buf.len() as u64).await?;
+        file.read_at(&mut buf, header.serialized_size()?).await?;
         let filter = Bloom::from_raw(&buf)?;
         trace!("index restored successfuly");
         warn!("@TODO check consistency");
@@ -277,11 +270,9 @@ impl Simple {
 
     async fn read_index_header(file: &mut File) -> Result<IndexHeader> {
         let header_size = IndexHeader::serialized_size_default()?.try_into()?;
-        debug!("header s: {}", header_size);
         let mut buf = vec![0; header_size];
         file.read_at(&mut buf, 0).await?;
-        debug!("deserialize header");
-        Ok(deserialize(&buf)?)
+        IndexHeader::from_raw(&buf).map_err(Into::into)
     }
 
     fn serialize_record_headers(
@@ -296,7 +287,7 @@ impl Simple {
             );
             let record_header_size = record_header.serialized_size().try_into()?;
             trace!("record header serialized size: {}", record_header_size);
-            let headers = headers.iter().map(|r| r.1).flatten().collect::<Vec<_>>(); // produce sorted
+            let headers = headers.iter().flat_map(|r| r.1).collect::<Vec<_>>(); // produce sorted
             debug!("blob index simple serialize bunch transform BTreeMap into Vec");
             //bunch.sort_by_key(|h| h.key().to_vec());
             let filter_buf = filter.to_raw()?;
@@ -333,20 +324,6 @@ impl Simple {
         }
     }
 
-    fn check_result(res: Result<RecordHeader>) -> Result<bool> {
-        match res {
-            Ok(_) => Ok(true),
-            Err(e) => {
-                if let Some(err) = e.source().and_then(|src| src.downcast_ref::<Error>()) {
-                    if !(err.is(&ErrorKind::RecordNotFound)) {
-                        return Err(e);
-                    }
-                }
-                Ok(false)
-            }
-        }
-    }
-
     fn deserialize_header(buf: &[u8]) -> bincode::Result<IndexHeader> {
         trace!("deserialize header from buf: {}", buf.len());
         deserialize(buf)
@@ -368,16 +345,6 @@ impl Simple {
             }
             Ok(headers)
         })
-    }
-
-    fn get_any_from_in_memory(headers: &InMemoryIndex, key: &[u8]) -> Result<RecordHeader> {
-        if let Some(res) = headers.get(key) {
-            res.first()
-        } else {
-            None
-        }
-        .cloned()
-        .ok_or_else(|| Error::from(ErrorKind::RecordNotFound).into())
     }
 
     fn get_all_from_in_memory<'a>(
@@ -489,14 +456,13 @@ impl Index for Simple {
     async fn dump(&mut self) -> Result<usize> {
         if let State::InMemory(headers) = &mut self.inner {
             debug!("blob index simple in memory headers {:?}", headers);
-            let res = Self::serialize_record_headers(headers, &self.filter);
+            let res = Self::serialize_record_headers(headers, &self.filter)?;
             match res {
-                Ok(Some((header, buf))) => {
+                Some((header, buf)) => {
                     self.header = header;
                     self.dump_in_memory(buf).await
                 }
-                Ok(None) => Ok(0),
-                Err(e) => Err(e.into()),
+                None => Ok(0),
             }
         } else {
             Ok(0)
