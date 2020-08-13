@@ -5,6 +5,7 @@ use anyhow::Result as AnyResult;
 use futures::{
     future::FutureExt,
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
+    TryFutureExt,
 };
 use pearl::{Builder, Meta, Storage};
 use rand::seq::SliceRandom;
@@ -124,7 +125,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let handles = handles.try_collect::<Vec<_>>().await.unwrap();
     let index = path.join("test.0.index");
     delay_for(Duration::from_millis(32)).await;
-    // assert!(index.exists());
+    assert!(index.exists());
     assert_eq!(handles.len(), threads);
     let keys = indexes
         .iter()
@@ -352,9 +353,16 @@ async fn test_read_all_load_all() {
     delay_for(Duration::from_millis(1000)).await;
     let mut records_read = storage
         .read_all(&KeyTest::new(key))
-        .then(|entry| async { entry.unwrap().load().await.unwrap().into_data() })
-        .collect::<Vec<_>>()
-        .await;
+        .and_then(|entry| {
+            entry
+                .into_iter()
+                .map(|e| e.load())
+                .collect::<FuturesUnordered<_>>()
+                .map(|e| e.map(|r| r.into_data()))
+                .try_collect::<Vec<_>>()
+        })
+        .await
+        .unwrap();
     assert_eq!(records_write.len(), records_read.len());
     let mut records = records_write
         .into_iter()
@@ -383,9 +391,16 @@ async fn test_read_all_find_one_key() {
     debug!("read all with key: {:?}", &key);
     let records_read = storage
         .read_all(&KeyTest::new(key))
-        .then(|entry| async move { entry.unwrap().load().await.unwrap().into_data() })
-        .collect::<Vec<_>>()
-        .await;
+        .and_then(|entry| {
+            entry
+                .into_iter()
+                .map(|e| e.load())
+                .collect::<FuturesUnordered<_>>()
+                .map(|e| e.map(|r| r.into_data()))
+                .try_collect::<Vec<_>>()
+        })
+        .await
+        .unwrap();
     debug!("storage read all finished");
     assert_eq!(
         records_write

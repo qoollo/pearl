@@ -330,8 +330,8 @@ impl Simple {
             let offset = i * record_header_size;
             trace!("at: {}", offset);
             let header: RecordHeader = deserialize(&buf[offset..])?;
-            if headers.contains_key(header.key()) {
-                headers.get_mut(header.key()).unwrap().push(header);
+            if let Some(v) = headers.get_mut(header.key()) {
+                v.push(header)
             } else {
                 headers.insert(header.key().to_vec(), vec![header]);
             }
@@ -394,8 +394,8 @@ impl Index for Simple {
             State::InMemory(headers) => {
                 self.filter.add(h.key());
                 debug!("blob index simple push key: {:?}", h.key());
-                if headers.contains_key(h.key()) {
-                    headers.get_mut(h.key()).unwrap().push(h);
+                if let Some(v) = headers.get_mut(h.key()) {
+                    v.push(h)
                 } else {
                     headers.insert(h.key().to_vec(), vec![h]);
                 }

@@ -249,9 +249,22 @@ impl<K> Storage<K> {
         self.read_with_optional_meta(key, Some(meta)).await
     }
 
-    /// Returns stream producing entries with matching key
-    pub fn read_all<'a>(&'a self, key: &'a impl Key) -> ReadAll<'a, K> {
-        ReadAll::new(self, key.as_ref())
+    /// Returns entries with matching key
+    pub async fn read_all(&self, key: &impl Key) -> Result<Vec<Entry>> {
+        let key = key.as_ref();
+        let mut entries = Vec::new();
+        let safe = self.inner.safe.lock().await;
+        let active_blob = safe
+            .active_blob
+            .as_ref()
+            .ok_or_else(Error::active_blob_not_set)?;
+        let active_entries = active_blob.read_all(key).try_collect::<Vec<_>>().await?;
+        entries.extend(active_entries);
+        for blob in &safe.blobs {
+            let closed_entries = blob.read_all(key).try_collect::<Vec<_>>().await?;
+            entries.extend(closed_entries);
+        }
+        Ok(entries)
     }
 
     async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {

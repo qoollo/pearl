@@ -65,7 +65,7 @@ pub use blob::{filter, Entries, Entry};
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
-pub use storage::{Builder, Key, ReadAll, Storage};
+pub use storage::{Builder, Key, Storage};
 
 mod prelude {
     pub(crate) use super::*;
@@ -79,13 +79,12 @@ mod prelude {
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::{
         future::{self, BoxFuture, Future, FutureExt, TryFutureExt},
-        lock::{Mutex, MutexGuard},
+        lock::Mutex,
         stream::{futures_unordered::FuturesUnordered, Stream, TryStreamExt},
     };
     pub(crate) use record::{Header as RecordHeader, Record};
     pub(crate) use rio::Rio;
     pub(crate) use std::{
-        cell::RefCell,
         cmp::Ordering as CmpOrdering,
         collections::HashMap,
         convert::TryInto,
