@@ -83,22 +83,24 @@ impl Simple {
         match &self.inner {
             State::InMemory(headers) => {
                 debug!("blob index simple get all meta locations from in memory state");
-                Ok(headers.get(key).map(|v| Self::locations_from_headers(v)))
+                Ok(headers
+                    .get(key)
+                    .map(|v| Self::meta_locations_from_headers(v)))
             }
             State::OnDisk(file) => {
                 debug!("blob index simple get all meta locations from on disk state");
                 let headers = Self::search_all(file, key, self.header.clone())
                     .await
                     .with_context(|| "blob index get all meta locations search all failed")?;
-                Ok(headers.map(|headers| Self::locations_from_headers(&headers)))
+                Ok(headers.map(|headers| Self::meta_locations_from_headers(&headers)))
             }
         }
     }
 
-    fn locations_from_headers(headers: &[RecordHeader]) -> Vec<Location> {
+    fn meta_locations_from_headers(headers: &[RecordHeader]) -> Vec<Location> {
         headers
             .iter()
-            .filter_map(Self::try_create_location)
+            .filter_map(Self::try_create_meta_location)
             .collect()
     }
 
@@ -135,7 +137,7 @@ impl Simple {
         Entries::new(&self.inner, key, file)
     }
 
-    fn try_create_location(h: &RecordHeader) -> Option<Location> {
+    fn try_create_meta_location(h: &RecordHeader) -> Option<Location> {
         Some(Location::new(
             h.blob_offset() + h.serialized_size(),
             h.meta_size().try_into().ok()?,
