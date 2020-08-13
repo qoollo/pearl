@@ -17,7 +17,7 @@ mod prelude {
 
 #[async_trait::async_trait]
 pub(crate) trait Index: Send + Sync {
-    //TODO: get_all
+    async fn get_all(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>>;
     fn push(&mut self, h: RecordHeader) -> Result<()>;
     async fn contains_key(&self, key: &[u8]) -> Result<bool>;

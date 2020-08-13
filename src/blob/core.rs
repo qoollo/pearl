@@ -196,8 +196,10 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) fn read_all<'a>(&'a self, key: &'a [u8]) -> Entries<'a> {
-        self.index.get_entries(key, self.file.clone())
+    pub(crate) async fn read_all(&self, key: &[u8]) -> Result<Vec<Entry>> {
+        let headers = self.index.get_all(key).await;
+        unimplemented!()
+        // self.index.get_entries(key, self.file.clone())
     }
 
     async fn get_any_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {

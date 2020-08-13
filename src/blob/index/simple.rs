@@ -408,6 +408,10 @@ impl Index for Simple {
         }
     }
 
+    async fn get_all(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
+        unimplemented!()
+    }
+
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
         debug!("index get any");
         match &self.inner {

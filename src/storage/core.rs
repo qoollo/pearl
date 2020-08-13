@@ -258,12 +258,18 @@ impl<K> Storage<K> {
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
-        let active_entries = active_blob.read_all(key).try_collect::<Vec<_>>().await?;
-        entries.extend(active_entries);
-        for blob in &safe.blobs {
-            let closed_entries = blob.read_all(key).try_collect::<Vec<_>>().await?;
-            entries.extend(closed_entries);
-        }
+        entries.extend(active_blob.read_all(key).await?);
+        let entries_closed_blobs = safe
+            .blobs
+            .iter()
+            .map(|b| b.read_all(key))
+            .collect::<FuturesUnordered<_>>();
+        entries_closed_blobs
+            .try_for_each(|v| {
+                entries.extend(v);
+                future::ok(())
+            })
+            .await?;
         Ok(entries)
     }
 
