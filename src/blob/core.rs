@@ -196,10 +196,16 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) async fn read_all(&self, key: &[u8]) -> Result<Vec<Entry>> {
-        let headers = self.index.get_all(key).await;
-        unimplemented!()
-        // self.index.get_entries(key, self.file.clone())
+    pub(crate) async fn read_all(&self, key: &[u8]) -> Result<Option<Vec<Entry>>> {
+        let headers = self.index.get_all(key).await?;
+        Ok(headers.map(|h| Self::headers_to_entries_with_meta(h, self.file.clone())))
+    }
+
+    fn headers_to_entries_with_meta(headers: Vec<RecordHeader>, file: File) -> Vec<Entry> {
+        headers
+            .into_iter()
+            .map(|header| Entry::new(unimplemented!(), header, file.clone()))
+            .collect()
     }
 
     async fn get_any_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {

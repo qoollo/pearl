@@ -252,25 +252,28 @@ impl<K> Storage<K> {
     /// Returns entries with matching key
     pub async fn read_all(&self, key: &impl Key) -> Result<Vec<Entry>> {
         let key = key.as_ref();
-        let mut entries = Vec::new();
+        let mut all_entries = Vec::new();
         let safe = self.inner.safe.lock().await;
         let active_blob = safe
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
-        entries.extend(active_blob.read_all(key).await?);
+        if let Some(entries) = active_blob.read_all(key).await? {
+            all_entries.extend(entries);
+        }
         let entries_closed_blobs = safe
             .blobs
             .iter()
             .map(|b| b.read_all(key))
             .collect::<FuturesUnordered<_>>();
         entries_closed_blobs
+            .try_filter_map(future::ok)
             .try_for_each(|v| {
-                entries.extend(v);
+                all_entries.extend(v);
                 future::ok(())
             })
             .await?;
-        Ok(entries)
+        Ok(all_entries)
     }
 
     async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {
