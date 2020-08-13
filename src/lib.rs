@@ -62,17 +62,18 @@ mod record;
 mod storage;
 
 pub use blob::{filter, Entries, Entry};
-pub use error::{Error, Kind as ErrorKind, Result};
+pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
 pub use storage::{Builder, Key, ReadAll, Storage};
 
 mod prelude {
     pub(crate) use super::*;
+    pub(crate) use std::collections::BTreeMap;
     pub(crate) type PinBox<T> = Pin<Box<T>>;
     pub(crate) const ORD: Ordering = Ordering::Relaxed;
 
-    pub(crate) use anyhow::{Context as ErrorContexts, Result as AnyResult};
+    pub(crate) use anyhow::{Context as ErrorContexts, Result};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use blob::{self, Blob, BloomConfig, File, Location};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
@@ -88,12 +89,10 @@ mod prelude {
         cmp::Ordering as CmpOrdering,
         collections::HashMap,
         convert::TryInto,
-        error,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
         fs::{File as StdFile, Metadata, OpenOptions as StdOpenOptions},
-        io::{Error as IOError, Result as IOResult},
+        io::Result as IOResult,
         marker::PhantomData,
-        num::TryFromIntError,
         os::unix::fs::OpenOptionsExt,
         path::{Path, PathBuf},
         pin::Pin,

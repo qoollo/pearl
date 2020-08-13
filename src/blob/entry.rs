@@ -13,11 +13,8 @@ use std::slice::Iter;
 /// [`load`]: struct.Entry.html#method.load
 #[derive(Debug)]
 pub struct Entry {
+    header: RecordHeader,
     meta: Meta,
-    blob_offset: u64,
-    full_size: usize,
-    data_offset: u64,
-    data_size: usize,
     blob_file: File,
 }
 
@@ -35,9 +32,9 @@ pub struct Entries<'a> {
     token: Option<()>,
     in_memory_iter: Option<Iter<'a, RecordHeader>>,
     loading_entries: FuturesUnordered<BoxFuture<'a, Result<Entry>>>,
-    load_fut: Option<PinBox<dyn Future<Output = AnyResult<Vec<RecordHeader>>> + 'a + Send>>,
+    load_fut: Option<PinBox<dyn Future<Output = Result<InMemoryIndex>> + 'a + Send>>,
     blob_file: File,
-    loaded_headers: Option<VecDeque<RecordHeader>>,
+    loaded_headers: Option<Vec<RecordHeader>>,
     entries_fut: Option<BoxFuture<'a, Result<Entry>>>,
 }
 
@@ -45,40 +42,26 @@ impl Entry {
     /// Returns record data
     /// # Errors
     /// Returns the error type for I/O operations, see [`std::io::Error`]
-    pub async fn load(&self) -> AnyResult<Vec<u8>> {
-        let mut buf = vec![0; self.data_size as usize];
+    pub async fn load(self) -> Result<Record> {
+        let mut buf = vec![0; self.header.data_size().try_into()?];
         self.blob_file
-            .read_at(&mut buf, self.data_offset)
+            .read_at(&mut buf, self.header.data_offset())
             .await
             .with_context(|| "blob load failed")?; // TODO: verify read size
-        Ok(buf)
+        let record = Record::new(self.header, self.meta, buf);
+        record.validate()
     }
 
-    pub(crate) fn new(meta: Meta, header: &RecordHeader, blob_file: File) -> Self {
-        let data_size = header.data_size().try_into().expect("u64 to usize");
-        let data_offset = header.data_offset();
-        let blob_offset = header.blob_offset();
-        let full_size = header.full_size().try_into().expect("u64 to usize");
+    pub(crate) fn new(meta: Meta, header: RecordHeader, blob_file: File) -> Self {
         Self {
             meta,
-            data_offset,
-            data_size,
-            blob_offset,
-            full_size,
+            header,
             blob_file,
         }
     }
 
     pub(crate) fn meta(&self) -> Meta {
         self.meta.clone()
-    }
-
-    pub(crate) const fn blob_offset(&self) -> u64 {
-        self.blob_offset
-    }
-
-    pub(crate) const fn full_size(&self) -> usize {
-        self.full_size
     }
 }
 
@@ -98,7 +81,7 @@ impl<'a> Stream for Entries<'a> {
             }
         } else if let Some(headers) = &mut self.loaded_headers {
             trace!("headers loaded");
-            if let Some(header) = headers.pop_front() {
+            if let Some(header) = headers.pop() {
                 trace!("{} headers loaded, create entries from them", headers.len());
                 let mut entry = Self::create_entry(self.blob_file.clone(), header).boxed();
                 match entry.as_mut().poll(cx) {
@@ -165,33 +148,27 @@ impl<'a> Entries<'a> {
         Poll::Pending
     }
 
-    fn reset_load_future(mut self: Pin<&mut Self>, headers: Vec<RecordHeader>) {
-        self.loaded_headers = Some(
-            headers
-                .into_iter()
-                .filter(|h| {
-                    trace!("check {:?}", h.key());
-                    h.key() == self.key
-                })
-                .collect(),
-        );
+    fn reset_load_future(mut self: Pin<&mut Self>, mut headers: InMemoryIndex) {
+        self.loaded_headers = headers.remove(self.key);
         self.load_fut = None;
     }
 
     fn get_next_poll(
         mut self: Pin<&mut Self>,
         cx: &mut Context,
-        headers: &'a [RecordHeader],
+        all_headers: &'a BTreeMap<Vec<u8>, Vec<RecordHeader>>,
     ) -> Poll<Option<Result<Entry>>> {
         trace!("get next poll");
         let key = self.key;
         if self.token.take().is_some() {
             trace!("first entries poll, create entries futures");
-            for h in headers {
-                if h.key() == key {
-                    trace!("key matched");
-                    let entry = Self::create_entry(self.blob_file.clone(), h.clone());
-                    self.loading_entries.push(entry.boxed());
+            if let Some(headers) = all_headers.get(key) {
+                for h in headers {
+                    if h.key() == key {
+                        trace!("key matched");
+                        let entry = Self::create_entry(self.blob_file.clone(), h.clone());
+                        self.loading_entries.push(entry.boxed());
+                    }
                 }
             }
             cx.waker().wake_by_ref();
@@ -203,13 +180,9 @@ impl<'a> Entries<'a> {
 
     async fn create_entry(file: File, header: RecordHeader) -> Result<Entry> {
         trace!("create entry");
-        let meta = Meta::load(&file, header.meta_location())
-            .await
-            .map_err(Error::new)?;
+        let meta = Meta::load(&file, header.meta_location()).await?;
         trace!("meta loaded");
-        let entry = Entry::new(meta, &header, file);
-        trace!("entry created");
-        Ok(entry)
+        Ok(Entry::new(meta, header, file))
     }
 }
 

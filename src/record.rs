@@ -3,7 +3,7 @@ use crate::prelude::*;
 const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-pub(crate) struct Record {
+pub struct Record {
     header: Header,
     meta: Meta,
     data: Vec<u8>,
@@ -26,19 +26,6 @@ pub struct Header {
 /// version of the records with the same key.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Meta(HashMap<String, Vec<u8>>);
-
-type Result<T> = std::result::Result<T, Error>;
-
-#[derive(Debug)]
-pub(crate) struct Error {
-    repr: Repr,
-}
-
-#[derive(Debug)]
-enum Repr {
-    Inner(ErrorKind),
-    Other(Box<dyn error::Error + 'static + Send + Sync>),
-}
 
 impl Meta {
     /// Create new empty `Meta`.
@@ -74,7 +61,7 @@ impl Meta {
         serialize(&self)
     }
 
-    pub(crate) async fn load(file: &File, location: Location) -> AnyResult<Self> {
+    pub(crate) async fn load(file: &File, location: Location) -> Result<Self> {
         trace!("meta load");
         let mut buf = vec![0; location.size()];
         trace!(
@@ -91,77 +78,15 @@ impl Meta {
     }
 }
 
-impl Error {
-    pub(crate) fn new<E>(error: E) -> Self
-    where
-        E: Into<Box<dyn error::Error + Send + Sync>>,
-    {
-        Self {
-            repr: Repr::Other(error.into()),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match &self.repr {
-            Repr::Inner(_) => None,
-            Repr::Other(src) => Some(src.as_ref()),
-        }
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        Debug::fmt(&self.repr, f)
-    }
-}
-
-impl Display for Repr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Self::Inner(kind) => write!(f, "{:?}", kind),
-            Self::Other(e) => Debug::fmt(e, f),
-        }
-    }
-}
-
-impl From<Box<bincode::ErrorKind>> for Error {
-    fn from(e: Box<bincode::ErrorKind>) -> Self {
-        ErrorKind::Bincode(e.to_string()).into()
-    }
-}
-
-impl From<IOError> for Error {
-    fn from(e: IOError) -> Self {
-        ErrorKind::IO(e.to_string()).into()
-    }
-}
-
-impl From<TryFromIntError> for Error {
-    #[must_use]
-    fn from(e: TryFromIntError) -> Self {
-        ErrorKind::Conversion(e.to_string()).into()
-    }
-}
-
-#[derive(Debug)]
-pub enum ErrorKind {
-    Validation(String),
-    Bincode(String),
-    IO(String),
-    Conversion(String),
-}
-
-impl From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Self {
-        Self {
-            repr: Repr::Inner(kind),
-        }
-    }
-}
-
 impl Record {
+    pub(crate) fn new(header: Header, meta: Meta, data: Vec<u8>) -> Self {
+        Self { header, meta, data }
+    }
+
+    pub fn into_data(self) -> Vec<u8> {
+        self.data
+    }
+
     /// Creates new `Record` with provided data, key and meta.
     pub fn create(key: impl Key, data: Vec<u8>, meta: Meta) -> bincode::Result<Self> {
         let key = key.as_ref().to_vec();
@@ -173,25 +98,6 @@ impl Record {
     /// Get immutable reference to header.
     pub const fn header(&self) -> &Header {
         &self.header
-    }
-
-    /// # Description
-    /// Init new `Record` from raw buffer
-    pub fn from_raw(buf: &[u8]) -> Result<Self> {
-        trace!("len: {}, buf: {:?}", buf.len(), buf);
-        // @TODO Header validation
-        let header = Header::from_raw(buf)?;
-        trace!("header from raw created");
-        let meta_offset = header.serialized_size().try_into()?;
-        let meta_size: usize = header.meta_size.try_into()?;
-        trace!("meta offset {} len {}", meta_offset, meta_size);
-        let meta = Meta::from_raw(&buf[meta_offset..])?;
-        trace!("meta from raw created: {:?}", meta);
-        let data_offset = meta_offset + meta_size;
-        trace!("data offset {}", data_offset);
-        let data = buf[data_offset..].to_vec();
-        let record = Self { header, meta, data };
-        record.validate()
     }
 
     /// # Description
@@ -210,14 +116,11 @@ impl Record {
         self.header.update_checksum()
     }
 
-    pub(crate) fn into_data(self) -> Vec<u8> {
-        self.data
-    }
-
-    fn validate(self) -> Result<Self> {
+    pub(crate) fn validate(self) -> Result<Self> {
         self.check_magic_byte()?;
         self.check_data_checksum()?;
-        self.check_header_checksum()?;
+        self.check_header_checksum()
+            .with_context(|| "check header checksum failed")?;
         Ok(self)
     }
 
@@ -225,7 +128,7 @@ impl Record {
         if self.header().magic_byte == RECORD_MAGIC_BYTE {
             Ok(())
         } else {
-            Err(ErrorKind::Validation("wrong magic byte".to_owned()).into())
+            Err(Error::validation("wrong magic byte").into())
         }
     }
 
@@ -234,11 +137,11 @@ impl Record {
         if calc_crc == self.header.data_checksum {
             Ok(())
         } else {
-            let msg = format!(
+            let cause = format!(
                 "wrong data checksum {} vs {}",
                 calc_crc, self.header.data_checksum
             );
-            let e = ErrorKind::Validation(msg);
+            let e = Error::validation(cause);
             error!("{:?}", e);
             Err(e.into())
         }
@@ -247,7 +150,9 @@ impl Record {
     fn check_header_checksum(&self) -> Result<()> {
         let mut header = self.header.clone();
         header.header_checksum = 0;
-        let calc_crc = header.crc32().map_err(Error::new)?;
+        let calc_crc = header
+            .crc32()
+            .with_context(|| "header checksum calculation failed")?;
         if calc_crc == self.header.header_checksum {
             Ok(())
         } else {
@@ -256,7 +161,7 @@ impl Record {
                 calc_crc, self.header.header_checksum
             ));
             error!("{:?}", e);
-            Err(e.into())
+            Err(Error::from(e).into())
         }
     }
 }
@@ -298,11 +203,6 @@ impl Header {
     #[inline]
     pub(crate) const fn meta_size(&self) -> u64 {
         self.meta_size
-    }
-
-    #[inline]
-    pub(crate) fn full_size(&self) -> u64 {
-        self.serialized_size() + self.meta_size + self.data_size
     }
 
     #[inline]

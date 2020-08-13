@@ -1,82 +1,54 @@
 use crate::prelude::*;
 
-/// A specialized storage result type.
-pub type Result<T> = std::result::Result<T, Error>;
-
 /// The error type for `Storage` operations.
 #[derive(Debug, Error)]
 pub struct Error {
-    repr: Repr,
+    kind: Kind,
 }
 
 impl Error {
-    /// Returns the corresponding `ErrorKind` for this error.
+    /// Returns the corresponding `Kind` for this error.
     #[must_use]
-    pub fn kind(&self) -> ErrorKind {
-        match &self.repr {
-            Repr::Inner(k) => k.clone(),
-            _ => ErrorKind::Other,
-        }
+    pub fn kind(&self) -> &Kind {
+        &self.kind
     }
 
-    pub(crate) fn new<E>(error: E) -> Self
-    where
-        E: Into<Box<dyn error::Error + Send + Sync>>,
-    {
-        Self {
-            repr: Repr::Other(error.into()),
-        }
+    pub(crate) fn new(kind: Kind) -> Self {
+        Self { kind }
     }
 
-    pub(crate) fn is(&self, other: &ErrorKind) -> bool {
-        if let Repr::Inner(kind) = &self.repr {
-            kind == other
-        } else {
-            false
-        }
+    pub(crate) fn file_pattern(path: PathBuf) -> Self {
+        Self::new(Kind::WrongFileNamePattern(path))
+    }
+
+    pub(crate) fn validation(cause: impl Into<String>) -> Self {
+        Self::new(Kind::Validation(cause.into()))
+    }
+
+    pub(crate) fn uninitialized() -> Self {
+        Self::new(Kind::Uninitialized)
+    }
+
+    pub(crate) fn active_blob_not_set() -> Self {
+        Self::new(Kind::ActiveBlobNotSet)
+    }
+
+    pub(crate) fn not_found() -> Self {
+        Self::new(Kind::RecordNotFound)
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        Debug::fmt(&self.repr, f)
+        Debug::fmt(&self.kind, f)
     }
 }
 
-impl From<ErrorKind> for Error {
+impl From<Kind> for Error {
     #[must_use]
-    fn from(kind: ErrorKind) -> Self {
-        Self {
-            repr: Repr::Inner(kind),
-        }
+    fn from(kind: Kind) -> Self {
+        Self { kind }
     }
-}
-
-impl From<IOError> for Error {
-    #[must_use]
-    fn from(e: IOError) -> Self {
-        ErrorKind::IO(e.to_string()).into()
-    }
-}
-
-impl From<Box<bincode::ErrorKind>> for Error {
-    #[must_use]
-    fn from(e: Box<bincode::ErrorKind>) -> Self {
-        ErrorKind::Bincode(e.to_string()).into()
-    }
-}
-
-impl From<TryFromIntError> for Error {
-    #[must_use]
-    fn from(e: TryFromIntError) -> Self {
-        ErrorKind::Conversion(e.to_string()).into()
-    }
-}
-
-#[derive(Debug)]
-enum Repr {
-    Inner(Kind),
-    Other(Box<dyn error::Error + 'static + Send + Sync>),
 }
 
 /// A list specifying categories of Storage error.
@@ -110,6 +82,8 @@ pub enum Kind {
     WrongFileNamePattern(PathBuf),
     /// Conversion error
     Conversion(String),
+    /// Record validation errors, eg. magic byte check
+    Validation(String),
     /// Other error
     Other,
 }

@@ -1,16 +1,17 @@
 #[macro_use]
 extern crate log;
 
-use std::fs;
-use std::time::{Duration, Instant};
-
+use anyhow::Result as AnyResult;
 use futures::{
     future::FutureExt,
-    sink::SinkExt,
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
 };
 use pearl::{Builder, Meta, Storage};
 use rand::seq::SliceRandom;
+use std::{
+    fs,
+    time::{Duration, Instant},
+};
 use tokio::time::delay_for;
 
 mod common;
@@ -97,26 +98,34 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let now = Instant::now();
     let path = common::init("multithread");
     let storage = common::default_test_storage_in(&path).await?;
-    let indexes = common::create_indexes(10, 10);
-    let (snd, rcv) = futures::channel::mpsc::channel(1024);
-    let data = b"test data string";
+    let threads = 10;
+    let indexes = common::create_indexes(threads, 10);
+    let data = vec![184u8; 3000];
     let clonned_storage = storage.clone();
-    indexes.iter().cloned().for_each(move |mut range| {
-        let st = clonned_storage.clone();
-        let mut snd_cloned = snd.clone();
-        let task = async move {
-            let s = st.clone();
-            range.shuffle(&mut rand::thread_rng());
-            let start = range[0];
-            for i in range {
-                write_one(&s, i as u32, data, None).await.unwrap();
-            }
-            snd_cloned.send(start).await.unwrap();
-        };
-        tokio::spawn(task);
-    });
-    let handles = rcv.collect::<Vec<_>>().await;
-    assert_eq!(handles.len(), 10);
+    let handles: FuturesUnordered<_> = indexes
+        .iter()
+        .cloned()
+        .map(|mut range| {
+            let st = clonned_storage.clone();
+            let data = data.clone();
+            let task = async move {
+                let s = st.clone();
+                let clonned_data = data.clone();
+                range.shuffle(&mut rand::thread_rng());
+                for i in range {
+                    write_one(&s, i as u32, &clonned_data, None).await.unwrap();
+                    let res = s.read(KeyTest::new(i as u32)).await.unwrap();
+                    assert_eq!(data.to_vec(), res);
+                }
+            };
+            tokio::spawn(task)
+        })
+        .collect();
+    let handles = handles.try_collect::<Vec<_>>().await.unwrap();
+    let index = path.join("test.0.index");
+    delay_for(Duration::from_millis(32)).await;
+    // assert!(index.exists());
+    assert_eq!(handles.len(), threads);
     let keys = indexes
         .iter()
         .flatten()
@@ -129,7 +138,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
 }
 
 #[tokio::test]
-async fn test_storage_multithread_blob_overflow() -> Result<(), String> {
+async fn test_storage_multithread_blob_overflow() -> AnyResult<()> {
     let now = Instant::now();
     let path = common::init("overflow");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
@@ -162,7 +171,7 @@ async fn test_storage_close() {
 }
 
 #[tokio::test]
-async fn test_on_disk_index() -> Result<(), String> {
+async fn test_on_disk_index() -> AnyResult<()> {
     let now = Instant::now();
     let path = common::init("index");
     let data_size = 500;
@@ -343,7 +352,7 @@ async fn test_read_all_load_all() {
     delay_for(Duration::from_millis(1000)).await;
     let mut records_read = storage
         .read_all(&KeyTest::new(key))
-        .then(|entry| async { entry.unwrap().load().await.unwrap() })
+        .then(|entry| async { entry.unwrap().load().await.unwrap().into_data() })
         .collect::<Vec<_>>()
         .await;
     assert_eq!(records_write.len(), records_read.len());
@@ -374,7 +383,7 @@ async fn test_read_all_find_one_key() {
     debug!("read all with key: {:?}", &key);
     let records_read = storage
         .read_all(&KeyTest::new(key))
-        .then(|entry| async move { entry.unwrap().load().await.unwrap() })
+        .then(|entry| async move { entry.unwrap().load().await.unwrap().into_data() })
         .collect::<Vec<_>>()
         .await;
     debug!("storage read all finished");
@@ -531,18 +540,17 @@ async fn write_one(
     key: u32,
     data: &[u8],
     version: Option<&str>,
-) -> Result<(), String> {
+) -> AnyResult<()> {
     let data = data.to_vec();
     let key = KeyTest::new(key);
-    trace!("key: {:?}", key);
+    debug!("tests write one key: {:?}", key);
     if let Some(v) = version {
-        trace!("write with");
+        debug!("tests write one write with");
         storage.write_with(key, data, meta_with(v)).await
     } else {
-        trace!("write");
+        debug!("tests write one write");
         storage.write(key, data).await
     }
-    .map_err(|e| e.to_string())
 }
 
 fn meta_with(version: &str) -> Meta {
@@ -603,10 +611,9 @@ async fn test_records_count_detailed() {
         delay_for(Duration::from_millis(64)).await;
     }
     delay_for(Duration::from_millis(1000)).await;
-    assert_eq!(
-        storage.records_count_detailed().await,
-        vec![(0, 19), (1, 11)]
-    );
+    let details = storage.records_count_detailed().await;
+    assert!(details[0].1 > 18);
+    assert_eq!(details.iter().fold(0, |acc, d| acc + d.1), count);
 
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
