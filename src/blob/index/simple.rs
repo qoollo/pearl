@@ -83,31 +83,23 @@ impl Simple {
         match &self.inner {
             State::InMemory(headers) => {
                 debug!("blob index simple get all meta locations from in memory state");
-                let locations = Self::get_all_from_in_memory(headers, key).map(|headers| {
-                    let locations = headers
-                        .iter()
-                        .filter_map(Self::try_create_location)
-                        .collect();
-                    locations
-                });
-                Ok(locations)
+                Ok(headers.get(key).map(|v| Self::locations_from_headers(v)))
             }
             State::OnDisk(file) => {
                 debug!("blob index simple get all meta locations from on disk state");
-                Ok(Self::search_all(file, key, self.header.clone())
+                let headers = Self::search_all(file, key, self.header.clone())
                     .await
-                    .with_context(|| {
-                        "blob, index simple, get all meta locations, search all failed"
-                    })?
-                    .map(|headers| {
-                        let locations = headers
-                            .iter()
-                            .filter_map(Self::try_create_location)
-                            .collect();
-                        locations
-                    }))
+                    .with_context(|| "blob index get all meta locations search all failed")?;
+                Ok(headers.map(|headers| Self::locations_from_headers(&headers)))
             }
         }
+    }
+
+    fn locations_from_headers(headers: &[RecordHeader]) -> Vec<Location> {
+        headers
+            .iter()
+            .filter_map(Self::try_create_location)
+            .collect()
     }
 
     pub(crate) async fn from_file(name: FileName, filter_is_on: bool, ioring: Rio) -> Result<Self> {
@@ -345,17 +337,6 @@ impl Simple {
             }
             Ok(headers)
         })
-    }
-
-    fn get_all_from_in_memory<'a>(
-        m: &'a InMemoryIndex,
-        key: &[u8],
-    ) -> Option<&'a Vec<RecordHeader>> {
-        debug!(
-            "blob index simple get all from in memory, keys: {:?}",
-            m.keys().collect::<Vec<_>>()
-        );
-        m.get(key)
     }
 
     async fn dump_in_memory(&mut self, buf: Vec<u8>) -> Result<usize> {
