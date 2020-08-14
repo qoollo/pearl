@@ -14,7 +14,7 @@ use std::slice::Iter;
 #[derive(Debug)]
 pub struct Entry {
     header: RecordHeader,
-    meta: Meta,
+    meta: Option<Meta>,
     blob_file: File,
 }
 
@@ -31,7 +31,7 @@ pub struct Entries<'a> {
     key: &'a [u8],
     token: Option<()>,
     in_memory_iter: Option<Iter<'a, RecordHeader>>,
-    loading_entries: FuturesUnordered<BoxFuture<'a, Result<Entry>>>,
+    loading_entries: Vec<Entry>,
     load_fut: Option<PinBox<dyn Future<Output = Result<InMemoryIndex>> + 'a + Send>>,
     blob_file: File,
     loaded_headers: Option<Vec<RecordHeader>>,
@@ -43,25 +43,37 @@ impl Entry {
     /// # Errors
     /// Returns the error type for I/O operations, see [`std::io::Error`]
     pub async fn load(self) -> Result<Record> {
-        let mut buf = vec![0; self.header.data_size().try_into()?];
+        let meta_size = self.header.meta_size().try_into()?;
+        let header_size: usize = self.header.data_size().try_into()?;
+        let mut buf = vec![0; header_size + meta_size];
         self.blob_file
-            .read_at(&mut buf, self.header.data_offset())
+            .read_at(&mut buf, self.header.meta_offset())
             .await
             .with_context(|| "blob load failed")?; // TODO: verify read size
-        let record = Record::new(self.header, self.meta, buf);
+        let data_buf = buf.split_off(meta_size);
+        let meta = Meta::from_raw(&buf)?;
+        let record = Record::new(self.header, meta, data_buf);
         record.validate()
     }
 
-    pub(crate) fn new(meta: Meta, header: RecordHeader, blob_file: File) -> Self {
+    pub(crate) async fn load_data(&mut self) -> Result<Vec<u8>> {
+        unimplemented!()
+    }
+
+    pub(crate) async fn load_meta(&mut self) -> Result<Meta> {
+        unimplemented!()
+    }
+
+    pub(crate) fn new(header: RecordHeader, blob_file: File) -> Self {
         Self {
-            meta,
+            meta: None,
             header,
             blob_file,
         }
     }
 
-    pub(crate) fn meta(&self) -> Meta {
-        self.meta.clone()
+    pub(crate) fn meta(&self) -> Option<&Meta> {
+        self.meta.as_ref()
     }
 }
 
@@ -83,14 +95,8 @@ impl<'a> Stream for Entries<'a> {
             trace!("headers loaded");
             if let Some(header) = headers.pop() {
                 trace!("{} headers loaded, create entries from them", headers.len());
-                let mut entry = Self::create_entry(self.blob_file.clone(), header).boxed();
-                match entry.as_mut().poll(cx) {
-                    Poll::Ready(entry) => Poll::Ready(Some(entry)),
-                    Poll::Pending => {
-                        self.entries_fut = Some(entry.boxed());
-                        Poll::Pending
-                    }
-                }
+                let mut entry = Entry::new(header, self.blob_file.clone());
+                Poll::Ready(Some(Ok(entry)))
             } else {
                 trace!("no headers left, finish entries future");
                 Poll::Ready(None)
@@ -109,7 +115,7 @@ impl<'a> Entries<'a> {
             key,
             token: Some(()),
             in_memory_iter: None,
-            loading_entries: FuturesUnordered::new(),
+            loading_entries: Vec::new(),
             load_fut: None,
             blob_file,
             loaded_headers: None,
@@ -166,23 +172,15 @@ impl<'a> Entries<'a> {
                 for h in headers {
                     if h.key() == key {
                         trace!("key matched");
-                        let entry = Self::create_entry(self.blob_file.clone(), h.clone());
-                        self.loading_entries.push(entry.boxed());
+                        let entry = Entry::new(h.clone(), self.blob_file.clone());
+                        self.loading_entries.push(entry);
                     }
                 }
             }
             cx.waker().wake_by_ref();
         }
 
-        let fut = Pin::new(&mut self.loading_entries);
-        Stream::poll_next(fut, cx)
-    }
-
-    async fn create_entry(file: File, header: RecordHeader) -> Result<Entry> {
-        trace!("create entry");
-        let meta = Meta::load(&file, header.meta_location()).await?;
-        trace!("meta loaded");
-        Ok(Entry::new(meta, header, file))
+        Poll::Ready(Ok(self.loading_entries.pop()).transpose())
     }
 }
 

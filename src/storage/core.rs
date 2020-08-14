@@ -167,14 +167,15 @@ impl<K> Storage<K> {
     /// Fails if duplicates are not allowed and record already exists.
     pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
         if !self.inner.config.allow_duplicates() {
-            let existing_metas = self
-                .get_all_existing_metas(&key)
-                .await
-                .with_context(|| "storage write with get all existing metas failed")?;
-            if existing_metas.contains(&meta) {
-                warn!("record with key {:?} and meta {:?} exists", key, meta);
-                return Ok(());
-            }
+            todo!("replace with meta check instead of reading all meta");
+            // let existing_metas = self
+            //     .get_all_existing_metas(&key)
+            //     .await
+            //     .with_context(|| "storage write with get all existing metas failed")?;
+            // if existing_metas.contains(&meta) {
+            //     warn!("record with key {:?} and meta {:?} exists", key, meta);
+            //     return Ok(());
+            // }
         }
         let record = Record::create(&key, value, meta)
             .with_context(|| "storage write with record creation failed")?;

@@ -204,7 +204,7 @@ impl Blob {
     fn headers_to_entries_with_meta(headers: Vec<RecordHeader>, file: File) -> Vec<Entry> {
         headers
             .into_iter()
-            .map(|header| Entry::new(unimplemented!(), header, file.clone()))
+            .map(|header| Entry::new(header, file.clone()))
             .collect()
     }
 
@@ -224,7 +224,7 @@ impl Blob {
                 .await
                 .with_context(|| "blob index get any failed")?
             {
-                let entry = Entry::new(Meta::default(), header, self.file.clone());
+                let entry = Entry::new(header, self.file.clone());
                 debug!("blob, get any entry, bloom true no meta, entry found");
                 Ok(Some(entry))
             } else {
@@ -242,8 +242,10 @@ impl Blob {
 
     async fn find_entry<'a>(ents: Entries<'a>, meta: &'a Meta) -> Result<Option<Entry>> {
         trace!("find entry with meta: {:?}", meta);
-        TryStreamExt::try_next(&mut ents.try_filter(|entry| future::ready(*meta == entry.meta())))
-            .await
+        TryStreamExt::try_next(
+            &mut ents.try_filter(|entry| future::ready(Some(meta) == entry.meta())),
+        )
+        .await
     }
 
     #[inline]
