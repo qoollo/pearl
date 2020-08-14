@@ -166,16 +166,11 @@ impl<K> Storage<K> {
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
     pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
-        if !self.inner.config.allow_duplicates() {
-            todo!("replace with meta check instead of reading all meta");
-            // let existing_metas = self
-            //     .get_all_existing_metas(&key)
-            //     .await
-            //     .with_context(|| "storage write with get all existing metas failed")?;
-            // if existing_metas.contains(&meta) {
-            //     warn!("record with key {:?} and meta {:?} exists", key, meta);
-            //     return Ok(());
-            // }
+        if !self.inner.config.allow_duplicates()
+            && self.contains_with(key.as_ref(), Some(&meta)).await?
+        {
+            warn!("record with key {:?} and meta {:?} exists", key, meta);
+            return Ok(());
         }
         let record = Record::create(&key, value, meta)
             .with_context(|| "storage write with record creation failed")?;
@@ -457,15 +452,19 @@ impl<K> Storage<K> {
     /// Fails because of any IO errors
     pub async fn contains(&self, key: impl Key) -> Result<bool> {
         let key = key.as_ref();
+        self.contains_with(key, None).await
+    }
+
+    async fn contains_with(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
         let inner = self.inner.safe.lock().await;
         let in_active = if let Some(active_blob) = &inner.active_blob {
-            active_blob.contains(key, None).await?
+            active_blob.contains(key, meta).await?
         } else {
             false
         };
         if !in_active {
             for blob in &inner.blobs {
-                if blob.contains(key, None).await? {
+                if blob.contains(key, meta).await? {
                     return Ok(true);
                 }
             }
