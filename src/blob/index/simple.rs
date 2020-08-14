@@ -412,7 +412,7 @@ impl Index for Simple {
 
     async fn get_all(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
         match &self.inner {
-            State::InMemory(headers) => unimplemented!(),
+            State::InMemory(headers) => Ok(headers.get(key).cloned()),
             State::OnDisk(file) => unimplemented!(),
         }
     }
