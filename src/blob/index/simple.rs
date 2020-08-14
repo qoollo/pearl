@@ -89,7 +89,7 @@ impl Simple {
             }
             State::OnDisk(file) => {
                 debug!("blob index simple get all meta locations from on disk state");
-                let headers = Self::search_all(file, key, self.header.clone())
+                let headers = Self::search_all(file, key, &self.header)
                     .await
                     .with_context(|| "blob index get all meta locations search all failed")?;
                 Ok(headers.map(|headers| Self::meta_locations_from_headers(&headers)))
@@ -164,7 +164,7 @@ impl Simple {
     async fn binary_search(
         file: &File,
         key: &[u8],
-        header: IndexHeader,
+        header: &IndexHeader,
     ) -> Result<Option<(RecordHeader, usize)>> {
         debug!("blob index simple binary search header {:?}", header);
 
@@ -201,10 +201,10 @@ impl Simple {
     async fn search_all(
         file: &File,
         key: &[u8],
-        index_header: IndexHeader,
+        index_header: &IndexHeader,
     ) -> Result<Option<Vec<RecordHeader>>> {
         let file2 = file.clone();
-        if let Some(header_pos) = Self::binary_search(file, key, index_header.clone())
+        if let Some(header_pos) = Self::binary_search(file, key, index_header)
             .await
             .with_context(|| "blob, index simple, search all, binary search failed")?
         {
@@ -413,7 +413,7 @@ impl Index for Simple {
     async fn get_all(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
         match &self.inner {
             State::InMemory(headers) => Ok(headers.get(key).cloned()),
-            State::OnDisk(file) => unimplemented!(),
+            State::OnDisk(file) => Self::search_all(file, key, &self.header).await,
         }
     }
 
@@ -432,7 +432,7 @@ impl Index for Simple {
             State::OnDisk(index_file) => {
                 debug!("index get any on disk");
                 if let Some((header, _)) =
-                    Self::binary_search(index_file, &key.to_vec(), self.header.clone()).await?
+                    Self::binary_search(index_file, &key.to_vec(), &self.header).await?
                 {
                     debug!("index get any on disk header found");
                     Ok(Some(header))
