@@ -39,29 +39,38 @@ pub struct Entries<'a> {
 }
 
 impl Entry {
-    /// Returns record data
+    /// Consumes Entry and returns whole loaded record.
     /// # Errors
     /// Returns the error type for I/O operations, see [`std::io::Error`]
     pub async fn load(self) -> Result<Record> {
         let meta_size = self.header.meta_size().try_into()?;
-        let header_size: usize = self.header.data_size().try_into()?;
-        let mut buf = vec![0; header_size + meta_size];
+        let data_size: usize = self.header.data_size().try_into()?;
+        let mut buf = vec![0; data_size + meta_size];
         self.blob_file
             .read_at(&mut buf, self.header.meta_offset())
             .await
             .with_context(|| "blob load failed")?; // TODO: verify read size
         let data_buf = buf.split_off(meta_size);
         let meta = Meta::from_raw(&buf)?;
-        let record = Record::new(self.header, meta, data_buf);
+        let record = Record::new(self.header.clone(), meta, data_buf);
         record.validate()
     }
 
-    pub(crate) async fn load_data(&mut self) -> Result<Vec<u8>> {
-        unimplemented!()
+    /// Returns only data.
+    pub async fn load_data(&self) -> Result<Vec<u8>> {
+        let data_offset = self.header.data_offset();
+        let mut buf = vec![0; self.header.data_size().try_into()?];
+        self.blob_file.read_at(&mut buf, data_offset).await?;
+        Ok(buf)
     }
 
-    pub(crate) async fn load_meta(&mut self) -> Result<Meta> {
-        unimplemented!()
+    /// Loads meta data from fisk, and returns reference to it.
+    pub async fn load_meta(&mut self) -> Result<Option<&Meta>> {
+        let meta_offset = self.header.meta_offset();
+        let mut buf = vec![0; self.header.meta_size().try_into()?];
+        self.blob_file.read_at(&mut buf, meta_offset).await?;
+        self.meta = Some(Meta::from_raw(&buf)?);
+        Ok(self.meta.as_ref())
     }
 
     pub(crate) fn new(header: RecordHeader, blob_file: File) -> Self {

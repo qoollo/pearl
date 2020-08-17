@@ -394,6 +394,7 @@ impl Index for Simple {
         debug!("blob index simple push");
         match &mut self.inner {
             State::InMemory(headers) => {
+                debug!("blob index simple push bloom filter add");
                 self.filter.add(h.key());
                 debug!("blob index simple push key: {:?}", h.key());
                 if let Some(v) = headers.get_mut(h.key()) {
@@ -445,7 +446,7 @@ impl Index for Simple {
 
     async fn dump(&mut self) -> Result<usize> {
         if let State::InMemory(headers) = &mut self.inner {
-            debug!("blob index simple in memory headers {:?}", headers);
+            debug!("blob index simple in memory headers {}", headers.len());
             let res = Self::serialize_record_headers(headers, &self.filter)?;
             match res {
                 Some((header, buf)) => {

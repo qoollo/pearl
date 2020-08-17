@@ -183,13 +183,15 @@ impl Blob {
         debug!("blob read any");
         let entry = self
             .get_any_entry(key, meta)
-            .await?
+            .await
+            .unwrap()
             .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
         debug!("blob read any entry found");
         let buf = entry
             .load()
             .await
-            .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?
+            .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))
+            .unwrap()
             .into_data();
         debug!("blob read any entry loaded bytes: {}", buf.len());
         Ok(buf)
@@ -209,13 +211,23 @@ impl Blob {
     }
 
     async fn get_any_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {
-        debug!("blob get any entry");
+        debug!("blob get any entry {:?}, {:?}", key, meta);
         if self.check_bloom(key) == Some(false) {
+            debug!("blob core get any entry check bloom returned Some(false)");
             Ok(None)
         } else if let Some(meta) = meta {
-            let entries = self.index.get_entries(key, self.file.clone());
-            let entry = Self::find_entry(entries, meta).await?;
-            Ok(entry)
+            debug!("blob get any entry meta: {:?}", meta);
+            let headers = self.index.get_all(key).await?.unwrap();
+            let mut entries = headers
+                .into_iter()
+                .map(|header| Entry::new(header, self.file.clone()))
+                .collect::<Vec<_>>();
+            for mut entry in entries {
+                if entry.load_meta().await.unwrap().unwrap() == meta {
+                    return Ok(Some(entry));
+                }
+            }
+            Ok(None)
         } else {
             debug!("blob get any entry bloom true no meta");
             if let Some(header) = self

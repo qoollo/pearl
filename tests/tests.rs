@@ -99,8 +99,9 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let now = Instant::now();
     let path = common::init("multithread");
     let storage = common::default_test_storage_in(&path).await?;
-    let threads = 10;
-    let indexes = common::create_indexes(threads, 10);
+    let threads = 20;
+    let writes = 20;
+    let indexes = common::create_indexes(threads, writes);
     let data = vec![184u8; 3000];
     let clonned_storage = storage.clone();
     let handles: FuturesUnordered<_> = indexes
@@ -115,8 +116,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
                 range.shuffle(&mut rand::thread_rng());
                 for i in range {
                     write_one(&s, i as u32, &clonned_data, None).await.unwrap();
-                    let res = s.read(KeyTest::new(i as u32)).await.unwrap();
-                    assert_eq!(data.to_vec(), res);
+                    delay_for(Duration::from_millis(2)).await;
                 }
             };
             tokio::spawn(task)
@@ -132,6 +132,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
         .flatten()
         .map(|i| *i as u32)
         .collect::<Vec<_>>();
+    debug!("make sure that all keys was written");
     common::check_all_written(&storage, keys).await?;
     common::clean(storage, path).await.unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());

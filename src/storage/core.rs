@@ -149,7 +149,7 @@ impl<K> Storage<K> {
     ///
     /// [`write_with`]: Storage::write_with
     pub async fn write(&self, key: impl Key, value: Vec<u8>) -> Result<()> {
-        self.write_with(key, value, Meta::new()).await
+        self.write_with_optional_meta(key, value, None).await
     }
 
     /// Similar to [`write`] but with metadata
@@ -166,13 +166,23 @@ impl<K> Storage<K> {
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
     pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
+        self.write_with_optional_meta(key, value, Some(meta)).await
+    }
+
+    async fn write_with_optional_meta(
+        &self,
+        key: impl Key,
+        value: Vec<u8>,
+        meta: Option<Meta>,
+    ) -> Result<()> {
+        debug!("storage write with {:?}, {}b, {:?}", key, value.len(), meta);
         if !self.inner.config.allow_duplicates()
-            && self.contains_with(key.as_ref(), Some(&meta)).await?
+            && self.contains_with(key.as_ref(), meta.as_ref()).await?
         {
             warn!("record with key {:?} and meta {:?} exists", key, meta);
             return Ok(());
         }
-        let record = Record::create(&key, value, meta)
+        let record = Record::create(&key, value, meta.unwrap_or_default())
             .with_context(|| "storage write with record creation failed")?;
         let mut safe = self.inner.safe.lock().await;
         let blob = safe
@@ -224,6 +234,7 @@ impl<K> Storage<K> {
     /// [`read_with`]: Storage::read_with
     #[inline]
     pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
+        debug!("srorage read {:?}", key);
         self.read_with_optional_meta(key, None).await
     }
     /// Reads data matching given key and metadata
@@ -242,7 +253,10 @@ impl<K> Storage<K> {
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
     pub async fn read_with(&self, key: impl Key, meta: &Meta) -> Result<Vec<u8>> {
-        self.read_with_optional_meta(key, Some(meta)).await
+        debug!("srorage read with {:?}", key);
+        self.read_with_optional_meta(key, Some(meta))
+            .await
+            .with_context(|| "read with optional meta failed")
     }
 
     /// Returns entries with matching key
@@ -273,7 +287,7 @@ impl<K> Storage<K> {
     }
 
     async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {
-        debug!("storage read with optional meta");
+        debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let inner = self.inner.safe.lock().await;
         let key = key.as_ref();
         let active_blob_read_res = inner
@@ -298,8 +312,15 @@ impl<K> Storage<K> {
                     .iter()
                     .map(|blob| blob.read_any(key, meta))
                     .collect();
+                debug!(
+                    "storage read with optional meta {} closed blobs",
+                    stream.len()
+                );
                 let mut task = stream.skip_while(Result::is_err);
-                task.next().await.ok_or_else(Error::not_found)??
+                task.next()
+                    .await
+                    .ok_or_else(Error::not_found)
+                    .with_context(|| "no results in closed blobs")??
             }
         };
         Ok(record)
