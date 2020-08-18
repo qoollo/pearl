@@ -200,7 +200,10 @@ impl Blob {
     #[inline]
     pub(crate) async fn read_all(&self, key: &[u8]) -> Result<Option<Vec<Entry>>> {
         let headers = self.index.get_all(key).await?;
-        Ok(headers.map(|h| Self::headers_to_entries_with_meta(h, self.file.clone())))
+        Ok(headers.map(|h| {
+            debug!("blob core read all {} headers", h.len());
+            Self::headers_to_entries_with_meta(h, self.file.clone())
+        }))
     }
 
     fn headers_to_entries_with_meta(headers: Vec<RecordHeader>, file: File) -> Vec<Entry> {

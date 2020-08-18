@@ -61,6 +61,11 @@ impl Meta {
         serialize(&self)
     }
 
+    /// Get attribute.
+    pub fn get(&self, k: impl AsRef<str>) -> Option<&Vec<u8>> {
+        self.0.get(k.as_ref())
+    }
+
     pub(crate) async fn load(file: &File, location: Location) -> Result<Self> {
         trace!("meta load");
         let mut buf = vec![0; location.size()];
@@ -163,6 +168,10 @@ impl Record {
             error!("{:?}", e);
             Err(Error::from(e).into())
         }
+    }
+
+    pub fn meta(&self) -> &Meta {
+        &self.meta
     }
 }
 

@@ -344,33 +344,52 @@ async fn test_read_all_load_all() {
     let path = common::init("read_all");
     let storage = common::create_test_storage(&path, 100_000).await.unwrap();
     let key = 3456;
-    let records_write = common::generate_records(500, 9_000);
-    for (i, data) in &records_write {
+    let records_write = common::generate_records(100, 9_000);
+    let mut versions = Vec::new();
+    for (count, (i, data)) in records_write.iter().enumerate() {
+        let v = i.to_string();
+        versions.push(v.as_bytes().to_vec());
+        write_one(&storage, key, data, Some(&v)).await.unwrap();
         delay_for(Duration::from_millis(1)).await;
-        write_one(&storage, key, data, Some(&i.to_string()))
-            .await
-            .unwrap();
+        assert_eq!(storage.records_count().await, count + 1);
     }
-    delay_for(Duration::from_millis(1000)).await;
-    let mut records_read = storage
+    assert_eq!(storage.records_count().await, records_write.len());
+    delay_for(Duration::from_millis(100)).await;
+    let records_read = storage
         .read_all(&KeyTest::new(key))
         .and_then(|entry| {
             entry
                 .into_iter()
                 .map(|e| e.load())
                 .collect::<FuturesUnordered<_>>()
-                .map(|e| e.map(|r| r.into_data()))
                 .try_collect::<Vec<_>>()
         })
         .await
         .unwrap();
-    assert_eq!(records_write.len(), records_read.len());
+    let mut versions2 = records_read
+        .iter()
+        .map(|r| r.meta().get("version").unwrap().to_vec())
+        .collect::<Vec<_>>();
+    versions.sort();
+    versions2.sort();
+    for v1 in &versions {
+        if !versions2.contains(v1) {
+            debug!("MISSED: {:?}", v1);
+        }
+    }
+    assert_eq!(versions2.len(), versions.len());
+    assert_eq!(versions2, versions);
     let mut records = records_write
         .into_iter()
         .map(|(_, data)| data)
         .collect::<Vec<_>>();
+    let mut records_read = records_read
+        .into_iter()
+        .map(|r| r.into_data())
+        .collect::<Vec<_>>();
     records.sort();
     records_read.sort();
+    assert_eq!(records.len(), records_read.len());
     assert_eq!(records, records_read);
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());

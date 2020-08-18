@@ -209,23 +209,47 @@ impl Simple {
             .with_context(|| "blob, index simple, search all, binary search failed")?
         {
             let orig_pos = header_pos.1;
+            debug!(
+                "blob index simple search all total {}, pos {}",
+                index_header.records_count, orig_pos
+            );
             let mut headers: Vec<RecordHeader> = vec![header_pos.0];
             // go left
-            let mut pos = orig_pos - 1;
+            let mut pos = orig_pos;
+            debug!(
+                "blob index simple search all headers {}, pos {}",
+                headers.len(),
+                pos
+            );
             while pos > 0 {
+                pos -= 1;
+                debug!(
+                    "blob index simple search all headers {}, pos {}",
+                    headers.len(),
+                    pos
+                );
                 let rh = Self::read_at(&file2, pos, &index_header)
                     .await
                     .with_context(|| "blob, index simple, search all, read at failed")?;
                 if rh.key() == key {
                     headers.push(rh);
-                    pos -= 1;
                 } else {
                     break;
                 }
             }
+            debug!(
+                "blob index simple search all headers {}, pos {}",
+                headers.len(),
+                pos
+            );
             //go right
             pos = orig_pos + 1;
             while pos < index_header.records_count {
+                debug!(
+                    "blob index simple search all headers {}, pos {}",
+                    headers.len(),
+                    pos
+                );
                 let rh = Self::read_at(&file2, pos, &index_header)
                     .await
                     .with_context(|| "blob, index simple, search all, read at failed")?;
@@ -236,6 +260,11 @@ impl Simple {
                     break;
                 }
             }
+            debug!(
+                "blob index simple search all headers {}, pos {}",
+                headers.len(),
+                pos
+            );
             Ok(Some(headers))
         } else {
             debug!("Record not found by binary search on disk");
@@ -398,7 +427,8 @@ impl Index for Simple {
                 self.filter.add(h.key());
                 debug!("blob index simple push key: {:?}", h.key());
                 if let Some(v) = headers.get_mut(h.key()) {
-                    v.push(h)
+                    v.push(h);
+                    debug!("blob index simple push headers for key: {:?}", v);
                 } else {
                     headers.insert(h.key().to_vec(), vec![h]);
                 }
@@ -472,7 +502,7 @@ impl Index for Simple {
 
     async fn count(&self) -> Result<usize> {
         match &self.inner {
-            State::InMemory(headers) => Ok(headers.len()),
+            State::InMemory(headers) => Ok(headers.values().fold(0, |acc, x| acc + x.len())),
             State::OnDisk(_) => {
                 Self::from_file(self.name.clone(), self.filter_is_on, self.ioring.clone())
                     .map_ok(Self::count_inner)
