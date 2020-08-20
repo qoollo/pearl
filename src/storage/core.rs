@@ -277,33 +277,30 @@ impl<K> Storage<K> {
             .read_any(key, meta)
             .await;
         debug!("storage read with optional meta from active blob finished");
-        let record = match active_blob_read_res {
-            Ok(record) => {
-                debug!("storage read with optional meta active blob returned record");
-                record
+        match active_blob_read_res {
+            Ok(data) => {
+                debug!("storage read with optional meta active blob returned data");
+                Ok(data)
             }
             Err(e) => {
-                debug!(
-                    "storage read with optional meta active blob returned: {:#?}",
-                    e
-                );
-                let stream: FuturesUnordered<_> = inner
-                    .blobs
-                    .iter()
-                    .map(|blob| blob.read_any(key, meta))
-                    .collect();
-                debug!(
-                    "storage read with optional meta {} closed blobs",
-                    stream.len()
-                );
-                let mut task = stream.skip_while(Result::is_err);
-                task.next()
-                    .await
-                    .ok_or_else(Error::not_found)
-                    .with_context(|| "no results in closed blobs")??
+                debug!("read with optional meta active blob returned: {:#?}", e);
+                Self::get_any_data(&inner, key, meta).await
             }
-        };
-        Ok(record)
+        }
+    }
+
+    async fn get_any_data(inner: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+        let stream: FuturesUnordered<_> = inner
+            .blobs
+            .iter()
+            .map(|blob| blob.read_any(key, meta))
+            .collect();
+        debug!("read with optional meta {} closed blobs", stream.len());
+        let mut task = stream.skip_while(Result::is_err);
+        task.next()
+            .await
+            .ok_or_else(Error::not_found)?
+            .with_context(|| "no results in closed blobs")
     }
 
     /// Stop blob updater and release lock file
@@ -458,19 +455,18 @@ impl<K> Storage<K> {
 
     async fn contains_with(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
         let inner = self.inner.safe.lock().await;
-        let in_active = if let Some(active_blob) = &inner.active_blob {
-            active_blob.contains(key, meta).await?
-        } else {
-            false
-        };
-        if !in_active {
-            for blob in &inner.blobs {
-                if blob.contains(key, meta).await? {
-                    return Ok(true);
-                }
+        if let Some(active_blob) = &inner.active_blob {
+            if active_blob.contains(key, meta).await? {
+                return Ok(true);
             }
         }
-        Ok(in_active)
+        for blob in &inner.blobs {
+            if blob.contains(key, meta).await? {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
     }
 
     /// `check_bloom` is used to check whether a key is in storage.

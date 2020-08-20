@@ -3,16 +3,18 @@ use crate::prelude::*;
 /// bloom filter for faster check record contains in blob
 pub mod bloom;
 mod simple;
+mod tools;
 
 pub(crate) use super::prelude::*;
 pub(crate) use bloom::{Bloom, Config};
-pub(crate) use simple::Simple;
+pub(crate) use simple::{InMemoryIndex, IndexHeader, Simple};
 
 mod prelude {
     pub(crate) use super::*;
     pub(crate) use ahash::AHasher;
     pub(crate) use bitvec::prelude::*;
     pub(crate) use std::hash::Hasher;
+    pub(crate) use tools::*;
 }
 
 #[async_trait::async_trait]

@@ -78,7 +78,7 @@ mod prelude {
     pub(crate) use blob::{self, Blob, BloomConfig};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::{
-        future::{self, Future, FutureExt, TryFutureExt},
+        future::{self, Future, FutureExt},
         lock::Mutex,
         stream::{futures_unordered::FuturesUnordered, Stream, TryStreamExt},
     };

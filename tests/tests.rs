@@ -21,13 +21,13 @@ use common::KeyTest;
 
 #[tokio::test]
 async fn test_storage_init_new() {
-    let now = Instant::now();
     let path = common::init("new");
     let storage = common::default_test_storage_in(&path).await.unwrap();
+    // check if active blob created
     assert_eq!(storage.blobs_count(), 1);
+    // check if active blob file exists
     assert!(path.join("test.0.blob").exists());
     common::clean(storage, path).await.unwrap();
-    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
 #[tokio::test]
@@ -75,22 +75,20 @@ async fn test_storage_multiple_read_write() {
     let keys = (0..100).collect::<Vec<u32>>();
     let data = b"test data string";
 
-    let write_stream: FuturesUnordered<_> = keys
-        .iter()
+    keys.iter()
         .map(|key| write_one(&storage, *key, data, None))
-        .collect();
-    write_stream.collect::<Vec<_>>().await;
-    let read_stream: FuturesUnordered<_> = keys
+        .collect::<FuturesUnordered<_>>()
+        .collect::<Vec<_>>()
+        .await;
+    let data_from_file = keys
         .iter()
         .map(|key| storage.read(KeyTest::new(*key)))
-        .collect();
-    let data_from_file = read_stream
-        .map_err(|e| dbg!(e))
+        .collect::<FuturesUnordered<_>>()
         .map(Result::unwrap)
         .collect::<Vec<_>>()
         .await;
-    common::clean(storage, path).await.unwrap();
     assert_eq!(keys.len(), data_from_file.len());
+    common::clean(storage, path).await.unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
