@@ -242,10 +242,6 @@ impl<K> Storage<K> {
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
-        debug!(
-            "storage core read all active blob total count {}",
-            active_blob.records_count().await.unwrap()
-        );
         if let Some(entries) = active_blob.read_all(key).await? {
             debug!(
                 "storage core read all active blob entries {}",
@@ -256,13 +252,7 @@ impl<K> Storage<K> {
         let entries_closed_blobs = safe
             .blobs
             .iter()
-            .map(|b| async move {
-                debug!(
-                    "storage core read all closed blob total count {}",
-                    b.records_count().await.unwrap()
-                );
-                b.read_all(key).await
-            })
+            .map(|b| b.read_all(key))
             .collect::<FuturesUnordered<_>>();
         entries_closed_blobs
             .try_filter_map(future::ok)

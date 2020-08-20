@@ -183,15 +183,13 @@ impl Blob {
         debug!("blob read any");
         let entry = self
             .get_any_entry(key, meta)
-            .await
-            .unwrap()
+            .await?
             .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
         debug!("blob read any entry found");
         let buf = entry
             .load()
             .await
-            .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))
-            .unwrap()
+            .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?
             .into_data();
         debug!("blob read any entry loaded bytes: {}", buf.len());
         Ok(buf)
@@ -220,14 +218,18 @@ impl Blob {
             Ok(None)
         } else if let Some(meta) = meta {
             debug!("blob get any entry meta: {:?}", meta);
-            let headers = self.index.get_all(key).await?.unwrap();
-            let entries = headers
-                .into_iter()
-                .map(|header| Entry::new(header, self.file.clone()))
-                .collect::<Vec<_>>();
-            for mut entry in entries {
-                if entry.load_meta().await.unwrap().unwrap() == meta {
-                    return Ok(Some(entry));
+            let headers = self.index.get_all(key).await?;
+            if let Some(headers) = headers {
+                let entries = headers
+                    .into_iter()
+                    .map(|header| Entry::new(header, self.file.clone()))
+                    .collect::<Vec<_>>();
+                for mut entry in entries {
+                    if let Some(read_meta) = entry.load_meta().await? {
+                        if read_meta == meta {
+                            return Ok(Some(entry));
+                        }
+                    }
                 }
             }
             Ok(None)
