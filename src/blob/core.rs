@@ -200,11 +200,11 @@ impl Blob {
         let headers = self.index.get_all(key).await?;
         Ok(headers.map(|h| {
             debug!("blob core read all {} headers", h.len());
-            Self::headers_to_entries_with_meta(h, &self.file)
+            Self::headers_to_entries(h, &self.file)
         }))
     }
 
-    fn headers_to_entries_with_meta(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
+    fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
         headers
             .into_iter()
             .map(|header| Entry::new(header, file.clone()))
@@ -218,21 +218,7 @@ impl Blob {
             Ok(None)
         } else if let Some(meta) = meta {
             debug!("blob get any entry meta: {:?}", meta);
-            let headers = self.index.get_all(key).await?;
-            if let Some(headers) = headers {
-                let entries = headers
-                    .into_iter()
-                    .map(|header| Entry::new(header, self.file.clone()))
-                    .collect::<Vec<_>>();
-                for mut entry in entries {
-                    if let Some(read_meta) = entry.load_meta().await? {
-                        if read_meta == meta {
-                            return Ok(Some(entry));
-                        }
-                    }
-                }
-            }
-            Ok(None)
+            self.get_any_entry_with_meta(key, meta).await
         } else {
             debug!("blob get any entry bloom true no meta");
             if let Some(header) = self
@@ -248,6 +234,25 @@ impl Blob {
                 Ok(None)
             }
         }
+    }
+
+    async fn get_any_entry_with_meta(&self, key: &[u8], meta: &Meta) -> Result<Option<Entry>> {
+        let headers = self.index.get_all(key).await?;
+        if let Some(headers) = headers {
+            let entries = Self::headers_to_entries(headers, &self.file);
+            self.filter_entries(entries, meta).await
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn filter_entries(&self, entries: Vec<Entry>, meta: &Meta) -> Result<Option<Entry>> {
+        for mut entry in entries {
+            if Some(meta) == entry.load_meta().await? {
+                return Ok(Some(entry));
+            }
+        }
+        Ok(None)
     }
 
     pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
