@@ -106,23 +106,6 @@ impl Simple {
         matches!(&self.inner, State::OnDisk(_))
     }
 
-    pub async fn load_records(file: &File) -> Result<InMemoryIndex> {
-        let buf = file.read_all().await?;
-        let headers = if buf.is_empty() {
-            debug!("empty index file");
-            InMemoryIndex::new()
-        } else {
-            trace!("deserialize headers");
-            let header = Self::deserialize_header(&buf)?;
-            Self::deserialize_record_headers(
-                &buf[header.serialized_size()? as usize + header.filter_buf_size..],
-                header.records_count,
-                header.record_header_size,
-            )?
-        };
-        Ok(headers)
-    }
-
     async fn binary_search(
         file: &File,
         key: &[u8],

@@ -61,7 +61,7 @@ mod error;
 mod record;
 mod storage;
 
-pub use blob::{filter, Entries, Entry};
+pub use blob::{filter, Entry};
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
@@ -78,7 +78,7 @@ mod prelude {
     pub(crate) use blob::{self, Blob, BloomConfig};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::{
-        future::{self, BoxFuture, Future, FutureExt, TryFutureExt},
+        future::{self, Future, FutureExt, TryFutureExt},
         lock::Mutex,
         stream::{futures_unordered::FuturesUnordered, Stream, TryStreamExt},
     };
