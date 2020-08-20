@@ -65,22 +65,6 @@ impl Meta {
     pub fn get(&self, k: impl AsRef<str>) -> Option<&Vec<u8>> {
         self.0.get(k.as_ref())
     }
-
-    pub(crate) async fn load(file: &File, location: Location) -> Result<Self> {
-        trace!("meta load");
-        let mut buf = vec![0; location.size()];
-        trace!(
-            "file read at: {} bytes, offset: {}",
-            location.size(),
-            location.offset()
-        );
-        let n = file
-            .read_at(&mut buf, location.offset())
-            .await
-            .context("failed to load record from file")?;
-        trace!("read {} bytes", n);
-        Ok(Self::from_raw(&buf)?)
-    }
 }
 
 impl Record {
@@ -195,13 +179,6 @@ impl Header {
             data_checksum,
             header_checksum: 0,
         }
-    }
-
-    #[inline]
-    pub(crate) fn meta_location(&self) -> Location {
-        let offset = self.blob_offset + self.serialized_size();
-        let size = self.meta_size.try_into().expect("convert to usize");
-        Location::new(offset, size)
     }
 
     #[inline]

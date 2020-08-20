@@ -57,6 +57,8 @@ impl Entry {
     }
 
     /// Returns only data.
+    /// # Errors
+    /// Fails after any disk IO errors.
     pub async fn load_data(&self) -> Result<Vec<u8>> {
         let data_offset = self.header.data_offset();
         let mut buf = vec![0; self.header.data_size().try_into()?];
@@ -65,6 +67,8 @@ impl Entry {
     }
 
     /// Loads meta data from fisk, and returns reference to it.
+    /// # Errors
+    /// Fails after any disk IO errors.
     pub async fn load_meta(&mut self) -> Result<Option<&Meta>> {
         let meta_offset = self.header.meta_offset();
         let mut buf = vec![0; self.header.meta_size().try_into()?];
@@ -79,10 +83,6 @@ impl Entry {
             header,
             blob_file,
         }
-    }
-
-    pub(crate) fn meta(&self) -> Option<&Meta> {
-        self.meta.as_ref()
     }
 }
 
@@ -104,7 +104,7 @@ impl<'a> Stream for Entries<'a> {
             trace!("headers loaded");
             if let Some(header) = headers.pop() {
                 trace!("{} headers loaded, create entries from them", headers.len());
-                let mut entry = Entry::new(header, self.blob_file.clone());
+                let entry = Entry::new(header, self.blob_file.clone());
                 Poll::Ready(Some(Ok(entry)))
             } else {
                 trace!("no headers left, finish entries future");
@@ -118,20 +118,6 @@ impl<'a> Stream for Entries<'a> {
 }
 
 impl<'a> Entries<'a> {
-    pub(crate) fn new(inner: &'a State, key: &'a [u8], blob_file: File) -> Self {
-        Self {
-            inner,
-            key,
-            token: Some(()),
-            in_memory_iter: None,
-            loading_entries: Vec::new(),
-            load_fut: None,
-            blob_file,
-            loaded_headers: None,
-            entries_fut: None,
-        }
-    }
-
     fn get_headers_from_index(
         self: Pin<&mut Self>,
         cx: &mut Context,

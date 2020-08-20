@@ -78,32 +78,6 @@ impl Simple {
         &self.name
     }
 
-    pub(crate) async fn get_all_meta_locations(&self, key: &[u8]) -> Result<Option<Vec<Location>>> {
-        debug!("blob index simple get all meta locations");
-        match &self.inner {
-            State::InMemory(headers) => {
-                debug!("blob index simple get all meta locations from in memory state");
-                Ok(headers
-                    .get(key)
-                    .map(|v| Self::meta_locations_from_headers(v)))
-            }
-            State::OnDisk(file) => {
-                debug!("blob index simple get all meta locations from on disk state");
-                let headers = Self::search_all(file, key, &self.header)
-                    .await
-                    .with_context(|| "blob index get all meta locations search all failed")?;
-                Ok(headers.map(|headers| Self::meta_locations_from_headers(&headers)))
-            }
-        }
-    }
-
-    fn meta_locations_from_headers(headers: &[RecordHeader]) -> Vec<Location> {
-        headers
-            .iter()
-            .filter_map(Self::try_create_meta_location)
-            .collect()
-    }
-
     pub(crate) async fn from_file(name: FileName, filter_is_on: bool, ioring: Rio) -> Result<Self> {
         trace!("open index file");
         let mut file = File::open(name.to_path(), ioring.clone())
@@ -130,18 +104,6 @@ impl Simple {
 
     pub(crate) fn on_disk(&self) -> bool {
         matches!(&self.inner, State::OnDisk(_))
-    }
-
-    pub(crate) fn get_entries<'a, 'b: 'a>(&'b self, key: &'a [u8], file: File) -> Entries<'a> {
-        trace!("create iterator");
-        Entries::new(&self.inner, key, file)
-    }
-
-    fn try_create_meta_location(h: &RecordHeader) -> Option<Location> {
-        Some(Location::new(
-            h.blob_offset() + h.serialized_size(),
-            h.meta_size().try_into().ok()?,
-        ))
     }
 
     pub async fn load_records(file: &File) -> Result<InMemoryIndex> {

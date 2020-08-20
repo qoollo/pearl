@@ -75,7 +75,7 @@ mod prelude {
 
     pub(crate) use anyhow::{Context as ErrorContexts, Result};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
-    pub(crate) use blob::{self, Blob, BloomConfig, File, Location};
+    pub(crate) use blob::{self, Blob, BloomConfig};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::{
         future::{self, BoxFuture, Future, FutureExt, TryFutureExt},

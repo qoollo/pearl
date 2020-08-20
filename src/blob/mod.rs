@@ -3,7 +3,7 @@ mod entry;
 mod file;
 mod index;
 
-pub(crate) use self::core::{Blob, FileName, Location};
+pub(crate) use self::core::{Blob, FileName};
 pub use self::entry::{Entries, Entry};
 pub(crate) use self::file::File;
 pub use self::index::bloom as filter;

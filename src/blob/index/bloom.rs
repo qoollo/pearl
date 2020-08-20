@@ -70,7 +70,7 @@ impl Bloom {
             }
         }
         Self {
-            inner: bitvec![0; bits_count as usize],
+            inner: bitvec![0; bits_count],
             hashers: Self::hashers(k),
             config,
         }

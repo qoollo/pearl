@@ -191,34 +191,6 @@ impl<K> Storage<K> {
             .ok_or_else(Error::active_blob_not_set)?;
         blob.write(record).await
     }
-
-    async fn get_all_existing_metas(&self, key: impl Key) -> Result<Vec<Meta>> {
-        let mut safe = self.inner.safe.lock().await;
-        let active_blob = safe
-            .active_blob
-            .as_mut()
-            .ok_or_else(Error::active_blob_not_set)?;
-        let mut metas = Vec::new();
-        if let Some(meta) = active_blob
-            .get_all_metas(key.as_ref())
-            .await
-            .with_context(|| "storage get all existing metas from active blob failed")?
-        {
-            metas.extend(meta);
-        }
-        for blob in &safe.blobs {
-            if let Some(meta) = blob.get_all_metas(key.as_ref()).await.with_context(|| {
-                format!(
-                    "storage get all existing metas from blob failed: {}",
-                    blob.name()
-                )
-            })? {
-                metas.extend(meta);
-            }
-        }
-        Ok(metas)
-    }
-
     /// Reads the first found data matching given key.
     /// # Examples
     /// ```no-run
@@ -260,6 +232,8 @@ impl<K> Storage<K> {
     }
 
     /// Returns entries with matching key
+    /// # Errors
+    /// Fails after any disk IO errors.
     pub async fn read_all(&self, key: &impl Key) -> Result<Vec<Entry>> {
         let key = key.as_ref();
         let mut all_entries = Vec::new();
