@@ -572,15 +572,16 @@ impl Inner {
     }
 
     async fn records_count(&self) -> usize {
-        self.safe.lock().await.records_count().await
+        self.safe.lock().await.records_count()
     }
 
     async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
-        self.safe.lock().await.records_count_detailed().await
+        self.safe.lock().await.records_count_detailed()
     }
 
     async fn records_count_in_active_blob(&self) -> Option<usize> {
-        self.safe.lock().await.records_count_in_active_blob().await
+        let inner = self.safe.lock().await;
+        inner.active_blob.as_ref().map(|b| b.records_count())
     }
 
     async fn fsyncdata(&self) -> IOResult<()> {
@@ -603,35 +604,25 @@ impl Safe {
         active_blob_id.max(blobs_max_id)
     }
 
-    async fn records_count(&self) -> usize {
-        let details = self.records_count_detailed().await;
+    fn records_count(&self) -> usize {
+        let details = self.records_count_detailed();
         details.iter().fold(0, |acc, (_, count)| acc + count)
     }
 
-    async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
+    fn records_count_detailed(&self) -> Vec<(usize, usize)> {
         let mut results = Vec::new();
         for blob in &self.blobs {
-            let count = blob.records_count().await;
-            if let Ok(c) = count {
-                let value = (blob.id(), c);
-                debug!("push: {:?}", value);
-                results.push(value);
-            }
+            let count = blob.records_count();
+            let value = (blob.id(), count);
+            debug!("push: {:?}", value);
+            results.push(value);
         }
-        if let Some(count) = self.records_count_in_active_blob().await {
-            let value = (self.blobs.len(), count);
+        if let Some(blob) = self.active_blob.as_ref() {
+            let value = (self.blobs.len(), blob.records_count());
             debug!("push: {:?}", value);
             results.push(value);
         }
         results
-    }
-
-    async fn records_count_in_active_blob(&self) -> Option<usize> {
-        if let Some(ref blob) = self.active_blob {
-            blob.records_count().await.ok()
-        } else {
-            None
-        }
     }
 
     async fn fsyncdata(&self) -> IOResult<()> {

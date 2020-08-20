@@ -182,7 +182,7 @@ impl Blob {
     pub(crate) async fn read_any(&self, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
         debug!("blob read any");
         let entry = self
-            .get_any_entry(key, meta)
+            .get_entry(key, meta)
             .await?
             .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
         debug!("blob read any entry found");
@@ -211,14 +211,14 @@ impl Blob {
             .collect()
     }
 
-    async fn get_any_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {
+    async fn get_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
         if self.check_bloom(key) == Some(false) {
             debug!("blob core get any entry check bloom returned Some(false)");
             Ok(None)
         } else if let Some(meta) = meta {
             debug!("blob get any entry meta: {:?}", meta);
-            self.get_any_entry_with_meta(key, meta).await
+            self.get_entry_with_meta(key, meta).await
         } else {
             debug!("blob get any entry bloom true no meta");
             if let Some(header) = self
@@ -236,7 +236,7 @@ impl Blob {
         }
     }
 
-    async fn get_any_entry_with_meta(&self, key: &[u8], meta: &Meta) -> Result<Option<Entry>> {
+    async fn get_entry_with_meta(&self, key: &[u8], meta: &Meta) -> Result<Option<Entry>> {
         let headers = self.index.get_all(key).await?;
         if let Some(headers) = headers {
             let entries = Self::headers_to_entries(headers, &self.file);
@@ -257,7 +257,7 @@ impl Blob {
 
     pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
         debug!("blob contains");
-        let contains = self.get_any_entry(key, meta).await?.is_some();
+        let contains = self.get_entry(key, meta).await?.is_some();
         debug!("blob contains any: {}", contains);
         Ok(contains)
     }
@@ -267,11 +267,8 @@ impl Blob {
         self.file.size()
     }
 
-    pub(crate) async fn records_count(&self) -> Result<usize> {
-        self.index
-            .count()
-            .await
-            .context("failed to get records count from index")
+    pub(crate) fn records_count(&self) -> usize {
+        self.index.count()
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {

@@ -48,7 +48,7 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
         let size = active_blob.file_size();
-        let count = active_blob.records_count().await? as u64;
+        let count = active_blob.records_count() as u64;
         (size, count)
     };
     trace!("lock released");

@@ -164,14 +164,6 @@ impl Simple {
         self.filter = filter;
         Ok(())
     }
-
-    fn count_inner(self) -> usize {
-        if let State::InMemory(index) = self.inner {
-            index.len()
-        } else {
-            self.header.records_count
-        }
-    }
 }
 
 #[async_trait::async_trait]
@@ -241,15 +233,7 @@ impl Index for Simple {
         }
     }
 
-    async fn count(&self) -> Result<usize> {
-        match &self.inner {
-            State::InMemory(headers) => Ok(headers.values().fold(0, |acc, x| acc + x.len())),
-            State::OnDisk(_) => {
-                let name = self.name.clone();
-                let ioring = self.ioring.clone();
-                let index = Self::from_file(name, self.filter_is_on, ioring).await?;
-                Ok(index.count_inner())
-            }
-        }
+    fn count(&self) -> usize {
+        self.header.records_count
     }
 }
