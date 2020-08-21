@@ -182,7 +182,7 @@ impl Blob {
     pub(crate) async fn read_any(&self, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
         debug!("blob read any");
         let entry = self
-            .get_any_entry(key, meta)
+            .get_entry(key, meta)
             .await?
             .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
         debug!("blob read any entry found");
@@ -196,18 +196,29 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) fn read_all<'a>(&'a self, key: &'a [u8]) -> Entries<'a> {
-        self.index.get_entries(key, self.file.clone())
+    pub(crate) async fn read_all_entries(&self, key: &[u8]) -> Result<Option<Vec<Entry>>> {
+        let headers = self.index.get_all(key).await?;
+        Ok(headers.map(|h| {
+            debug!("blob core read all {} headers", h.len());
+            Self::headers_to_entries(h, &self.file)
+        }))
     }
 
-    async fn get_any_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {
-        debug!("blob get any entry");
+    fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
+        headers
+            .into_iter()
+            .map(|header| Entry::new(header, file.clone()))
+            .collect()
+    }
+
+    async fn get_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {
+        debug!("blob get any entry {:?}, {:?}", key, meta);
         if self.check_bloom(key) == Some(false) {
+            debug!("blob core get any entry check bloom returned Some(false)");
             Ok(None)
         } else if let Some(meta) = meta {
-            let entries = self.index.get_entries(key, self.file.clone());
-            let entry = Self::find_entry(entries, meta).await?;
-            Ok(entry)
+            debug!("blob get any entry meta: {:?}", meta);
+            self.get_entry_with_meta(key, meta).await
         } else {
             debug!("blob get any entry bloom true no meta");
             if let Some(header) = self
@@ -216,7 +227,7 @@ impl Blob {
                 .await
                 .with_context(|| "blob index get any failed")?
             {
-                let entry = Entry::new(Meta::default(), header, self.file.clone());
+                let entry = Entry::new(header, self.file.clone());
                 debug!("blob, get any entry, bloom true no meta, entry found");
                 Ok(Some(entry))
             } else {
@@ -225,17 +236,30 @@ impl Blob {
         }
     }
 
-    pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
-        debug!("blob contains");
-        let contains = self.get_any_entry(key, meta).await?.is_some();
-        debug!("blob contains any: {}", contains);
-        Ok(contains)
+    async fn get_entry_with_meta(&self, key: &[u8], meta: &Meta) -> Result<Option<Entry>> {
+        let headers = self.index.get_all(key).await?;
+        if let Some(headers) = headers {
+            let entries = Self::headers_to_entries(headers, &self.file);
+            self.filter_entries(entries, meta).await
+        } else {
+            Ok(None)
+        }
     }
 
-    async fn find_entry<'a>(ents: Entries<'a>, meta: &'a Meta) -> Result<Option<Entry>> {
-        trace!("find entry with meta: {:?}", meta);
-        TryStreamExt::try_next(&mut ents.try_filter(|entry| future::ready(*meta == entry.meta())))
-            .await
+    async fn filter_entries(&self, entries: Vec<Entry>, meta: &Meta) -> Result<Option<Entry>> {
+        for mut entry in entries {
+            if Some(meta) == entry.load_meta().await? {
+                return Ok(Some(entry));
+            }
+        }
+        Ok(None)
+    }
+
+    pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
+        debug!("blob contains");
+        let contains = self.get_entry(key, meta).await?.is_some();
+        debug!("blob contains any: {}", contains);
+        Ok(contains)
     }
 
     #[inline]
@@ -243,11 +267,8 @@ impl Blob {
         self.file.size()
     }
 
-    pub(crate) async fn records_count(&self) -> Result<usize> {
-        self.index
-            .count()
-            .await
-            .context("failed to get records count from index")
+    pub(crate) fn records_count(&self) -> usize {
+        self.index.count()
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
@@ -257,39 +278,6 @@ impl Blob {
     #[inline]
     pub(crate) const fn id(&self) -> usize {
         self.name.id
-    }
-
-    pub(crate) async fn get_all_metas(&self, key: &[u8]) -> Result<Option<Vec<Meta>>> {
-        debug!("blob core get all metas");
-        if let Some(locations) = self
-            .index
-            .get_all_meta_locations(key)
-            .await
-            .with_context(|| "blob get all meta locations failed")?
-        {
-            if !locations.is_empty() {
-                return self.metadata_from_locations(locations).await.map(Some);
-            }
-        }
-        Ok(None)
-    }
-
-    async fn metadata_from_locations(&self, locations: Vec<Location>) -> Result<Vec<Meta>> {
-        debug!("blob core get all metas got all meta locations");
-        locations
-            .iter()
-            .map(|l| self.location_to_meta(l))
-            .collect::<FuturesUnordered<_>>()
-            .try_collect::<Vec<_>>()
-            .await
-    }
-
-    async fn location_to_meta(&self, location: &Location) -> Result<Meta> {
-        let mut buf = vec![0; location.size as usize];
-        self.file.read_at(&mut buf, location.offset).await?;
-        let meta =
-            Meta::from_raw(&buf).with_context(|| "blob get all metas meta creation failed")?;
-        Ok(meta)
     }
 
     pub(crate) fn check_bloom(&self, key: &[u8]) -> Option<bool> {
@@ -375,20 +363,6 @@ impl Header {
 pub struct Location {
     offset: u64,
     size: usize,
-}
-
-impl Location {
-    pub const fn new(offset: u64, size: usize) -> Self {
-        Self { offset, size }
-    }
-
-    pub(crate) const fn size(&self) -> usize {
-        self.size
-    }
-
-    pub(crate) const fn offset(&self) -> u64 {
-        self.offset
-    }
 }
 
 struct RawRecords {

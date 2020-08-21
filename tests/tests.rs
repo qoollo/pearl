@@ -5,6 +5,7 @@ use anyhow::Result as AnyResult;
 use futures::{
     future::FutureExt,
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
+    TryFutureExt,
 };
 use pearl::{Builder, Meta, Storage};
 use rand::seq::SliceRandom;
@@ -20,13 +21,13 @@ use common::KeyTest;
 
 #[tokio::test]
 async fn test_storage_init_new() {
-    let now = Instant::now();
     let path = common::init("new");
     let storage = common::default_test_storage_in(&path).await.unwrap();
+    // check if active blob created
     assert_eq!(storage.blobs_count(), 1);
+    // check if active blob file exists
     assert!(path.join("test.0.blob").exists());
     common::clean(storage, path).await.unwrap();
-    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
 #[tokio::test]
@@ -74,22 +75,20 @@ async fn test_storage_multiple_read_write() {
     let keys = (0..100).collect::<Vec<u32>>();
     let data = b"test data string";
 
-    let write_stream: FuturesUnordered<_> = keys
-        .iter()
+    keys.iter()
         .map(|key| write_one(&storage, *key, data, None))
-        .collect();
-    write_stream.collect::<Vec<_>>().await;
-    let read_stream: FuturesUnordered<_> = keys
+        .collect::<FuturesUnordered<_>>()
+        .collect::<Vec<_>>()
+        .await;
+    let data_from_file = keys
         .iter()
         .map(|key| storage.read(KeyTest::new(*key)))
-        .collect();
-    let data_from_file = read_stream
-        .map_err(|e| dbg!(e))
+        .collect::<FuturesUnordered<_>>()
         .map(Result::unwrap)
         .collect::<Vec<_>>()
         .await;
-    common::clean(storage, path).await.unwrap();
     assert_eq!(keys.len(), data_from_file.len());
+    common::clean(storage, path).await.unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -98,8 +97,9 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let now = Instant::now();
     let path = common::init("multithread");
     let storage = common::default_test_storage_in(&path).await?;
-    let threads = 10;
-    let indexes = common::create_indexes(threads, 10);
+    let threads = 20;
+    let writes = 25;
+    let indexes = common::create_indexes(threads, writes);
     let data = vec![184u8; 3000];
     let clonned_storage = storage.clone();
     let handles: FuturesUnordered<_> = indexes
@@ -114,8 +114,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
                 range.shuffle(&mut rand::thread_rng());
                 for i in range {
                     write_one(&s, i as u32, &clonned_data, None).await.unwrap();
-                    let res = s.read(KeyTest::new(i as u32)).await.unwrap();
-                    assert_eq!(data.to_vec(), res);
+                    delay_for(Duration::from_millis(2)).await;
                 }
             };
             tokio::spawn(task)
@@ -124,13 +123,14 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let handles = handles.try_collect::<Vec<_>>().await.unwrap();
     let index = path.join("test.0.index");
     delay_for(Duration::from_millis(32)).await;
-    // assert!(index.exists());
+    assert!(index.exists());
     assert_eq!(handles.len(), threads);
     let keys = indexes
         .iter()
         .flatten()
         .map(|i| *i as u32)
         .collect::<Vec<_>>();
+    debug!("make sure that all keys was written");
     common::check_all_written(&storage, keys).await?;
     common::clean(storage, path).await.unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -342,26 +342,52 @@ async fn test_read_all_load_all() {
     let path = common::init("read_all");
     let storage = common::create_test_storage(&path, 100_000).await.unwrap();
     let key = 3456;
-    let records_write = common::generate_records(500, 9_000);
-    for (i, data) in &records_write {
+    let records_write = common::generate_records(100, 9_000);
+    let mut versions = Vec::new();
+    for (count, (i, data)) in records_write.iter().enumerate() {
+        let v = i.to_string();
+        versions.push(v.as_bytes().to_vec());
+        write_one(&storage, key, data, Some(&v)).await.unwrap();
         delay_for(Duration::from_millis(1)).await;
-        write_one(&storage, key, data, Some(&i.to_string()))
-            .await
-            .unwrap();
+        assert_eq!(storage.records_count().await, count + 1);
     }
-    delay_for(Duration::from_millis(1000)).await;
-    let mut records_read = storage
+    assert_eq!(storage.records_count().await, records_write.len());
+    delay_for(Duration::from_millis(100)).await;
+    let records_read = storage
         .read_all(&KeyTest::new(key))
-        .then(|entry| async { entry.unwrap().load().await.unwrap().into_data() })
-        .collect::<Vec<_>>()
-        .await;
-    assert_eq!(records_write.len(), records_read.len());
+        .and_then(|entry| {
+            entry
+                .into_iter()
+                .map(|e| e.load())
+                .collect::<FuturesUnordered<_>>()
+                .try_collect::<Vec<_>>()
+        })
+        .await
+        .unwrap();
+    let mut versions2 = records_read
+        .iter()
+        .map(|r| r.meta().get("version").unwrap().to_vec())
+        .collect::<Vec<_>>();
+    versions.sort();
+    versions2.sort();
+    for v1 in &versions {
+        if !versions2.contains(v1) {
+            debug!("MISSED: {:?}", v1);
+        }
+    }
+    assert_eq!(versions2.len(), versions.len());
+    assert_eq!(versions2, versions);
     let mut records = records_write
         .into_iter()
         .map(|(_, data)| data)
         .collect::<Vec<_>>();
+    let mut records_read = records_read
+        .into_iter()
+        .map(|r| r.into_data())
+        .collect::<Vec<_>>();
     records.sort();
     records_read.sort();
+    assert_eq!(records.len(), records_read.len());
     assert_eq!(records, records_read);
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -383,9 +409,16 @@ async fn test_read_all_find_one_key() {
     debug!("read all with key: {:?}", &key);
     let records_read = storage
         .read_all(&KeyTest::new(key))
-        .then(|entry| async move { entry.unwrap().load().await.unwrap().into_data() })
-        .collect::<Vec<_>>()
-        .await;
+        .and_then(|entry| {
+            entry
+                .into_iter()
+                .map(|e| e.load())
+                .collect::<FuturesUnordered<_>>()
+                .map(|e| e.map(|r| r.into_data()))
+                .try_collect::<Vec<_>>()
+        })
+        .await
+        .unwrap();
     debug!("storage read all finished");
     assert_eq!(
         records_write

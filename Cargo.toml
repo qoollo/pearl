@@ -29,7 +29,7 @@ env_logger = "0.7"
 futures = "0.3.5"
 log = "0.4"
 rand = "0.7"
-rio = { git="https://github.com/agend/rio/", branch="fix_compiling_for_musl" }
+rio = "0.9.4"
 serde = "1.0"
 serde_derive = "1.0"
 thiserror = "1.0"

@@ -149,7 +149,7 @@ impl<K> Storage<K> {
     ///
     /// [`write_with`]: Storage::write_with
     pub async fn write(&self, key: impl Key, value: Vec<u8>) -> Result<()> {
-        self.write_with(key, value, Meta::new()).await
+        self.write_with_optional_meta(key, value, None).await
     }
 
     /// Similar to [`write`] but with metadata
@@ -166,17 +166,23 @@ impl<K> Storage<K> {
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
     pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
-        if !self.inner.config.allow_duplicates() {
-            let existing_metas = self
-                .get_all_existing_metas(&key)
-                .await
-                .with_context(|| "storage write with get all existing metas failed")?;
-            if existing_metas.contains(&meta) {
-                warn!("record with key {:?} and meta {:?} exists", key, meta);
-                return Ok(());
-            }
+        self.write_with_optional_meta(key, value, Some(meta)).await
+    }
+
+    async fn write_with_optional_meta(
+        &self,
+        key: impl Key,
+        value: Vec<u8>,
+        meta: Option<Meta>,
+    ) -> Result<()> {
+        debug!("storage write with {:?}, {}b, {:?}", key, value.len(), meta);
+        if !self.inner.config.allow_duplicates()
+            && self.contains_with(key.as_ref(), meta.as_ref()).await?
+        {
+            warn!("record with key {:?} and meta {:?} exists", key, meta);
+            return Ok(());
         }
-        let record = Record::create(&key, value, meta)
+        let record = Record::create(&key, value, meta.unwrap_or_default())
             .with_context(|| "storage write with record creation failed")?;
         let mut safe = self.inner.safe.lock().await;
         let blob = safe
@@ -185,34 +191,6 @@ impl<K> Storage<K> {
             .ok_or_else(Error::active_blob_not_set)?;
         blob.write(record).await
     }
-
-    async fn get_all_existing_metas(&self, key: impl Key) -> Result<Vec<Meta>> {
-        let mut safe = self.inner.safe.lock().await;
-        let active_blob = safe
-            .active_blob
-            .as_mut()
-            .ok_or_else(Error::active_blob_not_set)?;
-        let mut metas = Vec::new();
-        if let Some(meta) = active_blob
-            .get_all_metas(key.as_ref())
-            .await
-            .with_context(|| "storage get all existing metas from active blob failed")?
-        {
-            metas.extend(meta);
-        }
-        for blob in &safe.blobs {
-            if let Some(meta) = blob.get_all_metas(key.as_ref()).await.with_context(|| {
-                format!(
-                    "storage get all existing metas from blob failed: {}",
-                    blob.name()
-                )
-            })? {
-                metas.extend(meta);
-            }
-        }
-        Ok(metas)
-    }
-
     /// Reads the first found data matching given key.
     /// # Examples
     /// ```no-run
@@ -228,6 +206,7 @@ impl<K> Storage<K> {
     /// [`read_with`]: Storage::read_with
     #[inline]
     pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
+        debug!("srorage read {:?}", key);
         self.read_with_optional_meta(key, None).await
     }
     /// Reads data matching given key and metadata
@@ -246,16 +225,49 @@ impl<K> Storage<K> {
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
     pub async fn read_with(&self, key: impl Key, meta: &Meta) -> Result<Vec<u8>> {
-        self.read_with_optional_meta(key, Some(meta)).await
+        debug!("srorage read with {:?}", key);
+        self.read_with_optional_meta(key, Some(meta))
+            .await
+            .with_context(|| "read with optional meta failed")
     }
 
-    /// Returns stream producing entries with matching key
-    pub fn read_all<'a>(&'a self, key: &'a impl Key) -> ReadAll<'a, K> {
-        ReadAll::new(self, key.as_ref())
+    /// Returns entries with matching key
+    /// # Errors
+    /// Fails after any disk IO errors.
+    pub async fn read_all(&self, key: &impl Key) -> Result<Vec<Entry>> {
+        let key = key.as_ref();
+        let mut all_entries = Vec::new();
+        let safe = self.inner.safe.lock().await;
+        let active_blob = safe
+            .active_blob
+            .as_ref()
+            .ok_or_else(Error::active_blob_not_set)?;
+        if let Some(entries) = active_blob.read_all_entries(key).await? {
+            debug!(
+                "storage core read all active blob entries {}",
+                entries.len()
+            );
+            all_entries.extend(entries);
+        }
+        let entries_closed_blobs = safe
+            .blobs
+            .iter()
+            .map(|b| b.read_all_entries(key))
+            .collect::<FuturesUnordered<_>>();
+        entries_closed_blobs
+            .try_filter_map(future::ok)
+            .try_for_each(|v| {
+                debug!("storage core read all closed blob {} entries", v.len());
+                all_entries.extend(v);
+                future::ok(())
+            })
+            .await?;
+        debug!("storage core read all total {} entries", all_entries.len());
+        Ok(all_entries)
     }
 
     async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {
-        debug!("storage read with optional meta");
+        debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let inner = self.inner.safe.lock().await;
         let key = key.as_ref();
         let active_blob_read_res = inner
@@ -265,26 +277,30 @@ impl<K> Storage<K> {
             .read_any(key, meta)
             .await;
         debug!("storage read with optional meta from active blob finished");
-        let record = match active_blob_read_res {
-            Ok(record) => {
-                debug!("storage read with optional meta active blob returned record");
-                record
+        match active_blob_read_res {
+            Ok(data) => {
+                debug!("storage read with optional meta active blob returned data");
+                Ok(data)
             }
             Err(e) => {
-                debug!(
-                    "storage read with optional meta active blob returned: {:#?}",
-                    e
-                );
-                let stream: FuturesUnordered<_> = inner
-                    .blobs
-                    .iter()
-                    .map(|blob| blob.read_any(key, meta))
-                    .collect();
-                let mut task = stream.skip_while(Result::is_err);
-                task.next().await.ok_or_else(Error::not_found)??
+                debug!("read with optional meta active blob returned: {:#?}", e);
+                Self::get_any_data(&inner, key, meta).await
             }
-        };
-        Ok(record)
+        }
+    }
+
+    async fn get_any_data(inner: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+        let stream: FuturesUnordered<_> = inner
+            .blobs
+            .iter()
+            .map(|blob| blob.read_any(key, meta))
+            .collect();
+        debug!("read with optional meta {} closed blobs", stream.len());
+        let mut task = stream.skip_while(Result::is_err);
+        task.next()
+            .await
+            .ok_or_else(Error::not_found)?
+            .with_context(|| "no results in closed blobs")
     }
 
     /// Stop blob updater and release lock file
@@ -434,20 +450,23 @@ impl<K> Storage<K> {
     /// Fails because of any IO errors
     pub async fn contains(&self, key: impl Key) -> Result<bool> {
         let key = key.as_ref();
+        self.contains_with(key, None).await
+    }
+
+    async fn contains_with(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
         let inner = self.inner.safe.lock().await;
-        let in_active = if let Some(active_blob) = &inner.active_blob {
-            active_blob.contains(key, None).await?
-        } else {
-            false
-        };
-        if !in_active {
-            for blob in &inner.blobs {
-                if blob.contains(key, None).await? {
-                    return Ok(true);
-                }
+        if let Some(active_blob) = &inner.active_blob {
+            if active_blob.contains(key, meta).await? {
+                return Ok(true);
             }
         }
-        Ok(in_active)
+        for blob in &inner.blobs {
+            if blob.contains(key, meta).await? {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
     }
 
     /// `check_bloom` is used to check whether a key is in storage.
@@ -553,15 +572,16 @@ impl Inner {
     }
 
     async fn records_count(&self) -> usize {
-        self.safe.lock().await.records_count().await
+        self.safe.lock().await.records_count()
     }
 
     async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
-        self.safe.lock().await.records_count_detailed().await
+        self.safe.lock().await.records_count_detailed()
     }
 
     async fn records_count_in_active_blob(&self) -> Option<usize> {
-        self.safe.lock().await.records_count_in_active_blob().await
+        let inner = self.safe.lock().await;
+        inner.active_blob.as_ref().map(|b| b.records_count())
     }
 
     async fn fsyncdata(&self) -> IOResult<()> {
@@ -584,35 +604,25 @@ impl Safe {
         active_blob_id.max(blobs_max_id)
     }
 
-    async fn records_count(&self) -> usize {
-        let details = self.records_count_detailed().await;
+    fn records_count(&self) -> usize {
+        let details = self.records_count_detailed();
         details.iter().fold(0, |acc, (_, count)| acc + count)
     }
 
-    async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
+    fn records_count_detailed(&self) -> Vec<(usize, usize)> {
         let mut results = Vec::new();
         for blob in &self.blobs {
-            let count = blob.records_count().await;
-            if let Ok(c) = count {
-                let value = (blob.id(), c);
-                debug!("push: {:?}", value);
-                results.push(value);
-            }
+            let count = blob.records_count();
+            let value = (blob.id(), count);
+            debug!("push: {:?}", value);
+            results.push(value);
         }
-        if let Some(count) = self.records_count_in_active_blob().await {
-            let value = (self.blobs.len(), count);
+        if let Some(blob) = self.active_blob.as_ref() {
+            let value = (self.blobs.len(), blob.records_count());
             debug!("push: {:?}", value);
             results.push(value);
         }
         results
-    }
-
-    async fn records_count_in_active_blob(&self) -> Option<usize> {
-        if let Some(ref blob) = self.active_blob {
-            blob.records_count().await.ok()
-        } else {
-            None
-        }
     }
 
     async fn fsyncdata(&self) -> IOResult<()> {
