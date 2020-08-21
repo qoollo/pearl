@@ -196,7 +196,7 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) async fn read_all(&self, key: &[u8]) -> Result<Option<Vec<Entry>>> {
+    pub(crate) async fn read_all_entries(&self, key: &[u8]) -> Result<Option<Vec<Entry>>> {
         let headers = self.index.get_all(key).await?;
         Ok(headers.map(|h| {
             debug!("blob core read all {} headers", h.len());
