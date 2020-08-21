@@ -180,6 +180,7 @@ impl Index for Simple {
                 self.filter.add(h.key());
                 debug!("blob index simple push key: {:?}", h.key());
                 headers.entry(h.key().to_vec()).or_default().push(h);
+                self.header.records_count += 1;
                 Ok(())
             }
             State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
