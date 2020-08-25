@@ -53,8 +53,6 @@
 extern crate log;
 #[macro_use]
 extern crate serde_derive;
-#[macro_use]
-extern crate futures;
 
 mod blob;
 mod error;
@@ -70,7 +68,6 @@ pub use storage::{Builder, Key, Storage};
 mod prelude {
     pub(crate) use super::*;
     pub(crate) use std::collections::BTreeMap;
-    pub(crate) type PinBox<T> = Pin<Box<T>>;
     pub(crate) const ORD: Ordering = Ordering::Relaxed;
 
     pub(crate) use anyhow::{Context as ErrorContexts, Result};
@@ -78,9 +75,9 @@ mod prelude {
     pub(crate) use blob::{self, Blob, BloomConfig};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::{
-        future::{self, Future, FutureExt},
+        future,
         lock::Mutex,
-        stream::{futures_unordered::FuturesUnordered, Stream, TryStreamExt},
+        stream::{futures_unordered::FuturesUnordered, TryStreamExt},
     };
     pub(crate) use record::{Header as RecordHeader, Record};
     pub(crate) use rio::Rio;
@@ -94,12 +91,10 @@ mod prelude {
         marker::PhantomData,
         os::unix::fs::OpenOptionsExt,
         path::{Path, PathBuf},
-        pin::Pin,
         sync::{
             atomic::{AtomicBool, AtomicUsize, Ordering},
             Arc,
         },
-        task::{Context, Poll},
         time::Duration,
     };
     pub(crate) use thiserror::Error;

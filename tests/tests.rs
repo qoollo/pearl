@@ -249,6 +249,27 @@ async fn test_index_from_blob() {
 }
 
 #[tokio::test]
+async fn test_index_from_empty_blob() {
+    let now = Instant::now();
+    let path = common::init("index_from_empty_blob");
+    let storage = common::default_test_storage_in(path.clone()).await.unwrap();
+    storage.close().await.unwrap();
+    let index_file_path = path.join("test.0.index");
+    assert!(!index_file_path.exists());
+    let blob_file_path = path.join("test.0.blob");
+    assert!(blob_file_path.exists());
+    let new_storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
+    new_storage
+        .write(KeyTest::new(1), vec![1; 8])
+        .await
+        .unwrap();
+    new_storage.close().await.unwrap();
+    assert!(index_file_path.exists());
+    fs::remove_dir_all(path).unwrap();
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
 async fn test_write_with() {
     let now = Instant::now();
     let path = common::init("write_with");

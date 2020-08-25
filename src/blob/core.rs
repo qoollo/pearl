@@ -152,11 +152,16 @@ impl Blob {
             .await
             .context("failed to read raw records")?;
         debug!("raw records loaded");
-        let headers = raw_r.try_collect::<Vec<_>>().await?;
-        for header in headers {
-            self.index
-                .push(header)
-                .context("failed to push header to index")?;
+        if let Some(headers) = raw_r
+            .load()
+            .await
+            .with_context(|| "load headers from blob file failed")?
+        {
+            for header in headers {
+                self.index
+                    .push(header)
+                    .context("failed to push header to index")?;
+            }
         }
         debug!("index successfully generated: {}", self.index.name());
         Ok(())
@@ -369,17 +374,15 @@ struct RawRecords {
     current_offset: u64,
     record_header_size: u64,
     file: File,
-    file_size: u64,
-    read_fut: Option<PinBox<dyn Future<Output = Result<RecordHeader>> + Send>>,
 }
 
 impl RawRecords {
     async fn start(file: File, blob_header_size: u64) -> Result<Self> {
         let current_offset = blob_header_size;
-        trace!("current offset: {}", current_offset);
+        debug!("blob raw records start, current offset: {}", current_offset);
         let size_of_usize = std::mem::size_of::<usize>();
-        trace!(
-            "read at: size {}, offset: {}",
+        debug!(
+            "blob raw records start, read at: size {}, offset: {}",
             size_of_usize,
             current_offset + size_of_usize as u64
         );
@@ -388,60 +391,50 @@ impl RawRecords {
         let mut buf = vec![0; size_of_usize];
         file.read_at(&mut buf, current_offset + size_of_usize as u64)
             .await?;
-        trace!("read {} bytes", buf.len());
+        debug!("blob raw records start, read at {} bytes", buf.len());
         let key_len = bincode::deserialize::<usize>(&buf)
             .context("failed to deserialize index buf vec length")?;
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
-        trace!("record header size: {}", record_header_size);
-        let read_fut = Self::read_at(file.clone(), record_header_size, current_offset).boxed();
-        let file_size = file.size();
+        debug!(
+            "blob raw records start, record header size: {}",
+            record_header_size
+        );
         Ok(Self {
             current_offset,
             record_header_size,
             file,
-            file_size,
-            read_fut: Some(read_fut),
         })
     }
 
-    async fn read_at(file: File, size: u64, offset: u64) -> Result<RecordHeader> {
-        trace!("call read_at: {} bytes at {}", size, offset);
-        let mut buf = vec![0; size.try_into()?];
-        file.read_at(&mut buf, offset).await?; // TODO: verify amount of data readed
-        RecordHeader::from_raw(&buf).map_err(Into::into)
-    }
-
-    fn update_future(&mut self, header: &RecordHeader) {
-        self.current_offset += self.record_header_size;
-        self.current_offset += header.meta_size();
-        self.current_offset += header.data_size();
-        if self.file_size < self.current_offset + self.record_header_size {
-            self.read_fut = None;
-        } else {
-            let read_fut = Self::read_at(
-                self.file.clone(),
-                self.record_header_size,
-                self.current_offset,
-            )
-            .boxed();
-            self.read_fut = Some(read_fut);
+    async fn load(mut self) -> Result<Option<Vec<RecordHeader>>> {
+        debug!("blob raw records load");
+        let mut headers = Vec::new();
+        while self.current_offset < self.file.size() {
+            let mut buf = vec![0; self.record_header_size as usize];
+            self.file
+                .read_at(&mut buf, self.current_offset)
+                .await
+                .with_context(|| {
+                    format!(
+                        "blob raw records load header failed, size {}, offset {}",
+                        self.record_header_size, self.current_offset
+                    )
+                })?;
+            let header = RecordHeader::from_raw(&buf).with_context(|| {
+                format!(
+                    "blob raw records load header deserialization from raw failed, buf len: {}",
+                    buf.len()
+                )
+            })?;
+            self.current_offset += self.record_header_size;
+            self.current_offset += header.meta_size();
+            self.current_offset += header.data_size();
+            headers.push(header);
         }
-    }
-}
-
-impl Stream for RawRecords {
-    type Item = Result<RecordHeader>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let res = if let Some(ref mut f) = self.read_fut {
-            Some(ready!(Future::poll(f.as_mut(), cx)).map(|h| {
-                self.update_future(&h);
-                h
-            }))
+        if headers.is_empty() {
+            Ok(None)
         } else {
-            None
-        };
-
-        Poll::Ready(res)
+            Ok(Some(headers))
+        }
     }
 }
