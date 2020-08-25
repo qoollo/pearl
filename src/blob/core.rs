@@ -152,11 +152,12 @@ impl Blob {
             .await
             .context("failed to read raw records")?;
         debug!("raw records loaded");
-        if let Some(headers) = raw_r
-            .load()
-            .await
-            .with_context(|| "load headers from blob file failed")?
-        {
+        if let Some(headers) = raw_r.load().await.with_context(|| {
+            format!(
+                "load headers from blob file failed, {:?}",
+                self.name.to_path()
+            )
+        })? {
             for header in headers {
                 self.index
                     .push(header)
