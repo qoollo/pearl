@@ -131,7 +131,7 @@ impl Record {
                 calc_crc, self.header.data_checksum
             );
             let e = Error::validation(cause);
-            error!("{:?}", e);
+            error!("{:#?}", e);
             Err(e.into())
         }
     }
@@ -149,7 +149,7 @@ impl Record {
                 "wrong header checksum {} vs {}",
                 calc_crc, self.header.header_checksum
             ));
-            error!("{:?}", e);
+            error!("{:#?}", e);
             Err(Error::from(e).into())
         }
     }
