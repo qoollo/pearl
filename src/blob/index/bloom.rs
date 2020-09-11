@@ -128,12 +128,16 @@ impl Bloom {
     pub fn contains(&self, item: impl AsRef<[u8]>) -> bool {
         let mut hashers = self.hashers.clone();
         let len = self.inner.len() as u64;
-        hashers
-            .iter_mut()
-            .map(|hasher| {
-                hasher.write(item.as_ref());
-                hasher.finish() % len
-            })
-            .all(|i| *self.inner.get(i as usize).expect("unreachable"))
+        if len == 0 {
+            false
+        } else {
+            hashers
+                .iter_mut()
+                .map(|hasher| {
+                    hasher.write(item.as_ref());
+                    hasher.finish() % len
+                })
+                .all(|i| *self.inner.get(i as usize).expect("unreachable"))
+        }
     }
 }
