@@ -86,6 +86,12 @@ impl File {
                 remainder_size,
                 slice.len()
             );
+            if remainder_size == 0 {
+                return Err(Error::io(
+                    "blob file read failed, second read returns zero bytes".to_string(),
+                )
+                .into());
+            }
             size += remainder_size;
             debug!("blob file read at proggress {}/{}", size, buf.len());
         }
