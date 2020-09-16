@@ -36,6 +36,10 @@ impl Error {
     pub(crate) fn not_found() -> Self {
         Self::new(Kind::RecordNotFound)
     }
+
+    pub(crate) fn io(s: String) -> Self {
+        Self::new(Kind::IO(s))
+    }
 }
 
 impl Display for Error {
