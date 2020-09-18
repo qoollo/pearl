@@ -64,7 +64,6 @@ pub(crate) async fn search_all(
     key: &[u8],
     index_header: &IndexHeader,
 ) -> Result<Option<Vec<RecordHeader>>> {
-    let file2 = file.clone();
     if let Some(header_pos) = binary_search(file, key, index_header)
         .await
         .with_context(|| "blob, index simple, search all, binary search failed")?
@@ -74,7 +73,7 @@ pub(crate) async fn search_all(
             "blob index simple search all total {}, pos {}",
             index_header.records_count, orig_pos
         );
-        let mut headers: Vec<RecordHeader> = vec![header_pos.0];
+        let mut headers = vec![header_pos.0];
         // go left
         let mut pos = orig_pos;
         debug!(
@@ -89,7 +88,7 @@ pub(crate) async fn search_all(
                 headers.len(),
                 pos
             );
-            let rh = read_at(&file2, pos, &index_header)
+            let rh = read_at(file, pos, &index_header)
                 .await
                 .with_context(|| "blob, index simple, search all, read at failed")?;
             if rh.key() == key {
@@ -111,7 +110,7 @@ pub(crate) async fn search_all(
                 headers.len(),
                 pos
             );
-            let rh = read_at(&file2, pos, &index_header)
+            let rh = read_at(file, pos, &index_header)
                 .await
                 .with_context(|| "blob, index simple, search all, read at failed")?;
             if rh.key() == key {
@@ -159,11 +158,11 @@ pub(crate) fn serialize_record_headers(
         let mut buf = Vec::with_capacity(hs + headers.len() * record_header_size);
         serialize_into(&mut buf, &header)?;
         debug!(
-        "blob index simple serialize headers filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
-        filter_buf.len(),
-        header.filter_buf_size,
-        buf.len()
-    );
+            "serialize headers filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
+            filter_buf.len(),
+            header.filter_buf_size,
+            buf.len()
+        );
         buf.extend_from_slice(&filter_buf);
         headers
             .iter()

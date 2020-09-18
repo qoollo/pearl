@@ -24,10 +24,11 @@ impl Entry {
         let meta_size = self.header.meta_size().try_into()?;
         let data_size: usize = self.header.data_size().try_into()?;
         let mut buf = vec![0; data_size + meta_size];
+        // The number of bytes read is checked by File internally.
         self.blob_file
             .read_at(&mut buf, self.header.meta_offset())
             .await
-            .with_context(|| "blob load failed")?; // TODO: verify read size
+            .with_context(|| "blob load failed")?;
         let data_buf = buf.split_off(meta_size);
         let meta = Meta::from_raw(&buf)?;
         let record = Record::new(self.header.clone(), meta, data_buf);

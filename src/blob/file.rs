@@ -70,8 +70,8 @@ impl File {
         let compl = self.ioring.read_at(&*self.no_lock_fd, &buf, offset);
         let mut size = compl.await.with_context(|| "read at failed")?;
         while size < buf.len() {
-            error!(
-                "io uring read partial block, try to read what remains {}/{} bytes",
+            debug!(
+                "io uring read partial block, trying to read the rest, completed {}/{} bytes",
                 size,
                 buf.len()
             );
@@ -82,15 +82,13 @@ impl File {
                 .read_at(&*self.no_lock_fd, &slice, offset + size as u64);
             let remainder_size = compl.await.with_context(|| "second read at failed")?;
             debug!(
-                "blob file read at read {}/{} of remains bytes",
+                "blob file read at second read, completed {}/{} of remains bytes",
                 remainder_size,
                 slice.len()
             );
             if remainder_size == 0 {
-                return Err(Error::io(
-                    "blob file read failed, second read returns zero bytes".to_string(),
-                )
-                .into());
+                let msg = "blob file read failed, second read returns zero bytes".to_string();
+                return Err(Error::io(msg).into());
             }
             size += remainder_size;
             debug!("blob file read at proggress {}/{}", size, buf.len());

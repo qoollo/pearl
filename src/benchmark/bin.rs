@@ -15,7 +15,6 @@ mod prelude {
         statistics::{Report, Statistics},
         writer::Writer,
     };
-    pub(crate) use chrono::Local;
     pub(crate) use clap::{App, Arg, ArgMatches};
     pub(crate) use env_logger::fmt::Color;
     pub(crate) use futures::{
@@ -39,38 +38,8 @@ use prelude::*;
 #[tokio::main]
 async fn main() {
     println!("{:_^41}", "PEARL_BENCHMARK");
-    env_logger::Builder::new()
-        .format(|buf, record: &log::Record| {
-            let mut style = buf.style();
-            let color = match record.level() {
-                Level::Error => Color::Red,
-                Level::Warn => Color::Yellow,
-                Level::Info => Color::Green,
-                Level::Debug => Color::Cyan,
-                Level::Trace => Color::White,
-            };
-            style.set_color(color);
-            writeln!(
-                buf,
-                "[{} {:>24}:{:^4} {:^5}] - {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S"),
-                record.module_path().unwrap_or(""),
-                record.line().unwrap_or(0),
-                style.value(record.level()),
-                record.args(),
-            )
-        })
-        .filter_module("benchmark", LevelFilter::Info)
-        .filter_module("pearl", LevelFilter::Info)
-        .init();
+    init_logger();
     start_app().await;
-}
-
-async fn write(lawriter: Arc<Writer<Key128>>, key: Key128, data: Vec<u8>, mut ltx: Sender<Report>) {
-    let now = Instant::now();
-    let mut report = lawriter.write(key, data).await;
-    report.set_latency(now);
-    ltx.try_send(report).unwrap();
 }
 
 async fn start_app() {
@@ -80,11 +49,11 @@ async fn start_app() {
 
     info!("Create new generator");
     let limit = matches.value_of("limit").unwrap().parse().unwrap();
-    let value_size_kb: usize = matches.value_of("value_size").unwrap().parse().unwrap();
-    let mut generator = Generator::new(value_size_kb * 1000, limit);
+    let value_size_kb: u64 = matches.value_of("value_size").unwrap().parse().unwrap();
+    let mut generator = Generator::new(value_size_kb as usize * 1000, limit);
 
     info!("Create new writer");
-    let mut writer = Writer::new(
+    let mut writer: Writer<Key128> = Writer::new(
         &matches
             .value_of("dst_dir")
             .unwrap()
@@ -102,7 +71,7 @@ async fn start_app() {
     let mut statistics = Statistics::new(matches.value_of("max_reports").unwrap().parse().unwrap());
 
     info!("Start write cycle");
-    let (tx, rx) = channel::<statistics::Report>(limit);
+    let (tx, rx) = channel::<statistics::Report>(1024);
     let writer = Arc::new(writer);
     let mut counter = 0;
 
@@ -115,10 +84,9 @@ async fn start_app() {
     let mut futures_pool: FuturesUnordered<_> = prepared
         .into_iter()
         .map(|(key, data)| {
-            let lawriter = writer.clone();
             let ltx = tx.clone();
             counter += 1;
-            write(lawriter, key.into(), data, ltx)
+            writer.write(key.into(), data, ltx)
         })
         .collect();
     println!(
@@ -128,6 +96,7 @@ async fn start_app() {
     let write_limit = limit * 1000 / value_size_kb;
     let mut prev_p = 0;
     while futures_pool.next().await.is_some() {
+        debug!("#{}/{} future ready", counter, futures_pool.len());
         let percent = counter * 1000 / write_limit;
         if prev_p != percent {
             print!(
@@ -145,17 +114,17 @@ async fn start_app() {
         prev_p = percent;
         if futures_pool.len() < futures_limit {
             if let Some((key, data)) = generator.next() {
-                let lawriter = writer.clone();
                 let ltx = tx.clone();
                 counter += 1;
-                futures_pool.push(write(lawriter, key.into(), data, ltx));
+                futures_pool.push(writer.write(key.into(), data, ltx));
             }
         }
+        debug!("#{}/{} next await", counter, futures_pool.len());
     }
 
     info!("start await ");
     let _ = rx
-        .take(counter)
+        .take(counter as usize)
         .map(|r| statistics.add(r))
         .collect::<Vec<_>>()
         .await;
@@ -210,6 +179,31 @@ fn prepare_matches<'a>() -> ArgMatches<'a> {
         .get_matches()
 }
 
+fn init_logger() {
+    let _ = env_logger::Builder::new()
+        .format(|buf, record: &log::Record| {
+            let mut style = buf.style();
+            let color = match record.level() {
+                Level::Error => Color::Red,
+                Level::Warn => Color::Yellow,
+                Level::Info => Color::Green,
+                Level::Debug => Color::Cyan,
+                Level::Trace => Color::White,
+            };
+            style.set_color(color);
+            writeln!(
+                buf,
+                "[{}:{:^4} {:^5}] - {}",
+                record.module_path().unwrap_or(""),
+                record.line().unwrap_or(0),
+                style.value(record.level()),
+                record.args(),
+            )
+        })
+        .filter_module("benchmark", LevelFilter::Info)
+        .filter_module("pearl", LevelFilter::Info)
+        .try_init();
+}
 #[derive(Debug)]
 struct Key128(Vec<u8>);
 

@@ -31,7 +31,7 @@ impl Statistics {
             .chunks(2)
             .map(|p| if p.len() == 2 { p[0] + p[1] } else { p[0] })
             .collect();
-        print!(
+        debug!(
             "merge: before {}, after {} ",
             self.pile.len(),
             new_pile.len()

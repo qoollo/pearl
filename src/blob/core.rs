@@ -32,8 +32,8 @@ impl Blob {
         filter_config: Option<BloomConfig>,
     ) -> Result<Self> {
         let file = File::create(name.to_path(), ioring.clone()).await?;
-        let index = Self::create_index(&name, ioring, filter_config);
-        let current_offset = Self::new_offset();
+        let index = Self::create_index(name.clone(), ioring, filter_config);
+        let current_offset = Arc::new(Mutex::new(0));
         let header = Header::new();
         let mut blob = Self {
             header,
@@ -46,13 +46,8 @@ impl Blob {
         Ok(blob)
     }
 
-    pub fn name(&self) -> String {
-        self.name.to_string()
-    }
-
-    #[inline]
-    fn new_offset() -> Arc<Mutex<u64>> {
-        Arc::new(Mutex::new(0))
+    pub fn name(&self) -> &FileName {
+        &self.name
     }
 
     async fn write_header(&mut self) -> Result<()> {
@@ -68,13 +63,12 @@ impl Blob {
 
     #[inline]
     fn create_index(
-        name: &FileName,
+        mut name: FileName,
         ioring: Rio,
         filter_config: Option<BloomConfig>,
     ) -> SimpleIndex {
-        let mut index_name = name.clone();
-        index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        SimpleIndex::new(index_name, ioring, filter_config)
+        name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
+        SimpleIndex::new(name, ioring, filter_config)
     }
 
     pub(crate) async fn dump(&mut self) -> Result<usize> {
@@ -102,9 +96,9 @@ impl Blob {
         let name = FileName::from_path(&path)?;
         let size = file.size();
         let header = Header::new();
-        let mut index_name: FileName = name.clone();
+        let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        trace!("looking for index file: [{}]", index_name.to_string());
+        trace!("looking for index file: [{}]", index_name);
         let index = if index_name.exists() {
             trace!("file exists");
             SimpleIndex::from_file(index_name, filter_config.is_some(), ioring).await?
@@ -134,7 +128,7 @@ impl Blob {
         Ok(blob)
     }
 
-    async fn raw_records(&mut self) -> Result<RawRecords> {
+    async fn raw_records(&self) -> Result<RawRecords> {
         RawRecords::start(self.file.clone(), bincode::serialized_size(&self.header)?)
             .await
             .context("failed to create iterator for raw records")
@@ -159,9 +153,7 @@ impl Blob {
             )
         })? {
             for header in headers {
-                self.index
-                    .push(header)
-                    .context("failed to push header to index")?;
+                self.index.push(header).context("index push failed")?;
             }
         }
         debug!("index successfully generated: {}", self.index.name());
@@ -411,25 +403,9 @@ impl RawRecords {
         debug!("blob raw records load");
         let mut headers = Vec::new();
         while self.current_offset < self.file.size() {
-            let mut buf = vec![0; self.record_header_size as usize];
-            self.file
-                .read_at(&mut buf, self.current_offset)
-                .await
-                .with_context(|| {
-                    format!(
-                        "blob raw records load header failed, size {}, offset {}",
-                        self.record_header_size, self.current_offset
-                    )
-                })?;
-            let header = RecordHeader::from_raw(&buf).with_context(|| {
-                format!(
-                    "blob raw records load header deserialization from raw failed, buf len: {}",
-                    buf.len()
-                )
+            let header = self.read_current_record_header().await.with_context(|| {
+                format!("read record header failed, at {}", self.current_offset)
             })?;
-            self.current_offset += self.record_header_size;
-            self.current_offset += header.meta_size();
-            self.current_offset += header.data_size();
             headers.push(header);
         }
         if headers.is_empty() {
@@ -437,5 +413,23 @@ impl RawRecords {
         } else {
             Ok(Some(headers))
         }
+    }
+
+    async fn read_current_record_header(&mut self) -> Result<RecordHeader> {
+        let mut buf = vec![0; self.record_header_size as usize];
+        self.file
+            .read_at(&mut buf, self.current_offset)
+            .await
+            .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
+        let header = RecordHeader::from_raw(&buf).with_context(|| {
+            format!(
+                "header deserialization from raw failed, buf len: {}",
+                buf.len()
+            )
+        })?;
+        self.current_offset += self.record_header_size;
+        self.current_offset += header.meta_size();
+        self.current_offset += header.data_size();
+        Ok(header)
     }
 }
