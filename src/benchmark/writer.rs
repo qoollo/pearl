@@ -31,13 +31,17 @@ impl<K> Writer<K> {
         self.storage.init().await.unwrap()
     }
 
-    pub async fn write(self: Arc<Self>, key: K, data: Vec<u8>) -> Report
+    pub async fn write(&self, key: K, data: Vec<u8>, mut tx: Sender<Report>)
     where
         K: Key,
     {
-        let record = Report::new(key.as_ref().len(), data.len());
-        self.storage.clone().write(key, data).await.unwrap();
-        record
+        let mut report = Report::new(key.as_ref().len(), data.len());
+        let now = Instant::now();
+        self.storage.write(key, data).await.unwrap();
+        debug!("write finished");
+        report.set_latency(now);
+        tx.try_send(report).unwrap();
+        debug!("report sent");
     }
 
     pub async fn close(&self) {
