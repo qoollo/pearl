@@ -45,19 +45,10 @@ pub(crate) enum State {
 impl Simple {
     pub(crate) fn new(name: FileName, ioring: Rio, filter_config: Option<Config>) -> Self {
         let filter_is_on = filter_config.is_some();
-        let filter = if let Some(config) = filter_config {
-            trace!("create filter with config: {:?}", config);
-            Bloom::new(config)
-        } else {
-            trace!("no config, filter created with default params and won't be used");
-            Bloom::default()
-        };
+        let filter = filter_config.map(Bloom::new).unwrap_or_default();
+        let header = IndexHeader::default();
         Self {
-            header: IndexHeader {
-                records_count: 0,
-                record_header_size: 0,
-                filter_buf_size: 0,
-            },
+            header,
             filter_is_on,
             filter,
             inner: State::InMemory(BTreeMap::new()),
@@ -91,15 +82,15 @@ impl Simple {
         file.read_at(&mut buf, header.serialized_size()?).await?;
         let filter = Bloom::from_raw(&buf)?;
         trace!("index restored successfuly");
-        warn!("@TODO check consistency");
-        Ok(Self {
+        let index = Self {
             header,
             inner: State::OnDisk(file),
             name,
             filter,
             filter_is_on,
             ioring,
-        })
+        };
+        Ok(index)
     }
 
     pub(crate) fn on_disk(&self) -> bool {
@@ -125,8 +116,10 @@ impl Simple {
     ) -> Result<InMemoryIndex> {
         (0..count).try_fold(InMemoryIndex::new(), |mut headers, i| {
             let offset = i * record_header_size;
-            trace!("at: {}", offset);
             let header: RecordHeader = deserialize(&buf[offset..])?;
+            // We used get mut instead of entry(..).or_insert(..) because in second case we
+            // need to clone key everytime. Whereas in first case - only if we insert new
+            // entry.
             if let Some(v) = headers.get_mut(header.key()) {
                 v.push(header)
             } else {
@@ -139,10 +132,10 @@ impl Simple {
     async fn dump_in_memory(&mut self, buf: Vec<u8>) -> Result<usize> {
         let file = File::create(self.name.to_path(), self.ioring.clone())
             .await
-            .with_context(|| format!("index dump in memory file open {:?}", self.name.to_path()))?;
-        let inner = State::OnDisk(file.clone());
-        self.inner = inner;
-        file.write_append(&buf).await.map_err(Into::into)
+            .with_context(|| format!("file open failed {:?}", self.name.to_path()))?;
+        let size = file.write_append(&buf).await?;
+        self.inner = State::OnDisk(file);
+        Ok(size)
     }
 
     async fn load_in_memory(&mut self, file: File) -> Result<()> {
@@ -154,14 +147,13 @@ impl Simple {
         trace!("filter offset: {}", offset);
         let buf_ref = &buf[offset..];
         trace!("slice len: {}", buf_ref.len());
-        let filter = Bloom::from_raw(buf_ref)?;
         let record_headers = Self::deserialize_record_headers(
             &buf[offset + header.filter_buf_size..],
             header.records_count,
             header.record_header_size,
         )?;
         self.inner = State::InMemory(record_headers);
-        self.filter = filter;
+        self.filter = Bloom::from_raw(buf_ref)?;
         Ok(())
     }
 }
@@ -179,7 +171,12 @@ impl Index for Simple {
                 debug!("blob index simple push bloom filter add");
                 self.filter.add(h.key());
                 debug!("blob index simple push key: {:?}", h.key());
-                headers.entry(h.key().to_vec()).or_default().push(h);
+                // Same reason to use get_mut as in deserialize_record_headers.
+                if let Some(v) = headers.get_mut(h.key()) {
+                    v.push(h);
+                } else {
+                    headers.insert(h.key().to_vec(), vec![h]);
+                }
                 self.header.records_count += 1;
                 Ok(())
             }
