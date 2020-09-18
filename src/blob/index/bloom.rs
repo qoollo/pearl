@@ -129,15 +129,14 @@ impl Bloom {
         let mut hashers = self.hashers.clone();
         let len = self.inner.len() as u64;
         if len == 0 {
-            false
-        } else {
-            hashers
-                .iter_mut()
-                .map(|hasher| {
-                    hasher.write(item.as_ref());
-                    hasher.finish() % len
-                })
-                .all(|i| *self.inner.get(i as usize).expect("unreachable"))
+            return false;
         }
+        hashers
+            .iter_mut()
+            .map(|hasher| {
+                hasher.write(item.as_ref());
+                hasher.finish() % len
+            })
+            .all(|i| *self.inner.get(i as usize).expect("unreachable"))
     }
 }

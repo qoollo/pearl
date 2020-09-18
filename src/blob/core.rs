@@ -159,9 +159,7 @@ impl Blob {
             )
         })? {
             for header in headers {
-                self.index
-                    .push(header)
-                    .context("failed to push header to index")?;
+                self.index.push(header).context("index push failed")?;
             }
         }
         debug!("index successfully generated: {}", self.index.name());
@@ -411,25 +409,9 @@ impl RawRecords {
         debug!("blob raw records load");
         let mut headers = Vec::new();
         while self.current_offset < self.file.size() {
-            let mut buf = vec![0; self.record_header_size as usize];
-            self.file
-                .read_at(&mut buf, self.current_offset)
-                .await
-                .with_context(|| {
-                    format!(
-                        "blob raw records load header failed, size {}, offset {}",
-                        self.record_header_size, self.current_offset
-                    )
-                })?;
-            let header = RecordHeader::from_raw(&buf).with_context(|| {
-                format!(
-                    "blob raw records load header deserialization from raw failed, buf len: {}",
-                    buf.len()
-                )
+            let header = self.read_current_record_header().await.with_context(|| {
+                format!("read record header failed, at {}", self.current_offset)
             })?;
-            self.current_offset += self.record_header_size;
-            self.current_offset += header.meta_size();
-            self.current_offset += header.data_size();
             headers.push(header);
         }
         if headers.is_empty() {
@@ -437,5 +419,23 @@ impl RawRecords {
         } else {
             Ok(Some(headers))
         }
+    }
+
+    async fn read_current_record_header(&mut self) -> Result<RecordHeader> {
+        let mut buf = vec![0; self.record_header_size as usize];
+        self.file
+            .read_at(&mut buf, self.current_offset)
+            .await
+            .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
+        let header = RecordHeader::from_raw(&buf).with_context(|| {
+            format!(
+                "header deserialization from raw failed, buf len: {}",
+                buf.len()
+            )
+        })?;
+        self.current_offset += self.record_header_size;
+        self.current_offset += header.meta_size();
+        self.current_offset += header.data_size();
+        Ok(header)
     }
 }
