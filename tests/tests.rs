@@ -672,3 +672,20 @@ async fn test_records_count_detailed() {
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
+
+#[tokio::test]
+async fn test_manual_close_active_blob() {
+    let path = common::init("manual_close_active_blob");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
+    let records = common::generate_records(5, 1000);
+    for (key, data) in &records {
+        write_one(&storage, *key, data, None).await.unwrap();
+        sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(storage.blobs_count(), 1);
+    assert!(path.join("test.0.blob").exists());
+    sleep(Duration::from_millis(1000)).await;
+    storage.close_active_blob().await;
+    assert!(path.join("test.0.blob").exists());
+    assert!(!path.join("test.1.blob").exists());
+}

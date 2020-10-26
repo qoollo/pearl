@@ -53,6 +53,8 @@
 extern crate log;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate anyhow;
 
 mod blob;
 mod error;
@@ -92,7 +94,7 @@ mod prelude {
         os::unix::fs::OpenOptionsExt,
         path::{Path, PathBuf},
         sync::{
-            atomic::{AtomicBool, AtomicUsize, Ordering},
+            atomic::{AtomicUsize, Ordering},
             Arc,
         },
         time::Duration,
@@ -102,6 +104,5 @@ mod prelude {
         fs::{read_dir, DirEntry, File as TokioFile, OpenOptions},
         stream::StreamExt,
         sync::RwLock,
-        time::interval,
     };
 }
