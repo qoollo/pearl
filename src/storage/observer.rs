@@ -1,8 +1,19 @@
 use super::prelude::*;
+use tokio::{
+    sync::mpsc::{channel, Receiver, Sender},
+    time::timeout,
+};
 
+pub(crate) enum Msg {
+    CloseActiveBlob,
+    Shutdown,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct Observer {
     inner: Inner,
     update_interval: Duration,
+    pub sender: Option<Sender<Msg>>,
 }
 
 impl Observer {
@@ -10,31 +21,63 @@ impl Observer {
         Self {
             update_interval,
             inner,
+            sender: None,
         }
     }
 
-    pub(crate) async fn run(mut self) {
+    pub(crate) fn run(&mut self) {
+        let (sender, receiver) = channel(1024);
+        self.sender = Some(sender);
+        tokio::spawn(Self::worker(self.clone(), receiver));
+    }
+
+    async fn worker(self, mut receiver: Receiver<Msg>) {
         debug!("update interval: {:?}", self.update_interval);
-        let mut interval = interval(self.update_interval);
-        while !self.inner.need_exit.load(Ordering::Relaxed) {
-            interval.tick().await;
-            trace!("check active blob");
-            if let Err(e) = self.try_update().await {
-                error!("{}", e);
+        loop {
+            if let Err(e) = self.tick(&mut receiver).await {
                 warn!("active blob will no longer be updated, shutdown the system");
+                warn!("{}", e);
                 break;
             }
         }
         info!("observer stopped");
     }
 
-    async fn try_update(&mut self) -> Result<()> {
+    async fn tick(&self, receiver: &mut Receiver<Msg>) -> Result<()> {
+        match timeout(self.update_interval, receiver.recv()).await {
+            Ok(Some(Msg::CloseActiveBlob)) => update_active_blob(self.inner.clone()).await?,
+            Ok(Some(Msg::Shutdown)) | Ok(None) => return Err(anyhow!("internal".to_string())),
+            Err(_) => {}
+        }
+        trace!("check active blob");
+        self.try_update().await
+    }
+
+    async fn try_update(&self) -> Result<()> {
         trace!("try update active blob");
         let inner_cloned = self.inner.clone();
         if let Some(inner) = active_blob_check(inner_cloned).await? {
             update_active_blob(inner).await?;
         }
         Ok(())
+    }
+
+    pub(crate) async fn close_active_blob(&self) {
+        if let Some(sender) = &self.sender {
+            if let Err(e) = sender.send(Msg::CloseActiveBlob).await {
+                error!("observer cannot close active blob: task failed: {}", e);
+            }
+        } else {
+            error!("storage observer task was not launched");
+        }
+    }
+
+    pub(crate) fn shutdown(&self) {
+        if let Some(sender) = &self.sender {
+            if let Err(e) = sender.try_send(Msg::Shutdown) {
+                error!("{}", e);
+            }
+        }
     }
 }
 
@@ -73,17 +116,10 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
     let new_active = Blob::open_new(next_name, inner.ioring, inner.config.filter())
         .await?
         .boxed();
-
-    {
-        let mut safe_locked = inner.safe.lock().await;
-        trace!("lock acquired");
-        let mut old_active = safe_locked
-            .active_blob
-            .replace(new_active)
-            .ok_or_else(Error::active_blob_not_set)?;
-        old_active.dump().await?;
-        safe_locked.blobs.push(*old_active);
-    }
-    trace!("lock released");
-    Ok(())
+    inner
+        .safe
+        .lock()
+        .await
+        .replace_active_blob(new_active)
+        .await
 }

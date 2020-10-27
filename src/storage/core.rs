@@ -34,6 +34,7 @@ const O_EXCL: i32 = 128;
 #[derive(Debug)]
 pub struct Storage<K> {
     pub(crate) inner: Inner,
+    observer: Observer,
     marker: PhantomData<K>,
 }
 
@@ -42,7 +43,6 @@ pub(crate) struct Inner {
     pub(crate) config: Config,
     pub(crate) safe: Arc<Mutex<Safe>>,
     next_blob_id: Arc<AtomicUsize>,
-    pub(crate) need_exit: Arc<AtomicBool>,
     twins_count: Arc<AtomicUsize>,
     pub(crate) ioring: Rio,
 }
@@ -60,7 +60,7 @@ impl<K> Drop for Storage<K> {
         // 1 is because twin#0 - in observer thread, twin#1 - self
         if twins <= 1 {
             trace!("stop observer thread");
-            self.inner.need_exit.store(false, ORD);
+            self.observer.shutdown();
         }
     }
 }
@@ -70,6 +70,7 @@ impl<K> Clone for Storage<K> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
+            observer: self.observer.clone(),
             marker: PhantomData,
         }
     }
@@ -94,8 +95,12 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
 }
 impl<K> Storage<K> {
     pub(crate) fn new(config: Config, ioring: Rio) -> Self {
+        let update_interval = Duration::from_millis(config.update_interval_ms());
+        let inner = Inner::new(config, ioring);
+        let observer = Observer::new(update_interval, inner.clone());
         Self {
-            inner: Inner::new(config, ioring),
+            inner,
+            observer,
             marker: PhantomData,
         }
     }
@@ -129,7 +134,7 @@ impl<K> Storage<K> {
             self.init_new().await?
         };
         trace!("new storage initialized");
-        launch_observer(self.inner.clone());
+        self.launch_observer();
         trace!("observer started");
         Ok(())
     }
@@ -315,7 +320,7 @@ impl<K> Storage<K> {
                 .with_context(|| format!("blob {} dump failed", blob.name()))?;
             debug!("active blob dumped");
         }
-        self.inner.need_exit.store(false, ORD);
+        self.observer.shutdown();
         safe.lock_file = None;
         if let Some(work_dir) = self.inner.config.work_dir() {
             std::fs::remove_file(work_dir.join(LOCK_FILE))?;
@@ -509,13 +514,26 @@ impl<K> Storage<K> {
     /// Like `tokio::std::fs::File::sync_data`, this function will attempt to ensure that in-core data reaches the filesystem before returning.
     /// May not syncronize file metadata to the file system.
     /// # Errors
-    /// Fails because of any IO errors
+    /// Fails because of any IO errors.
     pub async fn fsyncdata(&self) -> IOResult<()> {
         self.inner.fsyncdata().await
     }
 
+    /// Force closes active blob to dump index on disk and free RAM.
+    /// Creates new active blob.
+    /// # Errors
+    /// Fails because of any IO errors.
+    /// Or if there are any problems with syncronization.
+    pub async fn close_active_blob(&self) {
+        self.observer.close_active_blob().await
+    }
+
     fn filter_config(&self) -> Option<BloomConfig> {
         self.inner.config.filter()
+    }
+
+    fn launch_observer(&mut self) {
+        self.observer.run();
     }
 }
 
@@ -526,7 +544,6 @@ impl Clone for Inner {
             config: self.config.clone(),
             safe: self.safe.clone(),
             next_blob_id: self.next_blob_id.clone(),
-            need_exit: self.need_exit.clone(),
             twins_count: self.twins_count.clone(),
             ioring: self.ioring.clone(),
         }
@@ -539,7 +556,6 @@ impl Inner {
             config,
             safe: Arc::new(Mutex::new(Safe::new())),
             next_blob_id: Arc::new(AtomicUsize::new(0)),
-            need_exit: Arc::new(AtomicBool::new(false)),
             twins_count: Arc::new(AtomicUsize::new(0)),
             ioring,
         }
@@ -631,14 +647,16 @@ impl Safe {
         }
         Ok(())
     }
-}
 
-fn launch_observer(inner: Inner) {
-    let observer = Observer::new(
-        Duration::from_millis(inner.config.update_interval_ms()),
-        inner,
-    );
-    tokio::spawn(observer.run());
+    pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob>) -> Result<()> {
+        let mut old_active = self
+            .active_blob
+            .replace(blob)
+            .ok_or_else(Error::active_blob_not_set)?;
+        old_active.dump().await?;
+        self.blobs.push(*old_active);
+        Ok(())
+    }
 }
 
 /// Trait `Key`
