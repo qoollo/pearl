@@ -63,7 +63,7 @@ impl Observer {
     }
 
     pub(crate) async fn close_active_blob(&self) {
-        if let Some(sender) = &self.sender {
+        if let Some(mut sender) = self.sender.clone() {
             if let Err(e) = sender.send(Msg::CloseActiveBlob).await {
                 error!("observer cannot close active blob: task failed: {}", e);
             }
@@ -73,7 +73,7 @@ impl Observer {
     }
 
     pub(crate) fn shutdown(&self) {
-        if let Some(sender) = &self.sender {
+        if let Some(mut sender) = self.sender.clone() {
             if let Err(e) = sender.try_send(Msg::Shutdown) {
                 error!("{}", e);
             }
