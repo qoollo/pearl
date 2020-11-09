@@ -64,6 +64,7 @@ mod storage;
 pub use blob::{filter, Entry};
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
+#[cfg(feature = "aio")]
 pub use rio;
 pub use storage::{Builder, Key, Storage};
 
@@ -82,6 +83,7 @@ mod prelude {
         stream::{futures_unordered::FuturesUnordered, TryStreamExt},
     };
     pub(crate) use record::{Header as RecordHeader, Record};
+    #[cfg(feature = "aio")]
     pub(crate) use rio::Rio;
     pub(crate) use std::{
         cmp::Ordering as CmpOrdering,

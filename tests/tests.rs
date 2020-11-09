@@ -7,7 +7,7 @@ use futures::{
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
-use pearl::{Builder, Meta, Storage};
+use pearl::{Meta, Storage};
 use rand::seq::SliceRandom;
 use std::{
     fs,
@@ -174,25 +174,19 @@ async fn test_storage_close() {
 async fn test_on_disk_index() -> AnyResult<()> {
     let now = Instant::now();
     let path = common::init("index");
-    let data_size = 500;
+    let data_size = 50000;
     let max_blob_size = 1500;
     let num_records_to_write = 5u32;
     let read_key = 3u32;
 
-    let ioring = rio::new().expect("create uring");
-    let mut storage = Builder::new()
-        .work_dir(&path)
-        .blob_file_name_prefix("test")
-        .max_blob_size(max_blob_size)
-        .max_data_in_blob(1_000)
-        .build(ioring)
+    let storage = common::create_test_storage(&path, max_blob_size)
+        .await
         .unwrap();
     let slice = [17, 40, 29, 7, 75];
     let mut data = Vec::new();
     for _ in 0..(data_size / slice.len()) {
         data.extend(&slice);
     }
-    storage.init().await.unwrap();
     info!("write (0..{})", num_records_to_write);
     for i in 0..num_records_to_write {
         sleep(Duration::from_millis(100)).await;

@@ -7,6 +7,7 @@ pub(crate) struct Simple {
     filter_is_on: bool,
     inner: State,
     name: FileName,
+    #[cfg(feature = "aio")]
     ioring: Rio,
 }
 
@@ -43,6 +44,7 @@ pub(crate) enum State {
 }
 
 impl Simple {
+    #[cfg(feature = "aio")]
     pub(crate) fn new(name: FileName, ioring: Rio, filter_config: Option<Config>) -> Self {
         let filter_is_on = filter_config.is_some();
         let filter = filter_config.map(Bloom::new).unwrap_or_default();
@@ -54,6 +56,19 @@ impl Simple {
             inner: State::InMemory(BTreeMap::new()),
             name,
             ioring,
+        }
+    }
+
+    pub(crate) fn new(name: FileName, filter_config: Option<Config>) -> Self {
+        let filter_is_on = filter_config.is_some();
+        let filter = filter_config.map(Bloom::new).unwrap_or_default();
+        let header = IndexHeader::default();
+        Self {
+            header,
+            filter_is_on,
+            filter,
+            inner: State::InMemory(BTreeMap::new()),
+            name,
         }
     }
 
@@ -69,6 +84,7 @@ impl Simple {
         &self.name
     }
 
+    #[cfg(feature = "aio")]
     pub(crate) async fn from_file(name: FileName, filter_is_on: bool, ioring: Rio) -> Result<Self> {
         trace!("open index file");
         let mut file = File::open(name.to_path(), ioring.clone())
@@ -89,6 +105,29 @@ impl Simple {
             filter,
             filter_is_on,
             ioring,
+        };
+        Ok(index)
+    }
+
+    pub(crate) async fn from_file(name: FileName, filter_is_on: bool) -> Result<Self> {
+        trace!("open index file");
+        let mut file = File::open(name.to_path())
+            .await
+            .context(format!("failed to open index file: {}", name))?;
+        trace!("load index header");
+        let header = Self::read_index_header(&mut file).await?;
+        trace!("load filter");
+        let mut buf = vec![0; header.filter_buf_size];
+        trace!("read filter into buf: [0; {}]", buf.len());
+        file.read_at(&mut buf, header.serialized_size()?).await?;
+        let filter = Bloom::from_raw(&buf)?;
+        trace!("index restored successfuly");
+        let index = Self {
+            header,
+            inner: State::OnDisk(file),
+            name,
+            filter,
+            filter_is_on,
         };
         Ok(index)
     }
@@ -129,8 +168,19 @@ impl Simple {
         })
     }
 
+    #[cfg(feature = "aio")]
     async fn dump_in_memory(&mut self, buf: Vec<u8>) -> Result<usize> {
         let file = File::create(self.name.to_path(), self.ioring.clone())
+            .await
+            .with_context(|| format!("file open failed {:?}", self.name.to_path()))?;
+        let size = file.write_append(&buf).await?;
+        self.inner = State::OnDisk(file);
+        Ok(size)
+    }
+
+    #[cfg(not(feature = "aio"))]
+    async fn dump_in_memory(&mut self, buf: Vec<u8>) -> Result<usize> {
+        let file = File::create(self.name.to_path())
             .await
             .with_context(|| format!("file open failed {:?}", self.name.to_path()))?;
         let size = file.write_append(&buf).await?;

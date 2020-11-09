@@ -26,6 +26,7 @@ impl Blob {
     /// Panics if file with same path already exists
     ///
     /// [`FileName`]: struct.FileName.html
+    #[cfg(feature = "aio")]
     pub(crate) async fn open_new(
         name: FileName,
         ioring: Rio,
@@ -33,6 +34,25 @@ impl Blob {
     ) -> Result<Self> {
         let file = File::create(name.to_path(), ioring.clone()).await?;
         let index = Self::create_index(name.clone(), ioring, filter_config);
+        let current_offset = Arc::new(Mutex::new(0));
+        let header = Header::new();
+        let mut blob = Self {
+            header,
+            file,
+            index,
+            name,
+            current_offset,
+        };
+        blob.write_header().await?;
+        Ok(blob)
+    }
+
+    pub(crate) async fn open_new(
+        name: FileName,
+        filter_config: Option<BloomConfig>,
+    ) -> Result<Self> {
+        let file = File::create(name.to_path()).await?;
+        let index = Self::create_index(name.clone(), filter_config);
         let current_offset = Arc::new(Mutex::new(0));
         let header = Header::new();
         let mut blob = Self {
@@ -61,6 +81,7 @@ impl Blob {
         *self.current_offset.lock().await = offset;
     }
 
+    #[cfg(feature = "aio")]
     #[inline]
     fn create_index(
         mut name: FileName,
@@ -69,6 +90,12 @@ impl Blob {
     ) -> SimpleIndex {
         name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         SimpleIndex::new(name, ioring, filter_config)
+    }
+
+    #[inline]
+    fn create_index(mut name: FileName, filter_config: Option<BloomConfig>) -> SimpleIndex {
+        name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
+        SimpleIndex::new(name, filter_config)
     }
 
     pub(crate) async fn dump(&mut self) -> Result<usize> {
@@ -86,6 +113,7 @@ impl Blob {
         Box::new(self)
     }
 
+    #[cfg(feature = "aio")]
     pub(crate) async fn from_file(
         path: PathBuf,
         ioring: Rio,
@@ -105,6 +133,47 @@ impl Blob {
         } else {
             trace!("file not found, create new");
             SimpleIndex::new(index_name, ioring, filter_config)
+        };
+        trace!("index initialized");
+        let header_size = bincode::serialized_size(&header)?;
+        let mut blob = Self {
+            header,
+            file,
+            name,
+            index,
+            current_offset: Arc::new(Mutex::new(size)),
+        };
+        trace!("call update index");
+        if size as u64 > header_size {
+            blob.try_regenerate_index()
+                .await
+                .context("failed to regenerate index")?;
+        } else {
+            warn!("empty or corrupted blob: {:?}", path);
+        }
+        trace!("check data consistency");
+        Self::check_data_consistency()?;
+        Ok(blob)
+    }
+
+    pub(crate) async fn from_file(
+        path: PathBuf,
+        filter_config: Option<BloomConfig>,
+    ) -> Result<Self> {
+        trace!("create file instance");
+        let file = File::open(&path).await?;
+        let name = FileName::from_path(&path)?;
+        let size = file.size();
+        let header = Header::new();
+        let mut index_name = name.clone();
+        index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
+        trace!("looking for index file: [{}]", index_name);
+        let index = if index_name.exists() {
+            trace!("file exists");
+            SimpleIndex::from_file(index_name, filter_config.is_some()).await?
+        } else {
+            trace!("file not found, create new");
+            SimpleIndex::new(index_name, filter_config)
         };
         trace!("index initialized");
         let header_size = bincode::serialized_size(&header)?;

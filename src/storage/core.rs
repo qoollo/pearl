@@ -44,6 +44,7 @@ pub(crate) struct Inner {
     pub(crate) safe: Arc<Mutex<Safe>>,
     next_blob_id: Arc<AtomicUsize>,
     twins_count: Arc<AtomicUsize>,
+    #[cfg(feature = "aio")]
     pub(crate) ioring: Rio,
 }
 
@@ -94,9 +95,21 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     }
 }
 impl<K> Storage<K> {
+    #[cfg(feature = "aio")]
     pub(crate) fn new(config: Config, ioring: Rio) -> Self {
         let update_interval = Duration::from_millis(config.update_interval_ms());
         let inner = Inner::new(config, ioring);
+        let observer = Observer::new(update_interval, inner.clone());
+        Self {
+            inner,
+            observer,
+            marker: PhantomData,
+        }
+    }
+
+    pub(crate) fn new(config: Config) -> Self {
+        let update_interval = Duration::from_millis(config.update_interval_ms());
+        let inner = Inner::new(config);
         let observer = Observer::new(update_interval, inner.clone());
         Self {
             inner,
@@ -382,16 +395,14 @@ impl<K> Storage<K> {
         let next = self.inner.next_blob_name()?;
         let config = self.filter_config();
         let mut safe = safe_locked.await;
-        let blob = Blob::open_new(next, self.inner.ioring.clone(), config)
-            .await?
-            .boxed();
+        let blob = Blob::open_new(next, config).await?.boxed();
         safe.active_blob = Some(blob);
         Ok(())
     }
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         trace!("init from existing: {:#?}", files);
-        let mut blobs = Self::read_blobs(&files, self.inner.ioring.clone(), self.filter_config())
+        let mut blobs = Self::read_blobs(&files, self.filter_config())
             .await
             .context("failed to read blobs")?;
 
@@ -420,6 +431,7 @@ impl<K> Storage<K> {
         Ok(())
     }
 
+    #[cfg(feature = "aio")]
     async fn read_blobs(
         files: &[DirEntry],
         ioring: Rio,
@@ -440,6 +452,33 @@ impl<K> Storage<K> {
         debug!("init blobs from found files");
         let futures: FuturesUnordered<_> = blob_files
             .map(|file| Blob::from_file(file, ioring.clone(), filter_config.clone()))
+            .collect();
+        debug!("async init blobs from file");
+        futures
+            .try_collect()
+            .await
+            .context("failed to read existing blobs")
+    }
+
+    async fn read_blobs(
+        files: &[DirEntry],
+        filter_config: Option<BloomConfig>,
+    ) -> Result<Vec<Blob>> {
+        debug!("read working directory content");
+        let dir_content = files.iter().map(DirEntry::path);
+        debug!("read {} entities", dir_content.len());
+        let dir_files = dir_content.filter(|path| path.is_file());
+        debug!("filter potential blob files");
+        let blob_files = dir_files.filter_map(|path| {
+            if path.extension()?.to_str()? == BLOB_FILE_EXTENSION {
+                Some(path)
+            } else {
+                None
+            }
+        });
+        debug!("init blobs from found files");
+        let futures: FuturesUnordered<_> = blob_files
+            .map(|file| Blob::from_file(file, filter_config.clone()))
             .collect();
         debug!("async init blobs from file");
         futures
@@ -545,12 +584,12 @@ impl Clone for Inner {
             safe: self.safe.clone(),
             next_blob_id: self.next_blob_id.clone(),
             twins_count: self.twins_count.clone(),
-            ioring: self.ioring.clone(),
         }
     }
 }
 
 impl Inner {
+    #[cfg(feature = "aio")]
     fn new(config: Config, ioring: Rio) -> Self {
         Self {
             config,
@@ -558,6 +597,15 @@ impl Inner {
             next_blob_id: Arc::new(AtomicUsize::new(0)),
             twins_count: Arc::new(AtomicUsize::new(0)),
             ioring,
+        }
+    }
+
+    fn new(config: Config) -> Self {
+        Self {
+            config,
+            safe: Arc::new(Mutex::new(Safe::new())),
+            next_blob_id: Arc::new(AtomicUsize::new(0)),
+            twins_count: Arc::new(AtomicUsize::new(0)),
         }
     }
 

@@ -45,6 +45,7 @@ impl Builder {
     /// returns error if not all params are set.
     /// # Errors
     /// Return error if some of the required params is missed
+    #[cfg(feature = "aio")]
     pub fn build<K>(self, ioring: Rio) -> Result<Storage<K>> {
         let mut missed_params = String::new();
         if self.config.work_dir().is_none() {
@@ -58,6 +59,29 @@ impl Builder {
         }
         if missed_params.is_empty() {
             Ok(Storage::new(self.config, ioring))
+        } else {
+            error!("{}", missed_params);
+            Err(Error::uninitialized().into())
+        }
+    }
+
+    /// Creates `Storage` based on given configuration,
+    /// returns error if not all params are set.
+    /// # Errors
+    /// Return error if some of the required params is missed
+    pub fn build<K>(self) -> Result<Storage<K>> {
+        let mut missed_params = String::new();
+        if self.config.work_dir().is_none() {
+            missed_params.push_str("> work_dir\n");
+        } else if self.config.max_data_in_blob().is_none() {
+            missed_params.push_str("> max_data_in_blob\n");
+        } else if self.config.max_blob_size().is_none() {
+            missed_params.push_str("> max_blob_size\n");
+        } else if self.config.blob_file_name_prefix().is_none() {
+            missed_params.push_str("> blob_file_name_prefix\n");
+        }
+        if missed_params.is_empty() {
+            Ok(Storage::new(self.config))
         } else {
             error!("{}", missed_params);
             Err(Error::uninitialized().into())
