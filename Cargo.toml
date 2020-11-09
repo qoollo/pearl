@@ -40,7 +40,7 @@ version = "0.3"
 features = ["fs", "stream", "sync", "time", "rt", "macros"]
 
 [features]
-default = []
+default = ["aio"]
 benchmark = ["clap"]
 aio = ["rio"]
 

@@ -85,6 +85,7 @@ pub async fn create_test_storage(
     Ok(storage)
 }
 
+#[cfg(not(feature = "aio"))]
 pub async fn create_test_storage(
     dir_name: impl AsRef<Path>,
     max_blob_size: u64,

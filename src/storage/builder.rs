@@ -69,6 +69,7 @@ impl Builder {
     /// returns error if not all params are set.
     /// # Errors
     /// Return error if some of the required params is missed
+    #[cfg(not(feature = "aio"))]
     pub fn build<K>(self) -> Result<Storage<K>> {
         let mut missed_params = String::new();
         if self.config.work_dir().is_none() {

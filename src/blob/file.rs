@@ -1,3 +1,4 @@
+#[cfg(not(feature = "aio"))]
 use std::{io::Write, os::unix::prelude::FileExt};
 
 use super::prelude::*;
@@ -23,6 +24,7 @@ impl File {
         Self::from_tokio_file(file, ioring).await
     }
 
+    #[cfg(not(feature = "aio"))]
     pub(crate) async fn open(path: impl AsRef<Path>) -> IOResult<Self> {
         let file = OpenOptions::new()
             .create(false)

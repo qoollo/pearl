@@ -47,6 +47,7 @@ impl Blob {
         Ok(blob)
     }
 
+    #[cfg(not(feature = "aio"))]
     pub(crate) async fn open_new(
         name: FileName,
         filter_config: Option<BloomConfig>,
@@ -92,6 +93,7 @@ impl Blob {
         SimpleIndex::new(name, ioring, filter_config)
     }
 
+    #[cfg(not(feature = "aio"))]
     #[inline]
     fn create_index(mut name: FileName, filter_config: Option<BloomConfig>) -> SimpleIndex {
         name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
@@ -156,6 +158,7 @@ impl Blob {
         Ok(blob)
     }
 
+    #[cfg(not(feature = "aio"))]
     pub(crate) async fn from_file(
         path: PathBuf,
         filter_config: Option<BloomConfig>,

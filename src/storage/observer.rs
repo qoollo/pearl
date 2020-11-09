@@ -110,6 +110,22 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
     }
 }
 
+#[cfg(feature = "aio")]
+async fn update_active_blob(inner: Inner) -> Result<()> {
+    let next_name = inner.next_blob_name()?;
+    // Opening a new blob may take a while
+    let new_active = Blob::open_new(next_name, inner.ioring.clone(), inner.config.filter())
+        .await?
+        .boxed();
+    inner
+        .safe
+        .lock()
+        .await
+        .replace_active_blob(new_active)
+        .await
+}
+
+#[cfg(not(feature = "aio"))]
 async fn update_active_blob(inner: Inner) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while

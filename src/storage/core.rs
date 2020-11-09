@@ -107,6 +107,7 @@ impl<K> Storage<K> {
         }
     }
 
+    #[cfg(not(feature = "aio"))]
     pub(crate) fn new(config: Config) -> Self {
         let update_interval = Duration::from_millis(config.update_interval_ms());
         let inner = Inner::new(config);
@@ -390,6 +391,20 @@ impl<K> Storage<K> {
         Ok(())
     }
 
+    #[cfg(feature = "aio")]
+    async fn init_new(&mut self) -> Result<()> {
+        let safe_locked = self.inner.safe.lock();
+        let next = self.inner.next_blob_name()?;
+        let config = self.filter_config();
+        let mut safe = safe_locked.await;
+        let blob = Blob::open_new(next, self.inner.ioring.clone(), config)
+            .await?
+            .boxed();
+        safe.active_blob = Some(blob);
+        Ok(())
+    }
+
+    #[cfg(not(feature = "aio"))]
     async fn init_new(&mut self) -> Result<()> {
         let safe_locked = self.inner.safe.lock();
         let next = self.inner.next_blob_name()?;
@@ -400,6 +415,39 @@ impl<K> Storage<K> {
         Ok(())
     }
 
+    #[cfg(feature = "aio")]
+    async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
+        trace!("init from existing: {:#?}", files);
+        let mut blobs = Self::read_blobs(&files, self.inner.ioring.clone(), self.filter_config())
+            .await
+            .context("failed to read blobs")?;
+
+        debug!("{} blobs successfully created", blobs.len());
+        blobs.sort_by_key(Blob::id);
+        let mut active_blob = blobs
+            .pop()
+            .ok_or_else(|| {
+                let wd = self.inner.config.work_dir();
+                error!("There are some blob files in the work dir: {:?}", wd);
+                error!("Creating blobs from all these files failed");
+                Error::from(ErrorKind::Uninitialized)
+            })?
+            .boxed();
+        let mut safe_locked = self.inner.safe.lock().await;
+        active_blob.load_index().await?;
+        for blob in &mut blobs {
+            debug!("dump all blobs except active blob");
+            blob.dump().await?;
+        }
+        safe_locked.active_blob = Some(active_blob);
+        safe_locked.blobs = blobs;
+        self.inner
+            .next_blob_id
+            .store(safe_locked.max_id().map_or(0, |i| i + 1), ORD);
+        Ok(())
+    }
+
+    #[cfg(not(feature = "aio"))]
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         trace!("init from existing: {:#?}", files);
         let mut blobs = Self::read_blobs(&files, self.filter_config())
@@ -460,6 +508,7 @@ impl<K> Storage<K> {
             .context("failed to read existing blobs")
     }
 
+    #[cfg(not(feature = "aio"))]
     async fn read_blobs(
         files: &[DirEntry],
         filter_config: Option<BloomConfig>,
@@ -577,6 +626,7 @@ impl<K> Storage<K> {
 }
 
 impl Clone for Inner {
+    #[cfg(not(feature = "aio"))]
     fn clone(&self) -> Self {
         self.twins_count.fetch_add(1, ORD);
         Self {
@@ -584,6 +634,18 @@ impl Clone for Inner {
             safe: self.safe.clone(),
             next_blob_id: self.next_blob_id.clone(),
             twins_count: self.twins_count.clone(),
+        }
+    }
+
+    #[cfg(feature = "aio")]
+    fn clone(&self) -> Self {
+        self.twins_count.fetch_add(1, ORD);
+        Self {
+            config: self.config.clone(),
+            safe: self.safe.clone(),
+            next_blob_id: self.next_blob_id.clone(),
+            twins_count: self.twins_count.clone(),
+            ioring: self.ioring.clone(),
         }
     }
 }
@@ -600,6 +662,7 @@ impl Inner {
         }
     }
 
+    #[cfg(not(feature = "aio"))]
     fn new(config: Config) -> Self {
         Self {
             config,

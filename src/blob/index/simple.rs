@@ -59,6 +59,7 @@ impl Simple {
         }
     }
 
+    #[cfg(not(feature = "aio"))]
     pub(crate) fn new(name: FileName, filter_config: Option<Config>) -> Self {
         let filter_is_on = filter_config.is_some();
         let filter = filter_config.map(Bloom::new).unwrap_or_default();
@@ -109,6 +110,7 @@ impl Simple {
         Ok(index)
     }
 
+    #[cfg(not(feature = "aio"))]
     pub(crate) async fn from_file(name: FileName, filter_is_on: bool) -> Result<Self> {
         trace!("open index file");
         let mut file = File::open(name.to_path())
