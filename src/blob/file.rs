@@ -1,5 +1,7 @@
 #[cfg(not(feature = "aio"))]
 use std::{io::Write, os::unix::prelude::FileExt};
+#[cfg(not(feature = "aio"))]
+use tokio::sync::oneshot::channel;
 
 use super::prelude::*;
 
@@ -81,9 +83,15 @@ impl File {
     }
 
     #[cfg(not(feature = "aio"))]
-    pub(crate) async fn write_append(&self, buf: &[u8]) -> IOResult<usize> {
+    pub(crate) async fn write_append(&self, buf: Vec<u8>) -> IOResult<usize> {
         let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
-        self.no_lock_fd.write_at(buf, offset)
+        let (tx, rx) = channel();
+        let file = self.no_lock_fd.clone();
+        tokio::task::spawn_blocking(move || {
+            let res = file.write_at(&buf, offset);
+            tx.send(res)
+        });
+        rx.await.expect("spawned blocking task failed")
     }
 
     pub(crate) async fn read_all(&self) -> Result<Vec<u8>> {

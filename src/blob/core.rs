@@ -71,9 +71,18 @@ impl Blob {
         &self.name
     }
 
+    #[cfg(feature = "aio")]
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
         let offset = self.file.write_append(&buf).await? as u64;
+        self.update_offset(offset).await;
+        Ok(())
+    }
+
+    #[cfg(not(feature = "aio"))]
+    async fn write_header(&mut self) -> Result<()> {
+        let buf = serialize(&self.header)?;
+        let offset = self.file.write_append(buf).await? as u64;
         self.update_offset(offset).await;
         Ok(())
     }
@@ -237,6 +246,7 @@ impl Blob {
         Ok(())
     }
 
+    #[cfg(feature = "aio")]
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
         debug!("blob write");
         let mut offset = self.current_offset.lock().await;
@@ -244,6 +254,19 @@ impl Blob {
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
         let bytes_written = self.file.write_append(&buf).await? as u64;
+        self.index.push(record.header().clone())?;
+        *offset += bytes_written;
+        Ok(())
+    }
+
+    #[cfg(not(feature = "aio"))]
+    pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
+        debug!("blob write");
+        let mut offset = self.current_offset.lock().await;
+        debug!("blob write record offset: {}", *offset);
+        record.set_offset(*offset)?;
+        let buf = record.to_raw()?;
+        let bytes_written = self.file.write_append(buf).await? as u64;
         self.index.push(record.header().clone())?;
         *offset += bytes_written;
         Ok(())

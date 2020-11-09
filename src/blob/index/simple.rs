@@ -185,7 +185,7 @@ impl Simple {
         let file = File::create(self.name.to_path())
             .await
             .with_context(|| format!("file open failed {:?}", self.name.to_path()))?;
-        let size = file.write_append(&buf).await?;
+        let size = file.write_append(buf).await?;
         self.inner = State::OnDisk(file);
         Ok(size)
     }
