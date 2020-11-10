@@ -18,7 +18,7 @@ pub(crate) async fn read_at(
     );
     file.read_at(&mut buf, offset).await?;
     let header = deserialize(&buf)?;
-    debug!("blob index simple header: {:?}", header);
+    trace!("blob index simple header: {:?}", header);
     Ok(header)
 }
 
@@ -39,7 +39,7 @@ pub(crate) async fn binary_search(
     while start <= end {
         let mid = (start + end) / 2;
         let mid_record_header = read_at(file, mid, &header).await?;
-        debug!(
+        trace!(
             "blob index simple binary search mid header: {:?}",
             mid_record_header
         );
@@ -47,7 +47,14 @@ pub(crate) async fn binary_search(
         debug!("mid read: {:?}, key: {:?}", mid_record_header.key(), key);
         debug!("before mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
         match cmp {
-            CmpOrdering::Greater => end = mid - 1,
+            CmpOrdering::Greater => {
+                if mid == 0 {
+                    debug!("index has 1 record and key doesn't match");
+                    return Ok(None);
+                } else {
+                    end = mid - 1;
+                }
+            }
             CmpOrdering::Equal => {
                 return Ok(Some((mid_record_header, mid)));
             }

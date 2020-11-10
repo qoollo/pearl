@@ -1,4 +1,5 @@
 use super::prelude::*;
+#[cfg(feature = "aio")]
 use pearl::rio;
 
 pub struct Writer<K> {
@@ -6,6 +7,7 @@ pub struct Writer<K> {
 }
 
 impl<K> Writer<K> {
+    #[cfg(feature = "aio")]
     pub fn new(
         tmp_dir: &Path,
         max_blob_size: u64,
@@ -24,6 +26,27 @@ impl<K> Writer<K> {
 
         let rio = rio::new().unwrap();
         let storage = builder.build(rio).unwrap();
+        Self { storage }
+    }
+
+    #[cfg(not(feature = "aio"))]
+    pub fn new(
+        tmp_dir: &Path,
+        max_blob_size: u64,
+        max_data_in_blob: u64,
+        allow_duplicates: bool,
+    ) -> Self {
+        let mut builder = Builder::new()
+            .blob_file_name_prefix("benchmark")
+            .max_blob_size(max_blob_size)
+            .max_data_in_blob(max_data_in_blob)
+            .work_dir(tmp_dir.join("pearl_benchmark"));
+        if allow_duplicates {
+            info!("duplicates allowed");
+            builder = builder.allow_duplicates();
+        }
+
+        let storage = builder.build().unwrap();
         Self { storage }
     }
 

@@ -74,21 +74,19 @@ impl Blob {
     #[cfg(feature = "aio")]
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
-        let offset = self.file.write_append(&buf).await? as u64;
-        self.update_offset(offset).await;
+        let mut offset = self.current_offset.lock().await;
+        let bytes_written = self.file.write_append(&buf).await? as u64;
+        *offset += bytes_written;
         Ok(())
     }
 
     #[cfg(not(feature = "aio"))]
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
-        let offset = self.file.write_append(buf).await? as u64;
-        self.update_offset(offset).await;
+        let mut offset = self.current_offset.lock().await;
+        let bytes_written = self.file.write_append(buf).await? as u64;
+        *offset += bytes_written;
         Ok(())
-    }
-
-    async fn update_offset(&self, offset: u64) {
-        *self.current_offset.lock().await = offset;
     }
 
     #[cfg(feature = "aio")]
