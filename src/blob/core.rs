@@ -1,3 +1,5 @@
+use tokio::time::Instant;
+
 use super::prelude::*;
 
 use super::index::Index;
@@ -91,7 +93,8 @@ impl Blob {
         ioring: Rio,
         filter_config: Option<BloomConfig>,
     ) -> Result<Self> {
-        trace!("create file instance");
+        debug!("blob from file init started");
+        let now = Instant::now();
         let file = File::open(&path, ioring.clone()).await?;
         let name = FileName::from_path(&path)?;
         let size = file.size();
@@ -125,6 +128,11 @@ impl Blob {
         }
         trace!("check data consistency");
         Self::check_data_consistency()?;
+        info!(
+            "{} init finished: {}ms",
+            blob.name(),
+            now.elapsed().as_millis()
+        );
         Ok(blob)
     }
 
