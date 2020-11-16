@@ -128,7 +128,7 @@ impl Blob {
         }
         trace!("check data consistency");
         Self::check_data_consistency()?;
-        debug!(
+        info!(
             "{} init finished: {}ms",
             blob.name(),
             now.elapsed().as_millis()
