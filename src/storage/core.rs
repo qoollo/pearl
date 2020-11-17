@@ -44,7 +44,7 @@ pub(crate) struct Inner {
     pub(crate) safe: Arc<Mutex<Safe>>,
     next_blob_id: Arc<AtomicUsize>,
     twins_count: Arc<AtomicUsize>,
-    pub(crate) ioring: Rio,
+    pub(crate) ioring: Option<Rio>,
 }
 
 #[derive(Debug)]
@@ -94,7 +94,7 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     }
 }
 impl<K> Storage<K> {
-    pub(crate) fn new(config: Config, ioring: Rio) -> Self {
+    pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
         let update_interval = Duration::from_millis(config.update_interval_ms());
         let inner = Inner::new(config, ioring);
         let observer = Observer::new(update_interval, inner.clone());
@@ -422,7 +422,7 @@ impl<K> Storage<K> {
 
     async fn read_blobs(
         files: &[DirEntry],
-        ioring: Rio,
+        ioring: Option<Rio>,
         filter_config: Option<BloomConfig>,
     ) -> Result<Vec<Blob>> {
         debug!("read working directory content");
@@ -551,7 +551,7 @@ impl Clone for Inner {
 }
 
 impl Inner {
-    fn new(config: Config, ioring: Rio) -> Self {
+    fn new(config: Config, ioring: Option<Rio>) -> Self {
         Self {
             config,
             safe: Arc::new(Mutex::new(Safe::new())),

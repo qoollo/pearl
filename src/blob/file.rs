@@ -1,15 +1,19 @@
+use std::{io::Write, os::unix::prelude::FileExt};
+
+use tokio::sync::oneshot::channel;
+
 use super::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct File {
-    ioring: Rio,
+    ioring: Option<Rio>,
     no_lock_fd: Arc<StdFile>, // requires only for read_at/write_at methods
     write_fd: Arc<RwLock<TokioFile>>,
     size: Arc<AtomicU64>,
 }
 
 impl File {
-    pub(crate) async fn open(path: impl AsRef<Path>, ioring: Rio) -> IOResult<Self> {
+    pub(crate) async fn open(path: impl AsRef<Path>, ioring: Option<Rio>) -> IOResult<Self> {
         let file = OpenOptions::new()
             .create(false)
             .append(true)
@@ -19,7 +23,7 @@ impl File {
         Self::from_tokio_file(file, ioring).await
     }
 
-    pub(crate) async fn create(path: impl AsRef<Path>, ioring: Rio) -> IOResult<Self> {
+    pub(crate) async fn create(path: impl AsRef<Path>, ioring: Option<Rio>) -> IOResult<Self> {
         let file = OpenOptions::new()
             .create(true)
             .write(true)
@@ -38,8 +42,28 @@ impl File {
     }
 
     pub(crate) async fn write_append(&self, buf: &[u8]) -> IOResult<usize> {
+        if let Some(ref ioring) = self.ioring {
+            self.write_append_aio(buf, ioring).await
+        } else {
+            self.write_append_sync(buf).await
+        }
+    }
+
+    pub(crate) async fn write_append_sync(&self, buf: &[u8]) -> IOResult<usize> {
+        let (tx, rx) = channel();
+        let file = self.no_lock_fd.clone();
         let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
-        let compl = self.ioring.write_at(&*self.no_lock_fd, &buf, offset);
+        let buf = buf.to_vec();
+        tokio::task::spawn_blocking(move || {
+            let res = file.write_at(&buf, offset);
+            tx.send(res)
+        });
+        rx.await.expect("spawned blocking task failed")
+    }
+
+    async fn write_append_aio(&self, buf: &[u8], ioring: &Rio) -> IOResult<usize> {
+        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
+        let compl = ioring.write_at(&*self.no_lock_fd, &buf, offset);
         let count = compl.await?;
         if count < buf.len() {
             panic!(
@@ -58,6 +82,29 @@ impl File {
     }
 
     pub(crate) async fn read_at(&self, buf: &mut [u8], offset: u64) -> Result<usize> {
+        if let Some(ref ioring) = self.ioring {
+            self.read_at_aio(buf, offset, ioring).await
+        } else {
+            self.read_at_sync(buf, offset).await
+        }
+    }
+
+    pub(crate) async fn read_at_sync(&self, buf: &mut [u8], offset: u64) -> Result<usize> {
+        let (tx, rx) = channel();
+        let file = self.no_lock_fd.clone();
+        let mut new_buf = buf.to_vec();
+        tokio::task::spawn_blocking(move || {
+            let res = file
+                .read_at(&mut new_buf, offset)
+                .map(|count| (count, new_buf));
+            tx.send(res)
+        });
+        let (count, new_buf) = rx.await.expect("spawned blocking task failed")?;
+        buf.clone_from_slice(new_buf.as_slice());
+        Ok(count)
+    }
+
+    async fn read_at_aio(&self, buf: &mut [u8], offset: u64, ioring: &Rio) -> Result<usize> {
         debug!("blob file read at");
         if buf.is_empty() {
             warn!("file read_at empty buf");
@@ -67,7 +114,7 @@ impl File {
             buf.len(),
             offset
         );
-        let compl = self.ioring.read_at(&*self.no_lock_fd, &buf, offset);
+        let compl = ioring.read_at(&*self.no_lock_fd, &buf, offset);
         let mut size = compl.await.with_context(|| "read at failed")?;
         while size < buf.len() {
             debug!(
@@ -77,9 +124,7 @@ impl File {
             );
             let slice = buf.split_at_mut(size).1;
             debug!("blob file read at buf to fill up: {}b", slice.len());
-            let compl = self
-                .ioring
-                .read_at(&*self.no_lock_fd, &slice, offset + size as u64);
+            let compl = ioring.read_at(&*self.no_lock_fd, &slice, offset + size as u64);
             let remainder_size = compl.await.with_context(|| "second read at failed")?;
             debug!(
                 "blob file read at second read, completed {}/{} of remains bytes",
@@ -97,7 +142,7 @@ impl File {
         Ok(size)
     }
 
-    async fn from_tokio_file(file: TokioFile, ioring: Rio) -> IOResult<Self> {
+    async fn from_tokio_file(file: TokioFile, ioring: Option<Rio>) -> IOResult<Self> {
         let tokio_file = file.try_clone().await?;
         let size = tokio_file.metadata().await?.len();
         let size = Arc::new(AtomicU64::new(size));
@@ -112,7 +157,17 @@ impl File {
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
-        let compl = self.ioring.fdatasync(&*self.no_lock_fd);
-        compl.await
+        if let Some(ref ioring) = self.ioring {
+            let compl = ioring.fdatasync(&*self.no_lock_fd);
+            compl.await
+        } else {
+            let (tx, rx) = channel();
+            let file = self.no_lock_fd.clone();
+            tokio::task::spawn_blocking(move || {
+                let res = file.as_ref().flush();
+                tx.send(res)
+            });
+            rx.await.expect("spawned blocking task failed")
+        }
     }
 }

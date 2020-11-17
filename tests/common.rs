@@ -71,15 +71,16 @@ pub async fn create_test_storage(
     max_blob_size: u64,
 ) -> Result<Storage<KeyTest>, String> {
     let path = env::temp_dir().join(dir_name);
+    let ioring = rio::new().expect("create uring");
     let builder = Builder::new()
         .work_dir(&path)
         .blob_file_name_prefix("test")
         .max_blob_size(max_blob_size)
         .max_data_in_blob(100_000)
         .set_filter_config(Default::default())
-        .allow_duplicates();
-    let ioring = rio::new().expect("create uring");
-    let mut storage = builder.build(ioring).unwrap();
+        .allow_duplicates()
+        .enable_aio(ioring);
+    let mut storage = builder.build().unwrap();
     storage.init().await.map_err(|e| e.to_string())?;
     Ok(storage)
 }

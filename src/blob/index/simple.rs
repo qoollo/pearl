@@ -7,7 +7,7 @@ pub(crate) struct Simple {
     filter_is_on: bool,
     inner: State,
     name: FileName,
-    ioring: Rio,
+    ioring: Option<Rio>,
 }
 
 #[derive(Debug, Deserialize, Default, Serialize, Clone)]
@@ -43,7 +43,7 @@ pub(crate) enum State {
 }
 
 impl Simple {
-    pub(crate) fn new(name: FileName, ioring: Rio, filter_config: Option<Config>) -> Self {
+    pub(crate) fn new(name: FileName, ioring: Option<Rio>, filter_config: Option<Config>) -> Self {
         let filter_is_on = filter_config.is_some();
         let filter = filter_config.map(Bloom::new).unwrap_or_default();
         let header = IndexHeader::default();
@@ -69,7 +69,11 @@ impl Simple {
         &self.name
     }
 
-    pub(crate) async fn from_file(name: FileName, filter_is_on: bool, ioring: Rio) -> Result<Self> {
+    pub(crate) async fn from_file(
+        name: FileName,
+        filter_is_on: bool,
+        ioring: Option<Rio>,
+    ) -> Result<Self> {
         trace!("open index file");
         let mut file = File::open(name.to_path(), ioring.clone())
             .await
