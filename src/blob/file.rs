@@ -50,15 +50,10 @@ impl File {
     }
 
     pub(crate) async fn write_append_sync(&self, buf: &[u8]) -> IOResult<usize> {
-        let (tx, rx) = channel();
         let file = self.no_lock_fd.clone();
         let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
         let buf = buf.to_vec();
-        tokio::task::spawn_blocking(move || {
-            let res = file.write_at(&buf, offset);
-            tx.send(res)
-        });
-        rx.await.expect("spawned blocking task failed")
+        Self::blocking_call(move || file.write_at(&buf, offset)).await
     }
 
     async fn write_append_aio(&self, buf: &[u8], ioring: &Rio) -> IOResult<usize> {
@@ -90,16 +85,14 @@ impl File {
     }
 
     pub(crate) async fn read_at_sync(&self, buf: &mut [u8], offset: u64) -> Result<usize> {
-        let (tx, rx) = channel();
         let file = self.no_lock_fd.clone();
         let mut new_buf = buf.to_vec();
-        tokio::task::spawn_blocking(move || {
-            let res = file
-                .read_at(&mut new_buf, offset)
-                .map(|count| (count, new_buf));
-            tx.send(res)
-        });
-        let (count, new_buf) = rx.await.expect("spawned blocking task failed")?;
+
+        let (count, new_buf) = Self::blocking_call(move || {
+            file.read_at(&mut new_buf, offset)
+                .map(|count| (count, new_buf))
+        })
+        .await?;
         buf.clone_from_slice(new_buf.as_slice());
         Ok(count)
     }
@@ -161,13 +154,21 @@ impl File {
             let compl = ioring.fdatasync(&*self.no_lock_fd);
             compl.await
         } else {
-            let (tx, rx) = channel();
             let file = self.no_lock_fd.clone();
-            tokio::task::spawn_blocking(move || {
-                let res = file.as_ref().flush();
-                tx.send(res)
-            });
-            rx.await.expect("spawned blocking task failed")
+            Self::blocking_call(move || file.as_ref().flush()).await
         }
+    }
+
+    async fn blocking_call<F, R>(f: F) -> R
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        let (tx, rx) = channel();
+        tokio::task::spawn_blocking(move || {
+            let res = f();
+            tx.send(res)
+        });
+        rx.await.expect("spawned blocking task failed")
     }
 }
