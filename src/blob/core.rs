@@ -93,10 +93,10 @@ impl Blob {
         ioring: Rio,
         filter_config: Option<BloomConfig>,
     ) -> Result<Self> {
-        debug!("blob from file init started");
         let now = Instant::now();
         let file = File::open(&path, ioring.clone()).await?;
         let name = FileName::from_path(&path)?;
+        info!("{} blob init started", name);
         let size = file.size();
         let header = Header::new();
         let mut index_name = name.clone();
