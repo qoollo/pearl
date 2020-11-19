@@ -24,7 +24,7 @@ async fn test_storage_init_new() {
     let path = common::init("new");
     let storage = common::default_test_storage_in(&path).await.unwrap();
     // check if active blob created
-    assert_eq!(storage.blobs_count(), 1);
+    assert_eq!(storage.blobs_count().await, 1);
     // check if active blob file exists
     assert!(path.join("test.0.blob").exists());
     common::clean(storage, path).await.unwrap();
@@ -46,7 +46,7 @@ async fn test_storage_init_from_existing() {
     assert!(!path.join("pearl.lock").exists());
 
     let storage = common::default_test_storage_in(&path).await.unwrap();
-    assert_eq!(storage.blobs_count(), 2);
+    assert_eq!(storage.blobs_count().await, 2);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
     common::clean(storage, path).await.unwrap();
@@ -199,7 +199,7 @@ async fn test_on_disk_index() -> AnyResult<()> {
         sleep(Duration::from_millis(100)).await;
         write_one(&storage, i, &data, None).await.unwrap();
     }
-    while storage.blobs_count() < 2 {
+    while storage.blobs_count().await < 2 {
         sleep(Duration::from_millis(200)).await;
     }
     assert!(path.join("test.1.blob").exists());
@@ -301,7 +301,7 @@ async fn test_write_with_with_on_disk_index() {
         sleep(Duration::from_millis(32)).await;
         write_one(&storage, *i, data, Some("1.0")).await.unwrap();
     }
-    assert!(storage.blobs_count() > 1);
+    assert!(storage.blobs_count().await > 1);
 
     // let data = b"data_with_meta";
     // write_one(&storage, key, data, Some("1.0")).await.unwrap();
@@ -486,7 +486,7 @@ async fn test_check_bloom_filter_multiple() {
         let key = KeyTest::new(i);
         storage.write(&key, data.to_vec()).await.unwrap();
         sleep(Duration::from_millis(6)).await;
-        trace!("blobs count: {}", storage.blobs_count());
+        trace!("blobs count: {}", storage.blobs_count().await);
     }
     for i in 1..800 {
         assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(true));
@@ -513,7 +513,7 @@ async fn test_check_bloom_filter_init_from_existing() {
             let key = KeyTest::new(i);
             trace!("write key: {}", i);
             storage.write(&key, data.to_vec()).await.unwrap();
-            trace!("blobs count: {}", storage.blobs_count());
+            trace!("blobs count: {}", storage.blobs_count().await);
         }
         debug!("close storage");
         storage.close().await.unwrap();
@@ -557,7 +557,7 @@ async fn test_check_bloom_filter_generated() {
             let key = KeyTest::new(i);
             trace!("write key: {}", i);
             storage.write(&key, data.to_vec()).await.unwrap();
-            trace!("blobs count: {}", storage.blobs_count());
+            trace!("blobs count: {}", storage.blobs_count().await);
         }
         debug!("close storage");
         storage.close().await.unwrap();
@@ -683,7 +683,7 @@ async fn test_manual_close_active_blob() {
         write_one(&storage, *key, data, None).await.unwrap();
         sleep(Duration::from_millis(10)).await;
     }
-    assert_eq!(storage.blobs_count(), 1);
+    assert_eq!(storage.blobs_count().await, 1);
     assert!(path.join("test.0.blob").exists());
     sleep(Duration::from_millis(1000)).await;
     storage.close_active_blob().await;
@@ -701,8 +701,9 @@ async fn test_blobs_count_random_names() {
         write_one(&storage, *key, data, None).await.unwrap();
         sleep(Duration::from_millis(10)).await;
     }
+    sleep(Duration::from_millis(100)).await;
+    assert_eq!(storage.blobs_count().await, 1);
     storage.close().await.unwrap();
-    assert_eq!(storage.blobs_count(), 1);
     assert!(path.join("test.0.blob").exists());
     let mut rng = rand::thread_rng();
     let mut numbers = [0usize; 16];
@@ -725,6 +726,6 @@ async fn test_blobs_count_random_names() {
         tokio::fs::copy(&source, dst).await.unwrap();
     }
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
-    assert_eq!(names.len() + 1, storage.blobs_count());
+    assert_eq!(names.len() + 1, storage.blobs_count().await);
     common::clean(storage, path).await.unwrap();
 }
