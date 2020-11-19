@@ -185,7 +185,8 @@ async fn test_on_disk_index() -> AnyResult<()> {
         .blob_file_name_prefix("test")
         .max_blob_size(max_blob_size)
         .max_data_in_blob(1_000)
-        .build(ioring)
+        .enable_aio(ioring)
+        .build()
         .unwrap();
     let slice = [17, 40, 29, 7, 75];
     let mut data = Vec::new();

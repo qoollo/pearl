@@ -32,6 +32,7 @@ use super::prelude::*;
 #[derive(Default, Debug)]
 pub struct Builder {
     config: Config,
+    ioring: Option<Rio>,
 }
 
 impl Builder {
@@ -45,7 +46,7 @@ impl Builder {
     /// returns error if not all params are set.
     /// # Errors
     /// Return error if some of the required params is missed
-    pub fn build<K>(self, ioring: Rio) -> Result<Storage<K>> {
+    pub fn build<K>(self) -> Result<Storage<K>> {
         let mut missed_params = String::new();
         if self.config.work_dir().is_none() {
             missed_params.push_str("> work_dir\n");
@@ -57,7 +58,7 @@ impl Builder {
             missed_params.push_str("> blob_file_name_prefix\n");
         }
         if missed_params.is_empty() {
-            Ok(Storage::new(self.config, ioring))
+            Ok(Storage::new(self.config, self.ioring))
         } else {
             error!("{}", missed_params);
             Err(Error::uninitialized().into())
@@ -121,10 +122,17 @@ impl Builder {
         self
     }
 
-    /// Sets custom bloom filter config, if not set, use default values
+    /// Sets custom bloom filter config, if not set, use default values.
     #[must_use]
     pub fn set_filter_config(mut self, config: BloomConfig) -> Self {
         self.config.set_filter(config);
+        self
+    }
+
+    /// Enables linux AIO with provided io_uring.
+    #[must_use]
+    pub fn enable_aio(mut self, ioring: Rio) -> Self {
+        self.ioring = Some(ioring);
         self
     }
 }
