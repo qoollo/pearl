@@ -8,7 +8,7 @@ use futures::{
     TryFutureExt,
 };
 use pearl::{Builder, Meta, Storage};
-use rand::seq::SliceRandom;
+use rand::{seq::SliceRandom, Rng};
 use std::{
     fs,
     time::{Duration, Instant},
@@ -689,4 +689,42 @@ async fn test_manual_close_active_blob() {
     storage.close_active_blob().await;
     assert!(path.join("test.0.blob").exists());
     assert!(!path.join("test.1.blob").exists());
+    common::clean(storage, path).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_blobs_count_random_names() {
+    let path = common::init("blobs_count_random_names");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
+    let records = common::generate_records(5, 1000);
+    for (key, data) in &records {
+        write_one(&storage, *key, data, None).await.unwrap();
+        sleep(Duration::from_millis(10)).await;
+    }
+    storage.close().await.unwrap();
+    assert_eq!(storage.blobs_count(), 1);
+    assert!(path.join("test.0.blob").exists());
+    let mut rng = rand::thread_rng();
+    let mut numbers = [0usize; 16];
+    rng.fill(&mut numbers);
+    let names: Vec<_> = numbers
+        .iter()
+        .filter_map(|i| {
+            if *i != 0 {
+                Some(format!("test.{}.blob", i))
+            } else {
+                None
+            }
+        })
+        .collect();
+    debug!("test blob names: {:?}", names);
+    let source = path.join("test.0.blob");
+    for name in &names {
+        let dst = path.join(name);
+        debug!("{:?} -> {:?}", source, dst);
+        tokio::fs::copy(&source, dst).await.unwrap();
+    }
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
+    assert_eq!(names.len() + 1, storage.blobs_count());
+    common::clean(storage, path).await.unwrap();
 }
