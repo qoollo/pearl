@@ -311,7 +311,7 @@ impl<K> Storage<K> {
     /// Stop blob updater and release lock file
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn close(&self) -> Result<()> {
+    pub async fn close(self) -> Result<()> {
         let mut safe = self.inner.safe.lock().await;
         let active_blob = safe.active_blob.take();
         if let Some(mut blob) = active_blob {
@@ -329,7 +329,8 @@ impl<K> Storage<K> {
         Ok(())
     }
 
-    /// `blob_count` returns number of closed blobs plus one active, if there is some.
+    /// `blob_count` returns exact number of closed blobs plus one active, if there is some.
+    /// It locks on inner structure, so it much slower than `next_blob_id`.
     /// # Examples
     /// ```no-run
     /// use pearl::Builder;
@@ -338,8 +339,21 @@ impl<K> Storage<K> {
     /// storage.init().await;
     /// assert_eq!(storage.blobs_count(), 1);
     /// ```
+    pub async fn blobs_count(&self) -> usize {
+        let safe = self.inner.safe.lock().await;
+        let count = safe.blobs.len();
+        if safe.active_blob.is_some() {
+            count + 1
+        } else {
+            count
+        }
+    }
+
+    /// Returns next blob ID. If pearl dir structure wasn't changed from the outside,
+    /// returned number is equal to `blobs_count`. But this method doesn't require
+    /// lock. So it is much faster than `blobs_count`.
     #[must_use]
-    pub fn blobs_count(&self) -> usize {
+    pub fn next_blob_id(&self) -> usize {
         self.inner.next_blob_id.load(ORD)
     }
 
