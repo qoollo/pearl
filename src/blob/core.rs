@@ -30,7 +30,7 @@ impl Blob {
     /// [`FileName`]: struct.FileName.html
     pub(crate) async fn open_new(
         name: FileName,
-        ioring: Rio,
+        ioring: Option<Rio>,
         filter_config: Option<BloomConfig>,
     ) -> Result<Self> {
         let file = File::create(name.to_path(), ioring.clone()).await?;
@@ -54,19 +54,16 @@ impl Blob {
 
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
-        let offset = self.file.write_append(&buf).await? as u64;
-        self.update_offset(offset).await;
+        let mut offset = self.current_offset.lock().await;
+        let bytes_written = self.file.write_append(&buf).await? as u64;
+        *offset = bytes_written;
         Ok(())
-    }
-
-    async fn update_offset(&self, offset: u64) {
-        *self.current_offset.lock().await = offset;
     }
 
     #[inline]
     fn create_index(
         mut name: FileName,
-        ioring: Rio,
+        ioring: Option<Rio>,
         filter_config: Option<BloomConfig>,
     ) -> SimpleIndex {
         name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
@@ -90,7 +87,7 @@ impl Blob {
 
     pub(crate) async fn from_file(
         path: PathBuf,
-        ioring: Rio,
+        ioring: Option<Rio>,
         filter_config: Option<BloomConfig>,
     ) -> Result<Self> {
         let now = Instant::now();

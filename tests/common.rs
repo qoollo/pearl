@@ -78,8 +78,13 @@ pub async fn create_test_storage(
         .max_data_in_blob(100_000)
         .set_filter_config(Default::default())
         .allow_duplicates();
-    let ioring = rio::new().expect("create uring");
-    let mut storage = builder.build(ioring).unwrap();
+    let builder = if let Ok(ioring) = rio::new() {
+        builder.enable_aio(ioring)
+    } else {
+        println!("current OS doesn't support AIO");
+        builder
+    };
+    let mut storage = builder.build().unwrap();
     storage.init().await.map_err(|e| e.to_string())?;
     Ok(storage)
 }

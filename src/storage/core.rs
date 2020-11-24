@@ -44,7 +44,7 @@ pub(crate) struct Inner {
     pub(crate) safe: Arc<Mutex<Safe>>,
     next_blob_id: Arc<AtomicUsize>,
     twins_count: Arc<AtomicUsize>,
-    pub(crate) ioring: Rio,
+    pub(crate) ioring: Option<Rio>,
 }
 
 #[derive(Debug)]
@@ -94,7 +94,7 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     }
 }
 impl<K> Storage<K> {
-    pub(crate) fn new(config: Config, ioring: Rio) -> Self {
+    pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
         let update_interval = Duration::from_millis(config.update_interval_ms());
         let inner = Inner::new(config, ioring);
         let observer = Observer::new(update_interval, inner.clone());
@@ -311,7 +311,7 @@ impl<K> Storage<K> {
     /// Stop blob updater and release lock file
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn close(&self) -> Result<()> {
+    pub async fn close(self) -> Result<()> {
         let mut safe = self.inner.safe.lock().await;
         let active_blob = safe.active_blob.take();
         if let Some(mut blob) = active_blob {
@@ -329,7 +329,8 @@ impl<K> Storage<K> {
         Ok(())
     }
 
-    /// `blob_count` returns number of closed blobs plus one active, if there is some.
+    /// `blob_count` returns exact number of closed blobs plus one active, if there is some.
+    /// It locks on inner structure, so it much slower than `next_blob_id`.
     /// # Examples
     /// ```no-run
     /// use pearl::Builder;
@@ -338,8 +339,21 @@ impl<K> Storage<K> {
     /// storage.init().await;
     /// assert_eq!(storage.blobs_count(), 1);
     /// ```
+    pub async fn blobs_count(&self) -> usize {
+        let safe = self.inner.safe.lock().await;
+        let count = safe.blobs.len();
+        if safe.active_blob.is_some() {
+            count + 1
+        } else {
+            count
+        }
+    }
+
+    /// Returns next blob ID. If pearl dir structure wasn't changed from the outside,
+    /// returned number is equal to `blobs_count`. But this method doesn't require
+    /// lock. So it is much faster than `blobs_count`.
     #[must_use]
-    pub fn blobs_count(&self) -> usize {
+    pub fn next_blob_id(&self) -> usize {
         self.inner.next_blob_id.load(ORD)
     }
 
@@ -422,7 +436,7 @@ impl<K> Storage<K> {
 
     async fn read_blobs(
         files: &[DirEntry],
-        ioring: Rio,
+        ioring: Option<Rio>,
         filter_config: Option<BloomConfig>,
     ) -> Result<Vec<Blob>> {
         debug!("read working directory content");
@@ -551,7 +565,7 @@ impl Clone for Inner {
 }
 
 impl Inner {
-    fn new(config: Config, ioring: Rio) -> Self {
+    fn new(config: Config, ioring: Option<Rio>) -> Self {
         Self {
             config,
             safe: Arc::new(Mutex::new(Safe::new())),
