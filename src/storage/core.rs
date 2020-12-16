@@ -349,6 +349,16 @@ impl<K> Storage<K> {
         }
     }
 
+    /// `index_memory` returns the amount of memory used by blob to store indices
+    pub async fn index_memory(&self) -> usize {
+        let safe = self.inner.safe.lock().await;
+        if let Some(ablob) = safe.active_blob.as_ref() {
+            ablob.index_memory()
+        } else {
+            0
+        }
+    }
+
     /// Returns next blob ID. If pearl dir structure wasn't changed from the outside,
     /// returned number is equal to `blobs_count`. But this method doesn't require
     /// lock. So it is much faster than `blobs_count`.
