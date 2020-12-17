@@ -18,7 +18,7 @@ lto = true
 codegen-units = 1
 
 [dependencies]
-ahash = "0.5"
+ahash = "0.6.2"
 anyhow = "1.0"
 async-trait = "0.1"
 bincode = "1.3.1"
@@ -37,9 +37,10 @@ clap = { version = "2.33", optional = true }
 
 [dependencies.tokio]
 version = "0.3"
-features = ["fs", "stream", "sync", "time", "rt", "macros"]
+features = ["fs", "stream", "sync", "time", "rt", "macros", "rt-multi-thread"]
 
 [features]
+# default = ["benchmark"]
 benchmark = ["clap"]
 
 [lib]

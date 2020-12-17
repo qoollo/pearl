@@ -35,6 +35,7 @@ pub(crate) async fn binary_search(
 
     let mut start = 0;
     let mut end = header.records_count - 1;
+    debug!("loop init values: start: {:?}, end: {:?}", start, end);
 
     while start <= end {
         let mid = (start + end) / 2;
@@ -47,11 +48,15 @@ pub(crate) async fn binary_search(
         debug!("mid read: {:?}, key: {:?}", mid_record_header.key(), key);
         debug!("before mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
         match cmp {
-            CmpOrdering::Greater => end = mid - 1,
+            CmpOrdering::Greater if mid > 0 => end = mid - 1,
             CmpOrdering::Equal => {
                 return Ok(Some((mid_record_header, mid)));
             }
             CmpOrdering::Less => start = mid + 1,
+            other => {
+                debug!("binary search not found, cmp: {:?}, mid: {}", other, mid);
+                return Ok(None);
+            }
         };
         debug!("after mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
     }
@@ -138,10 +143,7 @@ pub(crate) fn serialize_record_headers(
 ) -> Result<Option<(IndexHeader, Vec<u8>)>> {
     debug!("blob index simple serialize headers");
     if let Some(record_header) = headers.values().next().and_then(|v| v.first()) {
-        debug!(
-            "blob index simple serialize headers first header {:?}",
-            record_header
-        );
+        debug!("index simple serialize headers first: {:?}", record_header);
         let record_header_size = record_header.serialized_size().try_into()?;
         trace!("record header serialized size: {}", record_header_size);
         let headers = headers.iter().flat_map(|r| r.1).collect::<Vec<_>>(); // produce sorted
