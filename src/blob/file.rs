@@ -1,7 +1,5 @@
 use std::{io::Write, os::unix::prelude::FileExt};
 
-use tokio::sync::oneshot::channel;
-
 use super::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -164,11 +162,8 @@ impl File {
         F: FnOnce() -> R + Send + 'static,
         R: Send + 'static,
     {
-        let (tx, rx) = channel();
-        tokio::task::spawn_blocking(move || {
-            let res = f();
-            tx.send(res)
-        });
-        rx.await.expect("spawned blocking task failed")
+        tokio::task::spawn_blocking(move || f())
+            .await
+            .expect("spawned blocking task failed")
     }
 }
