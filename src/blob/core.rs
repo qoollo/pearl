@@ -124,7 +124,7 @@ impl Blob {
             warn!("empty or corrupted blob: {:?}", path);
         }
         trace!("check data consistency");
-        Self::check_data_consistency()?;
+        Self::check_data_consistency();
         info!(
             "{} init finished: {}ms",
             blob.name(),
@@ -165,9 +165,8 @@ impl Blob {
         Ok(())
     }
 
-    pub(crate) const fn check_data_consistency() -> Result<()> {
+    pub(crate) const fn check_data_consistency() {
         // @TODO implement
-        Ok(())
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
