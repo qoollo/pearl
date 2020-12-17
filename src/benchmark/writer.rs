@@ -23,7 +23,7 @@ impl<K> Writer<K> {
         }
 
         let rio = rio::new().unwrap();
-        let storage = builder.build(rio).unwrap();
+        let storage = builder.enable_aio(rio).build().unwrap();
         Self { storage }
     }
 
@@ -45,6 +45,6 @@ impl<K> Writer<K> {
     }
 
     pub async fn close(&self) {
-        self.storage.close().await.unwrap();
+        self.storage.clone().close().await.unwrap();
     }
 }
