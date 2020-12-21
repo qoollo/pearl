@@ -56,6 +56,8 @@ extern crate serde_derive;
 #[macro_use]
 extern crate anyhow;
 
+extern crate ring;
+
 mod blob;
 mod error;
 mod record;

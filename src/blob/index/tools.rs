@@ -154,6 +154,7 @@ pub(crate) fn serialize_record_headers(
             record_header_size,
             records_count: headers.len(),
             filter_buf_size: filter_buf.len(),
+            hash: vec![0; ring::digest::SHA256.output_len]
         };
         let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
         trace!("index header size: {}b", hs);
@@ -177,8 +178,24 @@ pub(crate) fn serialize_record_headers(
             "blob index simple serialize headers buf len after: {}",
             buf.len()
         );
+        let hash = get_hash(&buf);
+        let new_header = IndexHeader {
+            record_header_size,
+            records_count: headers.len(),
+            filter_buf_size: filter_buf.len(),
+            hash
+        };
+        serialize_into(buf.as_mut_slice(), &new_header)?;
         Ok(Some((header, buf)))
     } else {
         Ok(None)
     }
+}
+
+pub(crate) fn get_hash(buf: &[u8]) -> Vec<u8> {
+    use ring::digest::{Context, SHA256};
+    let mut context = Context::new(&SHA256);
+    context.update(buf);
+    let digest = context.finish();
+    digest.as_ref().to_vec()
 }
