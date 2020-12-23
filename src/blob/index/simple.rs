@@ -13,6 +13,7 @@ pub(crate) struct Simple {
 #[derive(Debug, Deserialize, Default, Serialize, Clone)]
 pub(crate) struct IndexHeader {
     pub records_count: usize,
+    pub key_size: usize,
     pub record_header_size: usize,
     pub filter_buf_size: usize,
 }
@@ -163,13 +164,8 @@ impl Simple {
 
     pub(crate) fn memory_used(&self) -> usize {
         if let State::InMemory(data) = &self.inner {
-            // FIXME: cache key size somewhere?
-            let key_size = if let Some(key) = data.keys().next() {
-                key.len()
-            } else {
-                0
-            };
-            self.header.record_header_size * self.header.records_count + data.len() * key_size
+            self.header.record_header_size * self.header.records_count
+                + data.len() * self.header.key_size
         } else {
             0
         }
@@ -193,10 +189,9 @@ impl Index for Simple {
                 if let Some(v) = headers.get_mut(h.key()) {
                     v.push(h);
                 } else {
-                    // FIXME? (ugly way to compute record header size on first push:(  )
                     if self.header.records_count == 0 {
-                        self.header.record_header_size =
-                            std::mem::size_of::<RecordHeader>() + h.key().len();
+                        self.header.record_header_size = h.serialized_size().try_into()?;
+                        self.header.key_size = h.key().len();
                     }
                     headers.insert(h.key().to_vec(), vec![h]);
                 }

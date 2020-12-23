@@ -143,6 +143,7 @@ pub(crate) fn serialize_record_headers(
             record_header
         );
         let record_header_size = record_header.serialized_size().try_into()?;
+        let key_size = record_header.key().len();
         trace!("record header serialized size: {}", record_header_size);
         let headers = headers.iter().flat_map(|r| r.1).collect::<Vec<_>>(); // produce sorted
         debug!("blob index simple serialize bunch transform BTreeMap into Vec");
@@ -150,6 +151,7 @@ pub(crate) fn serialize_record_headers(
         let filter_buf = filter.to_raw()?;
         let header = IndexHeader {
             record_header_size,
+            key_size,
             records_count: headers.len(),
             filter_buf_size: filter_buf.len(),
         };
