@@ -78,7 +78,11 @@ impl Blob {
     }
 
     pub(crate) async fn load_index(&mut self) -> Result<()> {
-        self.index.load().await
+        if let Err(e) = self.index.load().await {
+            warn!("error loading index: {}, regenerating", e);
+            self.try_regenerate_index().await?
+        }
+        Ok(())
     }
 
     pub(crate) fn boxed(self) -> Box<Self> {
@@ -101,20 +105,7 @@ impl Blob {
         trace!("looking for index file: [{}]", index_name);
         let index = if index_name.exists() {
             trace!("file exists");
-            match SimpleIndex::from_file(
-                index_name.clone(),
-                filter_config.is_some(),
-                ioring.clone(),
-            )
-            .await
-            {
-                Ok(i) => i,
-                Err(e) => {
-                    warn!("failed to retrieve index file: {}", e);
-                    std::fs::remove_file(index_name.to_path())?;
-                    SimpleIndex::new(index_name, ioring, filter_config)
-                }
-            }
+            SimpleIndex::from_file(index_name, filter_config.is_some(), ioring).await?
         } else {
             trace!("file not found, create new");
             SimpleIndex::new(index_name, ioring, filter_config)
