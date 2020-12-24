@@ -154,6 +154,7 @@ impl Simple {
     }
 
     async fn dump_in_memory(&mut self, buf: Vec<u8>) -> Result<usize> {
+        let _ = std::fs::remove_file(self.name.to_path());
         let file = File::create(self.name.to_path(), self.ioring.clone())
             .await
             .with_context(|| format!("file open failed {:?}", self.name.to_path()))?;
