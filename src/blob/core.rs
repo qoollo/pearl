@@ -101,7 +101,22 @@ impl Blob {
         trace!("looking for index file: [{}]", index_name);
         let index = if index_name.exists() {
             trace!("file exists");
-            SimpleIndex::from_file(index_name, filter_config.is_some(), ioring).await?
+            match SimpleIndex::from_file(
+                index_name.clone(),
+                filter_config.is_some(),
+                ioring.clone(),
+            )
+            .await
+            {
+                Ok(i) => {
+                    info!("successfully read index file");
+                    i
+                }
+                Err(e) => {
+                    warn!("failed to retrieve index file: {}", e);
+                    SimpleIndex::new(index_name, ioring, filter_config)
+                }
+            }
         } else {
             trace!("file not found, create new");
             SimpleIndex::new(index_name, ioring, filter_config)
