@@ -108,12 +108,10 @@ impl Blob {
             )
             .await
             {
-                Ok(i) => {
-                    info!("successfully read index file");
-                    i
-                }
+                Ok(i) => i,
                 Err(e) => {
                     warn!("failed to retrieve index file: {}", e);
+                    std::fs::remove_file(index_name.to_path())?;
                     SimpleIndex::new(index_name, ioring, filter_config)
                 }
             }
