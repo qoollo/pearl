@@ -74,6 +74,7 @@ impl Simple {
     pub(crate) fn clear(&mut self) {
         self.header = IndexHeader::default();
         self.inner = State::InMemory(BTreeMap::new());
+        self.filter.clear();
     }
 
     pub fn check_bloom_key(&self, key: &[u8]) -> Option<bool> {
