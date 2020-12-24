@@ -80,7 +80,8 @@ impl Blob {
     pub(crate) async fn load_index(&mut self) -> Result<()> {
         if let Err(e) = self.index.load().await {
             warn!("error loading index: {}, regenerating", e);
-            self.try_regenerate_index().await?
+            self.index.clear();
+            self.try_regenerate_index().await?;
         }
         Ok(())
     }

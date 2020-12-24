@@ -71,6 +71,11 @@ impl Simple {
         }
     }
 
+    pub(crate) fn clear(&mut self) {
+        self.header = IndexHeader::default();
+        self.inner = State::InMemory(BTreeMap::new());
+    }
+
     pub fn check_bloom_key(&self, key: &[u8]) -> Option<bool> {
         if self.filter_is_on {
             Some(self.filter.contains(key))
