@@ -727,3 +727,46 @@ async fn test_blobs_count_random_names() {
     assert_eq!(names.len() + 1, storage.blobs_count().await);
     common::clean(storage, path).await.unwrap();
 }
+
+#[tokio::test]
+async fn test_memory_index() {
+    let path = common::init("memory_index");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
+    let records: Vec<_> = (0..7u8)
+        .map(|i| ((i % 4) as u32, vec![i, i + 1, i + 2]))
+        .collect();
+
+    for (key, data) in &records {
+        write_one(&storage, *key, data, None).await.unwrap();
+        sleep(Duration::from_millis(10)).await;
+    }
+
+    //Record header struct:
+    //magic_byte: u64, (8)
+    //key: Vec<u8>, (12) // FIXME: serialized_size for sure less than actual
+    //meta_size: u64, (8)
+    //data_size: u64, (8)
+    //flags: u8, (1)
+    //blob_offset: u64, (8)
+    //created: u64, (8)
+    //data_checksum: u32, (4)
+    //header_checksum: u32, (4)
+    // Size: 8 + 12 + 8 + 8 + 1 + 8 + 8 + 4 + 4 = 61
+    const RECORD_HEADER_SIZE: usize = 61;
+    assert_eq!(
+        storage.index_memory().await,
+        std::mem::size_of::<u32>() * 4 + RECORD_HEADER_SIZE * 7
+    ); // 4 keys, 7 records in active blob
+    assert!(path.join("test.0.blob").exists());
+    storage.close_active_blob().await;
+    for (key, data) in records.iter().take(3) {
+        write_one(&storage, *key, data, None).await.unwrap();
+        sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(
+        storage.index_memory().await,
+        std::mem::size_of::<u32>() * 3 + RECORD_HEADER_SIZE * 3
+    ); // 3 keys, 3 records in active blob
+    assert!(path.join("test.1.blob").exists());
+    common::clean(storage, path).await.unwrap();
+}
