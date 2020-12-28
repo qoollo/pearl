@@ -15,14 +15,20 @@ pub(crate) struct Simple {
 #[derive(Debug, Deserialize, Default, Serialize, Clone)]
 pub(crate) struct IndexHeader {
     pub records_count: usize,
+    // contains serialized size of record headers, which allows to calculate offset in
+    // case of `OnDisk` state of indices
     pub record_header_size: usize,
     pub filter_buf_size: usize,
 }
 
-#[derive(Debug, Default)] // Default can be use to initialize structure with 0
+#[derive(Debug, Default)] // Default can be used to initialize structure with 0
 pub(crate) struct MemoryAttrs {
+    pub key_size: usize,
     pub btree_entry_size: usize,
     pub records_allocated: usize,
+    // contains actual size occupied by record header in RAM (which helps
+    // to compute actual size of indices in RAM in `InMemory` state)
+    pub record_header_size: usize,
 }
 
 impl IndexHeader {
@@ -150,6 +156,7 @@ impl Simple {
             .with_context(|| format!("file open failed {:?}", self.name.to_path()))?;
         let size = file.write_append(&buf).await?;
         self.inner = State::OnDisk(file);
+        self.mem = None;
         Ok(size)
     }
 
@@ -167,6 +174,7 @@ impl Simple {
             header.records_count,
             header.record_header_size,
         )?;
+        self.mem = Some(compute_mem_attrs(&record_headers));
         self.inner = State::InMemory(record_headers);
         self.filter = Bloom::from_raw(buf_ref)?;
         Ok(())
@@ -179,10 +187,12 @@ impl Simple {
                 .as_ref()
                 .expect("No memory info in `InMemory` State");
             trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
-                self.header.record_header_size, mem.records_allocated, data.len(), mem.btree_entry_size
+                mem.record_header_size, mem.records_allocated, data.len(), mem.btree_entry_size
             );
-            self.header.record_header_size * mem.records_allocated
-                + data.len() * mem.btree_entry_size
+            // last minus is neccessary, because allocated but not initialized record headers don't
+            // have key allocated on heap
+            mem.record_header_size * mem.records_allocated + data.len() * mem.btree_entry_size
+                - (mem.records_allocated - self.header.records_count) * mem.key_size
         } else {
             0
         }
@@ -215,10 +225,11 @@ impl Index for Simple {
                 } else {
                     if self.header.records_count == 0 {
                         // record header contains key as Vec<u8>, h.key().len() - data on the heap
-                        self.header.record_header_size = size_of::<RecordHeader>() + h.key().len();
+                        mem.record_header_size = size_of::<RecordHeader>() + h.key().len();
                         // every entry also includes data on heap: capacity * size_of::<RecordHeader>()
+                        mem.key_size = h.key().len();
                         mem.btree_entry_size =
-                            size_of::<Vec<u8>>() + h.key().len() + size_of::<Vec<RecordHeader>>();
+                            size_of::<Vec<u8>>() + mem.key_size + size_of::<Vec<RecordHeader>>();
                     }
                     let k = h.key().to_vec();
                     let v = vec![h];

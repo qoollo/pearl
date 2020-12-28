@@ -777,8 +777,8 @@ async fn test_memory_index() {
     // rule higher). Then there is the amortized growth.
     assert_eq!(
         storage.index_memory().await,
-        KEY_AND_DATA_SIZE * 4 + RECORD_HEADER_SIZE * 13
-    ); // 4 keys, 7 records in active blob (13 allocated)
+        KEY_AND_DATA_SIZE * 4 + RECORD_HEADER_SIZE * 13 - 6 * std::mem::size_of::<u32>()
+    ); // 4 keys, 7 records in active blob (13 allocated (6 without key on heap))
     assert!(path.join("test.0.blob").exists());
     storage.close_active_blob().await;
     // Doesn't work without this: indices are written in old btree (which I want to dump in memory)
