@@ -1,6 +1,7 @@
 use super::prelude::*;
 
 const MAGIC_NUMBER: u64 = 1234567;
+const HEADER_VERSION: u64 = 1;
 
 #[derive(Debug)]
 pub(crate) struct Simple {
@@ -18,9 +19,27 @@ pub(crate) struct IndexHeader {
     pub record_header_size: usize,
     pub filter_buf_size: usize,
     pub hash: Vec<u8>,
+    version: u64,
 }
 
 impl IndexHeader {
+    pub fn new(records_count: usize, record_header_size: usize, filter_buf_size: usize) -> Self {
+        let mut res = Self::default();
+        res.records_count = records_count;
+        res.record_header_size = record_header_size;
+        res.filter_buf_size = filter_buf_size;
+        res
+    }
+
+    pub fn with_hash(records_count: usize, record_header_size: usize, filter_buf_size: usize, hash: Vec<u8>) -> Self {
+        let mut res = Self::default();
+        res.records_count = records_count;
+        res.record_header_size = record_header_size;
+        res.filter_buf_size = filter_buf_size;
+        res.hash = hash;
+        res
+    }
+
     fn serialized_size_default() -> bincode::Result<u64> {
         let header = Self::default();
         header.serialized_size()
@@ -44,6 +63,7 @@ impl Default for IndexHeader {
             record_header_size: 0,
             filter_buf_size: 0,
             hash: vec![0; ring::digest::SHA256.output_len],
+            version: HEADER_VERSION,
         }
     }
 }
@@ -170,7 +190,10 @@ impl Simple {
         trace!("read total {} bytes", buf.len());
         let header = Self::deserialize_header(&buf)?;
         if !Self::hash_valid(&header, &mut buf)? {
-            return Err(anyhow::Error::new(Error::validation("header hash mismatch")));
+            return Err(Error::validation("header hash mismatch").into());
+        }
+        if header.version != HEADER_VERSION {
+            return Err(Error::validation("header version mismatch").into());
         }
         debug!("header: {:?}", header);
         let offset = header.serialized_size()? as usize;
@@ -189,12 +212,12 @@ impl Simple {
 
     async fn read_header_from_file(file: File) -> Result<Vec<u8>> {
         let mut buf = file.read_all().await?;
-        let end_magic: Vec<_> = buf.drain(buf.len() - std::mem::size_of::<u64>()..).collect();
-        if end_magic != MAGIC_NUMBER.to_be_bytes() {
-            Err(anyhow::Error::new(Error::validation("header is corrupt")))
-        } else {
-            Ok(buf)
+        let data_end = buf.len() - std::mem::size_of_val(&MAGIC_NUMBER);
+        if buf[data_end..] != MAGIC_NUMBER.to_be_bytes() {
+            return Err(Error::validation("header is corrupt").into());
         }
+        buf.resize(data_end, 0);
+        Ok(buf)
     }
 
     fn hash_valid(header: &IndexHeader, buf: &mut Vec<u8>) -> Result<bool> {

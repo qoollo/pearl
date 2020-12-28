@@ -150,12 +150,7 @@ pub(crate) fn serialize_record_headers(
         debug!("blob index simple serialize bunch transform BTreeMap into Vec");
         //bunch.sort_by_key(|h| h.key().to_vec());
         let filter_buf = filter.to_raw()?;
-        let header = IndexHeader {
-            record_header_size,
-            records_count: headers.len(),
-            filter_buf_size: filter_buf.len(),
-            hash: vec![0; ring::digest::SHA256.output_len]
-        };
+        let header = IndexHeader::new(record_header_size, headers.len(), filter_buf.len());
         let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
         trace!("index header size: {}b", hs);
         let mut buf = Vec::with_capacity(hs + headers.len() * record_header_size);
@@ -179,12 +174,7 @@ pub(crate) fn serialize_record_headers(
             buf.len()
         );
         let hash = get_hash(&buf);
-        let new_header = IndexHeader {
-            record_header_size,
-            records_count: headers.len(),
-            filter_buf_size: filter_buf.len(),
-            hash
-        };
+        let new_header = IndexHeader::with_hash(record_header_size, headers.len(), filter_buf.len(), hash);
         serialize_into(buf.as_mut_slice(), &new_header)?;
         Ok(Some((header, buf)))
     } else {
