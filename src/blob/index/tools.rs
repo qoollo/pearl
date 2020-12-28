@@ -174,8 +174,8 @@ pub(crate) fn serialize_record_headers(
             buf.len()
         );
         let hash = get_hash(&buf);
-        let new_header = IndexHeader::with_hash(record_header_size, headers.len(), filter_buf.len(), hash);
-        serialize_into(buf.as_mut_slice(), &new_header)?;
+        let header = IndexHeader::with_hash(record_header_size, headers.len(), filter_buf.len(), hash);
+        serialize_into(buf.as_mut_slice(), &header)?;
         Ok(Some((header, buf)))
     } else {
         Ok(None)

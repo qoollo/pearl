@@ -23,7 +23,7 @@ pub(crate) struct IndexHeader {
 }
 
 impl IndexHeader {
-    pub fn new(records_count: usize, record_header_size: usize, filter_buf_size: usize) -> Self {
+    pub fn new(record_header_size: usize, records_count: usize, filter_buf_size: usize) -> Self {
         let mut res = Self::default();
         res.records_count = records_count;
         res.record_header_size = record_header_size;
@@ -31,7 +31,12 @@ impl IndexHeader {
         res
     }
 
-    pub fn with_hash(records_count: usize, record_header_size: usize, filter_buf_size: usize, hash: Vec<u8>) -> Self {
+    pub fn with_hash(
+        record_header_size: usize,
+        records_count: usize,
+        filter_buf_size: usize,
+        hash: Vec<u8>,
+    ) -> Self {
         let mut res = Self::default();
         res.records_count = records_count;
         res.record_header_size = record_header_size;
