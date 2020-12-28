@@ -1,8 +1,10 @@
 use super::prelude::*;
+use std::mem::size_of;
 
 #[derive(Debug)]
 pub(crate) struct Simple {
     header: IndexHeader,
+    mem: Option<MemoryAttrs>,
     filter: Bloom,
     filter_is_on: bool,
     inner: State,
@@ -13,9 +15,14 @@ pub(crate) struct Simple {
 #[derive(Debug, Deserialize, Default, Serialize, Clone)]
 pub(crate) struct IndexHeader {
     pub records_count: usize,
-    pub key_size: usize,
     pub record_header_size: usize,
     pub filter_buf_size: usize,
+}
+
+#[derive(Debug, Default)] // Default can be use to initialize structure with 0
+pub(crate) struct MemoryAttrs {
+    pub btree_entry_size: usize,
+    pub records_allocated: usize,
 }
 
 impl IndexHeader {
@@ -48,11 +55,13 @@ impl Simple {
         let filter_is_on = filter_config.is_some();
         let filter = filter_config.map(Bloom::new).unwrap_or_default();
         let header = IndexHeader::default();
+        let mem = Some(Default::default());
         Self {
             header,
             filter_is_on,
             filter,
             inner: State::InMemory(BTreeMap::new()),
+            mem,
             name,
             ioring,
         }
@@ -90,6 +99,7 @@ impl Simple {
         let index = Self {
             header,
             inner: State::OnDisk(file),
+            mem: None,
             name,
             filter,
             filter_is_on,
@@ -164,8 +174,15 @@ impl Simple {
 
     pub(crate) fn memory_used(&self) -> usize {
         if let State::InMemory(data) = &self.inner {
-            self.header.record_header_size * self.header.records_count
-                + data.len() * self.header.key_size
+            let mem = self
+                .mem
+                .as_ref()
+                .expect("No memory info in `InMemory` State");
+            trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
+                self.header.record_header_size, mem.records_allocated, data.len(), mem.btree_entry_size
+            );
+            self.header.record_header_size * mem.records_allocated
+                + data.len() * mem.btree_entry_size
         } else {
             0
         }
@@ -185,15 +202,28 @@ impl Index for Simple {
                 debug!("blob index simple push bloom filter add");
                 self.filter.add(h.key());
                 debug!("blob index simple push key: {:?}", h.key());
+                let mem = self
+                    .mem
+                    .as_mut()
+                    .expect("No memory info in `InMemory` State");
                 // Same reason to use get_mut as in deserialize_record_headers.
                 if let Some(v) = headers.get_mut(h.key()) {
+                    let old_capacity = v.capacity();
                     v.push(h);
+                    trace!("capacity growth: {}", v.capacity() - old_capacity);
+                    mem.records_allocated += v.capacity() - old_capacity;
                 } else {
                     if self.header.records_count == 0 {
-                        self.header.record_header_size = h.serialized_size().try_into()?;
-                        self.header.key_size = h.key().len();
+                        // record header contains key as Vec<u8>, h.key().len() - data on the heap
+                        self.header.record_header_size = size_of::<RecordHeader>() + h.key().len();
+                        // every entry also includes data on heap: capacity * size_of::<RecordHeader>()
+                        mem.btree_entry_size =
+                            size_of::<Vec<u8>>() + h.key().len() + size_of::<Vec<RecordHeader>>();
                     }
-                    headers.insert(h.key().to_vec(), vec![h]);
+                    let k = h.key().to_vec();
+                    let v = vec![h];
+                    mem.records_allocated += v.capacity(); // capacity == 1
+                    headers.insert(k, v);
                 }
                 self.header.records_count += 1;
                 Ok(())

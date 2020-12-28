@@ -506,7 +506,7 @@ async fn test_check_bloom_filter_init_from_existing() {
         let storage = common::create_test_storage(&path, 100_000).await.unwrap();
         debug!("write some data");
         let data =
-        b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
+            b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
         for i in 1..base {
             let key = KeyTest::new(i);
             trace!("write key: {}", i);
@@ -550,7 +550,7 @@ async fn test_check_bloom_filter_generated() {
         let storage = common::create_test_storage(&path, 100_000).await.unwrap();
         debug!("write some data");
         let data =
-        b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
+            b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
         for i in 1..base {
             let key = KeyTest::new(i);
             trace!("write key: {}", i);
@@ -732,18 +732,18 @@ async fn test_blobs_count_random_names() {
 async fn test_memory_index() {
     let path = common::init("memory_index");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
-    let records: Vec<_> = (0..7u8)
+    let records: Vec<_> = (0..10u8)
         .map(|i| ((i % 4) as u32, vec![i, i + 1, i + 2]))
         .collect();
 
-    for (key, data) in &records {
+    for (key, data) in records.iter().take(7) {
         write_one(&storage, *key, data, None).await.unwrap();
         sleep(Duration::from_millis(10)).await;
     }
 
     //Record header struct:
     //magic_byte: u64, (8)
-    //key: Vec<u8>, (12) // FIXME: serialized_size for sure less than actual
+    //key: Vec<u8>, (24 (stack) + 4 (heap)) *
     //meta_size: u64, (8)
     //data_size: u64, (8)
     //flags: u8, (1)
@@ -751,22 +751,47 @@ async fn test_memory_index() {
     //created: u64, (8)
     //data_checksum: u32, (4)
     //header_checksum: u32, (4)
-    // Size: 8 + 12 + 8 + 8 + 1 + 8 + 8 + 4 + 4 = 61
-    const RECORD_HEADER_SIZE: usize = 61;
+    //
+    // actual packed size: 8 + 24 + 8 + 8 + 1 + 8 + 8 + 4 + 4 = 73 (stack) + 4 (heap; size of u32)
+    // actual size: 80 (stack; unpacked) + 4 (heap)
+    //
+    // *: 24 (stack) + 4 (heap; size of u32) is actual size of key: size_of::<Vec<u8>>() + size_of::<u8>() * key.len(),
+    // 12 - seralized size; key.len() in this case == 4 (u32)
+    const RECORD_HEADER_SIZE: usize = 84;
+    // Key and data size - size of entries in binarymap not including size of entry internal value (RecordHeader)
+    // RecordHeader is private, so instead of measurement size_of::Vec<RecordHeader>() there is
+    // measurement size_of::<Vec<u8>>(), which has the same size on stack
+    const KEY_AND_DATA_SIZE: usize = std::mem::size_of::<Vec<u8>>()
+        + std::mem::size_of::<u32>()
+        + std::mem::size_of::<Vec<u8>>();
+    // I checked vector source code and there is a rule for vector buffer memory allocation (min
+    // memory capacity):
+    // ```
+    // Tiny Vecs are dumb. Skip to:
+    // - 8 if the element size is 1, because any heap allocators is likely
+    //   to round up a request of less than 8 bytes to at least 8 bytes.
+    // - 4 if elements are moderate-sized (<= 1 KiB). (OUR CASE)
+    // - 1 otherwise, to avoid wasting too much space for very short Vecs.
+    // ```
+    // IN OUR CASE: vec![h] gives capacity 1, but on second push capacity grows to 4 (according to
+    // rule higher). Then there is the amortized growth.
     assert_eq!(
         storage.index_memory().await,
-        std::mem::size_of::<u32>() * 4 + RECORD_HEADER_SIZE * 7
-    ); // 4 keys, 7 records in active blob
+        KEY_AND_DATA_SIZE * 4 + RECORD_HEADER_SIZE * 13
+    ); // 4 keys, 7 records in active blob (13 allocated)
     assert!(path.join("test.0.blob").exists());
     storage.close_active_blob().await;
-    for (key, data) in records.iter().take(3) {
+    // Doesn't work without this: indices are written in old btree (which I want to dump in memory)
+    sleep(Duration::from_millis(100)).await;
+    for (key, data) in records.iter().skip(7) {
+        println!("{} {:?}", key, data);
         write_one(&storage, *key, data, None).await.unwrap();
         sleep(Duration::from_millis(10)).await;
     }
     assert_eq!(
         storage.index_memory().await,
-        std::mem::size_of::<u32>() * 3 + RECORD_HEADER_SIZE * 3
-    ); // 3 keys, 3 records in active blob
+        KEY_AND_DATA_SIZE * 3 + RECORD_HEADER_SIZE * 3
+    ); // 3 keys, 3 records in active blob (3 allocated)
     assert!(path.join("test.1.blob").exists());
     common::clean(storage, path).await.unwrap();
 }
