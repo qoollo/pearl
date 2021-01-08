@@ -1,6 +1,5 @@
 use super::prelude::*;
 
-const MAGIC_NUMBER: u64 = 1234567;
 const HEADER_VERSION: u64 = 1;
 
 #[derive(Debug)]
@@ -20,6 +19,7 @@ pub(crate) struct IndexHeader {
     pub filter_buf_size: usize,
     pub hash: Vec<u8>,
     version: u64,
+    written: u8,
 }
 
 impl IndexHeader {
@@ -69,6 +69,7 @@ impl Default for IndexHeader {
             filter_buf_size: 0,
             hash: vec![0; ring::digest::SHA256.output_len],
             version: HEADER_VERSION,
+            written: 0,
         }
     }
 }
@@ -125,6 +126,9 @@ impl Simple {
             .context(format!("failed to open index file: {}", name))?;
         trace!("load index header");
         let header = Self::read_index_header(&mut file).await?;
+        if header.written != 1 {
+            return Err(Error::validation("Header is corrupt").into());
+        }
         trace!("load filter");
         let mut buf = vec![0; header.filter_buf_size];
         trace!("read filter into buf: [0; {}]", buf.len());
@@ -184,14 +188,20 @@ impl Simple {
             .await
             .with_context(|| format!("file open failed {:?}", self.name.to_path()))?;
         let size = file.write_append(&buf).await?;
-        file.write_append(&MAGIC_NUMBER.to_be_bytes()).await?;
-
+        self.apply_written_byte(&file).await?;
         self.inner = State::OnDisk(file);
         Ok(size)
     }
 
+    async fn apply_written_byte(&mut self, file: &File) -> Result<()> {
+        self.header.written = 1;
+        let serialized = serialize(&self.header)?;
+        file.write_at(0, &serialized).await?;
+        Ok(())
+    }
+
     async fn load_in_memory(&mut self, file: File) -> Result<()> {
-        let mut buf = Self::read_header_from_file(file).await?;
+        let mut buf = file.read_all().await?;
         trace!("read total {} bytes", buf.len());
         let header = Self::deserialize_header(&buf)?;
         if !Self::hash_valid(&header, &mut buf)? {
@@ -213,16 +223,6 @@ impl Simple {
         self.inner = State::InMemory(record_headers);
         self.filter = Bloom::from_raw(buf_ref)?;
         Ok(())
-    }
-
-    async fn read_header_from_file(file: File) -> Result<Vec<u8>> {
-        let mut buf = file.read_all().await?;
-        let data_end = buf.len() - std::mem::size_of_val(&MAGIC_NUMBER);
-        if buf[data_end..] != MAGIC_NUMBER.to_be_bytes() {
-            return Err(Error::validation("header is corrupt").into());
-        }
-        buf.resize(data_end, 0);
-        Ok(buf)
     }
 
     fn hash_valid(header: &IndexHeader, buf: &mut Vec<u8>) -> Result<bool> {

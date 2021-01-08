@@ -48,14 +48,24 @@ impl File {
     }
 
     pub(crate) async fn write_append_sync(&self, buf: &[u8]) -> IOResult<usize> {
-        let file = self.no_lock_fd.clone();
         let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
-        let buf = buf.to_vec();
-        Self::blocking_call(move || file.write_at(&buf, offset)).await
+        self.write_at_sync(offset, buf).await
     }
 
     async fn write_append_aio(&self, buf: &[u8], ioring: &Rio) -> IOResult<usize> {
         let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
+        self.write_at_aio(offset, buf, ioring).await
+    }
+
+    pub(crate) async fn write_at(&self, offset: u64, buf: &[u8]) -> IOResult<usize> {
+        if let Some(ref ioring) = self.ioring {
+            self.write_at_aio(offset, buf, ioring).await
+        } else {
+            self.write_at_sync(offset, buf).await
+        }
+    }
+
+    async fn write_at_aio(&self, offset: u64, buf: &[u8], ioring: &Rio) -> IOResult<usize> {
         let compl = ioring.write_at(&*self.no_lock_fd, &buf, offset);
         let count = compl.await?;
         if count < buf.len() {
@@ -66,6 +76,12 @@ impl File {
             );
         }
         Ok(count)
+    }
+
+    async fn write_at_sync(&self, offset: u64, buf: &[u8]) -> IOResult<usize> {
+        let buf = buf.to_vec();
+        let file = self.no_lock_fd.clone();
+        Self::blocking_call(move || file.write_at(&buf, offset)).await
     }
 
     pub(crate) async fn read_all(&self) -> Result<Vec<u8>> {
