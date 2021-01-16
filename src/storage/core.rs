@@ -77,9 +77,14 @@ impl<K> Clone for Storage<K> {
 }
 
 async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
-    let files = read_dir(wd).await?;
-    let files = files.filter_map(IOResult::ok);
-    let files: Vec<_> = files.collect().await;
+    let mut files = Vec::new();
+    let mut dir = read_dir(wd).await?;
+    while let Some(file) = dir.next_entry().await.transpose() {
+        if let Ok(file) = file {
+            files.push(file);
+        }
+    }
+
     if files
         .iter()
         .filter_map(|file| Some(file.file_name().as_os_str().to_str()?.to_owned()))
