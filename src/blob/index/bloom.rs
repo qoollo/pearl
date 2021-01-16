@@ -86,7 +86,7 @@ impl Bloom {
     fn save(&self) -> Save {
         Save {
             config: self.config.clone(),
-            buf: self.inner.as_slice().to_vec(),
+            buf: self.inner.as_raw_slice().to_vec(),
             bits_count: self.inner.len(),
         }
     }
