@@ -286,6 +286,10 @@ impl Blob {
         trace!("check bloom filter");
         self.index.check_bloom_key(key)
     }
+
+    pub(crate) fn index_memory(&self) -> usize {
+        self.index.memory_used()
+    }
 }
 
 #[derive(Debug, Clone)]

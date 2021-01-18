@@ -7,7 +7,7 @@ mod tools;
 
 pub(crate) use super::prelude::*;
 pub(crate) use bloom::{Bloom, Config};
-pub(crate) use simple::{InMemoryIndex, IndexHeader, Simple};
+pub(crate) use simple::{InMemoryIndex, IndexHeader, MemoryAttrs, Simple};
 
 mod prelude {
     pub(crate) use super::*;

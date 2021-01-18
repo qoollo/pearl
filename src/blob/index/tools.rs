@@ -1,4 +1,5 @@
 use super::prelude::*;
+use std::mem::size_of;
 
 pub(crate) async fn read_at(
     file: &File,
@@ -180,5 +181,20 @@ pub(crate) fn serialize_record_headers(
         Ok(Some((header, buf)))
     } else {
         Ok(None)
+    }
+}
+
+// if there is no elements, data will be wrong (because we can't get key_size),
+// BUT it will be computed correctly during first push
+pub(crate) fn compute_mem_attrs(record_headers: &InMemoryIndex) -> MemoryAttrs {
+    let key_size = record_headers.keys().next().map_or_else(|| 0, |v| v.len());
+    let btree_entry_size = size_of::<Vec<u8>>() + key_size + size_of::<Vec<RecordHeader>>();
+    let records_allocated = record_headers.values().fold(0, |acc, v| acc + v.capacity());
+    let record_header_size = size_of::<RecordHeader>() + key_size;
+    MemoryAttrs {
+        key_size,
+        btree_entry_size,
+        record_header_size,
+        records_allocated,
     }
 }
