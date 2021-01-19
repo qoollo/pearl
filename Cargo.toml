@@ -1,6 +1,6 @@
 [package]
 name = "pearl"
-version = "0.5.4"
+version = "0.5.5"
 description = "Pearl is a low level blob-based I/O library"
 repository = "https://github.com/qoollo/pearl"
 homepage = "https://github.com/qoollo/pearl"
@@ -22,24 +22,24 @@ ahash = "0.6.2"
 anyhow = "1.0"
 async-trait = "0.1"
 bincode = "1.3.1"
-bitvec = "0.19"
+bitvec = "0.20"
 chrono = "0.4"
 crc = "1.8"
 env_logger = "0.8"
 futures = "0.3"
 log = "0.4"
-rand = "0.7"
+rand = "0.8"
 rio = "0.9.4"
 serde = "1.0"
 serde_derive = "1.0"
 thiserror = "1.0"
 clap = { version = "2.33", optional = true }
 ring = "0.16.19"
+tokio-stream = "0.1.2"
 
 [dependencies.tokio]
-version = "0.2.24"
-features = ["full"]
-# features = ["fs", "stream", "sync", "time", "rt", "macros"]
+version = "1.0"
+features = ["fs","sync", "time", "rt", "macros", "rt-multi-thread"]
 
 [features]
 # default = ["benchmark"]

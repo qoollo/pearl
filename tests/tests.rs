@@ -13,7 +13,7 @@ use std::{
     fs,
     time::{Duration, Instant},
 };
-use tokio::time::delay_for;
+use tokio::time::sleep;
 
 mod common;
 
@@ -37,7 +37,7 @@ async fn test_storage_init_from_existing() {
     let storage = common::default_test_storage_in(&path).await.unwrap();
     let records = common::generate_records(15, 1_000);
     for (key, data) in &records {
-        delay_for(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(100)).await;
         write_one(&storage, *key, data, None).await.unwrap();
     }
     storage.close().await.unwrap();
@@ -114,7 +114,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
                 range.shuffle(&mut rand::thread_rng());
                 for i in range {
                     write_one(&s, i as u32, &clonned_data, None).await.unwrap();
-                    delay_for(Duration::from_millis(2)).await;
+                    sleep(Duration::from_millis(2)).await;
                 }
             };
             tokio::spawn(task)
@@ -122,7 +122,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
         .collect();
     let handles = handles.try_collect::<Vec<_>>().await.unwrap();
     let index = path.join("test.0.index");
-    delay_for(Duration::from_millis(32)).await;
+    sleep(Duration::from_millis(32)).await;
     assert!(index.exists());
     assert_eq!(handles.len(), threads);
     let keys = indexes
@@ -146,7 +146,7 @@ async fn test_storage_multithread_blob_overflow() -> AnyResult<()> {
     range.shuffle(&mut rand::thread_rng());
     let data = "test data string".repeat(16).as_bytes().to_vec();
     for i in range {
-        delay_for(Duration::from_millis(10)).await;
+        sleep(Duration::from_millis(10)).await;
         write_one(&storage, i, &data, None).await.unwrap();
     }
     assert!(path.join("test.0.blob").exists());
@@ -194,11 +194,11 @@ async fn test_on_disk_index() -> AnyResult<()> {
     storage.init().await.unwrap();
     info!("write (0..{})", num_records_to_write);
     for i in 0..num_records_to_write {
-        delay_for(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(100)).await;
         write_one(&storage, i, &data, None).await.unwrap();
     }
     while storage.blobs_count().await < 2 {
-        delay_for(Duration::from_millis(200)).await;
+        sleep(Duration::from_millis(200)).await;
     }
     assert!(path.join("test.1.blob").exists());
     info!("read {}", read_key);
@@ -234,7 +234,7 @@ async fn test_index_from_blob() {
     let records = common::generate_records(10, 10_000);
     for (i, data) in &records {
         write_one(&storage, *i, data, None).await.unwrap();
-        delay_for(Duration::from_millis(10)).await;
+        sleep(Duration::from_millis(10)).await;
     }
     storage.close().await.unwrap();
     let index_file_path = path.join("test.0.index");
@@ -296,7 +296,7 @@ async fn test_write_with_with_on_disk_index() {
 
     let records = common::generate_records(20, 1000);
     for (i, data) in &records {
-        delay_for(Duration::from_millis(32)).await;
+        sleep(Duration::from_millis(32)).await;
         write_one(&storage, *i, data, Some("1.0")).await.unwrap();
     }
     assert!(storage.blobs_count().await > 1);
@@ -322,7 +322,7 @@ async fn test_write_512_records_with_same_key() {
     for i in 0..512 {
         let mut meta = Meta::new();
         meta.insert("version".to_owned(), i.to_string());
-        delay_for(Duration::from_micros(1)).await;
+        sleep(Duration::from_micros(1)).await;
         storage.write_with(&key, value.clone(), meta).await.unwrap();
     }
     common::clean(storage, path).await.expect("clean failed");
@@ -368,11 +368,11 @@ async fn test_read_all_load_all() {
         let v = i.to_string();
         versions.push(v.as_bytes().to_vec());
         write_one(&storage, key, data, Some(&v)).await.unwrap();
-        delay_for(Duration::from_millis(1)).await;
+        sleep(Duration::from_millis(1)).await;
         assert_eq!(storage.records_count().await, count + 1);
     }
     assert_eq!(storage.records_count().await, records_write.len());
-    delay_for(Duration::from_millis(100)).await;
+    sleep(Duration::from_millis(100)).await;
     let records_read = storage
         .read_all(&KeyTest::new(key))
         .and_then(|entry| {
@@ -483,7 +483,7 @@ async fn test_check_bloom_filter_multiple() {
     for i in 1..800 {
         let key = KeyTest::new(i);
         storage.write(&key, data.to_vec()).await.unwrap();
-        delay_for(Duration::from_millis(6)).await;
+        sleep(Duration::from_millis(6)).await;
         trace!("blobs count: {}", storage.blobs_count().await);
     }
     for i in 1..800 {
@@ -506,7 +506,7 @@ async fn test_check_bloom_filter_init_from_existing() {
         let storage = common::create_test_storage(&path, 100_000).await.unwrap();
         debug!("write some data");
         let data =
-        b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
+            b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
         for i in 1..base {
             let key = KeyTest::new(i);
             trace!("write key: {}", i);
@@ -518,7 +518,7 @@ async fn test_check_bloom_filter_init_from_existing() {
     }
 
     debug!("storage closed, await a little");
-    delay_for(Duration::from_millis(1000)).await;
+    sleep(Duration::from_millis(1000)).await;
     debug!("reopen storage");
     let storage = common::create_test_storage(&path, 100).await.unwrap();
     debug!("check check_bloom");
@@ -550,7 +550,7 @@ async fn test_check_bloom_filter_generated() {
         let storage = common::create_test_storage(&path, 100_000).await.unwrap();
         debug!("write some data");
         let data =
-        b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
+            b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
         for i in 1..base {
             let key = KeyTest::new(i);
             trace!("write key: {}", i);
@@ -565,7 +565,7 @@ async fn test_check_bloom_filter_generated() {
     }
 
     debug!("storage closed, await a little");
-    delay_for(Duration::from_millis(1000)).await;
+    sleep(Duration::from_millis(1000)).await;
     debug!("reopen storage");
     let storage = common::create_test_storage(&path, 100).await.unwrap();
     debug!("check check_bloom");
@@ -622,7 +622,7 @@ async fn test_records_count() {
     let records = common::generate_records(count, 1_000);
     for (key, data) in &records {
         write_one(&storage, *key, data, None).await.unwrap();
-        delay_for(Duration::from_millis(10)).await;
+        sleep(Duration::from_millis(10)).await;
     }
 
     assert_eq!(storage.records_count().await, count);
@@ -642,7 +642,7 @@ async fn test_records_count_in_active() {
     let records = common::generate_records(count, 1_000);
     for (key, data) in &records {
         write_one(&storage, *key, data, None).await.unwrap();
-        delay_for(Duration::from_millis(10)).await;
+        sleep(Duration::from_millis(10)).await;
     }
 
     assert_eq!(storage.records_count_in_active_blob().await, Some(count));
@@ -661,9 +661,9 @@ async fn test_records_count_detailed() {
     let records = common::generate_records(count, 1000);
     for (key, data) in &records {
         write_one(&storage, *key, data, None).await.unwrap();
-        delay_for(Duration::from_millis(64)).await;
+        sleep(Duration::from_millis(64)).await;
     }
-    delay_for(Duration::from_millis(1000)).await;
+    sleep(Duration::from_millis(1000)).await;
     let details = storage.records_count_detailed().await;
     assert!(details[0].1 > 18);
     assert_eq!(details.iter().fold(0, |acc, d| acc + d.1), count);
@@ -679,11 +679,11 @@ async fn test_manual_close_active_blob() {
     let records = common::generate_records(5, 1000);
     for (key, data) in &records {
         write_one(&storage, *key, data, None).await.unwrap();
-        delay_for(Duration::from_millis(10)).await;
+        sleep(Duration::from_millis(10)).await;
     }
     assert_eq!(storage.blobs_count().await, 1);
     assert!(path.join("test.0.blob").exists());
-    delay_for(Duration::from_millis(1000)).await;
+    sleep(Duration::from_millis(1000)).await;
     storage.close_active_blob().await;
     assert!(path.join("test.0.blob").exists());
     assert!(!path.join("test.1.blob").exists());
@@ -697,9 +697,9 @@ async fn test_blobs_count_random_names() {
     let records = common::generate_records(5, 1000);
     for (key, data) in &records {
         write_one(&storage, *key, data, None).await.unwrap();
-        delay_for(Duration::from_millis(10)).await;
+        sleep(Duration::from_millis(10)).await;
     }
-    delay_for(Duration::from_millis(100)).await;
+    sleep(Duration::from_millis(100)).await;
     assert_eq!(storage.blobs_count().await, 1);
     storage.close().await.unwrap();
     assert!(path.join("test.0.blob").exists());
@@ -725,5 +725,73 @@ async fn test_blobs_count_random_names() {
     }
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     assert_eq!(names.len() + 1, storage.blobs_count().await);
+    common::clean(storage, path).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_memory_index() {
+    let path = common::init("memory_index");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
+    let records: Vec<_> = (0..10u8)
+        .map(|i| ((i % 4) as u32, vec![i, i + 1, i + 2]))
+        .collect();
+
+    for (key, data) in records.iter().take(7) {
+        write_one(&storage, *key, data, None).await.unwrap();
+        sleep(Duration::from_millis(10)).await;
+    }
+
+    //Record header struct:
+    //magic_byte: u64, (8)
+    //key: Vec<u8>, (24 (stack) + 4 (heap)) *
+    //meta_size: u64, (8)
+    //data_size: u64, (8)
+    //flags: u8, (1)
+    //blob_offset: u64, (8)
+    //created: u64, (8)
+    //data_checksum: u32, (4)
+    //header_checksum: u32, (4)
+    //
+    // actual packed size: 8 + 24 + 8 + 8 + 1 + 8 + 8 + 4 + 4 = 73 (stack) + 4 (heap; size of u32)
+    // actual size: 80 (stack; unpacked) + 4 (heap)
+    //
+    // *: 24 (stack) + 4 (heap; size of u32) is actual size of key: size_of::<Vec<u8>>() + size_of::<u8>() * key.len(),
+    // 12 - seralized size; key.len() in this case == 4 (u32)
+    const RECORD_HEADER_SIZE: usize = 84;
+    // Key and data size - size of entries in binarymap not including size of entry internal value (RecordHeader)
+    // RecordHeader is private, so instead of measurement size_of::Vec<RecordHeader>() there is
+    // measurement size_of::<Vec<u8>>(), which has the same size on stack
+    const KEY_AND_DATA_SIZE: usize = std::mem::size_of::<Vec<u8>>()
+        + std::mem::size_of::<u32>()
+        + std::mem::size_of::<Vec<u8>>();
+    // I checked vector source code and there is a rule for vector buffer memory allocation (min
+    // memory capacity):
+    // ```
+    // Tiny Vecs are dumb. Skip to:
+    // - 8 if the element size is 1, because any heap allocators is likely
+    //   to round up a request of less than 8 bytes to at least 8 bytes.
+    // - 4 if elements are moderate-sized (<= 1 KiB). (OUR CASE)
+    // - 1 otherwise, to avoid wasting too much space for very short Vecs.
+    // ```
+    // IN OUR CASE: vec![h] gives capacity 1, but on second push capacity grows to 4 (according to
+    // rule higher). Then there is the amortized growth.
+    assert_eq!(
+        storage.index_memory().await,
+        KEY_AND_DATA_SIZE * 4 + RECORD_HEADER_SIZE * 13 - 6 * std::mem::size_of::<u32>()
+    ); // 4 keys, 7 records in active blob (13 allocated (6 without key on heap))
+    assert!(path.join("test.0.blob").exists());
+    storage.close_active_blob().await;
+    // Doesn't work without this: indices are written in old btree (which I want to dump in memory)
+    sleep(Duration::from_millis(100)).await;
+    for (key, data) in records.iter().skip(7) {
+        println!("{} {:?}", key, data);
+        write_one(&storage, *key, data, None).await.unwrap();
+        sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(
+        storage.index_memory().await,
+        KEY_AND_DATA_SIZE * 3 + RECORD_HEADER_SIZE * 3
+    ); // 3 keys, 3 records in active blob (3 allocated)
+    assert!(path.join("test.1.blob").exists());
     common::clean(storage, path).await.unwrap();
 }

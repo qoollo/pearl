@@ -104,7 +104,7 @@ mod prelude {
     pub(crate) use thiserror::Error;
     pub(crate) use tokio::{
         fs::{read_dir, DirEntry, File as TokioFile, OpenOptions},
-        stream::StreamExt,
         sync::RwLock,
     };
+    pub(crate) use tokio_stream::StreamExt;
 }
