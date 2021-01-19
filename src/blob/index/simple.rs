@@ -1,5 +1,7 @@
 use super::prelude::*;
 
+const HEADER_VERSION: u64 = 1;
+
 #[derive(Debug)]
 pub(crate) struct Simple {
     header: IndexHeader,
@@ -10,14 +12,39 @@ pub(crate) struct Simple {
     ioring: Option<Rio>,
 }
 
-#[derive(Debug, Deserialize, Default, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct IndexHeader {
     pub records_count: usize,
     pub record_header_size: usize,
     pub filter_buf_size: usize,
+    pub hash: Vec<u8>,
+    version: u64,
+    written: u8,
 }
 
 impl IndexHeader {
+    pub fn new(record_header_size: usize, records_count: usize, filter_buf_size: usize) -> Self {
+        let mut res = Self::default();
+        res.records_count = records_count;
+        res.record_header_size = record_header_size;
+        res.filter_buf_size = filter_buf_size;
+        res
+    }
+
+    pub fn with_hash(
+        record_header_size: usize,
+        records_count: usize,
+        filter_buf_size: usize,
+        hash: Vec<u8>,
+    ) -> Self {
+        let mut res = Self::default();
+        res.records_count = records_count;
+        res.record_header_size = record_header_size;
+        res.filter_buf_size = filter_buf_size;
+        res.hash = hash;
+        res
+    }
+
     fn serialized_size_default() -> bincode::Result<u64> {
         let header = Self::default();
         header.serialized_size()
@@ -31,6 +58,19 @@ impl IndexHeader {
     #[inline]
     fn from_raw(buf: &[u8]) -> bincode::Result<Self> {
         bincode::deserialize(buf)
+    }
+}
+
+impl Default for IndexHeader {
+    fn default() -> Self {
+        Self {
+            records_count: 0,
+            record_header_size: 0,
+            filter_buf_size: 0,
+            hash: vec![0; ring::digest::SHA256.output_len],
+            version: HEADER_VERSION,
+            written: 0,
+        }
     }
 }
 
@@ -57,6 +97,12 @@ impl Simple {
         }
     }
 
+    pub(crate) fn clear(&mut self) {
+        self.header = IndexHeader::default();
+        self.inner = State::InMemory(BTreeMap::new());
+        self.filter.clear();
+    }
+
     pub fn check_bloom_key(&self, key: &[u8]) -> Option<bool> {
         if self.filter_is_on {
             Some(self.filter.contains(key))
@@ -80,6 +126,9 @@ impl Simple {
             .context(format!("failed to open index file: {}", name))?;
         trace!("load index header");
         let header = Self::read_index_header(&mut file).await?;
+        if header.written != 1 {
+            return Err(Error::validation("Header is corrupt").into());
+        }
         trace!("load filter");
         let mut buf = vec![0; header.filter_buf_size];
         trace!("read filter into buf: [0; {}]", buf.len());
@@ -134,18 +183,33 @@ impl Simple {
     }
 
     async fn dump_in_memory(&mut self, buf: Vec<u8>) -> Result<usize> {
+        let _ = std::fs::remove_file(self.name.to_path());
         let file = File::create(self.name.to_path(), self.ioring.clone())
             .await
             .with_context(|| format!("file open failed {:?}", self.name.to_path()))?;
         let size = file.write_append(&buf).await?;
+        self.apply_written_byte(&file).await?;
         self.inner = State::OnDisk(file);
         Ok(size)
     }
 
+    async fn apply_written_byte(&mut self, file: &File) -> Result<()> {
+        self.header.written = 1;
+        let serialized = serialize(&self.header)?;
+        file.write_at(0, &serialized).await?;
+        Ok(())
+    }
+
     async fn load_in_memory(&mut self, file: File) -> Result<()> {
-        let buf = file.read_all().await?;
+        let mut buf = file.read_all().await?;
         trace!("read total {} bytes", buf.len());
         let header = Self::deserialize_header(&buf)?;
+        if !Self::hash_valid(&header, &mut buf)? {
+            return Err(Error::validation("header hash mismatch").into());
+        }
+        if header.version != HEADER_VERSION {
+            return Err(Error::validation("header version mismatch").into());
+        }
         debug!("header: {:?}", header);
         let offset = header.serialized_size()? as usize;
         trace!("filter offset: {}", offset);
@@ -159,6 +223,15 @@ impl Simple {
         self.inner = State::InMemory(record_headers);
         self.filter = Bloom::from_raw(buf_ref)?;
         Ok(())
+    }
+
+    fn hash_valid(header: &IndexHeader, buf: &mut Vec<u8>) -> Result<bool> {
+        let mut header = header.clone();
+        let hash = header.hash.clone();
+        header.hash = vec![0; ring::digest::SHA256.output_len];
+        serialize_into(buf.as_mut_slice(), &header)?;
+        let new_hash = get_hash(&buf);
+        Ok(hash == new_hash)
     }
 }
 
