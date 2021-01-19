@@ -76,6 +76,10 @@ impl Bloom {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.inner = bitvec![0; self.inner.len()];
+    }
+
     pub fn hashers(k: usize) -> Vec<AHasher> {
         trace!("@TODO create configurable hashers???");
         (0..k)

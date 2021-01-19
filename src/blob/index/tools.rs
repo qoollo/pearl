@@ -151,11 +151,7 @@ pub(crate) fn serialize_record_headers(
         debug!("blob index simple serialize bunch transform BTreeMap into Vec");
         //bunch.sort_by_key(|h| h.key().to_vec());
         let filter_buf = filter.to_raw()?;
-        let header = IndexHeader {
-            record_header_size,
-            records_count: headers.len(),
-            filter_buf_size: filter_buf.len(),
-        };
+        let header = IndexHeader::new(record_header_size, headers.len(), filter_buf.len());
         let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
         trace!("index header size: {}b", hs);
         let mut buf = Vec::with_capacity(hs + headers.len() * record_header_size);
@@ -178,10 +174,22 @@ pub(crate) fn serialize_record_headers(
             "blob index simple serialize headers buf len after: {}",
             buf.len()
         );
+        let hash = get_hash(&buf);
+        let header =
+            IndexHeader::with_hash(record_header_size, headers.len(), filter_buf.len(), hash);
+        serialize_into(buf.as_mut_slice(), &header)?;
         Ok(Some((header, buf)))
     } else {
         Ok(None)
     }
+}
+
+pub(crate) fn get_hash(buf: &[u8]) -> Vec<u8> {
+    use ring::digest::{Context, SHA256};
+    let mut context = Context::new(&SHA256);
+    context.update(buf);
+    let digest = context.finish();
+    digest.as_ref().to_vec()
 }
 
 // if there is no elements, data will be wrong (because we can't get key_size),

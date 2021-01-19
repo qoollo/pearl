@@ -78,7 +78,12 @@ impl Blob {
     }
 
     pub(crate) async fn load_index(&mut self) -> Result<()> {
-        self.index.load().await
+        if let Err(e) = self.index.load().await {
+            warn!("error loading index: {}, regenerating", e);
+            self.index.clear();
+            self.try_regenerate_index().await?;
+        }
+        Ok(())
     }
 
     pub(crate) fn boxed(self) -> Box<Self> {
