@@ -5,6 +5,8 @@ const LOCK_FILE: &str = "pearl.lock";
 
 const O_EXCL: i32 = 128;
 
+type SaveOldBlobTask = std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>;
+
 /// A main storage struct.
 ///
 /// This type is clonable, cloning it will only create a new reference,
@@ -50,7 +52,7 @@ pub(crate) struct Inner {
 #[derive(Debug)]
 pub(crate) struct Safe {
     pub(crate) active_blob: Option<Box<Blob>>,
-    pub(crate) blobs: Vec<Blob>,
+    pub(crate) blobs: Arc<RwLock<Vec<Blob>>>,
     lock_file: Option<StdFile>,
 }
 
@@ -259,8 +261,8 @@ impl<K> Storage<K> {
             );
             all_entries.extend(entries);
         }
-        let entries_closed_blobs = safe
-            .blobs
+        let blobs = safe.blobs.read().await;
+        let entries_closed_blobs = blobs
             .iter()
             .map(|b| b.read_all_entries(key))
             .collect::<FuturesUnordered<_>>();
@@ -300,11 +302,9 @@ impl<K> Storage<K> {
     }
 
     async fn get_any_data(inner: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
-        let stream: FuturesUnordered<_> = inner
-            .blobs
-            .iter()
-            .map(|blob| blob.read_any(key, meta))
-            .collect();
+        let blobs = inner.blobs.read().await;
+        let stream: FuturesUnordered<_> =
+            blobs.iter().map(|blob| blob.read_any(key, meta)).collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
         task.next()
@@ -346,7 +346,7 @@ impl<K> Storage<K> {
     /// ```
     pub async fn blobs_count(&self) -> usize {
         let safe = self.inner.safe.lock().await;
-        let count = safe.blobs.len();
+        let count = safe.blobs.read().await.len();
         if safe.active_blob.is_some() {
             count + 1
         } else {
@@ -442,10 +442,10 @@ impl<K> Storage<K> {
             blob.dump().await?;
         }
         safe_locked.active_blob = Some(active_blob);
-        safe_locked.blobs = blobs;
+        *safe_locked.blobs.write().await = blobs;
         self.inner
             .next_blob_id
-            .store(safe_locked.max_id().map_or(0, |i| i + 1), ORD);
+            .store(safe_locked.max_id().await.map_or(0, |i| i + 1), ORD);
         Ok(())
     }
 
@@ -494,7 +494,8 @@ impl<K> Storage<K> {
                 return Ok(true);
             }
         }
-        for blob in &inner.blobs {
+        let blobs = inner.blobs.read().await;
+        for blob in blobs.iter() {
             if blob.contains(key, meta).await? {
                 return Ok(true);
             }
@@ -519,6 +520,8 @@ impl<K> Storage<K> {
             })?;
         let in_closed = inner
             .blobs
+            .read()
+            .await
             .iter()
             .any(|blob| blob.check_bloom(key.as_ref()) == Some(true));
         Some(in_active || in_closed)
@@ -617,11 +620,11 @@ impl Inner {
     }
 
     async fn records_count(&self) -> usize {
-        self.safe.lock().await.records_count()
+        self.safe.lock().await.records_count().await
     }
 
     async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
-        self.safe.lock().await.records_count_detailed()
+        self.safe.lock().await.records_count_detailed().await
     }
 
     async fn records_count_in_active_blob(&self) -> Option<usize> {
@@ -634,36 +637,38 @@ impl Inner {
     }
 }
 
+
 impl Safe {
-    const fn new() -> Self {
+    fn new() -> Self {
         Self {
             active_blob: None,
-            blobs: Vec::new(),
+            blobs: Arc::new(RwLock::new(Vec::new())),
             lock_file: None,
         }
     }
 
-    fn max_id(&self) -> Option<usize> {
+    async fn max_id(&self) -> Option<usize> {
         let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
-        let blobs_max_id = self.blobs.last().map(Blob::id);
+        let blobs_max_id = self.blobs.read().await.last().map(Blob::id);
         active_blob_id.max(blobs_max_id)
     }
 
-    fn records_count(&self) -> usize {
-        let details = self.records_count_detailed();
+    async fn records_count(&self) -> usize {
+        let details = self.records_count_detailed().await;
         details.iter().fold(0, |acc, (_, count)| acc + count)
     }
 
-    fn records_count_detailed(&self) -> Vec<(usize, usize)> {
+    async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
         let mut results = Vec::new();
-        for blob in &self.blobs {
+        let blobs = self.blobs.read().await;
+        for blob in blobs.iter() {
             let count = blob.records_count();
             let value = (blob.id(), count);
             debug!("push: {:?}", value);
             results.push(value);
         }
         if let Some(blob) = self.active_blob.as_ref() {
-            let value = (self.blobs.len(), blob.records_count());
+            let value = (blobs.len(), blob.records_count());
             debug!("push: {:?}", value);
             results.push(value);
         }
@@ -677,14 +682,17 @@ impl Safe {
         Ok(())
     }
 
-    pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob>) -> Result<()> {
-        let mut old_active = self
+    pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob>) -> Result<SaveOldBlobTask> {
+        let old_active = self
             .active_blob
             .replace(blob)
             .ok_or_else(Error::active_blob_not_set)?;
-        old_active.dump().await?;
-        self.blobs.push(*old_active);
-        Ok(())
+        let blobs = self.blobs.clone();
+        Ok(Box::pin(async move {
+            let mut blobs = blobs.write().await;
+            blobs.push(*old_active);
+            let _ = blobs.last_mut().unwrap().dump().await;
+        }))
     }
 }
 

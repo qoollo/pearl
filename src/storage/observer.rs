@@ -116,10 +116,12 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
     let new_active = Blob::open_new(next_name, inner.ioring, inner.config.filter())
         .await?
         .boxed();
-    inner
+    let task = inner
         .safe
         .lock()
         .await
         .replace_active_blob(new_active)
-        .await
+        .await?;
+    tokio::spawn(task);
+    Ok(())
 }
