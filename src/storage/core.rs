@@ -103,8 +103,9 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
 impl<K> Storage<K> {
     pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
         let update_interval = Duration::from_millis(config.update_interval_ms());
+        let dump_sem = config.dump_sem();
         let inner = Inner::new(config, ioring);
-        let observer = Observer::new(update_interval, inner.clone());
+        let observer = Observer::new(update_interval, inner.clone(), dump_sem);
         Self {
             inner,
             observer,
@@ -636,7 +637,6 @@ impl Inner {
         self.safe.lock().await.fsyncdata().await
     }
 }
-
 
 impl Safe {
     fn new() -> Self {

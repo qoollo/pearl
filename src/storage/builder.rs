@@ -135,4 +135,10 @@ impl Builder {
         self.ioring = Some(ioring);
         self
     }
+
+    /// Sets semaphore for index dumping on blob change
+    pub fn set_dump_sem(mut self, dump_sem: Arc<Semaphore>) -> Self {
+        self.config.set_dump_sem(dump_sem);
+        self
+    }
 }

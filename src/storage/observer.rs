@@ -1,6 +1,7 @@
 use super::prelude::*;
 use tokio::{
     sync::mpsc::{channel, Receiver, Sender},
+    sync::Semaphore,
     time::timeout,
 };
 
@@ -14,14 +15,20 @@ pub(crate) struct Observer {
     inner: Inner,
     update_interval: Duration,
     pub sender: Option<Sender<Msg>>,
+    dump_sem: Arc<Semaphore>,
 }
 
 impl Observer {
-    pub(crate) const fn new(update_interval: Duration, inner: Inner) -> Self {
+    pub(crate) const fn new(
+        update_interval: Duration,
+        inner: Inner,
+        dump_sem: Arc<Semaphore>,
+    ) -> Self {
         Self {
             update_interval,
             inner,
             sender: None,
+            dump_sem,
         }
     }
 
@@ -45,7 +52,9 @@ impl Observer {
 
     async fn tick(&self, receiver: &mut Receiver<Msg>) -> Result<()> {
         match timeout(self.update_interval, receiver.recv()).await {
-            Ok(Some(Msg::CloseActiveBlob)) => update_active_blob(self.inner.clone()).await?,
+            Ok(Some(Msg::CloseActiveBlob)) => {
+                update_active_blob(self.inner.clone(), self.dump_sem.clone()).await?
+            }
             Ok(Some(Msg::Shutdown)) | Ok(None) => return Err(anyhow!("internal".to_string())),
             Err(_) => {}
         }
@@ -57,7 +66,7 @@ impl Observer {
         trace!("try update active blob");
         let inner_cloned = self.inner.clone();
         if let Some(inner) = active_blob_check(inner_cloned).await? {
-            update_active_blob(inner).await?;
+            update_active_blob(inner, self.dump_sem.clone()).await?;
         }
         Ok(())
     }
@@ -110,7 +119,7 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
     }
 }
 
-async fn update_active_blob(inner: Inner) -> Result<()> {
+async fn update_active_blob(inner: Inner, dump_sem: Arc<Semaphore>) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
     let new_active = Blob::open_new(next_name, inner.ioring, inner.config.filter())
@@ -122,6 +131,9 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
         .await
         .replace_active_blob(new_active)
         .await?;
-    tokio::spawn(task);
+    tokio::spawn(async move {
+        let _ = dump_sem.acquire().await;
+        task.await;
+    });
     Ok(())
 }
