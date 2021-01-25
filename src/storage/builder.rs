@@ -135,4 +135,13 @@ impl Builder {
         self.ioring = Some(ioring);
         self
     }
+
+    /// [Optional]
+    /// Sets whether to create work directory if its missing on storage initialization.
+    /// Default value is `true`
+    #[must_use]
+    pub fn create_work_dir(mut self, create: bool) -> Self {
+        self.config.set_create_work_dir(create);
+        self
+    }
 }

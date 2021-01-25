@@ -98,6 +98,7 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
         Ok(Some(files))
     }
 }
+
 impl<K> Storage<K> {
     pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
         let update_interval = Duration::from_millis(config.update_interval_ms());

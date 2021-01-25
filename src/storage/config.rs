@@ -3,6 +3,7 @@ use super::prelude::*;
 #[derive(Debug, Clone)]
 pub(crate) struct Config {
     work_dir: Option<PathBuf>,
+    create_work_dir: bool,
     max_blob_size: Option<u64>,
     max_data_in_blob: Option<u64>,
     blob_file_name_prefix: Option<String>,
@@ -74,6 +75,10 @@ impl Config {
     pub fn set_filter(&mut self, filter: BloomConfig) {
         self.filter = Some(filter);
     }
+
+    pub fn set_create_work_dir(&mut self, create: bool) {
+        self.create_work_dir = create;
+    }
 }
 
 // Impl Traits
@@ -81,6 +86,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             work_dir: None,
+            create_work_dir: true,
             max_blob_size: None,
             max_data_in_blob: None,
             blob_file_name_prefix: None,
