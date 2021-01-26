@@ -48,6 +48,11 @@ impl Config {
     pub fn filter(&self) -> Option<BloomConfig> {
         self.filter.clone()
     }
+
+    #[inline]
+    pub fn create_work_dir(&self) -> bool {
+        self.create_work_dir
+    }
 }
 
 //Setters

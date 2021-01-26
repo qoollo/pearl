@@ -40,6 +40,15 @@ impl Error {
     pub(crate) fn io(s: String) -> Self {
         Self::new(Kind::IO(s))
     }
+
+    pub(crate) fn work_dir_unavailable(path: impl AsRef<Path>) -> Self {
+        let path = path
+            .as_ref()
+            .to_str()
+            .expect("convert path to string")
+            .to_string();
+        Self::new(Kind::WorkDirUnavailable(path))
+    }
 }
 
 impl Display for Error {
@@ -70,6 +79,10 @@ pub enum Kind {
     /// Or the operation lacked the necessary privileges to complete.
     /// Stop another storage or delete `*.lock` file
     WorkDirInUse,
+    /// Happens when try to write/read from work dir that doesn't exist.
+    /// In case when work dir wasn't created or disk was unmounted.
+    /// Contains path to failed work dir.
+    WorkDirUnavailable(String),
     /// Storage was initialized with different key size
     KeySizeMismatch,
     /// Record with the same key and the same metadata already exists
