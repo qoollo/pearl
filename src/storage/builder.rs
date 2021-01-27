@@ -135,4 +135,12 @@ impl Builder {
         self.ioring = Some(ioring);
         self
     }
+
+    /// Sets semaphore for index dumping on blob change.
+    /// Parallel saving of indexes onto the disk will be limited by this semaphore.
+    /// This can prevent disk overusage in systems with multiple pearls.
+    pub fn set_dump_sem(mut self, dump_sem: Arc<Semaphore>) -> Self {
+        self.config.set_dump_sem(dump_sem);
+        self
+    }
 }
