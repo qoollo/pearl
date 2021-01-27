@@ -10,6 +10,7 @@ pub(crate) struct Config {
     update_interval_ms: u64,
     allow_duplicates: bool,
     filter: Option<BloomConfig>,
+    dump_sem: Arc<Semaphore>,
 }
 
 // Getters
@@ -53,6 +54,11 @@ impl Config {
     pub fn create_work_dir(&self) -> bool {
         self.create_work_dir
     }
+
+    #[inline]
+    pub fn dump_sem(&self) -> Arc<Semaphore> {
+        self.dump_sem.clone()
+    }
 }
 
 //Setters
@@ -84,6 +90,10 @@ impl Config {
     pub fn set_create_work_dir(&mut self, create: bool) {
         self.create_work_dir = create;
     }
+
+    pub fn set_dump_sem(&mut self, dump_sem: Arc<Semaphore>) {
+        self.dump_sem = dump_sem
+    }
 }
 
 // Impl Traits
@@ -98,6 +108,7 @@ impl Default for Config {
             update_interval_ms: 100,
             allow_duplicates: false,
             filter: None,
+            dump_sem: Arc::new(Semaphore::new(1)),
         }
     }
 }
