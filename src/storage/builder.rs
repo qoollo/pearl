@@ -136,6 +136,15 @@ impl Builder {
         self
     }
 
+    /// [Optional]
+    /// Sets whether to create work directory if its missing on storage initialization.
+    /// Default value is `true`
+    #[must_use]
+    pub fn create_work_dir(mut self, create: bool) -> Self {
+        self.config.set_create_work_dir(create);
+        self
+    }
+
     /// Sets semaphore for index dumping on blob change.
     /// Parallel saving of indexes onto the disk will be limited by this semaphore.
     /// This can prevent disk overusage in systems with multiple pearls.

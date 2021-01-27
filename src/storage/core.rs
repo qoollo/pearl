@@ -100,6 +100,7 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
         Ok(Some(files))
     }
 }
+
 impl<K> Storage<K> {
     pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
         let update_interval = Duration::from_millis(config.update_interval_ms());
@@ -381,9 +382,13 @@ impl<K> Storage<K> {
         let path = Path::new(work_dir);
         if path.exists() {
             debug!("work dir exists: {}", path.display());
-        } else {
+        } else if self.inner.config.create_work_dir() {
             debug!("creating work dir recursively: {}", path.display());
             std::fs::create_dir_all(path)?;
+        } else {
+            error!("work dir path not found: {}", path.display());
+            return Err(Error::work_dir_unavailable(path))
+                .with_context(|| "failed to prepare work dir");
         }
         self.try_lock_dir(path).await
     }

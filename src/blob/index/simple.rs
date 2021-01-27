@@ -38,11 +38,12 @@ pub(crate) struct MemoryAttrs {
 
 impl IndexHeader {
     pub fn new(record_header_size: usize, records_count: usize, filter_buf_size: usize) -> Self {
-        let mut res = Self::default();
-        res.records_count = records_count;
-        res.record_header_size = record_header_size;
-        res.filter_buf_size = filter_buf_size;
-        res
+        Self {
+            records_count,
+            record_header_size,
+            filter_buf_size,
+            ..Self::default()
+        }
     }
 
     pub fn with_hash(
@@ -51,12 +52,13 @@ impl IndexHeader {
         filter_buf_size: usize,
         hash: Vec<u8>,
     ) -> Self {
-        let mut res = Self::default();
-        res.records_count = records_count;
-        res.record_header_size = record_header_size;
-        res.filter_buf_size = filter_buf_size;
-        res.hash = hash;
-        res
+        Self {
+            records_count,
+            record_header_size,
+            filter_buf_size,
+            hash,
+            ..Self::default()
+        }
     }
 
     fn serialized_size_default() -> bincode::Result<u64> {
