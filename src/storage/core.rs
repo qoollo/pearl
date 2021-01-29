@@ -203,7 +203,22 @@ impl<K> Storage<K> {
             .active_blob
             .as_mut()
             .ok_or_else(Error::active_blob_not_set)?;
-        blob.write(record).await
+        match blob.write(record).await {
+            Ok(_) => Ok(()),
+            Err(err) => match err.downcast::<IOError>() {
+                Ok(e) => match e.kind() {
+                    IOErrorKind::Other | IOErrorKind::NotFound => {
+                        let work_dir = match self.inner.config.work_dir() {
+                            Some(path) => path,
+                            None => return Err(Error::uninitialized().into()),
+                        };
+                        Err(Error::work_dir_unavailable(work_dir, e.to_string(), e.kind()).into())
+                    }
+                    _ => Err(e.into()),
+                },
+                Err(err) => Err(err),
+            },
+        }
     }
     /// Reads the first found data matching given key.
     /// # Examples
@@ -220,7 +235,7 @@ impl<K> Storage<K> {
     /// [`read_with`]: Storage::read_with
     #[inline]
     pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
-        debug!("srorage read {:?}", key);
+        debug!("storage read {:?}", key);
         self.read_with_optional_meta(key, None).await
     }
     /// Reads data matching given key and metadata
@@ -239,7 +254,7 @@ impl<K> Storage<K> {
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
     pub async fn read_with(&self, key: impl Key, meta: &Meta) -> Result<Vec<u8>> {
-        debug!("srorage read with {:?}", key);
+        debug!("storage read with {:?}", key);
         self.read_with_optional_meta(key, Some(meta))
             .await
             .with_context(|| "read with optional meta failed")
@@ -696,6 +711,14 @@ impl Safe {
         Ok(Box::pin(async move {
             let mut blobs = blobs.write().await;
             blobs.push(*old_active);
+            // FIXME: seems, like in case of disk error indices won't dump on disk and we won't
+            // know about it (the state will be okay, they will be InMemory, but there won't be any
+            // further task to dump them)
+            // Possible solution: in case of disk issues during the next write in new active blob
+            // we will receive error AND after solving it in some time we can start another job
+            // (seems like we should add one more method to public API for that)
+            // which will start dump tasks for all blobs from old_blobs array (or for the last one;
+            // seems that it's either okay; in case of OnDisk state dump works very fast)
             let _ = blobs.last_mut().unwrap().dump().await;
         }))
     }
