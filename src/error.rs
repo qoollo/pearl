@@ -44,14 +44,13 @@ impl Error {
     pub(crate) fn work_dir_unavailable(
         path: impl AsRef<Path>,
         msg: String,
-        io_kind: IOErrorKind,
+        io_err_kind: IOErrorKind,
     ) -> Self {
-        let path = path
-            .as_ref()
-            .to_str()
-            .expect("convert path to string")
-            .to_string();
-        Self::new(Kind::WorkDirUnavailable((path, msg, io_kind)))
+        Self::new(Kind::WorkDirUnavailable {
+            path: path.as_ref().into(),
+            msg,
+            io_err_kind,
+        })
     }
 }
 
@@ -86,7 +85,11 @@ pub enum Kind {
     /// Happens when try to write/read from work dir that doesn't exist.
     /// In case when work dir wasn't created or disk was unmounted.
     /// Contains path to failed work dir, IOError description and IOErrorKind.
-    WorkDirUnavailable((String, String, IOErrorKind)),
+    WorkDirUnavailable {
+        path: PathBuf,
+        msg: String,
+        io_err_kind: IOErrorKind,
+    },
     /// Storage was initialized with different key size
     KeySizeMismatch,
     /// Record with the same key and the same metadata already exists
