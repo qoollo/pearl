@@ -641,6 +641,10 @@ impl Inner {
     async fn fsyncdata(&self) -> IOResult<()> {
         self.safe.lock().await.fsyncdata().await
     }
+
+    pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
+        self.safe.lock().await.try_dump_old_blob_indexes(sem).await;
+    }
 }
 
 impl Safe {
@@ -696,8 +700,23 @@ impl Safe {
         Ok(Box::pin(async move {
             let mut blobs = blobs.write().await;
             blobs.push(*old_active);
-            let _ = blobs.last_mut().unwrap().dump().await;
+            if let Err(e) = blobs.last_mut().unwrap().dump().await {
+                error!("Error dumping blob: {}", e);
+            }
         }))
+    }
+
+    pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
+        let blobs = self.blobs.clone();
+        tokio::spawn(async move {
+            let mut write_blobs = blobs.write().await;
+            for blob in write_blobs.iter_mut() {
+                let _ = sem.acquire().await;
+                if let Err(e) = blob.dump().await {
+                    error!("Error dumping blob: {}", e);
+                }
+            }
+        });
     }
 }
 
