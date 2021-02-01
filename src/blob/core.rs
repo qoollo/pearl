@@ -94,6 +94,7 @@ impl Blob {
         path: PathBuf,
         ioring: Option<Rio>,
         filter_config: Option<BloomConfig>,
+        disk_access_sem: Arc<Semaphore>,
     ) -> Result<Self> {
         let now = Instant::now();
         let file = File::open(&path, ioring.clone()).await?;
@@ -122,6 +123,7 @@ impl Blob {
         };
         trace!("call update index");
         if size as u64 > header_size {
+            let _res = disk_access_sem.acquire().await?;
             blob.try_regenerate_index()
                 .await
                 .context("failed to regenerate index")?;

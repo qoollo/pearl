@@ -426,9 +426,15 @@ impl<K> Storage<K> {
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
         trace!("init from existing: {:#?}", files);
-        let mut blobs = Self::read_blobs(&files, self.inner.ioring.clone(), self.filter_config())
-            .await
-            .context("failed to read blobs")?;
+        let disk_access_sem = self.observer.get_dump_sem();
+        let mut blobs = Self::read_blobs(
+            &files,
+            self.inner.ioring.clone(),
+            self.filter_config(),
+            disk_access_sem,
+        )
+        .await
+        .context("failed to read blobs")?;
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
@@ -459,6 +465,7 @@ impl<K> Storage<K> {
         files: &[DirEntry],
         ioring: Option<Rio>,
         filter_config: Option<BloomConfig>,
+        disk_access_sem: Arc<Semaphore>,
     ) -> Result<Vec<Blob>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
@@ -474,7 +481,9 @@ impl<K> Storage<K> {
         });
         debug!("init blobs from found files");
         let futures: FuturesUnordered<_> = blob_files
-            .map(|file| Blob::from_file(file, ioring.clone(), filter_config.clone()))
+            .map(|file| {
+                Blob::from_file(file, ioring.clone(), filter_config.clone(), disk_access_sem.clone())
+            })
             .collect();
         debug!("async init blobs from file");
         futures

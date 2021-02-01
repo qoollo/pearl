@@ -88,6 +88,10 @@ impl Observer {
             }
         }
     }
+
+    pub(crate) fn get_dump_sem(&self) -> Arc<Semaphore> {
+        self.dump_sem.clone()
+    }
 }
 
 async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
@@ -132,7 +136,7 @@ async fn update_active_blob(inner: Inner, dump_sem: Arc<Semaphore>) -> Result<()
         .replace_active_blob(new_active)
         .await?;
     tokio::spawn(async move {
-        let _ = dump_sem.acquire().await;
+        let _res = dump_sem.acquire().await.expect("semaphore is closed");
         task.await;
     });
     Ok(())
