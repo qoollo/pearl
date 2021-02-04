@@ -205,14 +205,17 @@ impl<K> Storage<K> {
             .ok_or_else(Error::active_blob_not_set)?;
         match blob.write(record).await {
             Ok(_) => Ok(()),
-            Err(err) => match err.downcast::<IOError>() {
+            Err(err) => match err.downcast::<Error>() {
                 Ok(e) => match e.kind() {
-                    IOErrorKind::Other | IOErrorKind::NotFound => {
+                    ErrorKind::FileUnavailable(kind) => {
                         let work_dir = match self.inner.config.work_dir() {
                             Some(path) => path,
                             None => return Err(Error::uninitialized().into()),
                         };
-                        Err(Error::work_dir_unavailable(work_dir, e.to_string(), e.kind()).into())
+                        Err(
+                            Error::work_dir_unavailable(work_dir, e.to_string(), kind.to_owned())
+                                .into(),
+                        )
                     }
                     _ => Err(e.into()),
                 },
@@ -402,8 +405,12 @@ impl<K> Storage<K> {
             std::fs::create_dir_all(path)?;
         } else {
             error!("work dir path not found: {}", path.display());
-            return Err(Error::work_dir_unavailable(path))
-                .with_context(|| "failed to prepare work dir");
+            return Err(Error::work_dir_unavailable(
+                path,
+                "work dir path not found".to_owned(),
+                IOErrorKind::NotFound,
+            ))
+            .with_context(|| "failed to prepare work dir");
         }
         self.try_lock_dir(path).await
     }

@@ -48,15 +48,25 @@ impl File {
     }
 
     pub(crate) async fn write_append_sync(&self, buf: &[u8]) -> IOResult<usize> {
-        // FIXME: shouldn't we do that after successful write operation?
-        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
-        self.write_at_sync(offset, buf).await
+        let offset = self.size.load(Ordering::SeqCst);
+        match self.write_at_sync(offset, buf).await {
+            Ok(bytes_written) => {
+                self.size.fetch_add(bytes_written as u64, Ordering::SeqCst);
+                Ok(bytes_written)
+            }
+            Err(e) => Err(e),
+        }
     }
 
     async fn write_append_aio(&self, buf: &[u8], ioring: &Rio) -> IOResult<usize> {
-        // FIXME: shouldn't we do that after successful write operation?
-        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
-        self.write_at_aio(offset, buf, ioring).await
+        let offset = self.size.load(Ordering::SeqCst);
+        match self.write_at_aio(offset, buf, ioring).await {
+            Ok(bytes_written) => {
+                self.size.fetch_add(bytes_written as u64, Ordering::SeqCst);
+                Ok(bytes_written)
+            }
+            Err(e) => Err(e),
+        }
     }
 
     pub(crate) async fn write_at(&self, offset: u64, buf: &[u8]) -> IOResult<usize> {
@@ -70,18 +80,13 @@ impl File {
     async fn write_at_aio(&self, offset: u64, buf: &[u8], ioring: &Rio) -> IOResult<usize> {
         let compl = ioring.write_at(&*self.no_lock_fd, &buf, offset);
         let count = compl.await?;
-        // FIXME: in case of disk error write_at will return less number of bytes and program will
-        // panic. Seems like that's not the behavior we want. Rio documentation says: "be sure to
-        // check the returned ... to see if a short write happened" but we're interested in forcing
-        // error in Result to know: was this disk error or other kind of error (and we should panic)
-        // TODO: check if second attempt to write_at returns error in more clear way (Result Error,
-        // not like `less number of bytes written`)
+        // on blob level this error will be treated as unavailable file (rio doesn't return error
+        // in explicit format so we do that for it)
+        // P.S.: previous solution was to panic, where this situation appears, seems like this solution
+        // is a little better (for example, in case of cluster which contains few pearl storages it
+        // won't break the whole cluster, but only pass information outside, that last write wasn't sucessful)
         if count < buf.len() {
-            panic!(
-                "internal IO error, written bytes: {}, buf len: {}",
-                count,
-                buf.len()
-            );
+            return Err(IOError::from_raw_os_error(5));
         }
         Ok(count)
     }
