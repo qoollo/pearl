@@ -94,14 +94,11 @@ impl Blob {
         path: PathBuf,
         ioring: Option<Rio>,
         filter_config: Option<BloomConfig>,
-        disk_access_sem: Arc<Semaphore>,
     ) -> Result<Self> {
-        let _res = disk_access_sem.acquire().await?;
         let now = Instant::now();
         let file = File::open(&path, ioring.clone()).await?;
         let name = FileName::from_path(&path)?;
         info!("{} blob init started", name);
-        info!("semahore status: {:?} {:?}", disk_access_sem, _res);
         let size = file.size();
         let header = Header::new();
         let mut index_name = name.clone();

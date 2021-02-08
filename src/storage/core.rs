@@ -481,8 +481,14 @@ impl<K> Storage<K> {
         });
         debug!("init blobs from found files");
         let futures: FuturesUnordered<_> = blob_files
-            .map(|file| {
-                Blob::from_file(file, ioring.clone(), filter_config.clone(), disk_access_sem.clone())
+            .map(|file| async {
+                let sem = disk_access_sem.clone();
+                let _sem = sem.acquire().await.expect("sem is closed");
+                Blob::from_file(
+                    file,
+                    ioring.clone(),
+                    filter_config.clone(),
+                ).await
             })
             .collect();
         debug!("async init blobs from file");
