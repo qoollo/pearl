@@ -101,6 +101,7 @@ impl Blob {
         let file = File::open(&path, ioring.clone()).await?;
         let name = FileName::from_path(&path)?;
         info!("{} blob init started", name);
+        info!("semahore status: {:?} {:?}", disk_access_sem, _res);
         let size = file.size();
         let header = Header::new();
         let mut index_name = name.clone();
