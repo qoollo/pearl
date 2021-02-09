@@ -47,26 +47,26 @@ impl File {
         }
     }
 
+    fn update_size(&self, diff: u64) {
+        self.size.fetch_add(diff, Ordering::SeqCst);
+    }
+
     pub(crate) async fn write_append_sync(&self, buf: &[u8]) -> IOResult<usize> {
         let offset = self.size.load(Ordering::SeqCst);
-        match self.write_at_sync(offset, buf).await {
-            Ok(bytes_written) => {
-                self.size.fetch_add(bytes_written as u64, Ordering::SeqCst);
-                Ok(bytes_written)
-            }
-            Err(e) => Err(e),
-        }
+        self.write_at_sync(offset, buf).await.map(|bytes_written| {
+            self.update_size(bytes_written as u64);
+            bytes_written
+        })
     }
 
     async fn write_append_aio(&self, buf: &[u8], ioring: &Rio) -> IOResult<usize> {
         let offset = self.size.load(Ordering::SeqCst);
-        match self.write_at_aio(offset, buf, ioring).await {
-            Ok(bytes_written) => {
-                self.size.fetch_add(bytes_written as u64, Ordering::SeqCst);
-                Ok(bytes_written)
-            }
-            Err(e) => Err(e),
-        }
+        self.write_at_aio(offset, buf, ioring)
+            .await
+            .map(|bytes_written| {
+                self.update_size(bytes_written as u64);
+                bytes_written
+            })
     }
 
     pub(crate) async fn write_at(&self, offset: u64, buf: &[u8]) -> IOResult<usize> {

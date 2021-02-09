@@ -203,25 +203,19 @@ impl<K> Storage<K> {
             .active_blob
             .as_mut()
             .ok_or_else(Error::active_blob_not_set)?;
-        match blob.write(record).await {
-            Ok(_) => Ok(()),
-            Err(err) => match err.downcast::<Error>() {
-                Ok(e) => match e.kind() {
-                    ErrorKind::FileUnavailable(kind) => {
-                        let work_dir = match self.inner.config.work_dir() {
-                            Some(path) => path,
-                            None => return Err(Error::uninitialized().into()),
-                        };
-                        Err(
-                            Error::work_dir_unavailable(work_dir, e.to_string(), kind.to_owned())
-                                .into(),
-                        )
-                    }
-                    _ => Err(e.into()),
-                },
-                Err(err) => Err(err),
-            },
-        }
+        blob.write(record).await.or_else(|err| {
+            let e = err.downcast::<Error>()?;
+            if let ErrorKind::FileUnavailable(kind) = e.kind() {
+                let work_dir = self
+                    .inner
+                    .config
+                    .work_dir()
+                    .ok_or_else(Error::uninitialized)?;
+                Err(Error::work_dir_unavailable(work_dir, e.to_string(), kind.to_owned()).into())
+            } else {
+                Err(e.into())
+            }
+        })
     }
     /// Reads the first found data matching given key.
     /// # Examples
