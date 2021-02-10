@@ -257,6 +257,7 @@ impl Simple {
         header.written = 0;
         serialize_into(buf.as_mut_slice(), &header)?;
         let new_hash = get_hash(&buf);
+        error!("read hash: {:?}, new hash: {:?}", hash, new_hash);
         Ok(hash == new_hash)
     }
 
