@@ -225,6 +225,9 @@ impl Simple {
         let mut buf = file.read_all().await?;
         trace!("read total {} bytes", buf.len());
         let header = Self::deserialize_header(&buf)?;
+        if header.written != 1 {
+            return Err(Error::validation("header was not written").into());
+        }
         if !Self::hash_valid(&header, &mut buf)? {
             return Err(Error::validation("header hash mismatch").into());
         }
@@ -251,6 +254,7 @@ impl Simple {
         let mut header = header.clone();
         let hash = header.hash.clone();
         header.hash = vec![0; ring::digest::SHA256.output_len];
+        header.written = 0;
         serialize_into(buf.as_mut_slice(), &header)?;
         let new_hash = get_hash(&buf);
         Ok(hash == new_hash)
