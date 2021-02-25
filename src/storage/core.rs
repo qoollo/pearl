@@ -500,11 +500,7 @@ impl<K> Storage<K> {
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(
-                    file,
-                    ioring.clone(),
-                    filter_config.clone(),
-                ).await
+                Blob::from_file(file, ioring.clone(), filter_config.clone()).await
             })
             .collect();
         debug!("async init blobs from file");
@@ -672,6 +668,10 @@ impl Inner {
     async fn fsyncdata(&self) -> IOResult<()> {
         self.safe.lock().await.fsyncdata().await
     }
+
+    pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
+        self.safe.lock().await.try_dump_old_blob_indexes(sem).await;
+    }
 }
 
 impl Safe {
@@ -735,8 +735,23 @@ impl Safe {
             // (seems like we should add one more method to public API for that)
             // which will start dump tasks for all blobs from old_blobs array (or for the last one;
             // seems that it's either okay; in case of OnDisk state dump works very fast)
-            let _ = blobs.last_mut().unwrap().dump().await;
+            if let Err(e) = blobs.last_mut().unwrap().dump().await {
+                error!("Error dumping blob: {}", e);
+            }
         }))
+    }
+
+    pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
+        let blobs = self.blobs.clone();
+        tokio::spawn(async move {
+            let mut write_blobs = blobs.write().await;
+            for blob in write_blobs.iter_mut() {
+                let _ = sem.acquire().await;
+                if let Err(e) = blob.dump().await {
+                    error!("Error dumping blob: {}", e);
+                }
+            }
+        });
     }
 }
 
