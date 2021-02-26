@@ -180,7 +180,18 @@ impl Blob {
         debug!("blob write record offset: {}", *offset);
         record.set_offset(*offset)?;
         let buf = record.to_raw()?;
-        let bytes_written = self.file.write_append(&buf).await? as u64;
+        let bytes_written = self
+            .file
+            .write_append(&buf)
+            .await
+            .map_err(|e| -> anyhow::Error {
+                match e.kind() {
+                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
+                        Error::file_unavailable(kind).into()
+                    }
+                    _ => e.into(),
+                }
+            })? as u64;
         self.index.push(record.header().clone())?;
         *offset += bytes_written;
         Ok(())
