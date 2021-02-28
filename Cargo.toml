@@ -1,6 +1,6 @@
 [package]
 name = "pearl"
-version = "0.5.9"
+version = "0.5.10"
 description = "Pearl is a low level blob-based I/O library"
 repository = "https://github.com/qoollo/pearl"
 homepage = "https://github.com/qoollo/pearl"
