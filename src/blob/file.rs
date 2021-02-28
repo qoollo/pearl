@@ -68,12 +68,13 @@ impl File {
     async fn write_at_aio(&self, offset: u64, buf: &[u8], ioring: &Rio) -> IOResult<usize> {
         let compl = ioring.write_at(&*self.no_lock_fd, &buf, offset);
         let count = compl.await?;
+        // on blob level this error will be treated as unavailable file (rio doesn't return error
+        // in explicit format so we do that for it)
+        // P.S.: previous solution was to panic, where this situation appears, seems like this solution
+        // is a little better (for example, in case of cluster which contains few pearl storages it
+        // won't break the whole cluster, but only pass information outside, that last write wasn't sucessful)
         if count < buf.len() {
-            panic!(
-                "internal IO error, written bytes: {}, buf len: {}",
-                count,
-                buf.len()
-            );
+            return Err(IOError::from_raw_os_error(5));
         }
         Ok(count)
     }

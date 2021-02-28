@@ -91,6 +91,8 @@ mod prelude {
         convert::TryInto,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
         fs::{File as StdFile, Metadata, OpenOptions as StdOpenOptions},
+        io::Error as IOError,
+        io::ErrorKind as IOErrorKind,
         io::Result as IOResult,
         marker::PhantomData,
         os::unix::fs::OpenOptionsExt,

@@ -203,7 +203,19 @@ impl<K> Storage<K> {
             .active_blob
             .as_mut()
             .ok_or_else(Error::active_blob_not_set)?;
-        blob.write(record).await
+        blob.write(record).await.or_else(|err| {
+            let e = err.downcast::<Error>()?;
+            if let ErrorKind::FileUnavailable(kind) = e.kind() {
+                let work_dir = self
+                    .inner
+                    .config
+                    .work_dir()
+                    .ok_or_else(Error::uninitialized)?;
+                Err(Error::work_dir_unavailable(work_dir, e.to_string(), kind.to_owned()).into())
+            } else {
+                Err(e.into())
+            }
+        })
     }
     /// Reads the first found data matching given key.
     /// # Examples
@@ -220,7 +232,7 @@ impl<K> Storage<K> {
     /// [`read_with`]: Storage::read_with
     #[inline]
     pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
-        debug!("srorage read {:?}", key);
+        debug!("storage read {:?}", key);
         self.read_with_optional_meta(key, None).await
     }
     /// Reads data matching given key and metadata
@@ -239,7 +251,7 @@ impl<K> Storage<K> {
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
     pub async fn read_with(&self, key: impl Key, meta: &Meta) -> Result<Vec<u8>> {
-        debug!("srorage read with {:?}", key);
+        debug!("storage read with {:?}", key);
         self.read_with_optional_meta(key, Some(meta))
             .await
             .with_context(|| "read with optional meta failed")
@@ -387,8 +399,12 @@ impl<K> Storage<K> {
             std::fs::create_dir_all(path)?;
         } else {
             error!("work dir path not found: {}", path.display());
-            return Err(Error::work_dir_unavailable(path))
-                .with_context(|| "failed to prepare work dir");
+            return Err(Error::work_dir_unavailable(
+                path,
+                "work dir path not found".to_owned(),
+                IOErrorKind::NotFound,
+            ))
+            .with_context(|| "failed to prepare work dir");
         }
         self.try_lock_dir(path).await
     }
@@ -484,11 +500,7 @@ impl<K> Storage<K> {
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(
-                    file,
-                    ioring.clone(),
-                    filter_config.clone(),
-                ).await
+                Blob::from_file(file, ioring.clone(), filter_config.clone()).await
             })
             .collect();
         debug!("async init blobs from file");
@@ -656,6 +668,10 @@ impl Inner {
     async fn fsyncdata(&self) -> IOResult<()> {
         self.safe.lock().await.fsyncdata().await
     }
+
+    pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
+        self.safe.lock().await.try_dump_old_blob_indexes(sem).await;
+    }
 }
 
 impl Safe {
@@ -711,8 +727,31 @@ impl Safe {
         Ok(Box::pin(async move {
             let mut blobs = blobs.write().await;
             blobs.push(*old_active);
-            let _ = blobs.last_mut().unwrap().dump().await;
+            // FIXME: seems, like in case of disk error indices won't dump on disk and we won't
+            // know about it (the state will be okay, they will be InMemory, but there won't be any
+            // further task to dump them)
+            // Possible solution: in case of disk issues during the next write in new active blob
+            // we will receive error AND after solving it in some time we can start another job
+            // (seems like we should add one more method to public API for that)
+            // which will start dump tasks for all blobs from old_blobs array (or for the last one;
+            // seems that it's either okay; in case of OnDisk state dump works very fast)
+            if let Err(e) = blobs.last_mut().unwrap().dump().await {
+                error!("Error dumping blob: {}", e);
+            }
         }))
+    }
+
+    pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
+        let blobs = self.blobs.clone();
+        tokio::spawn(async move {
+            let mut write_blobs = blobs.write().await;
+            for blob in write_blobs.iter_mut() {
+                let _ = sem.acquire().await;
+                if let Err(e) = blob.dump().await {
+                    error!("Error dumping blob: {}", e);
+                }
+            }
+        });
     }
 }
 
