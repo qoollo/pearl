@@ -166,11 +166,10 @@ impl File {
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
         if let Some(ref ioring) = self.ioring {
-            let compl = ioring.fdatasync(&*self.no_lock_fd);
+            let compl = ioring.fsync(&*self.no_lock_fd);
             compl.await
         } else {
-            let file = self.no_lock_fd.clone();
-            Self::blocking_call(move || file.as_ref().sync_all()).await
+            self.write_fd.read().await.sync_all().await
         }
     }
 
