@@ -71,6 +71,7 @@ impl Blob {
     }
 
     pub(crate) async fn dump(&mut self) -> Result<usize> {
+        self.file.fsyncdata().await?;
         self.index
             .dump()
             .await

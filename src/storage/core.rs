@@ -727,14 +727,9 @@ impl Safe {
         Ok(Box::pin(async move {
             let mut blobs = blobs.write().await;
             blobs.push(*old_active);
-            // FIXME: seems, like in case of disk error indices won't dump on disk and we won't
-            // know about it (the state will be okay, they will be InMemory, but there won't be any
-            // further task to dump them)
-            // Possible solution: in case of disk issues during the next write in new active blob
-            // we will receive error AND after solving it in some time we can start another job
-            // (seems like we should add one more method to public API for that)
-            // which will start dump tasks for all blobs from old_blobs array (or for the last one;
-            // seems that it's either okay; in case of OnDisk state dump works very fast)
+            // Notice: if dump of blob or indices fails, it's likely a problem with disk appeared, so
+            // all descriptors of the storage become invalid and unusable
+            // Possible solution: recreate instance of storage, when disk will be available
             if let Err(e) = blobs.last_mut().unwrap().dump().await {
                 error!("Error dumping blob: {}", e);
             }

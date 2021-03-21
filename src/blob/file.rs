@@ -1,4 +1,4 @@
-use std::{io::Write, os::unix::prelude::FileExt};
+use std::os::unix::prelude::FileExt;
 
 use super::prelude::*;
 
@@ -170,7 +170,7 @@ impl File {
             compl.await
         } else {
             let file = self.no_lock_fd.clone();
-            Self::blocking_call(move || file.as_ref().flush()).await
+            Self::blocking_call(move || file.as_ref().sync_all()).await
         }
     }
 
