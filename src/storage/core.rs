@@ -448,6 +448,7 @@ impl<K> Storage<K> {
             self.inner.ioring.clone(),
             self.filter_config(),
             disk_access_sem,
+            &self.inner.config,
         )
         .await
         .context("failed to read blobs")?;
@@ -482,6 +483,7 @@ impl<K> Storage<K> {
         ioring: Option<Rio>,
         filter_config: Option<BloomConfig>,
         disk_access_sem: Arc<Semaphore>,
+        config: &Config,
     ) -> Result<Vec<Blob>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
@@ -496,18 +498,34 @@ impl<K> Storage<K> {
             }
         });
         debug!("init blobs from found files");
-        let futures: FuturesUnordered<_> = blob_files
+        let mut futures: FuturesUnordered<_> = blob_files
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(file, ioring.clone(), filter_config.clone()).await
+                Blob::from_file(file.clone(), ioring.clone(), filter_config.clone())
+                    .await
+                    .map_err(|e| (e, file))
             })
             .collect();
         debug!("async init blobs from file");
-        futures
-            .try_collect()
-            .await
-            .context("failed to read existing blobs")
+        let mut blobs = Vec::new();
+        while let Some(blob_res) = futures.next().await {
+            match blob_res {
+                Ok(blob) => blobs.push(blob),
+                Err((e, file)) => {
+                    let msg = format!(
+                        "Failed to read existing blob!\nPath: {:?};\nReason: {:?}.",
+                        file, e
+                    );
+                    if config.ignore_corrupted() {
+                        error!("{}", msg);
+                    } else {
+                        return Err(e.context(msg));
+                    }
+                }
+            }
+        }
+        Ok(blobs)
     }
 
     /// `contains` is used to check whether a key is in storage.
