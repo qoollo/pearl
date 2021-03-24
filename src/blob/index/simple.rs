@@ -209,6 +209,7 @@ impl Simple {
             .with_context(|| format!("file open failed {:?}", self.name.to_path()))?;
         let size = file.write_append(&buf).await?;
         self.apply_written_byte(&file).await?;
+        file.fsyncdata().await?;
         self.inner = State::OnDisk(file);
         self.mem = None;
         Ok(size)
