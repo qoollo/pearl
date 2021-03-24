@@ -39,9 +39,9 @@ impl Blob {
         let header = Header::new();
         let mut blob = Self {
             header,
-            file,
             index,
             name,
+            file,
             current_offset,
         };
         blob.write_header().await?;

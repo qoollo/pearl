@@ -202,7 +202,7 @@ pub(crate) fn compute_mem_attrs(record_headers: &InMemoryIndex) -> MemoryAttrs {
     MemoryAttrs {
         key_size,
         btree_entry_size,
-        record_header_size,
         records_allocated,
+        record_header_size,
     }
 }
