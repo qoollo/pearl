@@ -122,6 +122,16 @@ impl Builder {
         self
     }
 
+    /// Ignores blobs with corrupted header for index file and continues work with normal
+    /// ones (also leaves error logs for bad blobs).
+    /// It's worth noticing that index file maybe corrupted likely in case of irregular
+    /// stop of the storage: either the disk disconnected or server crashed. In these cases blob
+    /// file is likely either corrupted, so there is no a try to restore indices from blob file.
+    pub fn ignore_corrupted(mut self) -> Self {
+        self.config.set_ignore_corrupted(true);
+        self
+    }
+
     /// Sets custom bloom filter config, if not set, use default values.
     #[must_use]
     pub fn set_filter_config(mut self, config: BloomConfig) -> Self {
