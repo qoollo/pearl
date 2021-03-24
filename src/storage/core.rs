@@ -446,7 +446,6 @@ impl<K> Storage<K> {
         let mut blobs = Self::read_blobs(
             &files,
             self.inner.ioring.clone(),
-            self.filter_config(),
             disk_access_sem,
             &self.inner.config,
         )
@@ -481,7 +480,6 @@ impl<K> Storage<K> {
     async fn read_blobs(
         files: &[DirEntry],
         ioring: Option<Rio>,
-        filter_config: Option<BloomConfig>,
         disk_access_sem: Arc<Semaphore>,
         config: &Config,
     ) -> Result<Vec<Blob>> {
@@ -502,7 +500,7 @@ impl<K> Storage<K> {
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(file.clone(), ioring.clone(), filter_config.clone())
+                Blob::from_file(file.clone(), ioring.clone(), config.filter())
                     .await
                     .map_err(|e| (e, file))
             })
