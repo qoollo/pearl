@@ -2,7 +2,7 @@ use tokio::time::Instant;
 
 use super::prelude::*;
 
-use super::index::Index;
+use super::index::IndexTrait;
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
@@ -14,7 +14,7 @@ const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 #[derive(Debug)]
 pub struct Blob {
     header: Header,
-    index: SimpleIndex,
+    index: Index,
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
@@ -65,9 +65,9 @@ impl Blob {
         mut name: FileName,
         ioring: Option<Rio>,
         filter_config: Option<BloomConfig>,
-    ) -> SimpleIndex {
+    ) -> Index {
         name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        SimpleIndex::new(name, ioring, filter_config)
+        Index::new(name, ioring, filter_config)
     }
 
     pub(crate) async fn dump(&mut self) -> Result<usize> {
@@ -106,10 +106,10 @@ impl Blob {
         trace!("looking for index file: [{}]", index_name);
         let index = if index_name.exists() {
             trace!("file exists");
-            SimpleIndex::from_file(index_name, filter_config.is_some(), ioring).await?
+            Index::from_file(index_name, filter_config.is_some(), ioring).await?
         } else {
             trace!("file not found, create new");
-            SimpleIndex::new(index_name, ioring, filter_config)
+            Index::new(index_name, ioring, filter_config)
         };
         trace!("index initialized");
         let header_size = bincode::serialized_size(&header)?;

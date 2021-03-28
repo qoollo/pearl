@@ -23,121 +23,6 @@ pub(crate) async fn read_at(
     Ok(header)
 }
 
-pub(crate) async fn binary_search(
-    file: &File,
-    key: &[u8],
-    header: &IndexHeader,
-) -> Result<Option<(RecordHeader, usize)>> {
-    debug!("blob index simple binary search header {:?}", header);
-
-    if key.is_empty() {
-        error!("empty key was provided");
-    }
-
-    let mut start = 0;
-    let mut end = header.records_count - 1;
-    debug!("loop init values: start: {:?}, end: {:?}", start, end);
-
-    while start <= end {
-        let mid = (start + end) / 2;
-        let mid_record_header = read_at(file, mid, &header).await?;
-        debug!(
-            "blob index simple binary search mid header: {:?}",
-            mid_record_header
-        );
-        let cmp = mid_record_header.key().cmp(&key);
-        debug!("mid read: {:?}, key: {:?}", mid_record_header.key(), key);
-        debug!("before mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
-        match cmp {
-            CmpOrdering::Greater if mid > 0 => end = mid - 1,
-            CmpOrdering::Equal => {
-                return Ok(Some((mid_record_header, mid)));
-            }
-            CmpOrdering::Less => start = mid + 1,
-            other => {
-                debug!("binary search not found, cmp: {:?}, mid: {}", other, mid);
-                return Ok(None);
-            }
-        };
-        debug!("after mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
-    }
-    debug!("record with key: {:?} not found", key);
-    Ok(None)
-}
-
-pub(crate) async fn search_all(
-    file: &File,
-    key: &[u8],
-    index_header: &IndexHeader,
-) -> Result<Option<Vec<RecordHeader>>> {
-    if let Some(header_pos) = binary_search(file, key, index_header)
-        .await
-        .with_context(|| "blob, index simple, search all, binary search failed")?
-    {
-        let orig_pos = header_pos.1;
-        debug!(
-            "blob index simple search all total {}, pos {}",
-            index_header.records_count, orig_pos
-        );
-        let mut headers = vec![header_pos.0];
-        // go left
-        let mut pos = orig_pos;
-        debug!(
-            "blob index simple search all headers {}, pos {}",
-            headers.len(),
-            pos
-        );
-        while pos > 0 {
-            pos -= 1;
-            debug!(
-                "blob index simple search all headers {}, pos {}",
-                headers.len(),
-                pos
-            );
-            let rh = read_at(file, pos, &index_header)
-                .await
-                .with_context(|| "blob, index simple, search all, read at failed")?;
-            if rh.key() == key {
-                headers.push(rh);
-            } else {
-                break;
-            }
-        }
-        debug!(
-            "blob index simple search all headers {}, pos {}",
-            headers.len(),
-            pos
-        );
-        //go right
-        pos = orig_pos + 1;
-        while pos < index_header.records_count {
-            debug!(
-                "blob index simple search all headers {}, pos {}",
-                headers.len(),
-                pos
-            );
-            let rh = read_at(file, pos, &index_header)
-                .await
-                .with_context(|| "blob, index simple, search all, read at failed")?;
-            if rh.key() == key {
-                headers.push(rh);
-                pos += 1;
-            } else {
-                break;
-            }
-        }
-        debug!(
-            "blob index simple search all headers {}, pos {}",
-            headers.len(),
-            pos
-        );
-        Ok(Some(headers))
-    } else {
-        debug!("Record not found by binary search on disk");
-        Ok(None)
-    }
-}
-
 pub(crate) fn serialize_record_headers(
     headers: &InMemoryIndex,
     filter: &Bloom,
@@ -194,7 +79,10 @@ pub(crate) fn get_hash(buf: &[u8]) -> Vec<u8> {
 
 // if there is no elements, data will be wrong (because we can't get key_size),
 // BUT it will be computed correctly during first push
-pub(crate) fn compute_mem_attrs(record_headers: &InMemoryIndex) -> MemoryAttrs {
+pub(crate) fn compute_mem_attrs(
+    record_headers: &InMemoryIndex,
+    records_count: usize,
+) -> MemoryAttrs {
     let key_size = record_headers.keys().next().map_or_else(|| 0, |v| v.len());
     let btree_entry_size = size_of::<Vec<u8>>() + key_size + size_of::<Vec<RecordHeader>>();
     let records_allocated = record_headers.values().fold(0, |acc, v| acc + v.capacity());
@@ -204,5 +92,6 @@ pub(crate) fn compute_mem_attrs(record_headers: &InMemoryIndex) -> MemoryAttrs {
         btree_entry_size,
         record_header_size,
         records_allocated,
+        records_count,
     }
 }
