@@ -90,8 +90,8 @@ pub(crate) fn compute_mem_attrs(
     MemoryAttrs {
         key_size,
         btree_entry_size,
-        record_header_size,
         records_allocated,
         records_count,
+        record_header_size,
     }
 }

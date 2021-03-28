@@ -97,7 +97,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let now = Instant::now();
     let path = common::init("multithread");
     let storage = common::default_test_storage_in(&path).await?;
-    let threads = 20;
+    let threads = 16;
     let writes = 25;
     let indexes = common::create_indexes(threads, writes);
     let data = vec![184u8; 3000];

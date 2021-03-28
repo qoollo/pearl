@@ -446,8 +446,8 @@ impl<K> Storage<K> {
         let mut blobs = Self::read_blobs(
             &files,
             self.inner.ioring.clone(),
-            self.filter_config(),
             disk_access_sem,
+            &self.inner.config,
         )
         .await
         .context("failed to read blobs")?;
@@ -480,8 +480,8 @@ impl<K> Storage<K> {
     async fn read_blobs(
         files: &[DirEntry],
         ioring: Option<Rio>,
-        filter_config: Option<BloomConfig>,
         disk_access_sem: Arc<Semaphore>,
+        config: &Config,
     ) -> Result<Vec<Blob>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
@@ -496,18 +496,34 @@ impl<K> Storage<K> {
             }
         });
         debug!("init blobs from found files");
-        let futures: FuturesUnordered<_> = blob_files
+        let mut futures: FuturesUnordered<_> = blob_files
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(file, ioring.clone(), filter_config.clone()).await
+                Blob::from_file(file.clone(), ioring.clone(), config.filter())
+                    .await
+                    .map_err(|e| (e, file))
             })
             .collect();
         debug!("async init blobs from file");
-        futures
-            .try_collect()
-            .await
-            .context("failed to read existing blobs")
+        let mut blobs = Vec::new();
+        while let Some(blob_res) = futures.next().await {
+            match blob_res {
+                Ok(blob) => blobs.push(blob),
+                Err((e, file)) => {
+                    let msg = format!(
+                        "Failed to read existing blob!\nPath: {:?};\nReason: {:?}.",
+                        file, e
+                    );
+                    if config.ignore_corrupted() {
+                        error!("{}", msg);
+                    } else {
+                        return Err(e.context(msg));
+                    }
+                }
+            }
+        }
+        Ok(blobs)
     }
 
     /// `contains` is used to check whether a key is in storage.
@@ -727,14 +743,9 @@ impl Safe {
         Ok(Box::pin(async move {
             let mut blobs = blobs.write().await;
             blobs.push(*old_active);
-            // FIXME: seems, like in case of disk error indices won't dump on disk and we won't
-            // know about it (the state will be okay, they will be InMemory, but there won't be any
-            // further task to dump them)
-            // Possible solution: in case of disk issues during the next write in new active blob
-            // we will receive error AND after solving it in some time we can start another job
-            // (seems like we should add one more method to public API for that)
-            // which will start dump tasks for all blobs from old_blobs array (or for the last one;
-            // seems that it's either okay; in case of OnDisk state dump works very fast)
+            // Notice: if dump of blob or indices fails, it's likely a problem with disk appeared, so
+            // all descriptors of the storage become invalid and unusable
+            // Possible solution: recreate instance of storage, when disk will be available
             if let Err(e) = blobs.last_mut().unwrap().dump().await {
                 error!("Error dumping blob: {}", e);
             }

@@ -9,6 +9,7 @@ pub(crate) struct Config {
     blob_file_name_prefix: Option<String>,
     update_interval_ms: u64,
     allow_duplicates: bool,
+    ignore_corrupted: bool,
     filter: Option<BloomConfig>,
     dump_sem: Arc<Semaphore>,
 }
@@ -43,6 +44,11 @@ impl Config {
     #[inline]
     pub const fn allow_duplicates(&self) -> bool {
         self.allow_duplicates
+    }
+
+    #[inline]
+    pub const fn ignore_corrupted(&self) -> bool {
+        self.ignore_corrupted
     }
 
     #[inline]
@@ -83,6 +89,10 @@ impl Config {
         self.allow_duplicates = allow_duplicates;
     }
 
+    pub fn set_ignore_corrupted(&mut self, ignore_corrupted: bool) {
+        self.ignore_corrupted = ignore_corrupted;
+    }
+
     pub fn set_filter(&mut self, filter: BloomConfig) {
         self.filter = Some(filter);
     }
@@ -107,6 +117,7 @@ impl Default for Config {
             blob_file_name_prefix: None,
             update_interval_ms: 100,
             allow_duplicates: false,
+            ignore_corrupted: false,
             filter: None,
             dump_sem: Arc::new(Semaphore::new(1)),
         }
