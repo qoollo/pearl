@@ -54,7 +54,7 @@ impl FileIndexTrait for SimpleFileIndex {
         header.written = 1;
         let serialized_header = serialize(&header)?;
         file.write_at(0, &serialized_header).await?;
-        //file.fsyncdata().await?;
+        file.fsyncdata().await?;
         Ok(Self { file, header })
     }
 

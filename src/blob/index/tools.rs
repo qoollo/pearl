@@ -39,7 +39,8 @@ pub(crate) fn serialize_record_headers(
         let header = IndexHeader::new(record_header_size, headers.len(), filter_buf.len());
         let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
         trace!("index header size: {}b", hs);
-        let mut buf = Vec::with_capacity(hs + headers.len() * record_header_size);
+        let fsize = header.filter_buf_size;
+        let mut buf = Vec::with_capacity(hs + fsize + headers.len() * record_header_size);
         serialize_into(&mut buf, &header)?;
         debug!(
             "serialize headers filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
