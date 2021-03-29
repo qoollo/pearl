@@ -746,8 +746,9 @@ impl Safe {
             // Notice: if dump of blob or indices fails, it's likely a problem with disk appeared, so
             // all descriptors of the storage become invalid and unusable
             // Possible solution: recreate instance of storage, when disk will be available
-            if let Err(e) = blobs.last_mut().unwrap().dump().await {
-                error!("Error dumping blob: {}", e);
+            let last_blob = blobs.last_mut().unwrap();
+            if let Err(e) = last_blob.dump().await {
+                error!("Error dumping blob ({}): {}", last_blob.name(), e);
             }
         }))
     }
@@ -759,7 +760,7 @@ impl Safe {
             for blob in write_blobs.iter_mut() {
                 let _ = sem.acquire().await;
                 if let Err(e) = blob.dump().await {
-                    error!("Error dumping blob: {}", e);
+                    error!("Error dumping blob ({}): {}", blob.name(), e);
                 }
             }
         });
