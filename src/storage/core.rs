@@ -462,17 +462,17 @@ impl<K> Storage<K> {
                 Error::from(ErrorKind::Uninitialized)
             })?
             .boxed();
-        let mut safe_locked = self.inner.safe.write().await;
+        let mut safe = self.inner.safe.write().await;
         active_blob.load_index().await?;
         for blob in &mut blobs {
             debug!("dump all blobs except active blob");
             blob.dump().await?;
         }
-        safe_locked.active_blob = Some(active_blob);
-        *safe_locked.blobs.write().await = blobs;
+        safe.active_blob = Some(active_blob);
+        *safe.blobs.write().await = blobs;
         self.inner
             .next_blob_id
-            .store(safe_locked.max_id().await.map_or(0, |i| i + 1), ORD);
+            .store(safe.max_id().await.map_or(0, |i| i + 1), ORD);
         Ok(())
     }
 
@@ -536,7 +536,7 @@ impl<K> Storage<K> {
     }
 
     async fn contains_with(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
-        let inner = self.inner.safe.write().await;
+        let inner = self.inner.safe.read().await;
         if let Some(active_blob) = &inner.active_blob {
             if active_blob.contains(key, meta).await? {
                 return Ok(true);
