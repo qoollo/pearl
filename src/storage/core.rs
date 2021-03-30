@@ -333,19 +333,25 @@ impl<K> Storage<K> {
     pub async fn close(self) -> Result<()> {
         let mut safe = self.inner.safe.lock().await;
         let active_blob = safe.active_blob.take();
+        let mut res = Ok(());
         if let Some(mut blob) = active_blob {
-            blob.dump()
-                .await
-                .with_context(|| format!("blob {} dump failed", blob.name()))?;
-            debug!("active blob dumped");
+            res = res.and(
+                blob.dump()
+                    .await
+                    .map(|_| info!("active blob dumped"))
+                    .with_context(|| format!("blob {} dump failed", blob.name())),
+            )
         }
         self.observer.shutdown();
         safe.lock_file = None;
         if let Some(work_dir) = self.inner.config.work_dir() {
-            std::fs::remove_file(work_dir.join(LOCK_FILE))?;
+            res = res.and(
+                std::fs::remove_file(work_dir.join(LOCK_FILE))
+                    .map(|_| info!("lock released"))
+                    .with_context(|| "failed to remove lockfile ({:?})"),
+            );
         }
-        info!("active blob dumped, lock released");
-        Ok(())
+        res
     }
 
     /// `blob_count` returns exact number of closed blobs plus one active, if there is some.
