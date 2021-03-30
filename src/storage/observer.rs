@@ -101,7 +101,7 @@ impl Observer {
 async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
     let (active_size, active_count) = {
         trace!("await for lock");
-        let safe_locked = inner.safe.lock().await;
+        let safe_locked = inner.safe.read().await;
         trace!("lock acquired");
         let active_blob = safe_locked
             .active_blob
@@ -135,7 +135,7 @@ async fn update_active_blob(inner: Inner, dump_sem: Arc<Semaphore>) -> Result<()
         .boxed();
     let task = inner
         .safe
-        .lock()
+        .write()
         .await
         .replace_active_blob(new_active)
         .await?;
