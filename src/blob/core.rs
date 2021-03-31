@@ -112,9 +112,15 @@ impl Blob {
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         trace!("looking for index file: [{}]", index_name);
+        let mut is_index_corrupted = false;
         let index = if index_name.exists() {
             trace!("file exists");
-            SimpleIndex::from_file(index_name, filter_config.is_some(), ioring).await?
+            SimpleIndex::from_file(index_name.clone(), filter_config.is_some(), ioring.clone())
+                .await
+                .unwrap_or_else(|_| {
+                    is_index_corrupted = true;
+                    SimpleIndex::new(index_name, ioring, filter_config)
+                })
         } else {
             trace!("file not found, create new");
             SimpleIndex::new(index_name, ioring, filter_config)
@@ -129,7 +135,7 @@ impl Blob {
             current_offset: Arc::new(Mutex::new(size)),
         };
         trace!("call update index");
-        if size as u64 > header_size {
+        if is_index_corrupted || size as u64 > header_size {
             blob.try_regenerate_index()
                 .await
                 .context("failed to regenerate index")?;
