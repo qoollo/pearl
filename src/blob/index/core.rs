@@ -1,8 +1,7 @@
 use super::prelude::*;
 use std::mem::size_of;
 
-use super::SimpleFileIndex;
-pub(crate) type Index = IndexStruct<SimpleFileIndex>;
+pub(crate) type Index = IndexStruct<BPTreeFileIndex>;
 
 pub(crate) const HEADER_VERSION: u64 = 1;
 
@@ -95,13 +94,26 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         matches!(&self.inner, State::OnDisk(_))
     }
 
-    async fn dump_in_memory(&mut self, buf: Vec<u8>, header: IndexHeader) -> Result<usize> {
-        let findex =
-            FileIndex::from_records(&self.name.to_path(), self.ioring.clone(), buf, header).await?;
-        let size = findex.file_size() as usize;
-        self.inner = State::OnDisk(findex);
-        self.mem = None;
-        Ok(size)
+    async fn dump_in_memory(&mut self) -> Result<usize> {
+        if let State::InMemory(headers) = &self.inner {
+            if headers.len() == 0 {
+                return Ok(0);
+            }
+            debug!("blob index simple in memory headers {}", headers.len());
+            let findex = FileIndex::from_records(
+                &self.name.to_path(),
+                self.ioring.clone(),
+                headers,
+                &self.filter,
+            )
+            .await?;
+            let size = findex.file_size() as usize;
+            self.inner = State::OnDisk(findex);
+            self.mem = None;
+            Ok(size)
+        } else {
+            Ok(0)
+        }
     }
 
     async fn load_in_memory(&mut self, findex: FileIndex) -> Result<()> {
@@ -201,14 +213,7 @@ impl<FileIndex: FileIndexTrait + Sync + Send + Clone> IndexTrait for IndexStruct
     }
 
     async fn dump(&mut self) -> Result<usize> {
-        if let State::InMemory(headers) = &mut self.inner {
-            debug!("blob index simple in memory headers {}", headers.len());
-            let res = serialize_record_headers(headers, &self.filter)?;
-            if let Some((header, buf)) = res {
-                return self.dump_in_memory(buf, header).await;
-            }
-        }
-        Ok(0)
+        self.dump_in_memory().await
     }
 
     async fn load(&mut self) -> Result<()> {
@@ -233,15 +238,14 @@ impl<FileIndex: FileIndexTrait + Sync + Send + Clone> IndexTrait for IndexStruct
     }
 }
 
-//this two functions should also be implemented for FileIndex
 #[async_trait::async_trait]
 pub(crate) trait FileIndexTrait: Sized {
     async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self>;
     async fn from_records(
         path: &Path,
         rio: Option<Rio>,
-        buf: Vec<u8>,
-        mut header: IndexHeader,
+        headers: &InMemoryIndex,
+        filter: &Bloom,
     ) -> Result<Self>;
     fn file_size(&self) -> u64;
     fn records_count(&self) -> usize;

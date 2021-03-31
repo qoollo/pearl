@@ -99,6 +99,14 @@ impl File {
         }
     }
 
+    //pub(crate) async fn partial_read_at(&self, buf: &mut [u8], offset: u64) -> Result<usize> {
+    //if let Some(ref ioring) = self.ioring {
+    //self.partial_read_at_aio(buf, offset, ioring).await
+    //} else {
+    //self.partial_read_at_sync(buf, offset).await
+    //}
+    //}
+
     pub(crate) async fn read_at_sync(&self, buf: &mut [u8], offset: u64) -> Result<usize> {
         let file = self.no_lock_fd.clone();
         let mut new_buf = buf.to_vec();

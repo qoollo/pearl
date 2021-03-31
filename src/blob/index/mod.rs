@@ -2,13 +2,14 @@ use crate::prelude::*;
 
 /// bloom filter for faster check record contains in blob
 pub mod bloom;
+mod bptree;
 mod core;
 mod header;
 mod simple;
 mod tools;
 
+use bptree::BPTreeFileIndex;
 use header::IndexHeader;
-use simple::SimpleFileIndex;
 
 pub(crate) use self::core::FileIndexTrait;
 pub(crate) use self::core::HEADER_VERSION;
