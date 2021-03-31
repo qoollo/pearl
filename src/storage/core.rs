@@ -40,12 +40,11 @@ pub struct Storage<K> {
     marker: PhantomData<K>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Inner {
     pub(crate) config: Config,
     pub(crate) safe: Arc<RwLock<Safe>>,
     next_blob_id: Arc<AtomicUsize>,
-    twins_count: Arc<AtomicUsize>,
     pub(crate) ioring: Option<Rio>,
 }
 
@@ -54,17 +53,6 @@ pub(crate) struct Safe {
     pub(crate) active_blob: Option<Box<Blob>>,
     pub(crate) blobs: Arc<RwLock<Vec<Blob>>>,
     lock_file: Option<StdFile>,
-}
-
-impl<K> Drop for Storage<K> {
-    fn drop(&mut self) {
-        let twins = self.inner.twins_count.fetch_sub(1, ORD);
-        // 1 is because twin#0 - in observer thread, twin#1 - self
-        if twins <= 1 {
-            trace!("stop observer thread");
-            self.observer.shutdown();
-        }
-    }
 }
 
 impl<K> Clone for Storage<K> {
@@ -103,10 +91,9 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
 
 impl<K> Storage<K> {
     pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
-        let update_interval = Duration::from_millis(config.update_interval_ms());
         let dump_sem = config.dump_sem();
         let inner = Inner::new(config, ioring);
-        let observer = Observer::new(update_interval, inner.clone(), dump_sem);
+        let observer = Observer::new(inner.clone(), dump_sem);
         Self {
             inner,
             observer,
@@ -342,7 +329,6 @@ impl<K> Storage<K> {
                     .with_context(|| format!("blob {} dump failed", blob.name())),
             )
         }
-        self.observer.shutdown();
         safe.lock_file = None;
         if let Some(work_dir) = self.inner.config.work_dir() {
             res = res.and(
@@ -623,26 +609,12 @@ impl<K> Storage<K> {
     }
 }
 
-impl Clone for Inner {
-    fn clone(&self) -> Self {
-        self.twins_count.fetch_add(1, ORD);
-        Self {
-            config: self.config.clone(),
-            safe: self.safe.clone(),
-            next_blob_id: self.next_blob_id.clone(),
-            twins_count: self.twins_count.clone(),
-            ioring: self.ioring.clone(),
-        }
-    }
-}
-
 impl Inner {
     fn new(config: Config, ioring: Option<Rio>) -> Self {
         Self {
             config,
             safe: Arc::new(RwLock::new(Safe::new())),
             next_blob_id: Arc::new(AtomicUsize::new(0)),
-            twins_count: Arc::new(AtomicUsize::new(0)),
             ioring,
         }
     }
