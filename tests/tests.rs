@@ -227,6 +227,33 @@ async fn test_work_dir_lock() {
 }
 
 #[tokio::test]
+async fn test_corrupted_index_regeneration() {
+    let now = Instant::now();
+    let path = common::init("corrupted_index");
+    let storage = common::create_test_storage(&path, 70_000).await.unwrap();
+    let records = common::generate_records(10, 10_000);
+    for (i, data) in &records {
+        write_one(&storage, *i, data, None).await.unwrap();
+        sleep(Duration::from_millis(10)).await;
+    }
+    storage.close().await.unwrap();
+    let index_file_path = path.join("test.0.index");
+    assert!(index_file_path.exists());
+
+    common::corrupt_file(index_file_path, common::CorruptionType::ZeroedAtBegin(1024))
+        .expect("index corruption failed");
+
+    let new_storage = common::create_test_storage(&path, 1_000_000).await;
+    assert!(new_storage.is_ok(), "storage should be loaded successfully");
+    let new_storage = new_storage.unwrap();
+
+    common::clean(new_storage, path)
+        .map(|res| res.expect("clean failed"))
+        .await;
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
 async fn test_index_from_blob() {
     let now = Instant::now();
     let path = common::init("index_from_blob");
