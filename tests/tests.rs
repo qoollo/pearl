@@ -231,7 +231,7 @@ async fn test_corrupted_index_regeneration() {
     let now = Instant::now();
     let path = common::init("corrupted_index");
     let storage = common::create_test_storage(&path, 70_000).await.unwrap();
-    let records = common::generate_records(10, 10_000);
+    let records = common::generate_records(100, 10_000);
     for (i, data) in &records {
         write_one(&storage, *i, data, None).await.unwrap();
         sleep(Duration::from_millis(10)).await;
@@ -243,9 +243,9 @@ async fn test_corrupted_index_regeneration() {
     common::corrupt_file(index_file_path, common::CorruptionType::ZeroedAtBegin(1024))
         .expect("index corruption failed");
 
-    let new_storage = common::create_test_storage(&path, 1_000_000).await;
-    assert!(new_storage.is_ok(), "storage should be loaded successfully");
-    let new_storage = new_storage.unwrap();
+    let new_storage = common::create_test_storage(&path, 1_000_000)
+        .await
+        .expect("storage should be loaded successfully");
 
     common::clean(new_storage, path)
         .map(|res| res.expect("clean failed"))
