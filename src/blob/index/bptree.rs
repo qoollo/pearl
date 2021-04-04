@@ -208,7 +208,17 @@ impl FileIndexTrait for BPTreeFileIndex {
 
     // TODO: implement
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
-        Ok(None)
+        let root_offset = self.metadata.root_offset;
+        let mut buf = [0u8; BLOCK_SIZE];
+        let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
+        if let Some((fh_offset, amount)) =
+            self.find_first_header(leaf_offset, key, &mut buf).await?
+        {
+            let headers = self.read_headers(fh_offset, amount as usize).await?;
+            Ok(Some(headers))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)> {
@@ -234,12 +244,11 @@ impl FileIndexTrait for BPTreeFileIndex {
             .map(|headers| (headers, self.header.records_count))
     }
 
-    // TODO: implement
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
         let root_offset = self.metadata.root_offset;
         let mut buf = [0u8; BLOCK_SIZE];
         let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
-        if let Some(first_header_offset) =
+        if let Some((first_header_offset, _amount)) =
             self.find_first_header(leaf_offset, key, &mut buf).await?
         {
             let header = self.read_header(first_header_offset).await?;
@@ -270,7 +279,7 @@ impl BPTreeFileIndex {
         leaf_offset: u64,
         key: &[u8],
         buf: &mut [u8],
-    ) -> Result<Option<u64>> {
+    ) -> Result<Option<(u64, u64)>> {
         let leaf_size = key.len() + std::mem::size_of::<u64>();
         let buf_size = BLOCK_SIZE - (BLOCK_SIZE % leaf_size);
         let buf_size = min(buf_size, (self.metadata.tree_offset - leaf_offset) as usize);
@@ -291,9 +300,16 @@ impl BPTreeFileIndex {
         let mut right = header_pointers.len() as i32 - 1;
         while left <= right {
             let mid = (left + right) / 2;
-            let (cur_key, offset) = &header_pointers[mid as usize];
+            let cur_key = &header_pointers[mid as usize].0;
             match key.cmp(cur_key) {
-                CmpOrdering::Equal => return Ok(Some(*offset)),
+                CmpOrdering::Equal => {
+                    let val = self.with_amount(
+                        header_pointers,
+                        mid as usize,
+                        leaf_offset + buf_size as u64,
+                    );
+                    return Ok(Some(val));
+                }
                 CmpOrdering::Less => right = mid - 1,
                 CmpOrdering::Greater => left = mid + 1,
             }
@@ -301,10 +317,41 @@ impl BPTreeFileIndex {
         Ok(None)
     }
 
+    fn with_amount(
+        &self,
+        header_pointers: Vec<(Vec<u8>, u64)>,
+        mid: usize,
+        buf_end: u64,
+    ) -> (u64, u64) {
+        let last_rec = mid >= header_pointers.len() - 2 && (buf_end >= self.metadata.tree_offset);
+        let cur_offset = header_pointers[mid].1;
+        let next_offset = if last_rec {
+            self.metadata.leaves_offset
+        } else {
+            println!("mid = {}, len = {};", mid, header_pointers.len());
+            header_pointers[mid + 1].1
+        };
+        let amount = (next_offset - cur_offset) / self.header.record_header_size as u64;
+        (cur_offset, amount)
+    }
+
     async fn read_header(&self, offset: u64) -> Result<RecordHeader> {
         let mut buf = vec![0u8; self.header.record_header_size];
         self.file.read_at(&mut buf, offset).await?;
         deserialize(&buf).map_err(Into::into)
+    }
+
+    async fn read_headers(&self, offset: u64, amount: usize) -> Result<Vec<RecordHeader>> {
+        let mut buf = vec![0u8; self.header.record_header_size * amount];
+        self.file.read_at(&mut buf, offset).await?;
+        let headers = buf.chunks(self.header.record_header_size).fold(
+            Vec::with_capacity(amount),
+            |mut acc, bytes| {
+                acc.push(deserialize(&bytes).expect("deserialize header"));
+                acc
+            },
+        );
+        Ok(headers)
     }
 
     async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
@@ -463,7 +510,11 @@ impl BPTreeFileIndex {
     }
 
     fn prep_root(offset: u64, tree_offset: u64, buf: &mut Vec<u8>) -> u64 {
-        let root_node_size = buf.len() - (offset - tree_offset) as usize;
+        let root_node_size = if offset < tree_offset {
+            (tree_offset - offset) as usize
+        } else {
+            buf.len() - (offset - tree_offset) as usize
+        };
         let appendix_size = BLOCK_SIZE - root_node_size;
         buf.resize(buf.len() + appendix_size, 0);
         offset
@@ -471,7 +522,7 @@ impl BPTreeFileIndex {
 
     fn max_leaf_node_capacity(key_size: usize) -> usize {
         let offset_size = std::mem::size_of::<u64>();
-        BLOCK_SIZE / (key_size + offset_size)
+        BLOCK_SIZE / (key_size + offset_size) - 1
     }
 
     fn max_nonleaf_node_capacity(key_size: usize) -> usize {
@@ -548,7 +599,7 @@ async fn indices_serialize_deserialize() {
 #[tokio::test]
 async fn check_get_any() {
     let mut inmem = InMemoryIndex::new();
-    (0..100000u32)
+    (100..9000)
         .map(|i| serialize(&i).expect("can't serialize"))
         .for_each(|key| {
             let rh = RecordHeader::new(key.clone(), 1, 1, 1);
@@ -559,7 +610,7 @@ async fn check_get_any() {
         BPTreeFileIndex::from_records(&Path::new("/tmp/get_bptree_index.b"), None, &inmem, &filter)
             .await
             .expect("Can't create file index");
-    let keys_to_check = [0u32, 12, 13, 99999];
+    let keys_to_check = [100u32, 112, 113, 8999];
     for key in keys_to_check.iter().map(|k| serialize(&k).unwrap()) {
         assert_eq!(findex.get_any(&key).await.unwrap().unwrap(), inmem[&key][0]);
     }
