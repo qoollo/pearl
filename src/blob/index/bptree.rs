@@ -13,7 +13,6 @@
 ///    `NodeMeta - pointer - key - pointer - key - ... - pointer`,
 ///    where pointer - is offset in file on underlying node with searched key
 use super::prelude::*;
-use std::cmp::min;
 
 const BLOCK_SIZE: usize = 4096;
 
@@ -281,8 +280,10 @@ impl BPTreeFileIndex {
         buf: &mut [u8],
     ) -> Result<Option<(u64, u64)>> {
         let leaf_size = key.len() + std::mem::size_of::<u64>();
-        let buf_size = BLOCK_SIZE - (BLOCK_SIZE % leaf_size);
-        let buf_size = min(buf_size, (self.metadata.tree_offset - leaf_offset) as usize);
+        let buf_size = (self.metadata.tree_offset - leaf_offset) as usize;
+        let buf_size = buf_size
+            .min(BLOCK_SIZE - (BLOCK_SIZE % leaf_size))
+            .min((self.metadata.tree_offset - leaf_offset) as usize);
         let (buf, _rest) = buf.split_at_mut(buf_size as usize);
         self.file.read_at(buf, leaf_offset).await?;
         let header_pointers: Vec<(Vec<u8>, u64)> = buf
@@ -323,7 +324,7 @@ impl BPTreeFileIndex {
         mid: usize,
         buf_end: u64,
     ) -> (u64, u64) {
-        let last_rec = mid >= header_pointers.len() - 2 && (buf_end >= self.metadata.tree_offset);
+        let last_rec = mid + 2 >= header_pointers.len() && (buf_end >= self.metadata.tree_offset);
         let cur_offset = header_pointers[mid].1;
         let next_offset = if last_rec {
             self.metadata.leaves_offset
