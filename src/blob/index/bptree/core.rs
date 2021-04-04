@@ -200,7 +200,7 @@ impl BPTreeFileIndex {
         mid: usize,
         buf_end: u64,
     ) -> (u64, u64) {
-        let last_rec = mid + 2 >= header_pointers.len() && (buf_end >= self.metadata.tree_offset);
+        let last_rec = mid + 1 >= header_pointers.len() && (buf_end >= self.metadata.tree_offset);
         let cur_offset = header_pointers[mid].1;
         let next_offset = if last_rec {
             self.metadata.leaves_offset

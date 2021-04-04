@@ -38,8 +38,7 @@ async fn check_get_any() {
         BPTreeFileIndex::from_records(&Path::new("/tmp/any_bptree_index.b"), None, &inmem, &filter)
             .await
             .expect("Can't create file index");
-    //let presented_keys = RANGE_FROM..RANGE_TO;
-    let presented_keys = [1129].iter();
+    let presented_keys = RANGE_FROM..RANGE_TO;
     for key in presented_keys.map(|k| serialize(&k).unwrap()) {
         assert_eq!(inmem[&key][0], findex.get_any(&key).await.unwrap().unwrap());
     }
@@ -70,8 +69,7 @@ async fn check_get() {
         BPTreeFileIndex::from_records(&Path::new("/tmp/all_bptree_index.b"), None, &inmem, &filter)
             .await
             .expect("Can't create file index");
-    //let presented_keys = RANGE_FROM..RANGE_TO;
-    let presented_keys = [1129].iter();
+    let presented_keys = RANGE_FROM..RANGE_TO;
     for key in presented_keys.map(|k| serialize(&k).unwrap()) {
         assert_eq!(
             inmem[&key],
