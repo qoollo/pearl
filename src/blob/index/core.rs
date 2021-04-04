@@ -207,7 +207,7 @@ impl<FileIndex: FileIndexTrait + Sync + Send + Clone> IndexTrait for IndexStruct
             State::OnDisk(findex) => {
                 debug!("index get any on disk");
                 let header = findex.get_any(key).await?;
-                Ok(header.map(|h| h.0))
+                Ok(header)
             }
         }
     }
@@ -252,6 +252,6 @@ pub(crate) trait FileIndexTrait: Sized {
     async fn read_filter(&self) -> Result<Bloom>;
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)>;
-    async fn get_any(&self, key: &[u8]) -> Result<Option<(RecordHeader, usize)>>;
+    async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>>;
     fn get_index_header(&self) -> &IndexHeader;
 }

@@ -86,8 +86,10 @@ impl FileIndexTrait for SimpleFileIndex {
             .map(|headers| (headers, self.header.records_count))
     }
 
-    async fn get_any(&self, key: &[u8]) -> Result<Option<(RecordHeader, usize)>> {
-        Self::binary_search(&self.file, key, &self.header).await
+    async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
+        Self::binary_search(&self.file, key, &self.header)
+            .await
+            .map(|res| res.map(|h| h.0))
     }
 
     fn get_index_header(&self) -> &IndexHeader {
