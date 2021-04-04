@@ -1,7 +1,7 @@
 use super::prelude::*;
 
 #[tokio::test]
-async fn test_serialize_deserialize_file() {
+async fn serialize_deserialize_file() {
     let mut inmem = InMemoryIndex::new();
     (0..10000u32)
         .map(|i| serialize(&i).expect("can't serialize"))

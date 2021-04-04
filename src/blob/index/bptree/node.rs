@@ -79,7 +79,7 @@ mod tests {
     }
 
     #[test]
-    fn serialize_deserialize_test() {
+    fn serialize_deserialize_node() {
         const KEYS_AMOUNTS: [usize; 3] = [1, 2, 100];
         for &keys_amount in KEYS_AMOUNTS.iter() {
             let node = create_node(keys_amount, |e| e as KeyType, |o| o * 2);
@@ -101,7 +101,7 @@ mod tests {
     }
 
     #[test]
-    fn key_offset_test() {
+    fn node_key_offset() {
         const SCALE: u64 = 113;
         const REQUESTS: Range<usize> = 0..100;
         const KEYS_AMOUNTS: [usize; 8] = [1, 2, 13, 13, 14, 14, 1, 2];
