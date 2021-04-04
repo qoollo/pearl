@@ -16,122 +16,6 @@ use super::prelude::*;
 
 const BLOCK_SIZE: usize = 4096;
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-struct TreeMeta {
-    root_offset: u64,
-    leaves_offset: u64,
-    tree_offset: u64,
-}
-
-impl TreeMeta {
-    fn new(root_offset: u64, leaves_offset: u64, tree_offset: u64) -> Self {
-        Self {
-            root_offset,
-            leaves_offset,
-            tree_offset,
-        }
-    }
-
-    fn serialized_size_default() -> bincode::Result<u64> {
-        let meta = Self::default();
-        meta.serialized_size()
-    }
-
-    #[inline]
-    fn serialized_size(&self) -> bincode::Result<u64> {
-        bincode::serialized_size(&self)
-    }
-
-    #[inline]
-    fn from_raw(buf: &[u8]) -> bincode::Result<Self> {
-        bincode::deserialize(buf)
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Default)]
-struct NodeMeta {
-    size: u64,
-}
-
-impl NodeMeta {
-    fn new(size: u64) -> Self {
-        Self { size }
-    }
-
-    #[inline]
-    fn serialized_size(&self) -> bincode::Result<u64> {
-        bincode::serialized_size(&self)
-    }
-
-    fn serialized_size_default() -> bincode::Result<u64> {
-        let meta = Self::default();
-        meta.serialized_size()
-    }
-}
-
-#[derive(Debug)]
-struct Node {
-    keys: Vec<Vec<u8>>,
-    offsets: Vec<u64>,
-}
-
-impl Node {
-    fn new(keys: Vec<Vec<u8>>, offsets: Vec<u64>) -> Self {
-        Self { keys, offsets }
-    }
-
-    fn key_offset(&self, key: &[u8]) -> u64 {
-        let mut left = 0i32;
-        let mut right = self.keys.len() as i32 - 1;
-        while left <= right {
-            let mid = (left + right) / 2;
-            match key.cmp(&self.keys[mid as usize]) {
-                CmpOrdering::Equal => return mid as u64 + 1,
-                CmpOrdering::Greater => left = mid + 1,
-                CmpOrdering::Less => right = mid - 1,
-            }
-        }
-        if left == 0 || key.cmp(&self.keys[left as usize - 1]) != CmpOrdering::Less {
-            self.offsets[left as usize] as u64
-        } else {
-            self.offsets[(left + 1) as usize] as u64
-        }
-    }
-}
-
-fn serialize_node(node: &Node) -> Result<Vec<u8>> {
-    let mut buf = Vec::new();
-    let meta = NodeMeta::new(node.keys.len() as u64);
-    buf.extend_from_slice(&serialize(&meta)?);
-    node.keys.iter().fold(&mut buf, |acc, key| {
-        acc.extend_from_slice(&key);
-        acc
-    });
-    node.offsets.iter().try_fold(buf, |mut acc, offset| {
-        acc.extend_from_slice(&serialize(offset)?);
-        Ok(acc)
-    })
-}
-
-fn deserialize_node(buf: &[u8], key_size: u64) -> Result<Node> {
-    let meta_size = NodeMeta::serialized_size_default()?;
-    let (meta_buf, data_buf) = buf.split_at(meta_size as usize);
-    let meta: NodeMeta = deserialize(&meta_buf)?;
-    let keys_buf_size = meta.size * key_size;
-    let (keys_buf, rest_buf) = data_buf.split_at(keys_buf_size as usize);
-    let keys = keys_buf
-        .chunks(key_size as usize)
-        .map(|key| key.to_vec())
-        .collect();
-    let offsets_buf_size = (meta.size + 1) as usize * std::mem::size_of::<u64>();
-    let (offsets_buf, _rest_buf) = rest_buf.split_at(offsets_buf_size);
-    let offsets = offsets_buf
-        .chunks(std::mem::size_of::<u64>())
-        .map(|bytes| deserialize::<u64>(bytes).map_err(Into::into))
-        .collect::<Result<Vec<u64>>>()?;
-    Ok(Node::new(keys, offsets))
-}
-
 #[derive(Debug, Clone)]
 pub(crate) struct BPTreeFileIndex {
     file: File,
@@ -202,7 +86,6 @@ impl FileIndexTrait for BPTreeFileIndex {
         Bloom::from_raw(&buf)
     }
 
-    // TODO: implement
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
         let root_offset = self.metadata.root_offset;
         let mut buf = [0u8; BLOCK_SIZE];
@@ -264,7 +147,7 @@ impl BPTreeFileIndex {
         let key_size = key.len() as u64;
         while offset >= self.metadata.tree_offset {
             self.file.read_at(buf, offset).await?;
-            let node = deserialize_node(buf, key_size)?;
+            let node = Node::deserialize(buf, key_size)?;
             offset = node.key_offset(&key);
         }
         Ok(offset)
@@ -290,6 +173,11 @@ impl BPTreeFileIndex {
                 Ok((key.to_vec(), deserialize::<u64>(offset)?))
             })
             .collect::<Result<Vec<(Vec<u8>, u64)>>>()?;
+        println!(
+            "header_pointer_slice: {:?} (len = {})",
+            &header_pointers[1..2],
+            header_pointers.len()
+        );
         let mut left = 0;
         let mut right = header_pointers.len() as i32 - 1;
         while left <= right {
@@ -308,6 +196,7 @@ impl BPTreeFileIndex {
                 CmpOrdering::Greater => left = mid + 1,
             }
         }
+        println!("left = {}, right = {}", left, right);
         Ok(None)
     }
 
@@ -322,7 +211,6 @@ impl BPTreeFileIndex {
         let next_offset = if last_rec {
             self.metadata.leaves_offset
         } else {
-            println!("mid = {}, len = {};", mid, header_pointers.len());
             header_pointers[mid + 1].1
         };
         let amount = (next_offset - cur_offset) / self.header.record_header_size as u64;
@@ -393,24 +281,17 @@ impl BPTreeFileIndex {
     ) -> Result<Option<(IndexHeader, TreeMeta, Vec<u8>)>> {
         debug!("blob index bptree serialize headers");
         if let Some(record_header) = headers_btree.values().next().and_then(|v| v.first()) {
-            debug!("index bptree serialize headers first: {:?}", record_header);
             let record_header_size = record_header.serialized_size().try_into()?;
-            trace!("record header serialized size: {}", record_header_size);
             let filter_buf = filter.to_raw()?;
-            let headers_len = headers_btree
-                .iter()
-                .fold(0, |acc, (_key, value)| acc + value.len());
+            let headers_len = headers_btree.iter().fold(0, |acc, (_k, v)| acc + v.len());
             let header = IndexHeader::new(record_header_size, headers_len, filter_buf.len());
             let header_buf = serialize(&header)?;
             let hs = header_buf.len() as usize;
-            trace!("index header size: {}b", hs);
             let fsize = header.filter_buf_size;
-            let msize: usize = TreeMeta::serialized_size_default()?
-                .try_into()
-                .expect("u64 to usize");
+            let msize: usize = TreeMeta::serialized_size_default()? as usize;
             let headers_start_offset = (hs + fsize) as u64;
             let headers_size = headers_len * record_header_size;
-            let leaves_offset = headers_start_offset + headers_size as u64 + msize as u64;
+            let leaves_offset = headers_start_offset + (headers_size + msize) as u64;
             // leaf contains pair: (key, offset in file for first record's header with this key)
             let leaf_size = record_header.key().len() + std::mem::size_of::<u64>();
             let leaves_buf = Self::serialize_leaves(
@@ -430,14 +311,7 @@ impl BPTreeFileIndex {
             let mut buf = Vec::with_capacity(data_size);
             serialize_into(&mut buf, &header)?;
             buf.extend_from_slice(&filter_buf);
-            headers_btree
-                .iter()
-                .flat_map(|r| r.1)
-                .filter_map(|h| serialize(&h).ok())
-                .fold(&mut buf, |buf, h_buf| {
-                    buf.extend_from_slice(&h_buf);
-                    buf
-                });
+            Self::append_headers(headers_btree, &mut buf)?;
             buf.extend_from_slice(&meta_buf);
             buf.extend_from_slice(&leaves_buf);
             buf.extend_from_slice(&tree_buf);
@@ -449,6 +323,18 @@ impl BPTreeFileIndex {
         } else {
             Ok(None)
         }
+    }
+
+    fn append_headers(headers_btree: &InMemoryIndex, buf: &mut Vec<u8>) -> Result<()> {
+        headers_btree
+            .iter()
+            .flat_map(|r| r.1)
+            .map(|h| serialize(&h))
+            .try_fold(buf, |buf, h_buf| -> Result<_> {
+                buf.extend_from_slice(&h_buf?);
+                Ok(buf)
+            })?;
+        Ok(())
     }
 
     fn serialize_bptree(
@@ -465,21 +351,21 @@ impl BPTreeFileIndex {
             elems_in_node - elems_in_node % nodes_amount as u64
         );
 
-        let leaf_nodes = keys
+        let leaf_nodes_compressed = keys
             .chunks(elems_in_node as usize)
             .enumerate()
             .map(|(i, keys)| {
-                let cur_offset = leaves_offset + i as u64 * elems_in_node * leaf_size;
+                let cur_offset = leaves_offset + elems_in_node * leaf_size * i as u64;
                 (keys[0].clone(), cur_offset)
             })
             .collect::<Vec<(Vec<u8>, u64)>>();
 
         let mut buf = Vec::new();
-        let root_offset = Self::build_tree(leaf_nodes, tree_offset, &mut buf)?;
+        let root_offset = Self::build_tree(leaf_nodes_compressed, tree_offset, &mut buf)?;
         Ok((root_offset, buf))
     }
 
-    fn build_tree(
+    pub(super) fn build_tree(
         nodes_arr: Vec<(Vec<u8>, u64)>,
         tree_offset: u64,
         buf: &mut Vec<u8>,
@@ -498,7 +384,7 @@ impl BPTreeFileIndex {
                 let offsets = keys.iter().map(|(_, offset)| *offset).collect();
                 let keys = keys.iter().skip(1).map(|(key, _)| key.clone()).collect();
                 let node = Node::new(keys, offsets);
-                buf.extend_from_slice(&serialize_node(&node).expect("failed to serialize node"));
+                buf.extend_from_slice(&node.serialize().expect("failed to serialize node"));
                 (min_key, offset)
             })
             .collect();
@@ -546,72 +432,4 @@ impl BPTreeFileIndex {
         );
         leaves_buf
     }
-}
-
-#[tokio::test]
-async fn build_tree_test() {
-    let nodes_arr = (1..27u8)
-        .into_iter()
-        .enumerate()
-        .map(|(i, key)| (vec![key], i as u64 * 8))
-        .collect();
-    let tree_offset = 2000;
-    let mut buf = Vec::new();
-    BPTreeFileIndex::build_tree(nodes_arr, tree_offset, &mut buf);
-}
-
-#[tokio::test]
-async fn node_serialize_deserialize() {
-    let keys = (1u8..20).map(|e| vec![e]).collect();
-    let offsets = (1u64..21).collect();
-    let node = Node::new(keys, offsets);
-    let buf = serialize_node(&node).expect("Can't serialize");
-    let node_deserialized = deserialize_node(&buf, 1).expect("Can't deserialize");
-    assert_eq!(node.keys, node_deserialized.keys);
-    assert_eq!(node.offsets, node_deserialized.offsets);
-}
-
-#[tokio::test]
-async fn indices_serialize_deserialize() {
-    let mut inmem = InMemoryIndex::new();
-    (0..10000u32)
-        .map(|i| serialize(&i).expect("can't serialize"))
-        .for_each(|key| {
-            let rh = RecordHeader::new(key.clone(), 1, 1, 1);
-            inmem.insert(key, vec![rh]);
-        });
-    let filter = Bloom::new(Config::default());
-    let findex =
-        BPTreeFileIndex::from_records(&Path::new("/tmp/bptree_index.b"), None, &inmem, &filter)
-            .await
-            .expect("Can't create file index");
-    let (inmem_after, _size) = findex
-        .get_records_headers()
-        .await
-        .expect("Can't get InMemoryIndex");
-    assert_eq!(inmem, inmem_after);
-}
-
-#[tokio::test]
-async fn check_get_any() {
-    let mut inmem = InMemoryIndex::new();
-    (100..9000)
-        .map(|i| serialize(&i).expect("can't serialize"))
-        .for_each(|key| {
-            let rh = RecordHeader::new(key.clone(), 1, 1, 1);
-            inmem.insert(key, vec![rh]);
-        });
-    let filter = Bloom::new(Config::default());
-    let findex =
-        BPTreeFileIndex::from_records(&Path::new("/tmp/get_bptree_index.b"), None, &inmem, &filter)
-            .await
-            .expect("Can't create file index");
-    let keys_to_check = [100u32, 112, 113, 8999];
-    for key in keys_to_check.iter().map(|k| serialize(&k).unwrap()) {
-        assert_eq!(findex.get_any(&key).await.unwrap().unwrap(), inmem[&key][0]);
-    }
-    assert_eq!(
-        None,
-        findex.get_any(&serialize(&100000).unwrap()).await.unwrap()
-    );
 }
