@@ -107,12 +107,10 @@ fn serialize_node(node: &Node) -> Result<Vec<u8>> {
         acc.extend_from_slice(&key);
         acc
     });
-    node.offsets.iter().fold(&mut buf, |acc, offset| {
-        // FIXME: to result
-        acc.extend_from_slice(&serialize(offset).expect("u64 to bytes"));
-        acc
-    });
-    Ok(buf)
+    node.offsets.iter().try_fold(buf, |mut acc, offset| {
+        acc.extend_from_slice(&serialize(offset)?);
+        Ok(acc)
+    })
 }
 
 fn deserialize_node(buf: &[u8], key_size: u64) -> Result<Node> {
@@ -129,9 +127,8 @@ fn deserialize_node(buf: &[u8], key_size: u64) -> Result<Node> {
     let (offsets_buf, _rest_buf) = rest_buf.split_at(offsets_buf_size);
     let offsets = offsets_buf
         .chunks(std::mem::size_of::<u64>())
-        // FIXME: to result
-        .map(|bytes| deserialize::<u64>(bytes).expect("bytes to u64"))
-        .collect();
+        .map(|bytes| deserialize::<u64>(bytes).map_err(Into::into))
+        .collect::<Result<Vec<u64>>>()?;
     Ok(Node::new(keys, offsets))
 }
 
@@ -286,17 +283,13 @@ impl BPTreeFileIndex {
             .min((self.metadata.tree_offset - leaf_offset) as usize);
         let (buf, _rest) = buf.split_at_mut(buf_size as usize);
         self.file.read_at(buf, leaf_offset).await?;
-        let header_pointers: Vec<(Vec<u8>, u64)> = buf
+        let header_pointers = buf
             .chunks(leaf_size)
             .map(|bytes| {
                 let (key, offset) = bytes.split_at(key.len());
-                // FIXME: remove expect
-                (
-                    key.to_vec(),
-                    deserialize::<u64>(offset).expect("deserialize u64"),
-                )
+                Ok((key.to_vec(), deserialize::<u64>(offset)?))
             })
-            .collect();
+            .collect::<Result<Vec<(Vec<u8>, u64)>>>()?;
         let mut left = 0;
         let mut right = header_pointers.len() as i32 - 1;
         while left <= right {
@@ -345,14 +338,13 @@ impl BPTreeFileIndex {
     async fn read_headers(&self, offset: u64, amount: usize) -> Result<Vec<RecordHeader>> {
         let mut buf = vec![0u8; self.header.record_header_size * amount];
         self.file.read_at(&mut buf, offset).await?;
-        let headers = buf.chunks(self.header.record_header_size).fold(
+        buf.chunks(self.header.record_header_size).try_fold(
             Vec::with_capacity(amount),
             |mut acc, bytes| {
-                acc.push(deserialize(&bytes).expect("deserialize header"));
-                acc
+                acc.push(deserialize(&bytes)?);
+                Ok(acc)
             },
-        );
-        Ok(headers)
+        )
     }
 
     async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
@@ -430,7 +422,7 @@ impl BPTreeFileIndex {
             let keys = headers_btree.keys().collect();
             let tree_offset = leaves_offset + leaves_buf.len() as u64;
             let (root_offset, tree_buf) =
-                Self::serialize_bptree(keys, leaves_offset, leaf_size as u64, tree_offset);
+                Self::serialize_bptree(keys, leaves_offset, leaf_size as u64, tree_offset)?;
             let metadata = TreeMeta::new(root_offset, leaves_offset, tree_offset);
             let meta_buf = serialize(&metadata)?;
 
@@ -464,7 +456,7 @@ impl BPTreeFileIndex {
         leaves_offset: u64,
         leaf_size: u64,
         tree_offset: u64,
-    ) -> (u64, Vec<u8>) {
+    ) -> Result<(u64, Vec<u8>)> {
         let max_amount = Self::max_leaf_node_capacity(keys[0].len());
         let nodes_amount = (keys.len() - 1) / max_amount + 1;
         let elems_in_node = (keys.len() / nodes_amount) as u64;
@@ -483,13 +475,17 @@ impl BPTreeFileIndex {
             .collect::<Vec<(Vec<u8>, u64)>>();
 
         let mut buf = Vec::new();
-        let root_offset = Self::build_tree(leaf_nodes, tree_offset, &mut buf);
-        (root_offset, buf)
+        let root_offset = Self::build_tree(leaf_nodes, tree_offset, &mut buf)?;
+        Ok((root_offset, buf))
     }
 
-    fn build_tree(nodes_arr: Vec<(Vec<u8>, u64)>, tree_offset: u64, buf: &mut Vec<u8>) -> u64 {
+    fn build_tree(
+        nodes_arr: Vec<(Vec<u8>, u64)>,
+        tree_offset: u64,
+        buf: &mut Vec<u8>,
+    ) -> Result<u64> {
         if nodes_arr.len() == 1 {
-            return Self::prep_root(nodes_arr[0].1, tree_offset, buf);
+            return Ok(Self::prep_root(nodes_arr[0].1, tree_offset, buf));
         }
         let max_amount = Self::max_nonleaf_node_capacity(nodes_arr[0].0.len());
         let nodes_amount = (nodes_arr.len() - 1) / max_amount + 1;
@@ -502,7 +498,6 @@ impl BPTreeFileIndex {
                 let offsets = keys.iter().map(|(_, offset)| *offset).collect();
                 let keys = keys.iter().skip(1).map(|(key, _)| key.clone()).collect();
                 let node = Node::new(keys, offsets);
-                // FIXME: change on result
                 buf.extend_from_slice(&serialize_node(&node).expect("failed to serialize node"));
                 (min_key, offset)
             })
