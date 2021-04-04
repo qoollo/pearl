@@ -19,7 +19,7 @@ impl Node {
         while left <= right {
             let mid = (left + right) / 2;
             match key.cmp(&self.keys[mid as usize]) {
-                CmpOrdering::Equal => return mid as u64 + 1,
+                CmpOrdering::Equal => return self.offsets[mid as usize + 1],
                 CmpOrdering::Greater => left = mid + 1,
                 CmpOrdering::Less => right = mid - 1,
             }
@@ -72,9 +72,9 @@ mod tests {
 
     type KeyType = usize;
 
-    fn create_node(amount: usize, f: impl Fn(usize) -> KeyType) -> Node {
-        let keys = (0..amount).map(|e| serialize(&f(e)).unwrap()).collect();
-        let offsets = (0u64..(amount as u64 + 1)).collect();
+    fn create_node(amount: usize, kf: impl Fn(usize) -> KeyType, of: impl Fn(u64) -> u64) -> Node {
+        let keys = (0..amount).map(|e| serialize(&kf(e)).unwrap()).collect();
+        let offsets = (0u64..(amount as u64 + 1)).map(of).collect();
         Node::new(keys, offsets)
     }
 
@@ -82,7 +82,7 @@ mod tests {
     fn serialize_deserialize_test() {
         const KEYS_AMOUNTS: [usize; 3] = [1, 2, 100];
         for &keys_amount in KEYS_AMOUNTS.iter() {
-            let node = create_node(keys_amount, |e| e as KeyType);
+            let node = create_node(keys_amount, |e| e as KeyType, |o| o * 2);
             let buf = node.serialize().unwrap();
             let node_deserialized =
                 Node::deserialize(&buf, std::mem::size_of::<KeyType>() as u64).unwrap();
@@ -90,24 +90,27 @@ mod tests {
         }
     }
 
-    fn check_offset(keys: &[Vec<u8>], key: &[u8], offset: usize) {
-        if offset != 0 {
-            assert!(key >= &keys[offset - 1]);
+    fn check_offset(keys: &[Vec<u8>], key: &[u8], offset: u64, off_to_index: impl Fn(u64) -> u64) {
+        let offset_index = off_to_index(offset) as usize;
+        if offset_index != 0 {
+            assert!(key >= &keys[offset_index - 1]);
         }
-        if offset != keys.len() {
-            assert!(key < &keys[offset])
+        if offset_index != keys.len() {
+            assert!(key < &keys[offset_index])
         }
     }
 
     #[test]
     fn key_offset_test() {
+        const SCALE: u64 = 113;
         const REQUESTS: Range<usize> = 0..100;
         const KEYS_AMOUNTS: [usize; 8] = [1, 2, 13, 13, 14, 14, 1, 2];
+
         for (i, &keys_amount) in KEYS_AMOUNTS.iter().enumerate() {
-            let node = create_node(keys_amount, |e| (e * i) as KeyType);
+            let node = create_node(keys_amount, |e| (e * i) as KeyType, |o| o * SCALE);
             for k in REQUESTS.map(|v| serialize(&v).unwrap()) {
                 let offset = node.key_offset(&k);
-                check_offset(&node.keys, &k, offset as usize);
+                check_offset(&node.keys, &k, offset, |o| o / SCALE);
             }
         }
     }

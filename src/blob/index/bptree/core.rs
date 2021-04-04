@@ -173,11 +173,6 @@ impl BPTreeFileIndex {
                 Ok((key.to_vec(), deserialize::<u64>(offset)?))
             })
             .collect::<Result<Vec<(Vec<u8>, u64)>>>()?;
-        println!(
-            "header_pointer_slice: {:?} (len = {})",
-            &header_pointers[1..2],
-            header_pointers.len()
-        );
         let mut left = 0;
         let mut right = header_pointers.len() as i32 - 1;
         while left <= right {
@@ -196,7 +191,6 @@ impl BPTreeFileIndex {
                 CmpOrdering::Greater => left = mid + 1,
             }
         }
-        println!("left = {}, right = {}", left, right);
         Ok(None)
     }
 
