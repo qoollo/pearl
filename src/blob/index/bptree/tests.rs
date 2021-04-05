@@ -9,11 +9,16 @@ async fn serialize_deserialize_file() {
             let rh = RecordHeader::new(key.clone(), 1, 1, 1);
             inmem.insert(key, vec![rh]);
         });
-    let filter = Bloom::new(Config::default());
-    let findex =
-        BPTreeFileIndex::from_records(&Path::new("/tmp/bptree_index.b"), None, &inmem, &filter)
-            .await
-            .expect("Can't create file index");
+    let filter = Bloom::new(BloomConfig::default());
+    let findex = BPTreeFileIndex::from_records(
+        &Path::new("/tmp/bptree_index.b"),
+        None,
+        &inmem,
+        &filter,
+        true,
+    )
+    .await
+    .expect("Can't create file index");
     let (inmem_after, _size) = findex
         .get_records_headers()
         .await
@@ -33,11 +38,16 @@ async fn check_get_any() {
             let rh = RecordHeader::new(key.clone(), 1, 1, 1);
             inmem.insert(key, vec![rh]);
         });
-    let filter = Bloom::new(Config::default());
-    let findex =
-        BPTreeFileIndex::from_records(&Path::new("/tmp/any_bptree_index.b"), None, &inmem, &filter)
-            .await
-            .expect("Can't create file index");
+    let filter = Bloom::new(BloomConfig::default());
+    let findex = BPTreeFileIndex::from_records(
+        &Path::new("/tmp/any_bptree_index.b"),
+        None,
+        &inmem,
+        &filter,
+        true,
+    )
+    .await
+    .expect("Can't create file index");
     let presented_keys = RANGE_FROM..RANGE_TO;
     for key in presented_keys.map(|k| serialize(&k).unwrap()) {
         assert_eq!(inmem[&key][0], findex.get_any(&key).await.unwrap().unwrap());
@@ -64,11 +74,16 @@ async fn check_get() {
             let recs = (0..times).map(|_| rh.clone()).collect();
             inmem.insert(key, recs);
         });
-    let filter = Bloom::new(Config::default());
-    let findex =
-        BPTreeFileIndex::from_records(&Path::new("/tmp/all_bptree_index.b"), None, &inmem, &filter)
-            .await
-            .expect("Can't create file index");
+    let filter = Bloom::new(BloomConfig::default());
+    let findex = BPTreeFileIndex::from_records(
+        &Path::new("/tmp/all_bptree_index.b"),
+        None,
+        &inmem,
+        &filter,
+        true,
+    )
+    .await
+    .expect("Can't create file index");
     let presented_keys = RANGE_FROM..RANGE_TO;
     for key in presented_keys.map(|k| serialize(&k).unwrap()) {
         assert_eq!(

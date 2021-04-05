@@ -431,7 +431,7 @@ impl<K> Storage<K> {
     async fn init_new(&mut self) -> Result<()> {
         let safe_locked = self.inner.safe.lock();
         let next = self.inner.next_blob_name()?;
-        let config = self.filter_config();
+        let config = self.index_config();
         let mut safe = safe_locked.await;
         let blob = Blob::open_new(next, self.inner.ioring.clone(), config)
             .await?
@@ -500,7 +500,7 @@ impl<K> Storage<K> {
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(file.clone(), ioring.clone(), config.filter())
+                Blob::from_file(file.clone(), ioring.clone(), config.index())
                     .await
                     .map_err(|e| (e, file))
             })
@@ -609,8 +609,8 @@ impl<K> Storage<K> {
         self.observer.close_active_blob().await
     }
 
-    fn filter_config(&self) -> Option<BloomConfig> {
-        self.inner.config.filter()
+    fn index_config(&self) -> IndexConfig {
+        self.inner.config.index()
     }
 
     fn launch_observer(&mut self) {

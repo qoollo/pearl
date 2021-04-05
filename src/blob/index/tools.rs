@@ -27,3 +27,13 @@ pub(crate) fn compute_mem_attrs(
         record_header_size,
     }
 }
+
+pub(crate) fn clean_file(path: impl AsRef<Path>, recreate_index_file: bool) -> Result<()> {
+    if recreate_index_file {
+        StdFile::create(path).map(|_| ()).map_err(Into::into)
+    } else {
+        let msg = "Clean file not permitted";
+        error!("{}", msg);
+        Err(anyhow!(msg))
+    }
+}

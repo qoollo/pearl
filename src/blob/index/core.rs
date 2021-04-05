@@ -6,10 +6,40 @@ pub(crate) type Index = IndexStruct<BPTreeFileIndex>;
 pub(crate) const HEADER_VERSION: u64 = 1;
 
 #[derive(Debug)]
+struct IndexParams {
+    filter_is_on: bool,
+    recreate_file: bool,
+}
+
+impl IndexParams {
+    fn new(filter_is_on: bool, recreate_file: bool) -> Self {
+        Self {
+            filter_is_on,
+            recreate_file,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IndexConfig {
+    pub filter: Option<BloomConfig>,
+    pub recreate_index_file: bool,
+}
+
+impl Default for IndexConfig {
+    fn default() -> Self {
+        Self {
+            filter: None,
+            recreate_index_file: true,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub(crate) struct IndexStruct<FileIndex: FileIndexTrait> {
     mem: Option<MemoryAttrs>,
     filter: Bloom,
-    filter_is_on: bool,
+    params: IndexParams,
     inner: State<FileIndex>,
     name: FileName,
     ioring: Option<Rio>,
@@ -35,12 +65,12 @@ pub(crate) enum State<FileIndex: FileIndexTrait> {
 }
 
 impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
-    pub(crate) fn new(name: FileName, ioring: Option<Rio>, filter_config: Option<Config>) -> Self {
-        let filter_is_on = filter_config.is_some();
-        let filter = filter_config.map(Bloom::new).unwrap_or_default();
+    pub(crate) fn new(name: FileName, ioring: Option<Rio>, config: IndexConfig) -> Self {
+        let params = IndexParams::new(config.filter.is_some(), config.recreate_index_file);
+        let filter = config.filter.map(Bloom::new).unwrap_or_default();
         let mem = Some(Default::default());
         Self {
-            filter_is_on,
+            params,
             filter,
             inner: State::InMemory(BTreeMap::new()),
             mem,
@@ -56,7 +86,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
     }
 
     pub fn check_bloom_key(&self, key: &[u8]) -> Option<bool> {
-        if self.filter_is_on {
+        if self.params.filter_is_on {
             Some(self.filter.contains(key))
         } else {
             None
@@ -69,7 +99,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
 
     pub(crate) async fn from_file(
         name: FileName,
-        filter_is_on: bool,
+        config: IndexConfig,
         ioring: Option<Rio>,
     ) -> Result<Self> {
         let findex = FileIndex::from_file(name.clone(), ioring.clone()).await?;
@@ -78,13 +108,14 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
             return Err(Error::validation("Header is corrupt").into());
         }
         let filter = findex.read_filter().await?;
+        let params = IndexParams::new(config.filter.is_some(), config.recreate_index_file);
         trace!("index restored successfuly");
         let index = Self {
             inner: State::OnDisk(findex),
             mem: None,
             name,
             filter,
-            filter_is_on,
+            params,
             ioring,
         };
         Ok(index)
@@ -105,6 +136,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
                 self.ioring.clone(),
                 headers,
                 &self.filter,
+                self.params.recreate_file,
             )
             .await?;
             let size = findex.file_size() as usize;
@@ -246,6 +278,7 @@ pub(crate) trait FileIndexTrait: Sized {
         rio: Option<Rio>,
         headers: &InMemoryIndex,
         filter: &Bloom,
+        recreate_index_file: bool,
     ) -> Result<Self>;
     fn file_size(&self) -> u64;
     fn records_count(&self) -> usize;

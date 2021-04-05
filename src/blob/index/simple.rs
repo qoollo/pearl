@@ -45,6 +45,7 @@ impl FileIndexTrait for SimpleFileIndex {
         ioring: Option<Rio>,
         headers: &InMemoryIndex,
         filter: &Bloom,
+        recreate_index_file: bool,
     ) -> Result<Self> {
         let res = Self::serialize(headers, filter)?;
         if res.is_none() {
@@ -52,7 +53,7 @@ impl FileIndexTrait for SimpleFileIndex {
             return Err(anyhow!("empty in-memory indices".to_string()));
         }
         let (mut header, buf) = res.expect("None case is checked");
-        let _ = std::fs::remove_file(path);
+        clean_file(path, recreate_index_file)?;
         let file = File::create(path, ioring)
             .await
             .with_context(|| format!("file open failed {:?}", path))?;

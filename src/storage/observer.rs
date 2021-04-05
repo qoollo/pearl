@@ -130,7 +130,7 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
 async fn update_active_blob(inner: Inner, dump_sem: Arc<Semaphore>) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
-    let new_active = Blob::open_new(next_name, inner.ioring, inner.config.filter())
+    let new_active = Blob::open_new(next_name, inner.ioring, inner.config.index())
         .await?
         .boxed();
     let task = inner

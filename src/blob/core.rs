@@ -31,10 +31,10 @@ impl Blob {
     pub(crate) async fn open_new(
         name: FileName,
         ioring: Option<Rio>,
-        filter_config: Option<BloomConfig>,
+        index_config: IndexConfig,
     ) -> Result<Self> {
         let file = File::create(name.to_path(), ioring.clone()).await?;
-        let index = Self::create_index(name.clone(), ioring, filter_config);
+        let index = Self::create_index(name.clone(), ioring, index_config);
         let current_offset = Arc::new(Mutex::new(0));
         let header = Header::new();
         let mut blob = Self {
@@ -61,13 +61,9 @@ impl Blob {
     }
 
     #[inline]
-    fn create_index(
-        mut name: FileName,
-        ioring: Option<Rio>,
-        filter_config: Option<BloomConfig>,
-    ) -> Index {
+    fn create_index(mut name: FileName, ioring: Option<Rio>, index_config: IndexConfig) -> Index {
         name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        Index::new(name, ioring, filter_config)
+        Index::new(name, ioring, index_config)
     }
 
     pub(crate) async fn dump(&mut self) -> Result<usize> {
@@ -94,7 +90,7 @@ impl Blob {
     pub(crate) async fn from_file(
         path: PathBuf,
         ioring: Option<Rio>,
-        filter_config: Option<BloomConfig>,
+        index_config: IndexConfig,
     ) -> Result<Self> {
         let now = Instant::now();
         let file = File::open(&path, ioring.clone()).await?;
@@ -107,10 +103,10 @@ impl Blob {
         trace!("looking for index file: [{}]", index_name);
         let index = if index_name.exists() {
             trace!("file exists");
-            Index::from_file(index_name, filter_config.is_some(), ioring).await?
+            Index::from_file(index_name, index_config, ioring).await?
         } else {
             trace!("file not found, create new");
-            Index::new(index_name, ioring, filter_config)
+            Index::new(index_name, ioring, index_config)
         };
         trace!("index initialized");
         let header_size = bincode::serialized_size(&header)?;

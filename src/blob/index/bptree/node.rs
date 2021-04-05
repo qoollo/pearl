@@ -14,20 +14,9 @@ impl Node {
     }
 
     pub(super) fn key_offset(&self, key: &[u8]) -> u64 {
-        let mut left = 0i32;
-        let mut right = self.keys.len() as i32 - 1;
-        while left <= right {
-            let mid = (left + right) / 2;
-            match key.cmp(&self.keys[mid as usize]) {
-                CmpOrdering::Equal => return self.offsets[mid as usize + 1],
-                CmpOrdering::Greater => left = mid + 1,
-                CmpOrdering::Less => right = mid - 1,
-            }
-        }
-        if left == 0 || key.cmp(&self.keys[left as usize - 1]) != CmpOrdering::Less {
-            self.offsets[left as usize] as u64
-        } else {
-            self.offsets[(left + 1) as usize] as u64
+        match self.keys.binary_search_by(|elem| elem.as_slice().cmp(key)) {
+            Ok(pos) => self.offsets[pos + 1],
+            Err(pos) => self.offsets[pos],
         }
     }
 

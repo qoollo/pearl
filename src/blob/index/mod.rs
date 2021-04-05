@@ -11,11 +11,11 @@ mod tools;
 use bptree::BPTreeFileIndex;
 use header::IndexHeader;
 
-pub(crate) use self::core::FileIndexTrait;
-pub(crate) use self::core::HEADER_VERSION;
-pub(crate) use self::core::{InMemoryIndex, Index, MemoryAttrs};
+pub(crate) use self::core::{
+    FileIndexTrait, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,
+};
 pub(crate) use super::prelude::*;
-pub(crate) use bloom::{Bloom, Config};
+pub(crate) use bloom::{Bloom, Config as BloomConfig};
 
 mod prelude {
     pub(crate) use super::*;
