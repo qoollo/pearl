@@ -67,11 +67,18 @@ impl Blob {
     }
 
     pub(crate) async fn dump(&mut self) -> Result<usize> {
-        self.file.fsyncdata().await?;
-        self.index
-            .dump()
-            .await
-            .with_context(|| "blob index dump failed")
+        if self.index.on_disk() {
+            Ok(0) // 0 bytes dumped
+        } else {
+            self.file
+                .fsyncdata()
+                .await
+                .with_context(|| "Blob file dump failed!")?;
+            self.index
+                .dump()
+                .await
+                .with_context(|| "Blob index file dump failed!")
+        }
     }
 
     pub(crate) async fn load_index(&mut self) -> Result<()> {
