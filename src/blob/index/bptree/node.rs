@@ -24,10 +24,7 @@ impl Node {
         let mut buf = Vec::new();
         let meta = NodeMeta::new(self.keys.len() as u64);
         buf.extend_from_slice(&serialize(&meta)?);
-        self.keys.iter().fold(&mut buf, |acc, key| {
-            acc.extend_from_slice(&key);
-            acc
-        });
+        buf.extend(self.keys.iter().flat_map(|kb| kb));
         self.offsets.iter().try_fold(buf, |mut acc, offset| {
             acc.extend_from_slice(&serialize(offset)?);
             Ok(acc)
