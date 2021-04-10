@@ -1,6 +1,6 @@
 #![allow(unused_attributes)]
 
-use anyhow::Result as AnyResult;
+use anyhow::AnyResult;
 use chrono::Local;
 use env_logger::fmt::Color;
 use futures::{future, stream::futures_unordered::FuturesUnordered, FutureExt, StreamExt};
