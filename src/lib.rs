@@ -83,7 +83,7 @@ mod prelude {
         lock::Mutex,
         stream::{futures_unordered::FuturesUnordered, TryStreamExt},
     };
-    pub(crate) use record::{Header as RecordHeader, Record};
+    pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
     pub(crate) use rio::Rio;
     pub(crate) use std::{
         cmp::Ordering as CmpOrdering,
