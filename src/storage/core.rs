@@ -40,12 +40,11 @@ pub struct Storage<K> {
     marker: PhantomData<K>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Inner {
     pub(crate) config: Config,
     pub(crate) safe: Arc<RwLock<Safe>>,
     next_blob_id: Arc<AtomicUsize>,
-    twins_count: Arc<AtomicUsize>,
     pub(crate) ioring: Option<Rio>,
 }
 
@@ -54,17 +53,6 @@ pub(crate) struct Safe {
     pub(crate) active_blob: Option<Box<Blob>>,
     pub(crate) blobs: Arc<RwLock<Vec<Blob>>>,
     lock_file: Option<StdFile>,
-}
-
-impl<K> Drop for Storage<K> {
-    fn drop(&mut self) {
-        let twins = self.inner.twins_count.fetch_sub(1, ORD);
-        // 1 is because twin#0 - in observer thread, twin#1 - self
-        if twins <= 1 {
-            trace!("stop observer thread");
-            self.observer.shutdown();
-        }
-    }
 }
 
 impl<K> Clone for Storage<K> {
@@ -103,10 +91,9 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
 
 impl<K> Storage<K> {
     pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
-        let update_interval = Duration::from_millis(config.update_interval_ms());
         let dump_sem = config.dump_sem();
         let inner = Inner::new(config, ioring);
-        let observer = Observer::new(update_interval, inner.clone(), dump_sem);
+        let observer = Observer::new(inner.clone(), dump_sem);
         Self {
             inner,
             observer,
@@ -333,19 +320,24 @@ impl<K> Storage<K> {
     pub async fn close(self) -> Result<()> {
         let mut safe = self.inner.safe.write().await;
         let active_blob = safe.active_blob.take();
+        let mut res = Ok(());
         if let Some(mut blob) = active_blob {
-            blob.dump()
-                .await
-                .with_context(|| format!("blob {} dump failed", blob.name()))?;
-            debug!("active blob dumped");
+            res = res.and(
+                blob.dump()
+                    .await
+                    .map(|_| info!("active blob dumped"))
+                    .with_context(|| format!("blob {} dump failed", blob.name())),
+            )
         }
-        self.observer.shutdown();
         safe.lock_file = None;
         if let Some(work_dir) = self.inner.config.work_dir() {
-            std::fs::remove_file(work_dir.join(LOCK_FILE))?;
+            res = res.and(
+                std::fs::remove_file(work_dir.join(LOCK_FILE))
+                    .map(|_| info!("lock released"))
+                    .with_context(|| "failed to remove lockfile ({:?})"),
+            );
         }
-        info!("active blob dumped, lock released");
-        Ok(())
+        res
     }
 
     /// `blob_count` returns exact number of closed blobs plus one active, if there is some.
@@ -617,26 +609,12 @@ impl<K> Storage<K> {
     }
 }
 
-impl Clone for Inner {
-    fn clone(&self) -> Self {
-        self.twins_count.fetch_add(1, ORD);
-        Self {
-            config: self.config.clone(),
-            safe: self.safe.clone(),
-            next_blob_id: self.next_blob_id.clone(),
-            twins_count: self.twins_count.clone(),
-            ioring: self.ioring.clone(),
-        }
-    }
-}
-
 impl Inner {
     fn new(config: Config, ioring: Option<Rio>) -> Self {
         Self {
             config,
             safe: Arc::new(RwLock::new(Safe::new())),
             next_blob_id: Arc::new(AtomicUsize::new(0)),
-            twins_count: Arc::new(AtomicUsize::new(0)),
             ioring,
         }
     }

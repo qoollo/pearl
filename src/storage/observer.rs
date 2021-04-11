@@ -1,78 +1,36 @@
 use super::prelude::*;
 use tokio::{
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::mpsc::{channel, Sender},
     sync::Semaphore,
-    time::timeout,
 };
 
 pub(crate) enum Msg {
     CloseActiveBlob,
-    Shutdown,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct Observer {
-    inner: Inner,
-    update_interval: Duration,
+    inner: Option<Inner>,
     pub sender: Option<Sender<Msg>>,
     dump_sem: Arc<Semaphore>,
 }
 
 impl Observer {
-    pub(crate) const fn new(
-        update_interval: Duration,
-        inner: Inner,
-        dump_sem: Arc<Semaphore>,
-    ) -> Self {
+    pub(crate) const fn new(inner: Inner, dump_sem: Arc<Semaphore>) -> Self {
         Self {
-            update_interval,
-            inner,
+            inner: Some(inner),
             sender: None,
             dump_sem,
         }
     }
 
     pub(crate) fn run(&mut self) {
-        let (sender, receiver) = channel(1024);
-        self.sender = Some(sender);
-        tokio::spawn(Self::worker(self.clone(), receiver));
-    }
-
-    async fn worker(self, mut receiver: Receiver<Msg>) {
-        debug!("update interval: {:?}", self.update_interval);
-        loop {
-            if let Err(e) = self.tick(&mut receiver).await {
-                warn!("active blob will no longer be updated, shutdown the system");
-                warn!("{}", e);
-                break;
-            }
+        if let Some(inner) = self.inner.take() {
+            let (sender, receiver) = channel(1024);
+            self.sender = Some(sender);
+            let worker = ObserverWorker::new(receiver, inner, self.dump_sem.clone());
+            tokio::spawn(worker.run());
         }
-        info!("observer stopped");
-    }
-
-    async fn tick(&self, receiver: &mut Receiver<Msg>) -> Result<()> {
-        match timeout(self.update_interval, receiver.recv()).await {
-            Ok(Some(Msg::CloseActiveBlob)) => {
-                update_active_blob(self.inner.clone(), self.dump_sem.clone()).await?
-            }
-            Ok(Some(Msg::Shutdown)) | Ok(None) => return Err(anyhow!("internal".to_string())),
-            Err(_) => {}
-        }
-        trace!("check active blob");
-        self.try_update().await
-    }
-
-    async fn try_update(&self) -> Result<()> {
-        trace!("try update active blob");
-        let inner_cloned = self.inner.clone();
-        if let Some(inner) = active_blob_check(inner_cloned).await? {
-            update_active_blob(inner, self.dump_sem.clone()).await?;
-        }
-        let mut inner_mut = self.inner.clone();
-        inner_mut
-            .try_dump_old_blob_indexes(self.dump_sem.clone())
-            .await;
-        Ok(())
     }
 
     pub(crate) async fn close_active_blob(&self) {
@@ -85,63 +43,7 @@ impl Observer {
         }
     }
 
-    pub(crate) fn shutdown(&self) {
-        if let Some(sender) = &self.sender {
-            if let Err(e) = sender.try_send(Msg::Shutdown) {
-                error!("{}", e);
-            }
-        }
-    }
-
     pub(crate) fn get_dump_sem(&self) -> Arc<Semaphore> {
         self.dump_sem.clone()
     }
-}
-
-async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
-    let (active_size, active_count) = {
-        trace!("await for lock");
-        let safe_locked = inner.safe.read().await;
-        trace!("lock acquired");
-        let active_blob = safe_locked
-            .active_blob
-            .as_ref()
-            .ok_or_else(Error::active_blob_not_set)?;
-        let size = active_blob.file_size();
-        let count = active_blob.records_count() as u64;
-        (size, count)
-    };
-    trace!("lock released");
-    let config_max_size = inner
-        .config
-        .max_blob_size()
-        .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
-    let config_max_count = inner
-        .config
-        .max_data_in_blob()
-        .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
-    if active_size as u64 > config_max_size || active_count >= config_max_count {
-        Ok(Some(inner))
-    } else {
-        Ok(None)
-    }
-}
-
-async fn update_active_blob(inner: Inner, dump_sem: Arc<Semaphore>) -> Result<()> {
-    let next_name = inner.next_blob_name()?;
-    // Opening a new blob may take a while
-    let new_active = Blob::open_new(next_name, inner.ioring, inner.config.filter())
-        .await?
-        .boxed();
-    let task = inner
-        .safe
-        .write()
-        .await
-        .replace_active_blob(new_active)
-        .await?;
-    tokio::spawn(async move {
-        let _res = dump_sem.acquire().await.expect("semaphore is closed");
-        task.await;
-    });
-    Ok(())
 }
