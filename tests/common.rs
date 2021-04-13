@@ -1,6 +1,6 @@
 #![allow(unused_attributes)]
 
-use anyhow::AnyResult;
+use anyhow::Result;
 use chrono::Local;
 use env_logger::fmt::Color;
 use futures::{future, stream::futures_unordered::FuturesUnordered, FutureExt, StreamExt};
@@ -101,7 +101,7 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> AnyResult<()> {
+pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<()> {
     std::thread::sleep(std::time::Duration::from_millis(100));
     storage.close().await?;
     fs::remove_dir_all(path).map_err(Into::into)
