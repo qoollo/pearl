@@ -115,7 +115,7 @@ impl Default for Config {
             max_blob_size: None,
             max_data_in_blob: None,
             blob_file_name_prefix: None,
-            update_interval_ms: 1000,
+            update_interval_ms: 100,
             allow_duplicates: false,
             ignore_corrupted: false,
             filter: None,

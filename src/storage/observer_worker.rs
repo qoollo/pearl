@@ -99,16 +99,18 @@ async fn update_active_blob(inner: Inner, dump_sem: Arc<Semaphore>) -> Result<()
         .await?
         .boxed();
     trace!("invoking replace task");
-    let task = inner
-        .safe
-        .lock()
-        .await
-        .replace_active_blob(new_active)
-        .await?;
+    let task = {
+        let mut lock = inner.safe.lock().await;
+        lock.replace_active_blob(new_active).await?
+    };
     trace!("spawning dump task");
     tokio::spawn(async move {
+        trace!("acquire dump sem");
         let _res = dump_sem.acquire().await.expect("semaphore is closed");
+        trace!("invoke dump task");
         task.await;
+        trace!("dump done");
     });
+    trace!("update active blob done");
     Ok(())
 }
