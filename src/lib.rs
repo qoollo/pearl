@@ -74,7 +74,7 @@ mod prelude {
     pub(crate) use std::collections::BTreeMap;
     pub(crate) const ORD: Ordering = Ordering::Relaxed;
 
-    pub(crate) use anyhow::{Context as ErrorContexts, Result};
+    pub(crate) use anyhow::{Result, Context as ErrorContexts};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use blob::{self, Blob, BloomConfig};
     pub(crate) use crc::crc32::checksum_castagnoli as crc32;
@@ -83,7 +83,7 @@ mod prelude {
         lock::Mutex,
         stream::{futures_unordered::FuturesUnordered, TryStreamExt},
     };
-    pub(crate) use record::{Header as RecordHeader, Record};
+    pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
     pub(crate) use rio::Rio;
     pub(crate) use std::{
         cmp::Ordering as CmpOrdering,

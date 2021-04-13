@@ -34,7 +34,7 @@ type SaveOldBlobTask = std::pin::Pin<Box<dyn std::future::Future<Output = ()> + 
 ///
 /// [`Key`]: trait.Key.html
 #[derive(Debug)]
-pub struct Storage<K> {
+pub struct Storage<K: Key> {
     pub(crate) inner: Inner,
     observer: Observer,
     marker: PhantomData<K>,
@@ -55,7 +55,7 @@ pub(crate) struct Safe {
     lock_file: Option<StdFile>,
 }
 
-impl<K> Clone for Storage<K> {
+impl<K: Key> Clone for Storage<K> {
     #[must_use]
     fn clone(&self) -> Self {
         Self {
@@ -89,7 +89,7 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     }
 }
 
-impl<K> Storage<K> {
+impl<K: Key> Storage<K> {
     pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
         let dump_sem = config.dump_sem();
         let inner = Inner::new(config, ioring);
@@ -149,8 +149,9 @@ impl<K> Storage<K> {
     /// Fails with the same errors as [`write_with`]
     ///
     /// [`write_with`]: Storage::write_with
-    pub async fn write(&self, key: impl Key, value: Vec<u8>) -> Result<()> {
-        self.write_with_optional_meta(key, value, None).await
+    pub async fn write(&self, key: impl AsRef<K>, value: Vec<u8>) -> Result<()> {
+        self.write_with_optional_meta(key.as_ref(), value, None)
+            .await
     }
 
     /// Similar to [`write`] but with metadata
@@ -166,13 +167,14 @@ impl<K> Storage<K> {
     /// ```
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
-    pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
-        self.write_with_optional_meta(key, value, Some(meta)).await
+    pub async fn write_with(&self, key: impl AsRef<K>, value: Vec<u8>, meta: Meta) -> Result<()> {
+        self.write_with_optional_meta(key.as_ref(), value, Some(meta))
+            .await
     }
 
     async fn write_with_optional_meta(
         &self,
-        key: impl Key,
+        key: &K,
         value: Vec<u8>,
         meta: Option<Meta>,
     ) -> Result<()> {
@@ -183,7 +185,7 @@ impl<K> Storage<K> {
             warn!("record with key {:?} and meta {:?} exists", key, meta);
             return Ok(());
         }
-        let record = Record::create(&key, value, meta.unwrap_or_default())
+        let record = Record::create(key, value, meta.unwrap_or_default())
             .with_context(|| "storage write with record creation failed")?;
         let mut safe = self.inner.safe.write().await;
         let blob = safe
@@ -218,9 +220,9 @@ impl<K> Storage<K> {
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     /// [`read_with`]: Storage::read_with
     #[inline]
-    pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
-        debug!("storage read {:?}", key);
-        self.read_with_optional_meta(key, None).await
+    pub async fn read(&self, key: impl AsRef<K>) -> Result<Vec<u8>> {
+        debug!("storage read {:?}", key.as_ref());
+        self.read_with_optional_meta(key.as_ref(), None).await
     }
     /// Reads data matching given key and metadata
     /// # Examples
@@ -237,7 +239,8 @@ impl<K> Storage<K> {
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
-    pub async fn read_with(&self, key: impl Key, meta: &Meta) -> Result<Vec<u8>> {
+    pub async fn read_with(&self, key: impl AsRef<K>, meta: &Meta) -> Result<Vec<u8>> {
+        let key = key.as_ref();
         debug!("storage read with {:?}", key);
         self.read_with_optional_meta(key, Some(meta))
             .await
@@ -247,8 +250,8 @@ impl<K> Storage<K> {
     /// Returns entries with matching key
     /// # Errors
     /// Fails after any disk IO errors.
-    pub async fn read_all(&self, key: &impl Key) -> Result<Vec<Entry>> {
-        let key = key.as_ref();
+    pub async fn read_all(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
+        let key = key.as_ref().as_ref();
         let mut all_entries = Vec::new();
         let safe = self.inner.safe.read().await;
         let active_blob = safe
@@ -279,7 +282,7 @@ impl<K> Storage<K> {
         Ok(all_entries)
     }
 
-    async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn read_with_optional_meta(&self, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
         let key = key.as_ref();
@@ -522,7 +525,7 @@ impl<K> Storage<K> {
     /// `contains` returns either "definitely in storage" or "definitely not".
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn contains(&self, key: impl Key) -> Result<bool> {
+    pub async fn contains(&self, key: K) -> Result<bool> {
         let key = key.as_ref();
         self.contains_with(key, None).await
     }
@@ -549,7 +552,8 @@ impl<K> Storage<K> {
     /// Uses bloom filter under the hood, so false positive results are possible,
     /// but false negatives are not.
     /// In other words, `check_bloom` returns either "possibly in storage" or "definitely not".
-    pub async fn check_bloom(&self, key: impl Key) -> Option<bool> {
+    pub async fn check_bloom(&self, key: impl AsRef<K>) -> Option<bool> {
+        let key = key.as_ref();
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.read().await;
         let in_active = inner
@@ -753,11 +757,4 @@ pub trait Key: AsRef<[u8]> + Debug {
     fn to_vec(&self) -> Vec<u8> {
         self.as_ref().to_vec()
     }
-}
-
-impl<T> Key for &T
-where
-    T: Key,
-{
-    const LEN: u16 = T::LEN;
 }

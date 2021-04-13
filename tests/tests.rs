@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate log;
 
-use anyhow::Result as AnyResult;
+use anyhow::Result;
 use futures::{
     future::FutureExt,
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
@@ -138,7 +138,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
 }
 
 #[tokio::test]
-async fn test_storage_multithread_blob_overflow() -> AnyResult<()> {
+async fn test_storage_multithread_blob_overflow() -> Result<()> {
     let now = Instant::now();
     let path = common::init("overflow");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
@@ -171,7 +171,7 @@ async fn test_storage_close() {
 }
 
 #[tokio::test]
-async fn test_on_disk_index() -> AnyResult<()> {
+async fn test_on_disk_index() -> Result<()> {
     let now = Instant::now();
     let path = common::init("index");
     let data_size = 500;
@@ -593,7 +593,7 @@ async fn write_one(
     key: u32,
     data: &[u8],
     version: Option<&str>,
-) -> AnyResult<()> {
+) -> Result<()> {
     let data = data.to_vec();
     let key = KeyTest::new(key);
     debug!("tests write one key: {:?}", key);

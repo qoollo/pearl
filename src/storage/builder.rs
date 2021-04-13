@@ -8,7 +8,7 @@ use super::prelude::*;
 ///  - [`max_data_in_blob`] - maximum number of records in one blob
 ///  - [`blob_file_name_prefix`] - prefix in blob file name pattern: {prefix}.{id}.{ext}
 ///  - [`key_size`] - const key size in bytes
-///         
+///
 /// # Example
 /// ```no-run
 /// use pearl::{Builder, Storage, Key};
@@ -46,7 +46,7 @@ impl Builder {
     /// returns error if not all params are set.
     /// # Errors
     /// Return error if some of the required params is missed
-    pub fn build<K>(self) -> Result<Storage<K>> {
+    pub fn build<K: Key>(self) -> Result<Storage<K>> {
         let mut missed_params = String::new();
         if self.config.work_dir().is_none() {
             missed_params.push_str("> work_dir\n");
