@@ -43,7 +43,7 @@ pub struct Storage<K: Key> {
 #[derive(Debug, Clone)]
 pub(crate) struct Inner {
     pub(crate) config: Config,
-    pub(crate) safe: Arc<RwLock<Safe>>,
+    pub(crate) safe: Arc<Mutex<Safe>>,
     next_blob_id: Arc<AtomicUsize>,
     pub(crate) ioring: Option<Rio>,
 }
@@ -187,7 +187,7 @@ impl<K: Key> Storage<K> {
         }
         let record = Record::create(key, value, meta.unwrap_or_default())
             .with_context(|| "storage write with record creation failed")?;
-        let mut safe = self.inner.safe.write().await;
+        let mut safe = self.inner.safe.lock().await;
         let blob = safe
             .active_blob
             .as_mut()
@@ -253,7 +253,7 @@ impl<K: Key> Storage<K> {
     pub async fn read_all(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
         let key = key.as_ref().as_ref();
         let mut all_entries = Vec::new();
-        let safe = self.inner.safe.write().await;
+        let safe = self.inner.safe.lock().await;
         let active_blob = safe
             .active_blob
             .as_ref()
@@ -284,7 +284,7 @@ impl<K: Key> Storage<K> {
 
     async fn read_with_optional_meta(&self, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
-        let safe = self.inner.safe.write().await;
+        let safe = self.inner.safe.lock().await;
         let key = key.as_ref();
         let active_blob_read_res = safe
             .active_blob
@@ -321,7 +321,7 @@ impl<K: Key> Storage<K> {
     /// # Errors
     /// Fails because of any IO errors
     pub async fn close(self) -> Result<()> {
-        let mut safe = self.inner.safe.write().await;
+        let mut safe = self.inner.safe.lock().await;
         let active_blob = safe.active_blob.take();
         let mut res = Ok(());
         if let Some(mut blob) = active_blob {
@@ -354,7 +354,7 @@ impl<K: Key> Storage<K> {
     /// assert_eq!(storage.blobs_count(), 1);
     /// ```
     pub async fn blobs_count(&self) -> usize {
-        let safe = self.inner.safe.write().await;
+        let safe = self.inner.safe.lock().await;
         let count = safe.blobs.read().await.len();
         if safe.active_blob.is_some() {
             count + 1
@@ -365,7 +365,7 @@ impl<K: Key> Storage<K> {
 
     /// `index_memory` returns the amount of memory used by blob to store indices
     pub async fn index_memory(&self) -> usize {
-        let safe = self.inner.safe.write().await;
+        let safe = self.inner.safe.lock().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
             ablob.index_memory()
         } else {
@@ -419,14 +419,14 @@ impl<K: Key> Storage<K> {
                 e
             })?;
         debug!("{} not locked", path.display());
-        self.inner.safe.write().await.lock_file = Some(lock_file);
+        self.inner.safe.lock().await.lock_file = Some(lock_file);
         Ok(())
     }
 
     async fn init_new(&mut self) -> Result<()> {
         let next = self.inner.next_blob_name()?;
         let config = self.filter_config();
-        let mut safe = self.inner.safe.write().await;
+        let mut safe = self.inner.safe.lock().await;
         let blob = Blob::open_new(next, self.inner.ioring.clone(), config)
             .await?
             .boxed();
@@ -457,7 +457,7 @@ impl<K: Key> Storage<K> {
                 Error::from(ErrorKind::Uninitialized)
             })?
             .boxed();
-        let mut safe = self.inner.safe.write().await;
+        let mut safe = self.inner.safe.lock().await;
         active_blob.load_index().await?;
         for blob in &mut blobs {
             debug!("dump all blobs except active blob");
@@ -531,7 +531,7 @@ impl<K: Key> Storage<K> {
     }
 
     async fn contains_with(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
-        let inner = self.inner.safe.write().await;
+        let inner = self.inner.safe.lock().await;
         if let Some(active_blob) = &inner.active_blob {
             if active_blob.contains(key, meta).await? {
                 return Ok(true);
@@ -555,7 +555,7 @@ impl<K: Key> Storage<K> {
     pub async fn check_bloom(&self, key: impl AsRef<K>) -> Option<bool> {
         let key = key.as_ref();
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
-        let inner = self.inner.safe.write().await;
+        let inner = self.inner.safe.lock().await;
         let in_active = inner
             .active_blob
             .as_ref()
@@ -617,7 +617,7 @@ impl Inner {
     fn new(config: Config, ioring: Option<Rio>) -> Self {
         Self {
             config,
-            safe: Arc::new(RwLock::new(Safe::new())),
+            safe: Arc::new(Mutex::new(Safe::new())),
             next_blob_id: Arc::new(AtomicUsize::new(0)),
             ioring,
         }
@@ -650,24 +650,24 @@ impl Inner {
     }
 
     async fn records_count(&self) -> usize {
-        self.safe.write().await.records_count().await
+        self.safe.lock().await.records_count().await
     }
 
     async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
-        self.safe.write().await.records_count_detailed().await
+        self.safe.lock().await.records_count_detailed().await
     }
 
     async fn records_count_in_active_blob(&self) -> Option<usize> {
-        let inner = self.safe.write().await;
+        let inner = self.safe.lock().await;
         inner.active_blob.as_ref().map(|b| b.records_count())
     }
 
     async fn fsyncdata(&self) -> IOResult<()> {
-        self.safe.write().await.fsyncdata().await
+        self.safe.lock().await.fsyncdata().await
     }
 
     pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
-        self.safe.write().await.try_dump_old_blob_indexes(sem).await;
+        self.safe.lock().await.try_dump_old_blob_indexes(sem).await;
     }
 }
 
