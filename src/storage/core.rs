@@ -253,7 +253,7 @@ impl<K: Key> Storage<K> {
     pub async fn read_all(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
         let key = key.as_ref().as_ref();
         let mut all_entries = Vec::new();
-        let safe = self.inner.safe.read().await;
+        let safe = self.inner.safe.write().await;
         let active_blob = safe
             .active_blob
             .as_ref()
@@ -284,7 +284,7 @@ impl<K: Key> Storage<K> {
 
     async fn read_with_optional_meta(&self, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
-        let safe = self.inner.safe.read().await;
+        let safe = self.inner.safe.write().await;
         let key = key.as_ref();
         let active_blob_read_res = safe
             .active_blob
@@ -354,7 +354,7 @@ impl<K: Key> Storage<K> {
     /// assert_eq!(storage.blobs_count(), 1);
     /// ```
     pub async fn blobs_count(&self) -> usize {
-        let safe = self.inner.safe.read().await;
+        let safe = self.inner.safe.write().await;
         let count = safe.blobs.read().await.len();
         if safe.active_blob.is_some() {
             count + 1
@@ -365,7 +365,7 @@ impl<K: Key> Storage<K> {
 
     /// `index_memory` returns the amount of memory used by blob to store indices
     pub async fn index_memory(&self) -> usize {
-        let safe = self.inner.safe.read().await;
+        let safe = self.inner.safe.write().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
             ablob.index_memory()
         } else {
@@ -531,7 +531,7 @@ impl<K: Key> Storage<K> {
     }
 
     async fn contains_with(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
-        let inner = self.inner.safe.read().await;
+        let inner = self.inner.safe.write().await;
         if let Some(active_blob) = &inner.active_blob {
             if active_blob.contains(key, meta).await? {
                 return Ok(true);
@@ -555,7 +555,7 @@ impl<K: Key> Storage<K> {
     pub async fn check_bloom(&self, key: impl AsRef<K>) -> Option<bool> {
         let key = key.as_ref();
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
-        let inner = self.inner.safe.read().await;
+        let inner = self.inner.safe.write().await;
         let in_active = inner
             .active_blob
             .as_ref()
@@ -650,20 +650,20 @@ impl Inner {
     }
 
     async fn records_count(&self) -> usize {
-        self.safe.read().await.records_count().await
+        self.safe.write().await.records_count().await
     }
 
     async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
-        self.safe.read().await.records_count_detailed().await
+        self.safe.write().await.records_count_detailed().await
     }
 
     async fn records_count_in_active_blob(&self) -> Option<usize> {
-        let inner = self.safe.read().await;
+        let inner = self.safe.write().await;
         inner.active_blob.as_ref().map(|b| b.records_count())
     }
 
     async fn fsyncdata(&self) -> IOResult<()> {
-        self.safe.read().await.fsyncdata().await
+        self.safe.write().await.fsyncdata().await
     }
 
     pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {

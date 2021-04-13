@@ -65,7 +65,7 @@ impl ObserverWorker {
 async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
     let (active_size, active_count) = {
         trace!("await for lock");
-        let safe_locked = inner.safe.read().await;
+        let safe_locked = inner.safe.write().await;
         trace!("lock acquired");
         let active_blob = safe_locked
             .active_blob
