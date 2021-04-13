@@ -54,10 +54,10 @@ impl ObserverWorker {
         if let Some(inner) = active_blob_check(inner_cloned).await? {
             update_active_blob(inner, self.dump_sem.clone()).await?;
         }
-        let mut inner_mut = self.inner.clone();
-        inner_mut
-            .try_dump_old_blob_indexes(self.dump_sem.clone())
-            .await;
+        // let mut inner_mut = self.inner.clone();
+        // inner_mut
+        //     .try_dump_old_blob_indexes(self.dump_sem.clone())
+        //     .await;
         Ok(())
     }
 }
