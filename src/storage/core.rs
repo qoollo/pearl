@@ -456,7 +456,7 @@ impl<K: Key> Storage<K> {
             })?
             .boxed();
         let mut safe = self.inner.safe.write().await;
-        active_blob.load_index().await?;
+        active_blob.load_index(K::LEN).await?;
         for blob in &mut blobs {
             debug!("dump all blobs except active blob");
             blob.dump().await?;
@@ -492,7 +492,7 @@ impl<K: Key> Storage<K> {
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(file.clone(), ioring.clone(), config.filter())
+                Blob::from_file(file.clone(), ioring.clone(), config.filter(), K::LEN)
                     .await
                     .map_err(|e| (e, file))
             })

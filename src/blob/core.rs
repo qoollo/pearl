@@ -85,11 +85,11 @@ impl Blob {
         }
     }
 
-    pub(crate) async fn load_index(&mut self) -> Result<()> {
+    pub(crate) async fn load_index(&mut self, key_size: u16) -> Result<()> {
         if let Err(e) = self.index.load().await {
             warn!("error loading index: {}, regenerating", e);
             self.index.clear();
-            self.try_regenerate_index().await?;
+            self.try_regenerate_index(key_size as usize).await?;
         }
         Ok(())
     }
@@ -102,6 +102,7 @@ impl Blob {
         path: PathBuf,
         ioring: Option<Rio>,
         filter_config: Option<BloomConfig>,
+        key_size: u16,
     ) -> Result<Self> {
         let now = Instant::now();
         let file = File::open(&path, ioring.clone()).await?;
@@ -131,7 +132,7 @@ impl Blob {
         };
         trace!("call update index");
         if size as u64 > header_size {
-            blob.try_regenerate_index()
+            blob.try_regenerate_index(key_size as usize)
                 .await
                 .context("failed to regenerate index")?;
         } else {
@@ -147,13 +148,17 @@ impl Blob {
         Ok(blob)
     }
 
-    async fn raw_records(&self) -> Result<RawRecords> {
-        RawRecords::start(self.file.clone(), bincode::serialized_size(&self.header)?)
-            .await
-            .context("failed to create iterator for raw records")
+    async fn raw_records(&self, right_key_size: usize) -> Result<RawRecords> {
+        RawRecords::start(
+            self.file.clone(),
+            bincode::serialized_size(&self.header)?,
+            right_key_size,
+        )
+        .await
+        .context("failed to create iterator for raw records")
     }
 
-    pub(crate) async fn try_regenerate_index(&mut self) -> Result<()> {
+    pub(crate) async fn try_regenerate_index(&mut self, right_key_size: usize) -> Result<()> {
         info!("try regenerate index for blob: {}", self.name);
         if self.index.on_disk() {
             debug!("index already updated");
@@ -161,7 +166,7 @@ impl Blob {
         }
         debug!("index file missed");
         let raw_r = self
-            .raw_records()
+            .raw_records(right_key_size)
             .await
             .context("failed to read raw records")?;
         debug!("raw records loaded");
@@ -411,7 +416,7 @@ struct RawRecords {
 }
 
 impl RawRecords {
-    async fn start(file: File, blob_header_size: u64) -> Result<Self> {
+    async fn start(file: File, blob_header_size: u64, right_key_size: usize) -> Result<Self> {
         let current_offset = blob_header_size;
         debug!("blob raw records start, current offset: {}", current_offset);
         let size_of_usize = std::mem::size_of::<usize>();
@@ -432,6 +437,10 @@ impl RawRecords {
         Self::check_record_header_magic_byte(magic_byte)?;
         let key_len = bincode::deserialize::<usize>(&key_len_buf)
             .context("failed to deserialize index buf vec length")?;
+        if key_len != right_key_size {
+            let msg = "blob key_sizeis not equal to pearl compile-time key size";
+            return Err(Error::validation(msg).into());
+        }
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
         debug!(
             "blob raw records start, record header size: {}",
