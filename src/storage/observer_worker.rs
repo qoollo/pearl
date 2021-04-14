@@ -34,7 +34,10 @@ impl ObserverWorker {
     async fn tick(&mut self) -> Result<()> {
         match timeout(self.update_interval, self.receiver.recv()).await {
             Ok(Some(Msg::CloseActiveBlob)) => {
-                update_active_blob(self.inner.clone(), self.dump_sem.clone()).await?
+                update_active_blob(self.inner.clone()).await?;
+                self.inner
+                    .try_dump_old_blob_indexes(self.dump_sem.clone())
+                    .await;
             }
             Ok(None) => {
                 return Err(anyhow!(
@@ -51,13 +54,10 @@ impl ObserverWorker {
     async fn try_update(&self) -> Result<()> {
         trace!("try update active blob");
         let inner_cloned = self.inner.clone();
-        if let Some(inner) = active_blob_check(inner_cloned).await? {
-            update_active_blob(inner, self.dump_sem.clone()).await?;
+        if let Some(mut inner) = active_blob_check(inner_cloned).await? {
+            update_active_blob(inner.clone()).await?;
+            inner.try_dump_old_blob_indexes(self.dump_sem.clone()).await;
         }
-        let mut inner_mut = self.inner.clone();
-        inner_mut
-            .try_dump_old_blob_indexes(self.dump_sem.clone())
-            .await;
         Ok(())
     }
 }
@@ -91,21 +91,17 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
     }
 }
 
-async fn update_active_blob(inner: Inner, dump_sem: Arc<Semaphore>) -> Result<()> {
+async fn update_active_blob(inner: Inner) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
     let new_active = Blob::open_new(next_name, inner.ioring, inner.config.filter())
         .await?
         .boxed();
-    let task = inner
+    inner
         .safe
         .lock()
         .await
         .replace_active_blob(new_active)
         .await?;
-    tokio::spawn(async move {
-        let _res = dump_sem.acquire().await.expect("semaphore is closed");
-        task.await;
-    });
     Ok(())
 }
