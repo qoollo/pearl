@@ -1,4 +1,5 @@
-use tokio::time::Instant;
+use futures::FutureExt;
+use tokio::{fs::create_dir_all, time::Instant};
 
 use super::prelude::*;
 
@@ -55,7 +56,14 @@ impl Blob {
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
         let mut offset = self.current_offset.lock().await;
-        let bytes_written = self.file.write_append(&buf).await? as u64;
+        let bytes_written = match self.file.write_append(&buf).await {
+            Ok(x) => x as u64,
+            Err(e) => {
+                drop(offset);
+                self.dump_corrupted().await?;
+                return Err(e.into());
+            }
+        };
         *offset = bytes_written;
         Ok(())
     }
@@ -74,8 +82,7 @@ impl Blob {
         if self.index.on_disk() {
             Ok(0) // 0 bytes dumped
         } else {
-            self.file
-                .fsyncdata()
+            self.fsyncdata()
                 .await
                 .with_context(|| "Blob file dump failed!")?;
             self.index
@@ -152,6 +159,18 @@ impl Blob {
             .context("failed to create iterator for raw records")
     }
 
+    async fn dump_corrupted(&self) -> Result<()> {
+        let source_name = self.name.to_path();
+        let file_name = source_name
+            .file_name()
+            .ok_or_else(|| anyhow::anyhow!("Blob path is empty"))?;
+        let dir = self.name.dir.join("corrupted");
+        create_dir_all(&dir).await?;
+        let target_name = dir.join(file_name);
+        tokio::fs::copy(source_name, target_name).await?;
+        Ok(())
+    }
+
     pub(crate) async fn try_regenerate_index(&mut self) -> Result<()> {
         info!("try regenerate index for blob: {}", self.name);
         if self.index.on_disk() {
@@ -191,15 +210,20 @@ impl Blob {
         let bytes_written = self
             .file
             .write_append(&buf)
-            .await
-            .map_err(|e| -> anyhow::Error {
-                match e.kind() {
-                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
-                        Error::file_unavailable(kind).into()
-                    }
-                    _ => e.into(),
+            .then(|result| async {
+                if result.is_err() {
+                    self.dump_corrupted().await?;
                 }
-            })? as u64;
+                result.map_err(|e| -> anyhow::Error {
+                    match e.kind() {
+                        kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
+                            Error::file_unavailable(kind).into()
+                        }
+                        _ => e.into(),
+                    }
+                })
+            })
+            .await? as u64;
         self.index.push(record.header().clone())?;
         *offset += bytes_written;
         Ok(())
@@ -298,7 +322,15 @@ impl Blob {
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
-        self.file.fsyncdata().await
+        self.file
+            .fsyncdata()
+            .then(|x| async {
+                if x.is_err() {
+                    let _ = self.dump_corrupted().await;
+                }
+                x
+            })
+            .await
     }
 
     #[inline]
