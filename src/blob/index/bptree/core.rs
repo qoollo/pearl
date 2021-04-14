@@ -134,8 +134,12 @@ impl FileIndexTrait for BPTreeFileIndex {
         }
     }
 
-    fn get_index_header(&self) -> &IndexHeader {
-        &self.header
+    fn validate(&self) -> Result<()> {
+        if self.header.written == 1 {
+            Ok(())
+        } else {
+            Err(anyhow!("Index Header is not valid"))
+        }
     }
 }
 

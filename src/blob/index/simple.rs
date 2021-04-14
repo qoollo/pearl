@@ -93,8 +93,12 @@ impl FileIndexTrait for SimpleFileIndex {
             .map(|res| res.map(|h| h.0))
     }
 
-    fn get_index_header(&self) -> &IndexHeader {
-        &self.header
+    fn validate(&self) -> Result<()> {
+        if self.header.written == 1 {
+            Ok(())
+        } else {
+            Err(anyhow!("Index Header is not valid"))
+        }
     }
 }
 
@@ -263,11 +267,11 @@ impl SimpleFileIndex {
             let mut buf = Vec::with_capacity(hs + fsize + headers.len() * record_header_size);
             serialize_into(&mut buf, &header)?;
             debug!(
-            "serialize headers filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
-            filter_buf.len(),
-            header.filter_buf_size,
-            buf.len()
-        );
+                "serialize headers filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
+                filter_buf.len(),
+                header.filter_buf_size,
+                buf.len()
+            );
             buf.extend_from_slice(&filter_buf);
             headers
                 .iter()

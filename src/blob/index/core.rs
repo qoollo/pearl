@@ -103,10 +103,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         ioring: Option<Rio>,
     ) -> Result<Self> {
         let findex = FileIndex::from_file(name.clone(), ioring.clone()).await?;
-        let header = findex.get_index_header();
-        if header.written != 1 {
-            return Err(Error::validation("Header is corrupt").into());
-        }
+        findex.validate().with_context(|| "Header is corrupt")?;
         let filter = findex.read_filter().await?;
         let params = IndexParams::new(config.filter.is_some(), config.recreate_index_file);
         trace!("index restored successfuly");
@@ -286,5 +283,5 @@ pub(crate) trait FileIndexTrait: Sized {
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)>;
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>>;
-    fn get_index_header(&self) -> &IndexHeader;
+    fn validate(&self) -> Result<()>;
 }
