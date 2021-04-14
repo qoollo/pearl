@@ -725,12 +725,17 @@ impl Safe {
     pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
         let blobs = self.blobs.clone();
         tokio::spawn(async move {
+            trace!("acquire blobs write to dump old blobs");
             let mut write_blobs = blobs.write().await;
+            trace!("dump old blobs");
             for blob in write_blobs.iter_mut() {
+                trace!("dumping old blob");
                 let _ = sem.acquire().await;
+                trace!("acquired sem for dumping old blobs");
                 if let Err(e) = blob.dump().await {
                     error!("Error dumping blob ({}): {}", blob.name(), e);
                 }
+                trace!("finished dumping old blob");
             }
         });
     }
