@@ -5,8 +5,6 @@ const LOCK_FILE: &str = "pearl.lock";
 
 const O_EXCL: i32 = 128;
 
-type SaveOldBlobTask = std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>;
-
 /// A main storage struct.
 ///
 /// This type is clonable, cloning it will only create a new reference,
@@ -715,34 +713,29 @@ impl Safe {
         Ok(())
     }
 
-    pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob>) -> Result<SaveOldBlobTask> {
+    pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob>) -> Result<()> {
         let old_active = self
             .active_blob
             .replace(blob)
             .ok_or_else(Error::active_blob_not_set)?;
-        let blobs = self.blobs.clone();
-        Ok(Box::pin(async move {
-            let mut blobs = blobs.write().await;
-            blobs.push(*old_active);
-            // Notice: if dump of blob or indices fails, it's likely a problem with disk appeared, so
-            // all descriptors of the storage become invalid and unusable
-            // Possible solution: recreate instance of storage, when disk will be available
-            let last_blob = blobs.last_mut().unwrap();
-            if let Err(e) = last_blob.dump().await {
-                error!("Error dumping blob ({}): {}", last_blob.name(), e);
-            }
-        }))
+        self.blobs.write().await.push(*old_active);
+        Ok(())
     }
 
     pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
         let blobs = self.blobs.clone();
         tokio::spawn(async move {
+            trace!("acquire blobs write to dump old blobs");
             let mut write_blobs = blobs.write().await;
+            trace!("dump old blobs");
             for blob in write_blobs.iter_mut() {
+                trace!("dumping old blob");
                 let _ = sem.acquire().await;
+                trace!("acquired sem for dumping old blobs");
                 if let Err(e) = blob.dump().await {
                     error!("Error dumping blob ({}): {}", blob.name(), e);
                 }
+                trace!("finished dumping old blob");
             }
         });
     }

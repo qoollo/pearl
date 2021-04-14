@@ -19,12 +19,12 @@ impl Generator {
         }
     }
 
-    pub fn next(&mut self) -> Option<(Vec<u8>, Vec<u8>)> {
+    pub fn next(&mut self) -> Option<(Key128, Vec<u8>)> {
         if self.written < self.limit * 1_000_000 {
             let key = self.written.to_be_bytes().to_vec();
             let data = self.value.clone();
             self.written += (key.len() + data.len()) as u64;
-            Some((key, data))
+            Some((Key128(key), data))
         } else {
             None
         }
