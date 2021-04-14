@@ -103,7 +103,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
     ) -> Result<Self> {
         let findex = FileIndex::from_file(name.clone(), ioring.clone()).await?;
         findex.validate().with_context(|| "Header is corrupt")?;
-        let filter = findex.read_filter().await?;
+        let filter = Bloom::from_raw(&findex.read_meta().await?)?;
         let params = IndexParams::new(config.filter.is_some(), config.recreate_index_file);
         trace!("index restored successfuly");
         let index = Self {
@@ -131,7 +131,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
                 &self.name.to_path(),
                 self.ioring.clone(),
                 headers,
-                &self.filter,
+                self.filter.to_raw()?,
                 self.params.recreate_file,
             )
             .await?;
@@ -148,7 +148,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         let (record_headers, records_count) = findex.get_records_headers().await?;
         self.mem = Some(compute_mem_attrs(&record_headers, records_count));
         self.inner = State::InMemory(record_headers);
-        self.filter = findex.read_filter().await?;
+        self.filter = Bloom::from_raw(&findex.read_meta().await?)?;
         Ok(())
     }
 
@@ -268,12 +268,12 @@ pub(crate) trait FileIndexTrait: Sized {
         path: &Path,
         rio: Option<Rio>,
         headers: &InMemoryIndex,
-        filter: &Bloom,
+        meta: Vec<u8>,
         recreate_index_file: bool,
     ) -> Result<Self>;
     fn file_size(&self) -> u64;
     fn records_count(&self) -> usize;
-    async fn read_filter(&self) -> Result<Bloom>;
+    async fn read_meta(&self) -> Result<Vec<u8>>;
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)>;
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>>;

@@ -1,5 +1,8 @@
 use super::prelude::*;
 
+const META_SIZE: usize = 100;
+const META_VALUE: u8 = 17;
+
 #[tokio::test]
 async fn serialize_deserialize_file() {
     let mut inmem = InMemoryIndex::new();
@@ -9,16 +12,11 @@ async fn serialize_deserialize_file() {
             let rh = RecordHeader::new(key.clone(), 1, 1, 1);
             inmem.insert(key, vec![rh]);
         });
-    let filter = Bloom::new(BloomConfig::default());
-    let findex = BPTreeFileIndex::from_records(
-        &Path::new("/tmp/bptree_index.b"),
-        None,
-        &inmem,
-        &filter,
-        true,
-    )
-    .await
-    .expect("Can't create file index");
+    let meta = vec![META_VALUE; META_SIZE];
+    let findex =
+        BPTreeFileIndex::from_records(&Path::new("/tmp/bptree_index.b"), None, &inmem, meta, true)
+            .await
+            .expect("Can't create file index");
     let (inmem_after, _size) = findex
         .get_records_headers()
         .await
@@ -38,12 +36,12 @@ async fn check_get_any() {
             let rh = RecordHeader::new(key.clone(), 1, 1, 1);
             inmem.insert(key, vec![rh]);
         });
-    let filter = Bloom::new(BloomConfig::default());
+    let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::from_records(
         &Path::new("/tmp/any_bptree_index.b"),
         None,
         &inmem,
-        &filter,
+        meta,
         true,
     )
     .await
@@ -74,12 +72,12 @@ async fn check_get() {
             let recs = (0..times).map(|_| rh.clone()).collect();
             inmem.insert(key, recs);
         });
-    let filter = Bloom::new(BloomConfig::default());
+    let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::from_records(
         &Path::new("/tmp/all_bptree_index.b"),
         None,
         &inmem,
-        &filter,
+        meta,
         true,
     )
     .await

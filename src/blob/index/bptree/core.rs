@@ -44,10 +44,10 @@ impl FileIndexTrait for BPTreeFileIndex {
         path: &Path,
         ioring: Option<Rio>,
         headers: &InMemoryIndex,
-        filter: &Bloom,
+        meta: Vec<u8>,
         recreate_index_file: bool,
     ) -> Result<Self> {
-        let res = Self::serialize(headers, filter)?;
+        let res = Self::serialize(headers, meta)?;
         let (mut header, metadata, buf) = res;
         clean_file(path, recreate_index_file)?;
         let file = File::create(path, ioring)
@@ -73,14 +73,14 @@ impl FileIndexTrait for BPTreeFileIndex {
         self.header.records_count
     }
 
-    async fn read_filter(&self) -> Result<Bloom> {
-        trace!("load filter");
-        let mut buf = vec![0; self.header.filter_buf_size];
-        trace!("read filter into buf: [0; {}]", buf.len());
+    async fn read_meta(&self) -> Result<Vec<u8>> {
+        trace!("load meta");
+        let mut buf = vec![0; self.header.meta_size];
+        trace!("read meta into buf: [0; {}]", buf.len());
         self.file
             .read_at(&mut buf, self.header.serialized_size()? as u64)
             .await?;
-        Bloom::from_raw(&buf)
+        Ok(buf)
     }
 
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
@@ -100,7 +100,7 @@ impl FileIndexTrait for BPTreeFileIndex {
     async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)> {
         let mut buf = self.file.read_all().await?;
         self.validate_header(&mut buf).await?;
-        let offset = self.header.filter_buf_size + self.header.serialized_size()? as usize;
+        let offset = self.header.meta_size + self.header.serialized_size()? as usize;
         let records_end = self.metadata.leaves_offset as usize;
         let records_buf = &buf[offset..records_end];
         (0..self.header.records_count)
@@ -267,7 +267,7 @@ impl BPTreeFileIndex {
     async fn read_tree_meta(file: &File, header: &IndexHeader) -> Result<TreeMeta> {
         let meta_size = TreeMeta::serialized_size_default()? as usize;
         let mut buf = vec![0; meta_size];
-        let fsize = header.filter_buf_size as u64;
+        let fsize = header.meta_size as u64;
         let hs = header.serialized_size()?;
         let meta_offset = hs + fsize + (header.records_count * header.record_header_size) as u64;
         file.read_at(&mut buf, meta_offset).await?;
@@ -276,10 +276,10 @@ impl BPTreeFileIndex {
 
     fn serialize(
         headers_btree: &InMemoryIndex,
-        filter: &Bloom,
+        meta: Vec<u8>,
     ) -> Result<(IndexHeader, TreeMeta, Vec<u8>)> {
         Serializer::new(headers_btree)
-            .header_stage(filter)?
+            .header_stage(meta)?
             .leaves_stage()?
             .tree_stage()?
             .build()

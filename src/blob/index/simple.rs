@@ -26,14 +26,14 @@ impl FileIndexTrait for SimpleFileIndex {
         self.header.records_count
     }
 
-    async fn read_filter(&self) -> Result<Bloom> {
-        trace!("load filter");
-        let mut buf = vec![0; self.header.filter_buf_size];
-        trace!("read filter into buf: [0; {}]", buf.len());
+    async fn read_meta(&self) -> Result<Vec<u8>> {
+        trace!("load meta");
+        let mut buf = vec![0; self.header.meta_size];
+        trace!("read meta into buf: [0; {}]", buf.len());
         self.file
             .read_at(&mut buf, self.header.serialized_size()? as u64)
             .await?;
-        Bloom::from_raw(&buf)
+        Ok(buf)
     }
 
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
@@ -44,10 +44,10 @@ impl FileIndexTrait for SimpleFileIndex {
         path: &Path,
         ioring: Option<Rio>,
         headers: &InMemoryIndex,
-        filter: &Bloom,
+        meta: Vec<u8>,
         recreate_index_file: bool,
     ) -> Result<Self> {
-        let res = Self::serialize(headers, filter)?;
+        let res = Self::serialize(headers, meta)?;
         if res.is_none() {
             error!("Indices are empty!");
             return Err(anyhow!("empty in-memory indices".to_string()));
@@ -68,7 +68,7 @@ impl FileIndexTrait for SimpleFileIndex {
     async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)> {
         let mut buf = self.file.read_all().await?;
         self.validate_header(&mut buf).await?;
-        let offset = self.header.filter_buf_size + self.header.serialized_size()? as usize;
+        let offset = self.header.meta_size + self.header.serialized_size()? as usize;
         let records_buf = &buf[offset..];
         (0..self.header.records_count)
             .try_fold(InMemoryIndex::new(), |mut headers, i| {
@@ -249,30 +249,26 @@ impl SimpleFileIndex {
         Ok(())
     }
 
-    fn serialize(
-        headers: &InMemoryIndex,
-        filter: &Bloom,
-    ) -> Result<Option<(IndexHeader, Vec<u8>)>> {
+    fn serialize(headers: &InMemoryIndex, meta: Vec<u8>) -> Result<Option<(IndexHeader, Vec<u8>)>> {
         debug!("blob index simple serialize headers");
         if let Some(record_header) = headers.values().next().and_then(|v| v.first()) {
             debug!("index simple serialize headers first: {:?}", record_header);
             let record_header_size = record_header.serialized_size().try_into()?;
             trace!("record header serialized size: {}", record_header_size);
             let headers = headers.iter().flat_map(|r| r.1).collect::<Vec<_>>(); // produce sorted
-            let filter_buf = filter.to_raw()?;
-            let header = IndexHeader::new(record_header_size, headers.len(), filter_buf.len());
+            let header = IndexHeader::new(record_header_size, headers.len(), meta.len());
             let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
             trace!("index header size: {}b", hs);
-            let fsize = header.filter_buf_size;
+            let fsize = header.meta_size;
             let mut buf = Vec::with_capacity(hs + fsize + headers.len() * record_header_size);
             serialize_into(&mut buf, &header)?;
             debug!(
-                "serialize headers filter serialized_size: {}, header.filter_buf_size: {}, buf.len: {}",
-                filter_buf.len(),
-                header.filter_buf_size,
+                "serialize headers meta size: {}, header.meta_size: {}, buf.len: {}",
+                meta.len(),
+                header.meta_size,
                 buf.len()
             );
-            buf.extend_from_slice(&filter_buf);
+            buf.extend_from_slice(&meta);
             headers
                 .iter()
                 .filter_map(|h| serialize(&h).ok())
@@ -286,7 +282,7 @@ impl SimpleFileIndex {
             );
             let hash = get_hash(&buf);
             let header =
-                IndexHeader::with_hash(record_header_size, headers.len(), filter_buf.len(), hash);
+                IndexHeader::with_hash(record_header_size, headers.len(), meta.len(), hash);
             serialize_into(buf.as_mut_slice(), &header)?;
             Ok(Some((header, buf)))
         } else {
@@ -298,9 +294,8 @@ impl SimpleFileIndex {
         debug!("blob index simple read at");
         let header_size = bincode::serialized_size(&header)?;
         debug!("blob index simple read at header size {}", header_size);
-        let offset = header_size
-            + header.filter_buf_size as u64
-            + (header.record_header_size * index) as u64;
+        let offset =
+            header_size + header.meta_size as u64 + (header.record_header_size * index) as u64;
         let mut buf = vec![0; header.record_header_size];
         debug!(
             "blob index simple offset: {}, buf len: {}",

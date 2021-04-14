@@ -4,7 +4,7 @@ pub(super) struct HeaderStage<'a> {
     headers_btree: &'a InMemoryIndex,
     header: IndexHeader,
     key_size: usize,
-    filter_buf: Vec<u8>,
+    meta: Vec<u8>,
 }
 
 pub(super) struct LeavesStage<'a> {
@@ -14,7 +14,7 @@ pub(super) struct LeavesStage<'a> {
     leaves_buf: Vec<u8>,
     leaves_offset: u64,
     headers_size: usize,
-    filter_buf: Vec<u8>,
+    meta: Vec<u8>,
 }
 
 pub(super) struct TreeStage<'a> {
@@ -25,7 +25,7 @@ pub(super) struct TreeStage<'a> {
     tree_buf: Vec<u8>,
     leaves_buf: Vec<u8>,
     headers_size: usize,
-    filter_buf: Vec<u8>,
+    meta: Vec<u8>,
 }
 
 pub(super) struct Serializer<'a> {
@@ -36,21 +36,20 @@ impl<'a> Serializer<'a> {
     pub(super) fn new(headers_btree: &'a InMemoryIndex) -> Self {
         Self { headers_btree }
     }
-    pub(super) fn header_stage(self, filter: &'a Bloom) -> Result<HeaderStage<'a>> {
+    pub(super) fn header_stage(self, meta: Vec<u8>) -> Result<HeaderStage<'a>> {
         if let Some(record_header) = self.headers_btree.values().next().and_then(|v| v.first()) {
             let record_header_size = record_header.serialized_size().try_into()?;
-            let filter_buf = filter.to_raw()?;
             let headers_len = self
                 .headers_btree
                 .iter()
                 .fold(0, |acc, (_k, v)| acc + v.len());
-            let header = IndexHeader::new(record_header_size, headers_len, filter_buf.len());
+            let header = IndexHeader::new(record_header_size, headers_len, meta.len());
             let key_size = record_header.key().len();
             Ok(HeaderStage {
                 headers_btree: self.headers_btree,
                 header,
                 key_size,
-                filter_buf,
+                meta,
             })
         } else {
             Err(anyhow!("BTree is empty, can't find info about key len!"))
@@ -61,7 +60,7 @@ impl<'a> Serializer<'a> {
 impl<'a> HeaderStage<'a> {
     pub(super) fn leaves_stage(self) -> Result<LeavesStage<'a>> {
         let hs = self.header.serialized_size()? as usize;
-        let fsize = self.header.filter_buf_size;
+        let fsize = self.header.meta_size;
         let msize: usize = TreeMeta::serialized_size_default()? as usize;
         let headers_start_offset = (hs + fsize) as u64;
         let headers_size = self.header.records_count * self.header.record_header_size;
@@ -80,7 +79,7 @@ impl<'a> HeaderStage<'a> {
             leaves_buf,
             leaves_offset,
             headers_size,
-            filter_buf: self.filter_buf,
+            meta: self.meta,
             header: self.header,
         })
     }
@@ -122,7 +121,7 @@ impl<'a> LeavesStage<'a> {
             header: self.header,
             headers_size: self.headers_size,
             leaves_buf: self.leaves_buf,
-            filter_buf: self.filter_buf,
+            meta: self.meta,
         })
     }
 
@@ -206,13 +205,13 @@ impl<'a> LeavesStage<'a> {
 impl<'a> TreeStage<'a> {
     pub(super) fn build(self) -> Result<(IndexHeader, TreeMeta, Vec<u8>)> {
         let hs = self.header.serialized_size()? as usize;
-        let fsize = self.header.filter_buf_size;
+        let fsize = self.header.meta_size;
         let msize = self.meta_buf.len();
         let data_size =
             hs + fsize + self.headers_size + msize + self.leaves_buf.len() + self.tree_buf.len();
         let mut buf = Vec::with_capacity(data_size);
         serialize_into(&mut buf, &self.header)?;
-        buf.extend_from_slice(&self.filter_buf);
+        buf.extend_from_slice(&self.meta);
         Self::append_headers(self.headers_btree, &mut buf)?;
         buf.extend_from_slice(&self.meta_buf);
         buf.extend_from_slice(&self.leaves_buf);
@@ -221,7 +220,7 @@ impl<'a> TreeStage<'a> {
         let header = IndexHeader::with_hash(
             self.header.record_header_size,
             self.header.records_count,
-            self.filter_buf.len(),
+            self.meta.len(),
             hash,
         );
         serialize_into(buf.as_mut_slice(), &header)?;

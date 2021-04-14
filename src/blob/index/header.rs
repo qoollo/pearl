@@ -6,18 +6,18 @@ pub(crate) struct IndexHeader {
     // contains serialized size of record headers, which allows to calculate offset in
     // case of `OnDisk` state of indices
     pub record_header_size: usize,
-    pub filter_buf_size: usize,
+    pub meta_size: usize,
     pub hash: Vec<u8>,
     pub(crate) version: u64,
     pub(crate) written: u8,
 }
 
 impl IndexHeader {
-    pub fn new(record_header_size: usize, records_count: usize, filter_buf_size: usize) -> Self {
+    pub fn new(record_header_size: usize, records_count: usize, meta_size: usize) -> Self {
         Self {
             records_count,
             record_header_size,
-            filter_buf_size,
+            meta_size,
             ..Self::default()
         }
     }
@@ -25,13 +25,13 @@ impl IndexHeader {
     pub fn with_hash(
         record_header_size: usize,
         records_count: usize,
-        filter_buf_size: usize,
+        meta_size: usize,
         hash: Vec<u8>,
     ) -> Self {
         Self {
             records_count,
             record_header_size,
-            filter_buf_size,
+            meta_size,
             hash,
             ..Self::default()
         }
@@ -58,7 +58,7 @@ impl Default for IndexHeader {
         Self {
             records_count: 0,
             record_header_size: 0,
-            filter_buf_size: 0,
+            meta_size: 0,
             hash: vec![0; ring::digest::SHA256.output_len],
             version: HEADER_VERSION,
             written: 0,
