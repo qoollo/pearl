@@ -1,5 +1,4 @@
 use super::prelude::*;
-use std::mem::size_of;
 
 pub(crate) type Index = IndexStruct<BPTreeFileIndex>;
 
@@ -197,12 +196,7 @@ impl<FileIndex: FileIndexTrait + Sync + Send + Clone> IndexTrait for IndexStruct
                     mem.records_allocated += v.capacity() - old_capacity;
                 } else {
                     if mem.records_count == 0 {
-                        // record header contains key as Vec<u8>, h.key().len() - data on the heap
-                        mem.record_header_size = size_of::<RecordHeader>() + h.key().len();
-                        // every entry also includes data on heap: capacity * size_of::<RecordHeader>()
-                        mem.key_size = h.key().len();
-                        mem.btree_entry_size =
-                            size_of::<Vec<u8>>() + mem.key_size + size_of::<Vec<RecordHeader>>();
+                        set_key_related_fields(mem, h.key().len());
                     }
                     let k = h.key().to_vec();
                     let v = vec![h];

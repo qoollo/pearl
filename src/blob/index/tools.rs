@@ -16,16 +16,17 @@ pub(crate) fn compute_mem_attrs(
     records_count: usize,
 ) -> MemoryAttrs {
     let key_size = record_headers.keys().next().map_or_else(|| 0, |v| v.len());
-    let btree_entry_size = size_of::<Vec<u8>>() + key_size + size_of::<Vec<RecordHeader>>();
-    let records_allocated = record_headers.values().fold(0, |acc, v| acc + v.capacity());
-    let record_header_size = size_of::<RecordHeader>() + key_size;
-    MemoryAttrs {
-        key_size,
-        btree_entry_size,
-        records_allocated,
-        records_count,
-        record_header_size,
-    }
+    let mut attrs: MemoryAttrs = Default::default();
+    set_key_related_fields(&mut attrs, key_size);
+    attrs.records_allocated = record_headers.values().fold(0, |acc, v| acc + v.capacity());
+    attrs.records_count = records_count;
+    attrs
+}
+
+pub(crate) fn set_key_related_fields(attrs: &mut MemoryAttrs, key_size: usize) {
+    attrs.key_size = key_size;
+    attrs.btree_entry_size = size_of::<Vec<u8>>() + key_size + size_of::<Vec<RecordHeader>>();
+    attrs.record_header_size = size_of::<RecordHeader>() + key_size;
 }
 
 pub(crate) fn clean_file(path: impl AsRef<Path>, recreate_index_file: bool) -> Result<()> {
