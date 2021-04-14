@@ -160,6 +160,7 @@ impl Blob {
     }
 
     async fn dump_corrupted(&self) -> Result<()> {
+        warn!("Blob {} dump started!", self.name());
         let source_name = self.name.to_path();
         let file_name = source_name
             .file_name()
@@ -167,7 +168,8 @@ impl Blob {
         let dir = self.name.dir.join("corrupted");
         create_dir_all(&dir).await?;
         let target_name = dir.join(file_name);
-        tokio::fs::copy(source_name, target_name).await?;
+        tokio::fs::copy(source_name, target_name.clone()).await?;
+        warn!("Blob {} dumped to {}!", self.name(), target_name.display());
         Ok(())
     }
 
