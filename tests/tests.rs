@@ -457,7 +457,7 @@ async fn test_check_bloom_filter_single() {
     let path = common::init("contains_bloom_filter_single");
     let storage = common::create_test_storage(&path, 10).await.unwrap();
     let data = b"some_random_data";
-    let repeat = 8192;
+    let repeat = 4096;
     for i in 0..repeat {
         let pos_key = KeyTest::new(i + repeat);
         let neg_key = KeyTest::new(i + 2 * repeat);
