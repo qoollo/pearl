@@ -56,14 +56,7 @@ impl Blob {
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
         let mut offset = self.current_offset.lock().await;
-        let bytes_written = match self.file.write_append(&buf).await {
-            Ok(x) => x as u64,
-            Err(e) => {
-                drop(offset);
-                self.dump_corrupted().await?;
-                return Err(e.into());
-            }
-        };
+        let bytes_written = self.file.write_append(&buf).await? as u64;
         *offset = bytes_written;
         Ok(())
     }
@@ -212,20 +205,15 @@ impl Blob {
         let bytes_written = self
             .file
             .write_append(&buf)
-            .then(|result| async {
-                if result.is_err() {
-                    self.dump_corrupted().await?;
-                }
-                result.map_err(|e| -> anyhow::Error {
-                    match e.kind() {
-                        kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
-                            Error::file_unavailable(kind).into()
-                        }
-                        _ => e.into(),
+            .await
+            .map_err(|e| -> anyhow::Error {
+                match e.kind() {
+                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
+                        Error::file_unavailable(kind).into()
                     }
-                })
-            })
-            .await? as u64;
+                    _ => e.into(),
+                }
+            })? as u64;
         self.index.push(record.header().clone())?;
         *offset += bytes_written;
         Ok(())
@@ -240,6 +228,18 @@ impl Blob {
         debug!("blob read any entry found");
         let buf = entry
             .load()
+            .then(|result| async {
+                let error = match result {
+                    Err(e) => e,
+                    x => return x,
+                };
+                if let Some(e) = error.downcast_ref::<Error>() {
+                    if let ErrorKind::Validation(_) = e.kind() {
+                        self.dump_corrupted().await?;
+                    }
+                }
+                Err(error)
+            })
             .await
             .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?
             .into_data();
@@ -324,15 +324,7 @@ impl Blob {
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
-        self.file
-            .fsyncdata()
-            .then(|x| async {
-                if x.is_err() {
-                    let _ = self.dump_corrupted().await;
-                }
-                x
-            })
-            .await
+        self.file.fsyncdata().await
     }
 
     #[inline]
