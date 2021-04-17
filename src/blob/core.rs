@@ -1,4 +1,5 @@
-use tokio::time::Instant;
+use futures::FutureExt;
+use tokio::{fs::create_dir_all, time::Instant};
 
 use super::prelude::*;
 
@@ -74,8 +75,7 @@ impl Blob {
         if self.index.on_disk() {
             Ok(0) // 0 bytes dumped
         } else {
-            self.file
-                .fsyncdata()
+            self.fsyncdata()
                 .await
                 .with_context(|| "Blob file dump failed!")?;
             self.index
@@ -153,6 +153,20 @@ impl Blob {
             .context("failed to create iterator for raw records")
     }
 
+    async fn dump_corrupted(&self) -> Result<()> {
+        warn!("Blob {} dump started!", self.name());
+        let source_name = self.name.to_path();
+        let file_name = source_name
+            .file_name()
+            .ok_or_else(|| anyhow::anyhow!("Blob path is empty"))?;
+        let dir = self.name.dir.join("corrupted");
+        create_dir_all(&dir).await?;
+        let target_name = dir.join(file_name);
+        tokio::fs::copy(source_name, target_name.clone()).await?;
+        warn!("Blob {} dumped to {}!", self.name(), target_name.display());
+        Ok(())
+    }
+
     pub(crate) async fn try_regenerate_index(&mut self) -> Result<()> {
         info!("try regenerate index for blob: {}", self.name);
         if self.index.on_disk() {
@@ -223,6 +237,18 @@ impl Blob {
         debug!("blob read any entry found");
         let buf = entry
             .load()
+            .then(|result| async {
+                let error = match result {
+                    Err(e) => e,
+                    x => return x,
+                };
+                if let Some(e) = error.downcast_ref::<Error>() {
+                    if let ErrorKind::Validation(_) = e.kind() {
+                        self.dump_corrupted().await?;
+                    }
+                }
+                Err(error)
+            })
             .await
             .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?
             .into_data();
