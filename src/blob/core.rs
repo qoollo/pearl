@@ -416,7 +416,7 @@ struct RawRecords {
 }
 
 impl RawRecords {
-    async fn start(file: File, blob_header_size: u64, right_key_size: usize) -> Result<Self> {
+    async fn start(file: File, blob_header_size: u64, key_size: usize) -> Result<Self> {
         let current_offset = blob_header_size;
         debug!("blob raw records start, current offset: {}", current_offset);
         let size_of_usize = std::mem::size_of::<usize>();
@@ -437,7 +437,7 @@ impl RawRecords {
         Self::check_record_header_magic_byte(magic_byte)?;
         let key_len = bincode::deserialize::<usize>(&key_len_buf)
             .context("failed to deserialize index buf vec length")?;
-        if key_len != right_key_size {
+        if key_len != key_size {
             let msg = "blob key_sizeis not equal to pearl compile-time key size";
             return Err(Error::validation(msg).into());
         }
