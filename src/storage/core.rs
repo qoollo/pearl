@@ -5,8 +5,6 @@ const LOCK_FILE: &str = "pearl.lock";
 
 const O_EXCL: i32 = 128;
 
-type SaveOldBlobTask = std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>;
-
 /// A main storage struct.
 ///
 /// This type is clonable, cloning it will only create a new reference,
@@ -34,18 +32,17 @@ type SaveOldBlobTask = std::pin::Pin<Box<dyn std::future::Future<Output = ()> + 
 ///
 /// [`Key`]: trait.Key.html
 #[derive(Debug)]
-pub struct Storage<K> {
+pub struct Storage<K: Key> {
     pub(crate) inner: Inner,
     observer: Observer,
     marker: PhantomData<K>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Inner {
     pub(crate) config: Config,
     pub(crate) safe: Arc<RwLock<Safe>>,
     next_blob_id: Arc<AtomicUsize>,
-    twins_count: Arc<AtomicUsize>,
     pub(crate) ioring: Option<Rio>,
 }
 
@@ -56,18 +53,7 @@ pub(crate) struct Safe {
     lock_file: Option<StdFile>,
 }
 
-impl<K> Drop for Storage<K> {
-    fn drop(&mut self) {
-        let twins = self.inner.twins_count.fetch_sub(1, ORD);
-        // 1 is because twin#0 - in observer thread, twin#1 - self
-        if twins <= 1 {
-            trace!("stop observer thread");
-            self.observer.shutdown();
-        }
-    }
-}
-
-impl<K> Clone for Storage<K> {
+impl<K: Key> Clone for Storage<K> {
     #[must_use]
     fn clone(&self) -> Self {
         Self {
@@ -101,12 +87,11 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     }
 }
 
-impl<K> Storage<K> {
+impl<K: Key> Storage<K> {
     pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
-        let update_interval = Duration::from_millis(config.update_interval_ms());
         let dump_sem = config.dump_sem();
         let inner = Inner::new(config, ioring);
-        let observer = Observer::new(update_interval, inner.clone(), dump_sem);
+        let observer = Observer::new(inner.clone(), dump_sem);
         Self {
             inner,
             observer,
@@ -162,8 +147,9 @@ impl<K> Storage<K> {
     /// Fails with the same errors as [`write_with`]
     ///
     /// [`write_with`]: Storage::write_with
-    pub async fn write(&self, key: impl Key, value: Vec<u8>) -> Result<()> {
-        self.write_with_optional_meta(key, value, None).await
+    pub async fn write(&self, key: impl AsRef<K>, value: Vec<u8>) -> Result<()> {
+        self.write_with_optional_meta(key.as_ref(), value, None)
+            .await
     }
 
     /// Similar to [`write`] but with metadata
@@ -179,13 +165,14 @@ impl<K> Storage<K> {
     /// ```
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
-    pub async fn write_with(&self, key: impl Key, value: Vec<u8>, meta: Meta) -> Result<()> {
-        self.write_with_optional_meta(key, value, Some(meta)).await
+    pub async fn write_with(&self, key: impl AsRef<K>, value: Vec<u8>, meta: Meta) -> Result<()> {
+        self.write_with_optional_meta(key.as_ref(), value, Some(meta))
+            .await
     }
 
     async fn write_with_optional_meta(
         &self,
-        key: impl Key,
+        key: &K,
         value: Vec<u8>,
         meta: Option<Meta>,
     ) -> Result<()> {
@@ -196,7 +183,7 @@ impl<K> Storage<K> {
             warn!("record with key {:?} and meta {:?} exists", key, meta);
             return Ok(());
         }
-        let record = Record::create(&key, value, meta.unwrap_or_default())
+        let record = Record::create(key, value, meta.unwrap_or_default())
             .with_context(|| "storage write with record creation failed")?;
         let mut safe = self.inner.safe.write().await;
         let blob = safe
@@ -231,9 +218,9 @@ impl<K> Storage<K> {
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     /// [`read_with`]: Storage::read_with
     #[inline]
-    pub async fn read(&self, key: impl Key) -> Result<Vec<u8>> {
-        debug!("storage read {:?}", key);
-        self.read_with_optional_meta(key, None).await
+    pub async fn read(&self, key: impl AsRef<K>) -> Result<Vec<u8>> {
+        debug!("storage read {:?}", key.as_ref());
+        self.read_with_optional_meta(key.as_ref(), None).await
     }
     /// Reads data matching given key and metadata
     /// # Examples
@@ -250,7 +237,8 @@ impl<K> Storage<K> {
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
-    pub async fn read_with(&self, key: impl Key, meta: &Meta) -> Result<Vec<u8>> {
+    pub async fn read_with(&self, key: impl AsRef<K>, meta: &Meta) -> Result<Vec<u8>> {
+        let key = key.as_ref();
         debug!("storage read with {:?}", key);
         self.read_with_optional_meta(key, Some(meta))
             .await
@@ -260,8 +248,8 @@ impl<K> Storage<K> {
     /// Returns entries with matching key
     /// # Errors
     /// Fails after any disk IO errors.
-    pub async fn read_all(&self, key: &impl Key) -> Result<Vec<Entry>> {
-        let key = key.as_ref();
+    pub async fn read_all(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
+        let key = key.as_ref().as_ref();
         let mut all_entries = Vec::new();
         let safe = self.inner.safe.read().await;
         let active_blob = safe
@@ -292,7 +280,7 @@ impl<K> Storage<K> {
         Ok(all_entries)
     }
 
-    async fn read_with_optional_meta(&self, key: impl Key, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn read_with_optional_meta(&self, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
         let key = key.as_ref();
@@ -333,19 +321,24 @@ impl<K> Storage<K> {
     pub async fn close(self) -> Result<()> {
         let mut safe = self.inner.safe.write().await;
         let active_blob = safe.active_blob.take();
+        let mut res = Ok(());
         if let Some(mut blob) = active_blob {
-            blob.dump()
-                .await
-                .with_context(|| format!("blob {} dump failed", blob.name()))?;
-            debug!("active blob dumped");
+            res = res.and(
+                blob.dump()
+                    .await
+                    .map(|_| info!("active blob dumped"))
+                    .with_context(|| format!("blob {} dump failed", blob.name())),
+            )
         }
-        self.observer.shutdown();
         safe.lock_file = None;
         if let Some(work_dir) = self.inner.config.work_dir() {
-            std::fs::remove_file(work_dir.join(LOCK_FILE))?;
+            res = res.and(
+                std::fs::remove_file(work_dir.join(LOCK_FILE))
+                    .map(|_| info!("lock released"))
+                    .with_context(|| "failed to remove lockfile ({:?})"),
+            );
         }
-        info!("active blob dumped, lock released");
-        Ok(())
+        res
     }
 
     /// `blob_count` returns exact number of closed blobs plus one active, if there is some.
@@ -530,7 +523,7 @@ impl<K> Storage<K> {
     /// `contains` returns either "definitely in storage" or "definitely not".
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn contains(&self, key: impl Key) -> Result<bool> {
+    pub async fn contains(&self, key: K) -> Result<bool> {
         let key = key.as_ref();
         self.contains_with(key, None).await
     }
@@ -557,7 +550,8 @@ impl<K> Storage<K> {
     /// Uses bloom filter under the hood, so false positive results are possible,
     /// but false negatives are not.
     /// In other words, `check_bloom` returns either "possibly in storage" or "definitely not".
-    pub async fn check_bloom(&self, key: impl Key) -> Option<bool> {
+    pub async fn check_bloom(&self, key: impl AsRef<K>) -> Option<bool> {
+        let key = key.as_ref();
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.read().await;
         let in_active = inner
@@ -617,26 +611,12 @@ impl<K> Storage<K> {
     }
 }
 
-impl Clone for Inner {
-    fn clone(&self) -> Self {
-        self.twins_count.fetch_add(1, ORD);
-        Self {
-            config: self.config.clone(),
-            safe: self.safe.clone(),
-            next_blob_id: self.next_blob_id.clone(),
-            twins_count: self.twins_count.clone(),
-            ioring: self.ioring.clone(),
-        }
-    }
-}
-
 impl Inner {
     fn new(config: Config, ioring: Option<Rio>) -> Self {
         Self {
             config,
             safe: Arc::new(RwLock::new(Safe::new())),
             next_blob_id: Arc::new(AtomicUsize::new(0)),
-            twins_count: Arc::new(AtomicUsize::new(0)),
             ioring,
         }
     }
@@ -733,34 +713,29 @@ impl Safe {
         Ok(())
     }
 
-    pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob>) -> Result<SaveOldBlobTask> {
+    pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob>) -> Result<()> {
         let old_active = self
             .active_blob
             .replace(blob)
             .ok_or_else(Error::active_blob_not_set)?;
-        let blobs = self.blobs.clone();
-        Ok(Box::pin(async move {
-            let mut blobs = blobs.write().await;
-            blobs.push(*old_active);
-            // Notice: if dump of blob or indices fails, it's likely a problem with disk appeared, so
-            // all descriptors of the storage become invalid and unusable
-            // Possible solution: recreate instance of storage, when disk will be available
-            let last_blob = blobs.last_mut().unwrap();
-            if let Err(e) = last_blob.dump().await {
-                error!("Error dumping blob ({}): {}", last_blob.name(), e);
-            }
-        }))
+        self.blobs.write().await.push(*old_active);
+        Ok(())
     }
 
     pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
         let blobs = self.blobs.clone();
         tokio::spawn(async move {
+            trace!("acquire blobs write to dump old blobs");
             let mut write_blobs = blobs.write().await;
+            trace!("dump old blobs");
             for blob in write_blobs.iter_mut() {
+                trace!("dumping old blob");
                 let _ = sem.acquire().await;
+                trace!("acquired sem for dumping old blobs");
                 if let Err(e) = blob.dump().await {
                     error!("Error dumping blob ({}): {}", blob.name(), e);
                 }
+                trace!("finished dumping old blob");
             }
         });
     }
@@ -775,11 +750,4 @@ pub trait Key: AsRef<[u8]> + Debug {
     fn to_vec(&self) -> Vec<u8> {
         self.as_ref().to_vec()
     }
-}
-
-impl<T> Key for &T
-where
-    T: Key,
-{
-    const LEN: u16 = T::LEN;
 }

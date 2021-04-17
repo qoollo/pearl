@@ -109,6 +109,7 @@ impl Blob {
         info!("{} blob init started", name);
         let size = file.size();
         let header = Header::new();
+        Self::check_blob_header(&header)?;
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         trace!("looking for index file: [{}]", index_name);
@@ -194,6 +195,14 @@ impl Blob {
 
     pub(crate) const fn check_data_consistency() {
         // @TODO implement
+    }
+
+    fn check_blob_header(header: &Header) -> Result<()> {
+        if header.magic_byte == BLOB_MAGIC_BYTE {
+            Ok(())
+        } else {
+            Err(Error::validation("blob header magic byte is wrong").into())
+        }
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
@@ -432,6 +441,7 @@ impl RawRecords {
         let current_offset = blob_header_size;
         debug!("blob raw records start, current offset: {}", current_offset);
         let size_of_usize = std::mem::size_of::<usize>();
+        let size_of_magic_byte = std::mem::size_of::<u64>();
         debug!(
             "blob raw records start, read at: size {}, offset: {}",
             size_of_usize,
@@ -439,11 +449,14 @@ impl RawRecords {
         );
         // plus size of usize because serialized
         // vector contains usize len in front
-        let mut buf = vec![0; size_of_usize];
-        file.read_at(&mut buf, current_offset + size_of_usize as u64)
-            .await?;
+        let mut buf = vec![0; size_of_magic_byte + size_of_usize];
+        file.read_at(&mut buf, current_offset).await?;
+        let (magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         debug!("blob raw records start, read at {} bytes", buf.len());
-        let key_len = bincode::deserialize::<usize>(&buf)
+        let magic_byte = bincode::deserialize::<u64>(&magic_byte_buf)
+            .context("failed to deserialize magic byte")?;
+        Self::check_record_header_magic_byte(magic_byte)?;
+        let key_len = bincode::deserialize::<usize>(&key_len_buf)
             .context("failed to deserialize index buf vec length")?;
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
         debug!(
@@ -455,6 +468,14 @@ impl RawRecords {
             record_header_size,
             file,
         })
+    }
+
+    fn check_record_header_magic_byte(magic_byte: u64) -> Result<()> {
+        if magic_byte == RECORD_MAGIC_BYTE {
+            Ok(())
+        } else {
+            Err(Error::validation("First record's magic byte is wrong").into())
+        }
     }
 
     async fn load(mut self) -> Result<Option<Vec<RecordHeader>>> {
