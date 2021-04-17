@@ -73,18 +73,18 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
         }
     }
 
-    if files
+    let content = if files
         .iter()
         .filter_map(|file| Some(file.file_name().as_os_str().to_str()?.to_owned()))
-        .find(|name| name.ends_with(BLOB_FILE_EXTENSION))
-        .is_none()
+        .any(|name| name.ends_with(BLOB_FILE_EXTENSION))
     {
-        debug!("working dir is uninitialized, starting empty storage");
-        Ok(None)
-    } else {
         debug!("working dir contains files, try init existing");
-        Ok(Some(files))
-    }
+        Some(files)
+    } else {
+        debug!("working dir is uninitialized, starting empty storage");
+        None
+    };
+    Ok(content)
 }
 
 impl<K: Key> Storage<K> {
