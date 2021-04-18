@@ -21,8 +21,8 @@ codegen-units = 1
 ahash = "0.7"
 anyhow = "1.0"
 async-trait = "0.1"
-bincode = "1.3.1"
-bitvec = "0.21"
+bincode = "1.3"
+bitvec = "0.22"
 chrono = "0.4"
 crc = "1.8"
 env_logger = "0.8"
@@ -38,7 +38,7 @@ ring = "0.16"
 tokio-stream = "0.1"
 
 [dependencies.tokio]
-version = "1.4"
+version = "1.5"
 features = ["fs","sync", "time", "rt", "macros", "rt-multi-thread"]
 
 [features]
