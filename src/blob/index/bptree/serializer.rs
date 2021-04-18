@@ -3,7 +3,7 @@ use serde::Serialize;
 
 pub(super) struct HeaderStage<
     'a,
-    K: AsRef<[u8]> + 'a,
+    K: AsRef<[u8]>,
     V: Serialize + 'a,
     It: Iterator<Item = (K, &'a Vec<V>)> + Clone,
 > {
@@ -15,7 +15,7 @@ pub(super) struct HeaderStage<
 
 pub(super) struct LeavesStage<
     'a,
-    K: AsRef<[u8]> + 'a,
+    K: AsRef<[u8]>,
     V: Serialize + 'a,
     It: Iterator<Item = (K, &'a Vec<V>)> + Clone,
 > {
@@ -30,7 +30,7 @@ pub(super) struct LeavesStage<
 
 pub(super) struct TreeStage<
     'a,
-    K: AsRef<[u8]> + 'a,
+    K: AsRef<[u8]>,
     V: Serialize + 'a,
     It: Iterator<Item = (K, &'a Vec<V>)> + Clone,
 > {
@@ -46,7 +46,7 @@ pub(super) struct TreeStage<
 
 pub(super) struct Serializer<
     'a,
-    K: AsRef<[u8]> + 'a,
+    K: AsRef<[u8]>,
     V: Serialize + 'a,
     It: Iterator<Item = (K, &'a Vec<V>)> + Clone,
 > {
@@ -85,7 +85,7 @@ impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec
     }
 }
 
-impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)> + Clone>
+impl<'a, K: AsRef<[u8]>, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)> + Clone>
     HeaderStage<'a, K, V, It>
 {
     pub(super) fn leaves_stage(self) -> Result<LeavesStage<'a, K, V, It>> {
@@ -135,7 +135,7 @@ impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec
     }
 }
 
-impl<'a, K: 'a + AsRef<[u8]>, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)> + Clone>
+impl<'a, K: AsRef<[u8]>, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)> + Clone>
     LeavesStage<'a, K, V, It>
 {
     pub(super) fn tree_stage(self) -> Result<TreeStage<'a, K, V, It>> {
@@ -235,7 +235,7 @@ impl<'a, K: 'a + AsRef<[u8]>, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec
     }
 }
 
-impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)> + Clone>
+impl<'a, K: AsRef<[u8]>, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)> + Clone>
     TreeStage<'a, K, V, It>
 {
     pub(super) fn build(self) -> Result<(IndexHeader, TreeMeta, Vec<u8>)> {
