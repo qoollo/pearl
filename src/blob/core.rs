@@ -1,5 +1,5 @@
 use futures::FutureExt;
-use tokio::{fs::create_dir_all, time::Instant};
+use tokio::{fs::create_dir, time::Instant};
 
 use super::prelude::*;
 
@@ -159,7 +159,9 @@ impl Blob {
             .file_name()
             .ok_or_else(|| anyhow::anyhow!("Blob path is empty"))?;
         let dir = self.name.dir.join("corrupted");
-        create_dir_all(&dir).await?;
+        if !dir.exists() {
+            create_dir(&dir).await?;
+        }
         let target_name = dir.join(file_name);
         tokio::fs::copy(source_name, target_name.clone()).await?;
         warn!("Blob {} dumped to {}!", self.name(), target_name.display());
