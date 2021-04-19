@@ -117,10 +117,18 @@ impl Blob {
             trace!("file exists");
             SimpleIndex::from_file(index_name.clone(), filter_config.is_some(), ioring.clone())
                 .await
-                .unwrap_or_else(|_| {
+                .or_else(|error| {
+                    if let Some(io_error) = error.downcast_ref::<IOError>() {
+                        match io_error.kind() {
+                            IOErrorKind::PermissionDenied | IOErrorKind::Other => {
+                                return Err(error)
+                            }
+                            _ => {}
+                        }
+                    }
                     is_index_corrupted = true;
-                    SimpleIndex::new(index_name, ioring, filter_config)
-                })
+                    Ok(SimpleIndex::new(index_name, ioring, filter_config))
+                })?
         } else {
             trace!("file not found, create new");
             SimpleIndex::new(index_name, ioring, filter_config)
