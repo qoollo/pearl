@@ -279,3 +279,61 @@ pub(crate) trait FileIndexTrait: Sized {
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>>;
     fn validate(&self) -> Result<()>;
 }
+
+pub(crate) type BPTreeFileIndex = BPTreeFileIndexStruct<Vec<u8>, RecordHeader>;
+
+#[async_trait::async_trait]
+impl FileIndexTrait for BPTreeFileIndex {
+    async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self> {
+        Self::from_file(name, ioring).await
+    }
+
+    async fn from_records(
+        path: &Path,
+        rio: Option<Rio>,
+        headers: &InMemoryIndex,
+        meta: Vec<u8>,
+        recreate_index_file: bool,
+    ) -> Result<Self> {
+        // FIXME: remove clone
+        Self::from_records_iter(
+            path,
+            rio,
+            headers.iter().map(|(k, v)| (k.clone(), v)),
+            meta,
+            recreate_index_file,
+        )
+        .await
+    }
+
+    fn file_size(&self) -> u64 {
+        self.file_size()
+    }
+
+    fn records_count(&self) -> usize {
+        self.records_count()
+    }
+
+    async fn read_meta(&self) -> Result<Vec<u8>> {
+        self.read_meta().await
+    }
+
+    async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
+        // FIXME: strange conversion
+        self.get_by_key(key.to_vec()).await
+    }
+
+    async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)> {
+        let (btree, size) = self.get_records_btree().await?;
+        Ok((btree, size))
+    }
+
+    async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
+        // FIXME: strange conversion
+        self.get_any_by_key(key.to_vec().as_ref()).await
+    }
+
+    fn validate(&self) -> Result<()> {
+        self.validate_self()
+    }
+}

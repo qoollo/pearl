@@ -13,10 +13,15 @@ async fn serialize_deserialize_file() {
             inmem.insert(key, vec![rh]);
         });
     let meta = vec![META_VALUE; META_SIZE];
-    let findex =
-        BPTreeFileIndex::from_records(&Path::new("/tmp/bptree_index.b"), None, &inmem, meta, true)
-            .await
-            .expect("Can't create file index");
+    let findex = BPTreeFileIndexStruct::<Vec<u8>, RecordHeader>::from_records(
+        &Path::new("/tmp/bptree_index.b"),
+        None,
+        &inmem,
+        meta,
+        true,
+    )
+    .await
+    .expect("Can't create file index");
     let (inmem_after, _size) = findex
         .get_records_headers()
         .await
@@ -37,7 +42,7 @@ async fn check_get_any() {
             inmem.insert(key, vec![rh]);
         });
     let meta = vec![META_VALUE; META_SIZE];
-    let findex = BPTreeFileIndex::from_records(
+    let findex = BPTreeFileIndexStruct::from_records(
         &Path::new("/tmp/any_bptree_index.b"),
         None,
         &inmem,
@@ -73,7 +78,7 @@ async fn check_get() {
             inmem.insert(key, recs);
         });
     let meta = vec![META_VALUE; META_SIZE];
-    let findex = BPTreeFileIndex::from_records(
+    let findex = BPTreeFileIndexStruct::from_records(
         &Path::new("/tmp/all_bptree_index.b"),
         None,
         &inmem,

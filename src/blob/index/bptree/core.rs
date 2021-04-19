@@ -13,19 +13,26 @@
 ///    `NodeMeta | keys_arr | pointers_arr`,
 ///    where pointer is offset in file of underlying node with searched key
 use super::prelude::*;
+use serde::{de::DeserializeOwned, Serialize};
 
 pub(super) const BLOCK_SIZE: usize = 4096;
 
 #[derive(Debug, Clone)]
-pub(crate) struct BPTreeFileIndex {
+pub(crate) struct BPTreeFileIndexStruct<K, V> {
     file: File,
     header: IndexHeader,
     metadata: TreeMeta,
+    kmarker: PhantomData<K>,
+    vmarker: PhantomData<V>,
 }
 
-#[async_trait::async_trait]
-impl FileIndexTrait for BPTreeFileIndex {
-    async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self> {
+impl<
+        'a,
+        K: 'a + AsRef<[u8]> + Ord + DeserializeOwned + Clone,
+        V: 'a + Serialize + DeserializeOwned,
+    > BPTreeFileIndexStruct<K, V>
+{
+    pub(crate) async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self> {
         trace!("open index file");
         let file = File::open(name.to_path(), ioring)
             .await
@@ -37,13 +44,33 @@ impl FileIndexTrait for BPTreeFileIndex {
             file,
             header,
             metadata,
+            kmarker: PhantomData::<K>,
+            vmarker: PhantomData::<V>,
         })
     }
 
-    async fn from_records(
+    pub(crate) fn file_size(&self) -> u64 {
+        self.file.size()
+    }
+
+    pub(crate) fn records_count(&self) -> usize {
+        self.header.records_count
+    }
+
+    pub(crate) async fn read_meta(&self) -> Result<Vec<u8>> {
+        trace!("load meta");
+        let mut buf = vec![0; self.header.meta_size];
+        trace!("read meta into buf: [0; {}]", buf.len());
+        self.file
+            .read_at(&mut buf, self.header.serialized_size()? as u64)
+            .await?;
+        Ok(buf)
+    }
+
+    pub(crate) async fn from_records_iter(
         path: &Path,
         ioring: Option<Rio>,
-        headers: &InMemoryIndex,
+        headers: impl Iterator<Item = (K, &'a Vec<V>)> + Clone,
         meta: Vec<u8>,
         recreate_index_file: bool,
     ) -> Result<Self> {
@@ -62,33 +89,20 @@ impl FileIndexTrait for BPTreeFileIndex {
             file,
             metadata,
             header,
+            kmarker: PhantomData::<K>,
+            vmarker: PhantomData::<V>,
         })
     }
 
-    fn file_size(&self) -> u64 {
-        self.file.size()
-    }
-
-    fn records_count(&self) -> usize {
-        self.header.records_count
-    }
-
-    async fn read_meta(&self) -> Result<Vec<u8>> {
-        trace!("load meta");
-        let mut buf = vec![0; self.header.meta_size];
-        trace!("read meta into buf: [0; {}]", buf.len());
-        self.file
-            .read_at(&mut buf, self.header.serialized_size()? as u64)
-            .await?;
-        Ok(buf)
-    }
-
-    async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
+    pub(crate) async fn get_by_key(&self, key: K) -> Result<Option<Vec<RecordHeader>>> {
         let root_offset = self.metadata.root_offset;
         let mut buf = [0u8; BLOCK_SIZE];
-        let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
-        if let Some((fh_offset, amount)) =
-            self.find_first_header(leaf_offset, key, &mut buf).await?
+        let leaf_offset = self
+            .find_leaf_node(key.as_ref(), root_offset, &mut buf)
+            .await?;
+        if let Some((fh_offset, amount)) = self
+            .find_first_header(leaf_offset, key.as_ref(), &mut buf)
+            .await?
         {
             let headers = self.read_headers(fh_offset, amount as usize).await?;
             Ok(Some(headers))
@@ -97,30 +111,56 @@ impl FileIndexTrait for BPTreeFileIndex {
         }
     }
 
-    async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)> {
+    pub(crate) async fn get_records_btree(&self) -> Result<(BTreeMap<K, Vec<V>>, usize)> {
         let mut buf = self.file.read_all().await?;
         self.validate_header(&mut buf).await?;
-        let offset = self.header.meta_size + self.header.serialized_size()? as usize;
-        let records_end = self.metadata.leaves_offset as usize;
-        let records_buf = &buf[offset..records_end];
-        (0..self.header.records_count)
-            .try_fold(InMemoryIndex::new(), |mut headers, i| {
-                let offset = i * self.header.record_header_size;
-                let header: RecordHeader = deserialize(&records_buf[offset..])?;
-                // We used get mut instead of entry(..).or_insert(..) because in second case we
-                // need to clone key everytime. Whereas in first case - only if we insert new
-                // entry.
-                if let Some(v) = headers.get_mut(header.key()) {
-                    v.push(header)
-                } else {
-                    headers.insert(header.key().to_vec(), vec![header]);
-                }
-                Ok(headers)
+        let leaves_start = self.metadata.leaves_offset as usize;
+        let leaves_end = self.metadata.tree_offset as usize;
+        let leaves_buf = &buf[leaves_start..leaves_end];
+        // FIXME: remove collect
+        let key_offsets: Vec<(K, u64)> = leaves_buf
+            .chunks(self.metadata.key_size as usize + std::mem::size_of::<u64>())
+            .map(|bytes| {
+                let (key_buf, offset_buf) = bytes.split_at(self.metadata.key_size as usize);
+                // FIXME: remove unwrap
+                let key = deserialize(&key_buf).unwrap();
+                let offset = deserialize(&offset_buf).unwrap();
+                (key, offset)
             })
-            .map(|headers| (headers, self.header.records_count))
+            .collect();
+        let mut map = BTreeMap::new();
+        for i in 0..(key_offsets.len() - 1) {
+            let amount =
+                key_offsets[i + 1].1 - key_offsets[i].1 / self.header.record_header_size as u64;
+            let mut vals = Vec::with_capacity(amount as usize);
+            let mut offset = key_offsets[i].1 as usize;
+            for i in 0..amount {
+                let new_offset = offset + self.header.record_header_size;
+                let header: V = deserialize(&buf[offset..new_offset])?;
+                vals.push(header);
+                offset = new_offset;
+            }
+            // FIXME: remove clone? (will be removed with collect?)
+            map.insert(key_offsets[i].0.clone(), vals);
+        }
+        // FIXME: remove duplicates
+        let amount = (self.metadata.tree_offset - key_offsets[key_offsets.len() - 1].1) as usize
+            / self.header.record_header_size;
+        let mut vals = Vec::with_capacity(amount as usize);
+        let mut offset = key_offsets[key_offsets.len() - 1].1 as usize;
+        for _ in 0..amount {
+            let new_offset = offset + self.header.record_header_size;
+            let header: V = deserialize(&buf[offset..new_offset])?;
+            vals.push(header);
+            offset = new_offset;
+        }
+        // We used get mut instead of entry(..).or_insert(..) because in second case we
+        // need to clone key everytime. Whereas in first case - only if we insert new
+        // entry.
+        Ok((map, self.header.records_count))
     }
 
-    async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
+    pub(crate) async fn get_any_by_key(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
         let root_offset = self.metadata.root_offset;
         let mut buf = [0u8; BLOCK_SIZE];
         let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
@@ -134,7 +174,7 @@ impl FileIndexTrait for BPTreeFileIndex {
         }
     }
 
-    fn validate(&self) -> Result<()> {
+    pub(crate) fn validate_self(&self) -> Result<()> {
         if self.header.written == 1 {
             Ok(())
         } else {
@@ -143,7 +183,7 @@ impl FileIndexTrait for BPTreeFileIndex {
     }
 }
 
-impl BPTreeFileIndex {
+impl<'a, K: 'a + AsRef<[u8]>, V: 'a + Serialize> BPTreeFileIndexStruct<K, V> {
     async fn find_leaf_node(&self, key: &[u8], mut offset: u64, buf: &mut [u8]) -> Result<u64> {
         let key_size = key.len() as u64;
         while offset >= self.metadata.tree_offset {
@@ -165,7 +205,7 @@ impl BPTreeFileIndex {
         let header_pointers = self
             .get_header_pointers(leaf_offset, key, buf, leaf_size, buf_size)
             .await?;
-        self.search_header_pointer(header_pointers, key, buf_size as u64 + leaf_offset)
+        Ok(self.search_header_pointer(header_pointers, key, buf_size as u64 + leaf_offset))
     }
 
     fn leaf_node_buf_size(&self, leaf_size: usize, leaf_offset: u64) -> usize {
@@ -180,10 +220,10 @@ impl BPTreeFileIndex {
         header_pointers: Vec<(Vec<u8>, u64)>,
         key: &[u8],
         absolute_buf_end: u64,
-    ) -> Result<Option<(u64, u64)>> {
+    ) -> Option<(u64, u64)> {
         match header_pointers.binary_search_by(|(cur_key, _)| cur_key.as_slice().cmp(key)) {
-            Err(_) => Ok(None),
-            Ok(i) => Ok(Some(self.with_amount(header_pointers, i, absolute_buf_end))),
+            Err(_) => None,
+            Ok(i) => Some(self.with_amount(header_pointers, i, absolute_buf_end)),
         }
     }
 
@@ -275,10 +315,10 @@ impl BPTreeFileIndex {
     }
 
     fn serialize(
-        headers_btree: &InMemoryIndex,
+        headers_iter: impl Iterator<Item = (K, &'a Vec<V>)> + Clone,
         meta: Vec<u8>,
     ) -> Result<(IndexHeader, TreeMeta, Vec<u8>)> {
-        Serializer::new(headers_btree.iter())
+        Serializer::new(headers_iter)
             .header_stage(meta)?
             .leaves_stage()?
             .tree_stage()?

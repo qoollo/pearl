@@ -53,7 +53,7 @@ pub(super) struct Serializer<
     headers_iter: It,
 }
 
-impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)> + Clone>
+impl<'a, K: AsRef<[u8]>, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)> + Clone>
     Serializer<'a, K, V, It>
 {
     pub(super) fn new(headers_iter: It) -> Self {
@@ -144,7 +144,12 @@ impl<'a, K: AsRef<[u8]>, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)>
         let tree_offset = self.leaves_offset + self.leaves_buf.len() as u64;
         let (root_offset, tree_buf) =
             Self::serialize_bptree(keys, self.leaves_offset, self.leaf_size as u64, tree_offset)?;
-        let metadata = TreeMeta::new(root_offset, self.leaves_offset, tree_offset);
+        let metadata = TreeMeta::new(
+            root_offset,
+            self.leaves_offset,
+            tree_offset,
+            (self.leaf_size - std::mem::size_of::<u64>()) as u64,
+        );
         let meta_buf = serialize(&metadata)?;
         Ok(TreeStage {
             headers_iter: self.headers_iter,

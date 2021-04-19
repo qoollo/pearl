@@ -7,7 +7,9 @@ mod serializer;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use self::core::BPTreeFileIndex;
+//pub(crate) use self::core::BPTreeFileIndex;
+// FIXME: restrict visibility
+pub(crate) use self::core::BPTreeFileIndexStruct;
 
 mod prelude {
     pub(super) use super::core::BLOCK_SIZE;

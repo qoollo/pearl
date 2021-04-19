@@ -8,7 +8,8 @@ mod header;
 mod simple;
 mod tools;
 
-use bptree::BPTreeFileIndex;
+//use bptree::BPTreeFileIndex;
+use bptree::BPTreeFileIndexStruct;
 use header::IndexHeader;
 
 pub(crate) use self::core::{
