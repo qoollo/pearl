@@ -121,7 +121,8 @@ impl Blob {
                     if let Some(io_error) = error.downcast_ref::<IOError>() {
                         match io_error.kind() {
                             IOErrorKind::PermissionDenied | IOErrorKind::Other => {
-                                return Err(error)
+                                warn!("index cannot be regenerated due to error: {}", io_error);
+                                return Err(error);
                             }
                             _ => {}
                         }
