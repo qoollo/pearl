@@ -1,25 +1,14 @@
 use super::prelude::*;
-use serde::Serialize;
 
-pub(super) struct HeaderStage<
-    'a,
-    K: AsRef<[u8]> + 'a,
-    V: Serialize + 'a,
-    It: Iterator<Item = (K, &'a Vec<V>)> + Clone,
-> {
-    headers_iter: It,
+pub(super) struct HeaderStage<'a> {
+    headers_btree: &'a InMemoryIndex,
     header: IndexHeader,
     key_size: usize,
     meta: Vec<u8>,
 }
 
-pub(super) struct LeavesStage<
-    'a,
-    K: AsRef<[u8]> + 'a,
-    V: Serialize + 'a,
-    It: Iterator<Item = (K, &'a Vec<V>)> + Clone,
-> {
-    headers_iter: It,
+pub(super) struct LeavesStage<'a> {
+    headers_btree: &'a InMemoryIndex,
     header: IndexHeader,
     leaf_size: usize,
     leaves_buf: Vec<u8>,
@@ -28,13 +17,8 @@ pub(super) struct LeavesStage<
     meta: Vec<u8>,
 }
 
-pub(super) struct TreeStage<
-    'a,
-    K: AsRef<[u8]> + 'a,
-    V: Serialize + 'a,
-    It: Iterator<Item = (K, &'a Vec<V>)> + Clone,
-> {
-    headers_iter: It,
+pub(super) struct TreeStage<'a> {
+    headers_btree: &'a InMemoryIndex,
     metadata: TreeMeta,
     header: IndexHeader,
     meta_buf: Vec<u8>,
@@ -44,37 +28,25 @@ pub(super) struct TreeStage<
     meta: Vec<u8>,
 }
 
-pub(super) struct Serializer<
-    'a,
-    K: AsRef<[u8]> + 'a,
-    V: Serialize + 'a,
-    It: Iterator<Item = (K, &'a Vec<V>)> + Clone,
-> {
-    headers_iter: It,
+pub(super) struct Serializer<'a> {
+    headers_btree: &'a InMemoryIndex,
 }
 
-impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)> + Clone>
-    Serializer<'a, K, V, It>
-{
-    pub(super) fn new(headers_iter: It) -> Self {
-        Self { headers_iter }
+impl<'a> Serializer<'a> {
+    pub(super) fn new(headers_btree: &'a InMemoryIndex) -> Self {
+        Self { headers_btree }
     }
-    pub(super) fn header_stage(self, meta: Vec<u8>) -> Result<HeaderStage<'a, K, V, It>> {
-        if let Some((key, Some(record_header))) = self
-            .headers_iter
-            .clone()
-            .next()
-            .and_then(|(k, v)| Some((k, v.first())))
-        {
-            let record_header_size = bincode::serialized_size(record_header).map(|s| s as usize)?;
+    pub(super) fn header_stage(self, meta: Vec<u8>) -> Result<HeaderStage<'a>> {
+        if let Some(record_header) = self.headers_btree.values().next().and_then(|v| v.first()) {
+            let record_header_size = record_header.serialized_size().try_into()?;
             let headers_len = self
-                .headers_iter
-                .clone()
+                .headers_btree
+                .iter()
                 .fold(0, |acc, (_k, v)| acc + v.len());
             let header = IndexHeader::new(record_header_size, headers_len, meta.len());
-            let key_size = key.as_ref().len();
+            let key_size = record_header.key().len();
             Ok(HeaderStage {
-                headers_iter: self.headers_iter,
+                headers_btree: self.headers_btree,
                 header,
                 key_size,
                 meta,
@@ -85,10 +57,8 @@ impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec
     }
 }
 
-impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)> + Clone>
-    HeaderStage<'a, K, V, It>
-{
-    pub(super) fn leaves_stage(self) -> Result<LeavesStage<'a, K, V, It>> {
+impl<'a> HeaderStage<'a> {
+    pub(super) fn leaves_stage(self) -> Result<LeavesStage<'a>> {
         let hs = self.header.serialized_size()? as usize;
         let fsize = self.header.meta_size;
         let msize: usize = TreeMeta::serialized_size_default()? as usize;
@@ -98,13 +68,13 @@ impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec
         // leaf contains pair: (key, offset in file for first record's header with this key)
         let leaf_size = self.key_size + std::mem::size_of::<u64>();
         let leaves_buf = Self::serialize_leaves(
-            self.headers_iter.clone(),
+            self.headers_btree,
             headers_start_offset,
             leaf_size,
             self.header.record_header_size,
         );
         Ok(LeavesStage {
-            headers_iter: self.headers_iter,
+            headers_btree: self.headers_btree,
             leaf_size,
             leaves_buf,
             leaves_offset,
@@ -115,16 +85,16 @@ impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec
     }
 
     fn serialize_leaves(
-        headers_iter: It,
+        headers_btree: &InMemoryIndex,
         headers_start_offset: u64,
         leaf_size: usize,
         record_header_size: usize,
     ) -> Vec<u8> {
-        let mut leaves_buf = Vec::with_capacity(leaf_size * headers_iter.clone().count());
-        headers_iter.fold(
+        let mut leaves_buf = Vec::with_capacity(leaf_size * headers_btree.len());
+        headers_btree.iter().fold(
             (headers_start_offset, &mut leaves_buf),
             |(offset, leaves_buf), (leaf, hds)| {
-                leaves_buf.extend_from_slice(leaf.as_ref());
+                leaves_buf.extend_from_slice(&leaf);
                 let offsetb = serialize(&offset).expect("serialize u64");
                 leaves_buf.extend_from_slice(&offsetb);
                 let res = (offset + (hds.len() * record_header_size) as u64, leaves_buf);
@@ -135,19 +105,16 @@ impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec
     }
 }
 
-impl<'a, K: 'a + AsRef<[u8]>, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)> + Clone>
-    LeavesStage<'a, K, V, It>
-{
-    pub(super) fn tree_stage(self) -> Result<TreeStage<'a, K, V, It>> {
-        // FIXME: remove collect (now it is used to iterate through `chunks` in `serialize_bptree`)
-        let keys: Vec<K> = self.headers_iter.clone().map(|e| e.0).collect();
+impl<'a> LeavesStage<'a> {
+    pub(super) fn tree_stage(self) -> Result<TreeStage<'a>> {
+        let keys = self.headers_btree.keys().collect();
         let tree_offset = self.leaves_offset + self.leaves_buf.len() as u64;
         let (root_offset, tree_buf) =
             Self::serialize_bptree(keys, self.leaves_offset, self.leaf_size as u64, tree_offset)?;
         let metadata = TreeMeta::new(root_offset, self.leaves_offset, tree_offset);
         let meta_buf = serialize(&metadata)?;
         Ok(TreeStage {
-            headers_iter: self.headers_iter,
+            headers_btree: self.headers_btree,
             metadata,
             meta_buf,
             tree_buf,
@@ -159,12 +126,12 @@ impl<'a, K: 'a + AsRef<[u8]>, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec
     }
 
     fn serialize_bptree(
-        keys: Vec<K>,
+        keys: Vec<&Vec<u8>>,
         leaves_offset: u64,
         leaf_size: u64,
         tree_offset: u64,
     ) -> Result<(u64, Vec<u8>)> {
-        let max_amount = Self::max_leaf_node_capacity(keys[0].as_ref().len());
+        let max_amount = Self::max_leaf_node_capacity(keys[0].len());
         let nodes_amount = (keys.len() - 1) / max_amount + 1;
         let elems_in_node = (keys.len() / nodes_amount) as u64;
         trace!(
@@ -177,7 +144,7 @@ impl<'a, K: 'a + AsRef<[u8]>, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec
             .enumerate()
             .map(|(i, keys)| {
                 let cur_offset = leaves_offset + elems_in_node * leaf_size * i as u64;
-                (keys[0].as_ref().to_vec(), cur_offset)
+                (keys[0].clone(), cur_offset)
             })
             .collect::<Vec<(Vec<u8>, u64)>>();
 
@@ -235,9 +202,7 @@ impl<'a, K: 'a + AsRef<[u8]>, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec
     }
 }
 
-impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec<V>)> + Clone>
-    TreeStage<'a, K, V, It>
-{
+impl<'a> TreeStage<'a> {
     pub(super) fn build(self) -> Result<(IndexHeader, TreeMeta, Vec<u8>)> {
         let hs = self.header.serialized_size()? as usize;
         let fsize = self.header.meta_size;
@@ -247,7 +212,7 @@ impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec
         let mut buf = Vec::with_capacity(data_size);
         serialize_into(&mut buf, &self.header)?;
         buf.extend_from_slice(&self.meta);
-        Self::append_headers(self.headers_iter, &mut buf)?;
+        Self::append_headers(self.headers_btree, &mut buf)?;
         buf.extend_from_slice(&self.meta_buf);
         buf.extend_from_slice(&self.leaves_buf);
         buf.extend_from_slice(&self.tree_buf);
@@ -262,8 +227,9 @@ impl<'a, K: AsRef<[u8]> + 'a, V: Serialize + 'a, It: Iterator<Item = (K, &'a Vec
         Ok((header, self.metadata, buf))
     }
 
-    fn append_headers(headers_iter: It, buf: &mut Vec<u8>) -> Result<()> {
-        headers_iter
+    fn append_headers(headers_btree: &InMemoryIndex, buf: &mut Vec<u8>) -> Result<()> {
+        headers_btree
+            .iter()
             .flat_map(|r| r.1)
             .map(|h| serialize(&h))
             .try_fold(buf, |buf, h_buf| -> Result<_> {
