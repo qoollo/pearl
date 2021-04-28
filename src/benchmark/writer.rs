@@ -1,11 +1,11 @@
 use super::prelude::*;
 use pearl::rio;
 
-pub struct Writer<K> {
+pub struct Writer<K: Key> {
     storage: Storage<K>,
 }
 
-impl<K> Writer<K> {
+impl<K: Key> Writer<K> {
     pub fn new(
         tmp_dir: &Path,
         max_blob_size: u64,
@@ -31,11 +31,9 @@ impl<K> Writer<K> {
         self.storage.init().await.unwrap()
     }
 
-    pub async fn write(&self, key: K, data: Vec<u8>, mut tx: Sender<Report>)
-    where
-        K: Key,
-    {
-        let mut report = Report::new(key.as_ref().len(), data.len());
+    pub async fn write(&self, key: impl AsRef<K>, data: Vec<u8>, mut tx: Sender<Report>) {
+        let kbuf: &[u8] = key.as_ref().as_ref();
+        let mut report = Report::new(kbuf.len(), data.len());
         let now = Instant::now();
         self.storage.write(key, data).await.unwrap();
         debug!("write finished");
