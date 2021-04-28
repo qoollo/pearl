@@ -58,7 +58,7 @@ impl FileIndexTrait for SimpleFileIndex {
             .await
             .with_context(|| format!("file open failed {:?}", path))?;
         file.write_append(&buf).await?;
-        header.written = 1;
+        header.set_written(true);
         let serialized_header = serialize(&header)?;
         file.write_at(0, &serialized_header).await?;
         file.fsyncdata().await?;
@@ -94,10 +94,10 @@ impl FileIndexTrait for SimpleFileIndex {
     }
 
     fn validate(&self) -> Result<()> {
-        if self.header.written == 1 {
+        if self.header.is_written() {
             Ok(())
         } else {
-            Err(anyhow!("Index Header is not valid"))
+            Err(Error::validation("Index Header is not valid").into())
         }
     }
 }
@@ -108,7 +108,7 @@ impl SimpleFileIndex {
         let hash = header.hash.clone();
         let mut header = header.clone();
         header.hash = vec![0; ring::digest::SHA256.output_len];
-        header.written = 0;
+        header.set_written(false);
         serialize_into(buf.as_mut_slice(), &header)?;
         let new_hash = get_hash(&buf);
         Ok(hash == new_hash)
@@ -237,13 +237,11 @@ impl SimpleFileIndex {
     }
 
     async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
-        if self.header.written != 1 {
-            return Err(Error::validation("header was not written").into());
-        }
+        self.validate()?;
         if !Self::hash_valid(&self.header, buf)? {
             return Err(Error::validation("header hash mismatch").into());
         }
-        if self.header.version != HEADER_VERSION {
+        if self.header.version() != HEADER_VERSION {
             return Err(Error::validation("header version mismatch").into());
         }
         Ok(())

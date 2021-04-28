@@ -107,10 +107,13 @@ impl<'a> HeaderStage<'a> {
 
 impl<'a> LeavesStage<'a> {
     pub(super) fn tree_stage(self) -> Result<TreeStage<'a>> {
-        let keys = self.headers_btree.keys().collect();
         let tree_offset = self.leaves_offset + self.leaves_buf.len() as u64;
-        let (root_offset, tree_buf) =
-            Self::serialize_bptree(keys, self.leaves_offset, self.leaf_size as u64, tree_offset)?;
+        let (root_offset, tree_buf) = Self::serialize_bptree(
+            self.headers_btree,
+            self.leaves_offset,
+            self.leaf_size as u64,
+            tree_offset,
+        )?;
         let metadata = TreeMeta::new(root_offset, self.leaves_offset, tree_offset);
         let meta_buf = serialize(&metadata)?;
         Ok(TreeStage {
@@ -126,28 +129,25 @@ impl<'a> LeavesStage<'a> {
     }
 
     fn serialize_bptree(
-        keys: Vec<&Vec<u8>>,
+        btree: &InMemoryIndex,
         leaves_offset: u64,
         leaf_size: u64,
         tree_offset: u64,
     ) -> Result<(u64, Vec<u8>)> {
-        let max_amount = Self::max_leaf_node_capacity(keys[0].len());
-        let nodes_amount = (keys.len() - 1) / max_amount + 1;
-        let elems_in_node = (keys.len() / nodes_amount) as u64;
+        let max_amount = Self::max_leaf_node_capacity(btree.keys().next().unwrap().len());
+        let nodes_amount = (btree.len() - 1) / max_amount + 1;
+        let elems_in_node = (btree.len() / nodes_amount) as u64;
         trace!(
-            "last node has {} less keys",
+            "last node has {} less btree",
             elems_in_node - elems_in_node % nodes_amount as u64
         );
 
-        let leaf_nodes_compressed = keys
-            .chunks(elems_in_node as usize)
-            .enumerate()
-            .map(|(i, keys)| {
-                let cur_offset = leaves_offset + elems_in_node * leaf_size * i as u64;
-                (keys[0].clone(), cur_offset)
-            })
-            .collect::<Vec<(Vec<u8>, u64)>>();
-
+        let mut leaf_nodes_compressed = Vec::with_capacity(nodes_amount);
+        let mut offset = leaves_offset;
+        for k in btree.keys().step_by(elems_in_node as usize) {
+            leaf_nodes_compressed.push((k.clone(), offset));
+            offset += elems_in_node * leaf_size;
+        }
         let mut buf = Vec::new();
         let root_offset = Self::build_tree(leaf_nodes_compressed, tree_offset, &mut buf)?;
         Ok((root_offset, buf))
@@ -186,8 +186,9 @@ impl<'a> LeavesStage<'a> {
 
     fn max_nonleaf_node_capacity(key_size: usize) -> usize {
         let offset_size = std::mem::size_of::<u64>();
-        let meta_size = std::mem::size_of::<NodeMeta>();
-        (BLOCK_SIZE - meta_size - offset_size) / (key_size + offset_size) + 1
+        let meta_size =
+            NodeMeta::serialized_size_default().expect("Can't retrieve default serialized size");
+        (BLOCK_SIZE - meta_size as usize - offset_size) / (key_size + offset_size) + 1
     }
 
     fn prep_root(offset: u64, tree_offset: u64, buf: &mut Vec<u8>) -> u64 {

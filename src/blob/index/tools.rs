@@ -15,7 +15,13 @@ pub(crate) fn compute_mem_attrs(
     record_headers: &InMemoryIndex,
     records_count: usize,
 ) -> MemoryAttrs {
-    let key_size = record_headers.keys().next().map_or_else(|| 0, |v| v.len());
+    let key_size = record_headers.keys().next().map_or_else(
+        || 0,
+        |k| {
+            assert!(!k.is_empty(), "key can't be empty!");
+            k.len()
+        },
+    );
     let mut attrs: MemoryAttrs = Default::default();
     set_key_related_fields(&mut attrs, key_size);
     attrs.records_allocated = record_headers.values().fold(0, |acc, v| acc + v.capacity());
@@ -30,10 +36,12 @@ pub(crate) fn set_key_related_fields(attrs: &mut MemoryAttrs, key_size: usize) {
 }
 
 pub(crate) fn clean_file(path: impl AsRef<Path>, recreate_index_file: bool) -> Result<()> {
-    if recreate_index_file {
+    if !path.as_ref().exists() {
+        Ok(())
+    } else if recreate_index_file {
         StdFile::create(path).map(|_| ()).map_err(Into::into)
     } else {
-        let msg = "Clean file not permitted";
+        let msg = "Clean file is not permitted";
         error!("{}", msg);
         Err(anyhow!(msg))
     }

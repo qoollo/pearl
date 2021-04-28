@@ -2,7 +2,7 @@ use super::prelude::*;
 
 pub(crate) type Index = IndexStruct<BPTreeFileIndex>;
 
-pub(crate) const HEADER_VERSION: u64 = 1;
+pub(crate) const HEADER_VERSION: u8 = 1;
 
 #[derive(Debug)]
 struct IndexParams {

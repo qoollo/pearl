@@ -8,8 +8,9 @@ pub(crate) struct IndexHeader {
     pub record_header_size: usize,
     pub meta_size: usize,
     pub hash: Vec<u8>,
-    pub(crate) version: u64,
-    pub(crate) written: u8,
+    // this field also contains `written` bit (the first one)
+    // to get the version, you should proceed `version >> 1`
+    pub(crate) version: u8,
 }
 
 impl IndexHeader {
@@ -37,6 +38,25 @@ impl IndexHeader {
         }
     }
 
+    pub(crate) fn set_written(&mut self, state: bool) {
+        self.version = self.version & !1;
+        self.version |= state as u8;
+    }
+
+    pub(crate) fn is_written(&self) -> bool {
+        self.version & 1 == 1
+    }
+
+    pub(crate) fn version(&self) -> u8 {
+        self.version >> 1
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn set_version(&mut self, version: u8) {
+        let written = self.version & 1;
+        self.version = (version << 1) | written;
+    }
+
     pub(crate) fn serialized_size_default() -> bincode::Result<u64> {
         let header = Self::default();
         header.serialized_size()
@@ -60,8 +80,7 @@ impl Default for IndexHeader {
             record_header_size: 0,
             meta_size: 0,
             hash: vec![0; ring::digest::SHA256.output_len],
-            version: HEADER_VERSION,
-            written: 0,
+            version: HEADER_VERSION << 1,
         }
     }
 }

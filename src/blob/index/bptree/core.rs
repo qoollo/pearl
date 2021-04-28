@@ -47,14 +47,14 @@ impl FileIndexTrait for BPTreeFileIndex {
         meta: Vec<u8>,
         recreate_index_file: bool,
     ) -> Result<Self> {
+        clean_file(path, recreate_index_file)?;
         let res = Self::serialize(headers, meta)?;
         let (mut header, metadata, buf) = res;
-        clean_file(path, recreate_index_file)?;
         let file = File::create(path, ioring)
             .await
             .with_context(|| format!("file open failed {:?}", path))?;
         file.write_append(&buf).await?;
-        header.written = 1;
+        header.set_written(true);
         let serialized_header = serialize(&header)?;
         file.write_at(0, &serialized_header).await?;
         file.fsyncdata().await?;
@@ -135,10 +135,10 @@ impl FileIndexTrait for BPTreeFileIndex {
     }
 
     fn validate(&self) -> Result<()> {
-        if self.header.written == 1 {
+        if self.header.is_written() {
             Ok(())
         } else {
-            Err(anyhow!("Index Header is not valid"))
+            Err(Error::validation("Index Header is not valid").into())
         }
     }
 }
@@ -163,9 +163,9 @@ impl BPTreeFileIndex {
         let leaf_size = key.len() + std::mem::size_of::<u64>();
         let buf_size = self.leaf_node_buf_size(leaf_size, leaf_offset);
         let header_pointers = self
-            .get_header_pointers(leaf_offset, key, buf, leaf_size, buf_size)
+            .get_header_pointers(leaf_offset, key.len(), buf, leaf_size, buf_size)
             .await?;
-        self.search_header_pointer(header_pointers, key, buf_size as u64 + leaf_offset)
+        Ok(self.search_header_pointer(header_pointers, key, buf_size as u64 + leaf_offset))
     }
 
     fn leaf_node_buf_size(&self, leaf_size: usize, leaf_offset: u64) -> usize {
@@ -180,17 +180,17 @@ impl BPTreeFileIndex {
         header_pointers: Vec<(Vec<u8>, u64)>,
         key: &[u8],
         absolute_buf_end: u64,
-    ) -> Result<Option<(u64, u64)>> {
-        match header_pointers.binary_search_by(|(cur_key, _)| cur_key.as_slice().cmp(key)) {
-            Err(_) => Ok(None),
-            Ok(i) => Ok(Some(self.with_amount(header_pointers, i, absolute_buf_end))),
-        }
+    ) -> Option<(u64, u64)> {
+        header_pointers
+            .binary_search_by(|(cur_key, _)| cur_key.as_slice().cmp(key))
+            .map(|index| Some(self.with_amount(header_pointers, index, absolute_buf_end)))
+            .unwrap_or(None)
     }
 
     async fn get_header_pointers(
         &self,
         leaf_offset: u64,
-        key: &[u8],
+        key_len: usize,
         buf: &mut [u8],
         leaf_size: usize,
         buf_size: usize,
@@ -199,10 +199,10 @@ impl BPTreeFileIndex {
         self.file.read_at(buf, leaf_offset).await?;
         buf.chunks(leaf_size)
             .map(|bytes| {
-                let (key, offset) = bytes.split_at(key.len());
+                let (key, offset) = bytes.split_at(key_len);
                 Ok((key.to_vec(), deserialize::<u64>(offset)?))
             })
-            .collect::<Result<Vec<(Vec<u8>, u64)>>>()
+            .collect()
     }
 
     fn with_amount(
@@ -211,9 +211,10 @@ impl BPTreeFileIndex {
         mid: usize,
         buf_end: u64,
     ) -> (u64, u64) {
-        let last_rec = mid + 1 >= header_pointers.len() && (buf_end >= self.metadata.tree_offset);
+        let is_last_rec =
+            mid + 1 >= header_pointers.len() && (buf_end >= self.metadata.tree_offset);
         let cur_offset = header_pointers[mid].1;
-        let next_offset = if last_rec {
+        let next_offset = if is_last_rec {
             self.metadata.leaves_offset
         } else {
             header_pointers[mid + 1].1
@@ -235,13 +236,11 @@ impl BPTreeFileIndex {
     }
 
     async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
-        if self.header.written != 1 {
-            return Err(Error::validation("header was not written").into());
-        }
+        self.validate()?;
         if !Self::hash_valid(&self.header, buf)? {
             return Err(Error::validation("header hash mismatch").into());
         }
-        if self.header.version != HEADER_VERSION {
+        if self.header.version() != HEADER_VERSION {
             return Err(Error::validation("header version mismatch").into());
         }
         Ok(())
@@ -251,7 +250,7 @@ impl BPTreeFileIndex {
         let hash = header.hash.clone();
         let mut header = header.clone();
         header.hash = vec![0; ring::digest::SHA256.output_len];
-        header.written = 0;
+        header.set_written(false);
         serialize_into(buf.as_mut_slice(), &header)?;
         let new_hash = get_hash(&buf);
         Ok(hash == new_hash)

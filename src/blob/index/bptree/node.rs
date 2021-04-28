@@ -8,8 +8,10 @@ pub(super) struct Node {
 
 impl Node {
     pub(super) fn new(keys: Vec<Vec<u8>>, offsets: Vec<u64>) -> Self {
-        assert!(keys.len() != 0);
+        assert!(!keys.is_empty());
         assert_eq!(keys.len() + 1, offsets.len());
+        let mut a = Vec::new();
+        a.push(1);
         Self { keys, offsets }
     }
 
