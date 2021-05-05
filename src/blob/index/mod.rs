@@ -8,6 +8,9 @@ mod header;
 mod simple;
 mod tools;
 
+#[cfg(test)]
+mod benchmarks;
+
 use bptree::BPTreeFileIndex;
 use header::IndexHeader;
 
