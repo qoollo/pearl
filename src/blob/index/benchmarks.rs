@@ -9,12 +9,6 @@ type FileIndexStruct = BPTreeFileIndex;
 fn generate_headers(records_amount: usize, key_mapper: fn(u32) -> u32) -> InMemoryIndex {
     let mut inmem = InMemoryIndex::new();
     (0..records_amount as u32)
-        .map(|i| {
-            if (i + 1) % 100000 == 0 {
-                println!("Iteration: {}...", i + 1);
-            }
-            i
-        })
         .map(key_mapper)
         .map(|i| serialize(&i).expect("can't serialize"))
         .for_each(|key| {
@@ -131,9 +125,9 @@ async fn benchmark_get_any() {
     const RECORDS_AMOUNT: usize = 10_000_000;
     const META_SIZE: usize = 1_000;
     const FILEPATH: &str = "/tmp/index_get_any_bench.b";
-    const KEY_MAPPER: fn(u32) -> u32 = |k| k % 1_333_333;
-    const KEY_FROM: u32 = 1_233_333;
-    const KEY_TO: u32 = 1_433_333;
+    const KEY_MAPPER: fn(u32) -> u32 = |k| k;
+    const KEY_FROM: u32 = 9_900_000;
+    const KEY_TO: u32 = 10_100_000;
     const PRINT_EVERY: u32 = 10_000;
 
     let ioring = rio::new();
@@ -184,9 +178,9 @@ async fn benchmark_get_all() {
     const RECORDS_AMOUNT: usize = 10_000_000;
     const META_SIZE: usize = 1_000;
     const FILEPATH: &str = "/tmp/index_get_all_bench.b";
-    const KEY_MAPPER: fn(u32) -> u32 = |k| k % 1_333_333;
-    const KEY_FROM: u32 = 1_233_333;
-    const KEY_TO: u32 = 1_433_333;
+    const KEY_MAPPER: fn(u32) -> u32 = |k| k;
+    const KEY_FROM: u32 = 9_900_000;
+    const KEY_TO: u32 = 10_100_000;
     const PRINT_EVERY: u32 = 10_000;
 
     let ioring = rio::new();
