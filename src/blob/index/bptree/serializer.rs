@@ -136,7 +136,7 @@ impl<'a> LeavesStage<'a> {
     ) -> Result<(u64, Vec<u8>)> {
         let max_amount = Self::max_leaf_node_capacity(btree.keys().next().unwrap().len());
         let nodes_amount = (btree.len() - 1) / max_amount + 1;
-        let elems_in_node = (btree.len() / nodes_amount) as u64;
+        let elems_in_node = (btree.len() / nodes_amount + 1) as u64;
         trace!(
             "last node has {} less btree",
             elems_in_node - elems_in_node % nodes_amount as u64
