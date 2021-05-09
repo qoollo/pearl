@@ -136,12 +136,7 @@ impl<'a> LeavesStage<'a> {
     ) -> Result<(u64, Vec<u8>)> {
         let max_amount = Self::max_leaf_node_capacity(btree.keys().next().unwrap().len());
         let nodes_amount = (btree.len() - 1) / max_amount + 1;
-        let elems_in_node = (btree.len() / nodes_amount + 1) as u64;
-        trace!(
-            "last node has {} less btree",
-            elems_in_node - elems_in_node % nodes_amount as u64
-        );
-
+        let elems_in_node = ((btree.len() - 1) / nodes_amount + 1) as u64;
         let mut leaf_nodes_compressed = Vec::with_capacity(nodes_amount);
         let mut offset = leaves_offset;
         for k in btree.keys().step_by(elems_in_node as usize) {
@@ -151,6 +146,23 @@ impl<'a> LeavesStage<'a> {
         let mut buf = Vec::new();
         let root_offset = Self::build_tree(leaf_nodes_compressed, tree_offset, &mut buf)?;
         Ok((root_offset, buf))
+    }
+
+    fn process_keys_portion(
+        buf: &mut Vec<u8>,
+        tree_offset: u64,
+        nodes_portion: &[(Vec<u8>, u64)],
+    ) -> (Vec<u8>, u64) {
+        let offset = tree_offset + buf.len() as u64;
+        let min_key = nodes_portion[0].0.clone();
+        let offsets = nodes_portion.iter().map(|(_, offset)| *offset).collect();
+        let keys = nodes_portion[1..]
+            .iter()
+            .map(|(key, _)| key.clone())
+            .collect();
+        let node = Node::new(keys, offsets);
+        buf.extend_from_slice(&node.serialize().expect("failed to serialize node"));
+        (min_key, offset)
     }
 
     pub(super) fn build_tree(
@@ -163,19 +175,25 @@ impl<'a> LeavesStage<'a> {
         }
         let max_amount = Self::max_nonleaf_node_capacity(nodes_arr[0].0.len());
         let nodes_amount = (nodes_arr.len() - 1) / max_amount + 1;
-        let elems_in_node = nodes_arr.len() / nodes_amount;
-        let new_nodes = nodes_arr
-            .chunks(elems_in_node)
-            .map(|keys| {
-                let offset = tree_offset + buf.len() as u64;
-                let min_key = keys[0].0.clone();
-                let offsets = keys.iter().map(|(_, offset)| *offset).collect();
-                let keys = keys.iter().skip(1).map(|(key, _)| key.clone()).collect();
-                let node = Node::new(keys, offsets);
-                buf.extend_from_slice(&node.serialize().expect("failed to serialize node"));
-                (min_key, offset)
-            })
-            .collect();
+        let elems_in_node = (nodes_arr.len() - 1) / nodes_amount + 1;
+        let mut current = 0;
+        let mut new_nodes = if nodes_arr.len() % elems_in_node == 1 {
+            // special case: last node must have at least 2 children, so if it hasn't in current
+            // distribution, we'll borrow one child in 1st portion
+            let nodes_portion = &nodes_arr[current..(current + elems_in_node - 1)];
+            current += elems_in_node;
+            let compressed_node = Self::process_keys_portion(buf, tree_offset, nodes_portion);
+            vec![compressed_node]
+        } else {
+            Vec::new()
+        };
+        while current < nodes_arr.len() {
+            let right_bound = std::cmp::min(nodes_arr.len(), current + elems_in_node);
+            let nodes_portion = &nodes_arr[current..right_bound];
+            current = right_bound;
+            let compressed_node = Self::process_keys_portion(buf, tree_offset, nodes_portion);
+            new_nodes.push(compressed_node);
+        }
         Self::build_tree(new_nodes, tree_offset, buf)
     }
 
