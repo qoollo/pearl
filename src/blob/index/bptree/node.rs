@@ -1,6 +1,6 @@
 use super::prelude::*;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub(super) struct Node {
     keys: Vec<Vec<u8>>,
     offsets: Vec<u64>,

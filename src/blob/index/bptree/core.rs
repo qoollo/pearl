@@ -21,6 +21,7 @@ pub(crate) struct BPTreeFileIndex {
     file: File,
     header: IndexHeader,
     metadata: TreeMeta,
+    root_node: [u8; BLOCK_SIZE],
 }
 
 #[async_trait::async_trait]
@@ -32,11 +33,13 @@ impl FileIndexTrait for BPTreeFileIndex {
             .context(format!("failed to open index file: {}", name))?;
         let header = Self::read_index_header(&file).await?;
         let metadata = Self::read_tree_meta(&file, &header).await?;
+        let root_node = Self::read_root(&file, metadata.root_offset).await?;
 
         Ok(Self {
             file,
             header,
             metadata,
+            root_node,
         })
     }
 
@@ -58,10 +61,12 @@ impl FileIndexTrait for BPTreeFileIndex {
         let serialized_header = serialize(&header)?;
         file.write_at(0, &serialized_header).await?;
         file.fsyncdata().await?;
+        let root_node = Self::read_root(&file, metadata.root_offset).await?;
         Ok(Self {
             file,
             metadata,
             header,
+            root_node,
         })
     }
 
@@ -147,8 +152,12 @@ impl BPTreeFileIndex {
     async fn find_leaf_node(&self, key: &[u8], mut offset: u64, buf: &mut [u8]) -> Result<u64> {
         let key_size = key.len() as u64;
         while offset >= self.metadata.tree_offset {
-            self.file.read_at(buf, offset).await?;
-            let node = Node::deserialize(buf, key_size)?;
+            let node = if offset >= self.metadata.root_offset {
+                Node::deserialize(&self.root_node, key_size)?
+            } else {
+                self.file.read_at(buf, offset).await?;
+                Node::deserialize(buf, key_size)?
+            };
             offset = node.key_offset(&key);
         }
         Ok(offset)
@@ -261,6 +270,12 @@ impl BPTreeFileIndex {
         let mut buf = vec![0; header_size];
         file.read_at(&mut buf, 0).await?;
         IndexHeader::from_raw(&buf).map_err(Into::into)
+    }
+
+    async fn read_root(file: &File, root_offset: u64) -> Result<[u8; BLOCK_SIZE]> {
+        let mut buf = [0; BLOCK_SIZE];
+        file.read_at(&mut buf, root_offset).await?;
+        Ok(buf)
     }
 
     async fn read_tree_meta(file: &File, header: &IndexHeader) -> Result<TreeMeta> {
