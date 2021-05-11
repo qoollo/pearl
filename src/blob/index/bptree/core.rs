@@ -150,15 +150,13 @@ impl FileIndexTrait for BPTreeFileIndex {
 
 impl BPTreeFileIndex {
     async fn find_leaf_node(&self, key: &[u8], mut offset: u64, buf: &mut [u8]) -> Result<u64> {
-        let key_size = key.len() as u64;
         while offset >= self.metadata.tree_offset {
-            let node = if offset >= self.metadata.root_offset {
-                Node::deserialize(&self.root_node, key_size)?
+            offset = if offset >= self.metadata.root_offset {
+                Node::key_offset_serialized(&self.root_node, key)?
             } else {
                 self.file.read_at(buf, offset).await?;
-                Node::deserialize(buf, key_size)?
+                Node::key_offset_serialized(buf, key)?
             };
-            offset = node.key_offset(&key);
         }
         Ok(offset)
     }

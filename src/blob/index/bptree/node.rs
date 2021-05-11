@@ -1,4 +1,5 @@
 use super::prelude::*;
+use std::mem::size_of;
 
 #[derive(Debug, PartialEq, Clone)]
 pub(super) struct Node {
@@ -48,6 +49,33 @@ impl Node {
             .map(|bytes| deserialize::<u64>(bytes).map_err(Into::into))
             .collect::<Result<Vec<u64>>>()?;
         Ok(Node::new(keys, offsets))
+    }
+
+    pub(super) fn binary_search_serialized(key: &[u8], buf: &[u8]) -> Result<usize, usize> {
+        let mut l = 0i32;
+        let mut r: i32 = (buf.len() / key.len() - 1) as i32;
+        while l <= r {
+            let m = (l + r) / 2;
+            let offset = m as usize * key.len();
+            match key.cmp(&buf[offset..(offset + key.len())]) {
+                CmpOrdering::Less => r = m - 1,
+                CmpOrdering::Greater => l = m + 1,
+                CmpOrdering::Equal => return Ok(m as usize),
+            }
+        }
+        Err(l as usize)
+    }
+
+    pub(super) fn key_offset_serialized(buf: &[u8], key: &[u8]) -> Result<u64> {
+        let meta_size = NodeMeta::serialized_size_default()? as usize;
+        let node_size = deserialize::<NodeMeta>(&buf[..meta_size])?.size as usize;
+        let offsets_offset = meta_size + node_size * key.len();
+        let ind = match Self::binary_search_serialized(key, &buf[meta_size..offsets_offset]) {
+            Ok(pos) => pos + 1,
+            Err(pos) => pos,
+        };
+        let offset = offsets_offset + ind * size_of::<u64>();
+        deserialize(&buf[offset..(offset + size_of::<u64>())]).map_err(Into::into)
     }
 }
 
