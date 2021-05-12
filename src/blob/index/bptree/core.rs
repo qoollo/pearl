@@ -13,8 +13,9 @@
 ///    `NodeMeta | keys_arr | pointers_arr`,
 ///    where pointer is offset in file of underlying node with searched key
 use super::prelude::*;
+use std::mem::size_of;
 
-pub(super) const BLOCK_SIZE: usize = 4096;
+pub(super) const BLOCK_SIZE: usize = 512;
 
 #[derive(Debug, Clone)]
 pub(crate) struct BPTreeFileIndex {
@@ -167,12 +168,10 @@ impl BPTreeFileIndex {
         key: &[u8],
         buf: &mut [u8],
     ) -> Result<Option<(u64, u64)>> {
-        let leaf_size = key.len() + std::mem::size_of::<u64>();
+        let leaf_size = key.len() + size_of::<u64>();
         let buf_size = self.leaf_node_buf_size(leaf_size, leaf_offset);
-        let header_pointers = self
-            .get_header_pointers(leaf_offset, key.len(), buf, leaf_size, buf_size)
-            .await?;
-        Ok(self.search_header_pointer(header_pointers, key, buf_size as u64 + leaf_offset))
+        let pointers_size = self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
+        self.search_header_pointer(&buf[..pointers_size], key, buf_size as u64 + leaf_offset)
     }
 
     fn leaf_node_buf_size(&self, leaf_size: usize, leaf_offset: u64) -> usize {
@@ -184,50 +183,53 @@ impl BPTreeFileIndex {
 
     fn search_header_pointer(
         &self,
-        header_pointers: Vec<(Vec<u8>, u64)>,
+        header_pointers: &[u8],
         key: &[u8],
         absolute_buf_end: u64,
-    ) -> Option<(u64, u64)> {
-        header_pointers
-            .binary_search_by(|(cur_key, _)| cur_key.as_slice().cmp(key))
-            .map(|index| Some(self.with_amount(header_pointers, index, absolute_buf_end)))
-            .unwrap_or(None)
-    }
-
-    async fn get_header_pointers(
-        &self,
-        leaf_offset: u64,
-        key_len: usize,
-        buf: &mut [u8],
-        leaf_size: usize,
-        buf_size: usize,
-    ) -> Result<Vec<(Vec<u8>, u64)>> {
-        let (buf, _rest) = buf.split_at_mut(buf_size as usize);
-        self.file.read_at(buf, leaf_offset).await?;
-        buf.chunks(leaf_size)
-            .map(|bytes| {
-                let (key, offset) = bytes.split_at(key_len);
-                Ok((key.to_vec(), deserialize::<u64>(offset)?))
-            })
-            .collect()
+    ) -> Result<Option<(u64, u64)>> {
+        let leaf_size = key.len() + size_of::<u64>();
+        let mut l = 0i32;
+        let mut r: i32 = (header_pointers.len() / leaf_size) as i32 - 1;
+        while l <= r {
+            let m = (l + r) / 2;
+            let m_off = leaf_size * m as usize;
+            match key.cmp(&header_pointers[m_off..(m_off + key.len())]) {
+                CmpOrdering::Less => r = m - 1,
+                CmpOrdering::Greater => l = m + 1,
+                CmpOrdering::Equal => {
+                    return Ok(Some(self.with_amount(
+                        header_pointers,
+                        m as usize,
+                        absolute_buf_end,
+                        key.len(),
+                    )?));
+                }
+            }
+        }
+        Ok(None)
     }
 
     fn with_amount(
         &self,
-        header_pointers: Vec<(Vec<u8>, u64)>,
+        header_pointers: &[u8],
         mid: usize,
         buf_end: u64,
-    ) -> (u64, u64) {
-        let is_last_rec =
-            mid + 1 >= header_pointers.len() && (buf_end >= self.metadata.tree_offset);
-        let cur_offset = header_pointers[mid].1;
+        key_size: usize,
+    ) -> Result<(u64, u64)> {
+        let leaf_size = key_size + size_of::<u64>();
+        let is_last_rec = (mid + 1) * leaf_size >= header_pointers.len()
+            && (buf_end >= self.metadata.tree_offset);
+        let mid_offset = mid * leaf_size + key_size;
+        let cur_offset =
+            deserialize::<u64>(&header_pointers[mid_offset..(mid_offset + size_of::<u64>())])?;
         let next_offset = if is_last_rec {
             self.metadata.leaves_offset
         } else {
-            header_pointers[mid + 1].1
+            let next_offset = mid_offset + leaf_size;
+            deserialize(&header_pointers[next_offset..(next_offset + size_of::<u64>())])?
         };
         let amount = (next_offset - cur_offset) / self.header.record_header_size as u64;
-        (cur_offset, amount)
+        Ok((cur_offset, amount))
     }
 
     async fn read_headers(&self, offset: u64, amount: usize) -> Result<Vec<RecordHeader>> {

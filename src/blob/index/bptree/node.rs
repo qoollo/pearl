@@ -14,6 +14,7 @@ impl Node {
         Self { keys, offsets }
     }
 
+    #[allow(dead_code)]
     pub(super) fn key_offset(&self, key: &[u8]) -> u64 {
         match self.keys.binary_search_by(|elem| elem.as_slice().cmp(key)) {
             Ok(pos) => self.offsets[pos + 1],
@@ -32,6 +33,7 @@ impl Node {
         })
     }
 
+    #[allow(dead_code)]
     pub(super) fn deserialize(buf: &[u8], key_size: u64) -> Result<Self> {
         let meta_size = NodeMeta::serialized_size_default()?;
         let (meta_buf, data_buf) = buf.split_at(meta_size as usize);
