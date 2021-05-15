@@ -128,6 +128,14 @@ impl<'a> LeavesStage<'a> {
         })
     }
 
+    fn key_from_iter<'k>(keys_iter: &mut impl Iterator<Item = &'k Vec<u8>>) -> Result<Vec<u8>> {
+        if let Some(key) = keys_iter.next() {
+            Ok(key.clone())
+        } else {
+            Err(anyhow!("Unexpected end of keys sequence"))
+        }
+    }
+
     fn serialize_bptree(
         btree: &InMemoryIndex,
         leaves_offset: u64,
@@ -135,14 +143,23 @@ impl<'a> LeavesStage<'a> {
         tree_offset: u64,
     ) -> Result<(u64, Vec<u8>)> {
         let max_amount = Self::max_leaf_node_capacity(btree.keys().next().unwrap().len());
-        let nodes_amount = (btree.len() - 1) / max_amount + 1;
-        let elems_in_node = ((btree.len() - 1) / nodes_amount + 1) as u64;
-        let mut leaf_nodes_compressed = Vec::with_capacity(nodes_amount);
+        let min_amount = (max_amount - 1) / 2 + 1;
+        let mut leaf_nodes_compressed = Vec::new();
         let mut offset = leaves_offset;
-        for k in btree.keys().step_by(elems_in_node as usize) {
-            leaf_nodes_compressed.push((k.clone(), offset));
-            offset += elems_in_node * leaf_size;
+        let mut keys_iter = btree.keys();
+        let elems_amount = btree.len();
+        let mut current = 0;
+        while elems_amount - current > max_amount {
+            let amount = std::cmp::min(max_amount, elems_amount - current - min_amount);
+            leaf_nodes_compressed.push((Self::key_from_iter(&mut keys_iter)?, offset));
+            (0..(amount - 1)).for_each(|_| {
+                keys_iter.next();
+            });
+            offset += amount as u64 * leaf_size;
+            current += amount;
         }
+        leaf_nodes_compressed.push((Self::key_from_iter(&mut keys_iter)?, offset));
+
         let mut buf = Vec::new();
         let root_offset = Self::build_tree(leaf_nodes_compressed, tree_offset, &mut buf)?;
         Ok((root_offset, buf))
@@ -152,7 +169,7 @@ impl<'a> LeavesStage<'a> {
         buf: &mut Vec<u8>,
         tree_offset: u64,
         nodes_portion: &[(Vec<u8>, u64)],
-    ) -> (Vec<u8>, u64) {
+    ) -> Result<(Vec<u8>, u64)> {
         let offset = tree_offset + buf.len() as u64;
         let min_key = nodes_portion[0].0.clone();
         let offsets_iter = nodes_portion.iter().map(|(_, offset)| *offset);
@@ -162,10 +179,9 @@ impl<'a> LeavesStage<'a> {
             offsets_iter,
             nodes_portion[0].0.len(),
             nodes_portion.len() - 1,
-        )
-        .expect("Failed to create new serialized node");
+        )?;
         buf.extend_from_slice(&node_buf);
-        (min_key, offset)
+        Ok((min_key, offset))
     }
 
     pub(super) fn build_tree(
@@ -186,12 +202,16 @@ impl<'a> LeavesStage<'a> {
             let amount = std::cmp::min(max_amount, nodes_arr.len() - current - min_amount);
             let nodes_portion = &nodes_arr[current..(current + amount)];
             current += amount;
-            let compressed_node = Self::process_keys_portion(buf, tree_offset, nodes_portion);
+            let compressed_node = Self::process_keys_portion(buf, tree_offset, nodes_portion)?;
             new_nodes.push(compressed_node);
         }
         // min_amount <= nodes left <= max_amount
         let nodes_portion = &nodes_arr[current..];
-        new_nodes.push(Self::process_keys_portion(buf, tree_offset, &nodes_portion));
+        new_nodes.push(Self::process_keys_portion(
+            buf,
+            tree_offset,
+            &nodes_portion,
+        )?);
         Self::build_tree(new_nodes, tree_offset, buf)
     }
 
