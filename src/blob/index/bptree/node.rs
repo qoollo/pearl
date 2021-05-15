@@ -14,43 +14,23 @@ impl Node {
         Self { keys, offsets }
     }
 
-    #[allow(dead_code)]
-    pub(super) fn key_offset(&self, key: &[u8]) -> u64 {
-        match self.keys.binary_search_by(|elem| elem.as_slice().cmp(key)) {
-            Ok(pos) => self.offsets[pos + 1],
-            Err(pos) => self.offsets[pos],
-        }
-    }
-
-    pub(super) fn serialize(&self) -> Result<Vec<u8>> {
-        let mut buf = Vec::new();
-        let meta = NodeMeta::new(self.keys.len() as u64);
-        buf.extend_from_slice(&serialize(&meta)?);
-        buf.extend(self.keys.iter().flat_map(|kb| kb));
-        self.offsets.iter().try_fold(buf, |mut acc, offset| {
-            acc.extend_from_slice(&serialize(offset)?);
-            Ok(acc)
-        })
-    }
-
-    #[allow(dead_code)]
-    pub(super) fn deserialize(buf: &[u8], key_size: u64) -> Result<Self> {
-        let meta_size = NodeMeta::serialized_size_default()?;
-        let (meta_buf, data_buf) = buf.split_at(meta_size as usize);
-        let meta: NodeMeta = deserialize(&meta_buf)?;
-        let keys_buf_size = meta.size * key_size;
-        let (keys_buf, rest_buf) = data_buf.split_at(keys_buf_size as usize);
-        let keys = keys_buf
-            .chunks(key_size as usize)
-            .map(|key| key.to_vec())
-            .collect();
-        let offsets_buf_size = (meta.size + 1) as usize * std::mem::size_of::<u64>();
-        let (offsets_buf, _rest_buf) = rest_buf.split_at(offsets_buf_size);
-        let offsets = offsets_buf
-            .chunks(std::mem::size_of::<u64>())
-            .map(|bytes| deserialize::<u64>(bytes).map_err(Into::into))
-            .collect::<Result<Vec<u64>>>()?;
-        Ok(Node::new(keys, offsets))
+    pub(super) fn new_serialized<'a>(
+        keys: impl Iterator<Item = &'a [u8]>,
+        offsets: impl Iterator<Item = u64>,
+        key_size: usize,
+        keys_amount: usize,
+    ) -> Result<Vec<u8>> {
+        let meta_buf = serialize(&NodeMeta::new(keys_amount as u64))?;
+        let keys_buf_size = key_size * keys_amount;
+        let offsets_buf_size = (keys_amount + 1) * size_of::<u64>();
+        let buf_size = meta_buf.len() + keys_buf_size + offsets_buf_size;
+        let mut buf = Vec::with_capacity(buf_size);
+        buf.extend_from_slice(&meta_buf);
+        keys.for_each(|k| buf.extend_from_slice(k));
+        offsets
+            .map(|off| serialize(&off))
+            .try_for_each(|res| Result::<_>::Ok(buf.extend_from_slice(&res?)))?;
+        Ok(buf)
     }
 
     pub(super) fn binary_search_serialized(key: &[u8], buf: &[u8]) -> Result<usize, usize> {
@@ -78,6 +58,46 @@ impl Node {
         };
         let offset = offsets_offset + ind * size_of::<u64>();
         deserialize(&buf[offset..(offset + size_of::<u64>())]).map_err(Into::into)
+    }
+
+    #[allow(dead_code)]
+    pub(super) fn key_offset(&self, key: &[u8]) -> u64 {
+        match self.keys.binary_search_by(|elem| elem.as_slice().cmp(key)) {
+            Ok(pos) => self.offsets[pos + 1],
+            Err(pos) => self.offsets[pos],
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(super) fn serialize(&self) -> Result<Vec<u8>> {
+        let mut buf = Vec::new();
+        let meta = NodeMeta::new(self.keys.len() as u64);
+        buf.extend_from_slice(&serialize(&meta)?);
+        buf.extend(self.keys.iter().flatten());
+        self.offsets.iter().try_fold(buf, |mut acc, offset| {
+            acc.extend_from_slice(&serialize(offset)?);
+            Ok(acc)
+        })
+    }
+
+    #[allow(dead_code)]
+    pub(super) fn deserialize(buf: &[u8], key_size: u64) -> Result<Self> {
+        let meta_size = NodeMeta::serialized_size_default()?;
+        let (meta_buf, data_buf) = buf.split_at(meta_size as usize);
+        let meta: NodeMeta = deserialize(&meta_buf)?;
+        let keys_buf_size = meta.size * key_size;
+        let (keys_buf, rest_buf) = data_buf.split_at(keys_buf_size as usize);
+        let keys = keys_buf
+            .chunks(key_size as usize)
+            .map(|key| key.to_vec())
+            .collect();
+        let offsets_buf_size = (meta.size + 1) as usize * std::mem::size_of::<u64>();
+        let (offsets_buf, _rest_buf) = rest_buf.split_at(offsets_buf_size);
+        let offsets = offsets_buf
+            .chunks(std::mem::size_of::<u64>())
+            .map(|bytes| deserialize::<u64>(bytes).map_err(Into::into))
+            .collect::<Result<Vec<u64>>>()?;
+        Ok(Node::new(keys, offsets))
     }
 }
 

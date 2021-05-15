@@ -15,7 +15,7 @@
 use super::prelude::*;
 use std::mem::size_of;
 
-pub(super) const BLOCK_SIZE: usize = 512;
+pub(super) const BLOCK_SIZE: usize = 4096;
 
 #[derive(Debug, Clone)]
 pub(crate) struct BPTreeFileIndex {

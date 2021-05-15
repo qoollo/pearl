@@ -155,13 +155,16 @@ impl<'a> LeavesStage<'a> {
     ) -> (Vec<u8>, u64) {
         let offset = tree_offset + buf.len() as u64;
         let min_key = nodes_portion[0].0.clone();
-        let offsets = nodes_portion.iter().map(|(_, offset)| *offset).collect();
-        let keys = nodes_portion[1..]
-            .iter()
-            .map(|(key, _)| key.clone())
-            .collect();
-        let node = Node::new(keys, offsets);
-        buf.extend_from_slice(&node.serialize().expect("failed to serialize node"));
+        let offsets_iter = nodes_portion.iter().map(|(_, offset)| *offset);
+        let keys_iter = nodes_portion[1..].iter().map(|(k, _)| k.as_ref());
+        let node_buf = Node::new_serialized(
+            keys_iter,
+            offsets_iter,
+            nodes_portion[0].0.len(),
+            nodes_portion.len() - 1,
+        )
+        .expect("Failed to create new serialized node");
+        buf.extend_from_slice(&node_buf);
         (min_key, offset)
     }
 
@@ -174,26 +177,21 @@ impl<'a> LeavesStage<'a> {
             return Ok(Self::prep_root(nodes_arr[0].1, tree_offset, buf));
         }
         let max_amount = Self::max_nonleaf_node_capacity(nodes_arr[0].0.len());
-        let nodes_amount = (nodes_arr.len() - 1) / max_amount + 1;
-        let elems_in_node = (nodes_arr.len() - 1) / nodes_amount + 1;
+        let min_amount = (max_amount - 1) / 2 + 1;
         let mut current = 0;
-        let mut new_nodes = if nodes_arr.len() % elems_in_node == 1 {
-            // special case: last node must have at least 2 children, so if it hasn't in current
-            // distribution, we'll borrow one child in 1st portion
-            let nodes_portion = &nodes_arr[current..(current + elems_in_node - 1)];
-            current += elems_in_node;
-            let compressed_node = Self::process_keys_portion(buf, tree_offset, nodes_portion);
-            vec![compressed_node]
-        } else {
-            Vec::new()
-        };
-        while current < nodes_arr.len() {
-            let right_bound = std::cmp::min(nodes_arr.len(), current + elems_in_node);
-            let nodes_portion = &nodes_arr[current..right_bound];
-            current = right_bound;
+        let mut new_nodes = Vec::new();
+        while nodes_arr.len() - current > max_amount {
+            // amount == min_amount at least (if nodes_arr.len() - current == max_amount + 1)
+            // and min operation is necessary to have at least min_amount nodes left
+            let amount = std::cmp::min(max_amount, nodes_arr.len() - current - min_amount);
+            let nodes_portion = &nodes_arr[current..(current + amount)];
+            current += amount;
             let compressed_node = Self::process_keys_portion(buf, tree_offset, nodes_portion);
             new_nodes.push(compressed_node);
         }
+        // min_amount <= nodes left <= max_amount
+        let nodes_portion = &nodes_arr[current..];
+        new_nodes.push(Self::process_keys_portion(buf, tree_offset, &nodes_portion));
         Self::build_tree(new_nodes, tree_offset, buf)
     }
 
