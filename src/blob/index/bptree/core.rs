@@ -199,8 +199,7 @@ impl BPTreeFileIndex {
         }
         if let Some((header, offset)) = self.read_header_buf(&buf[..buf_size], key, rh_size)? {
             let mut headers = vec![header];
-            self.go_left(&mut headers, &buf[..buf_size], offset, leaf_offset)
-                .await?;
+            self.go_left(&mut headers, &buf[..buf_size], offset).await?;
             self.go_right(&mut headers, &buf[..buf_size], offset, leaf_offset)
                 .await?;
             Ok(Some(headers))
@@ -258,12 +257,13 @@ impl BPTreeFileIndex {
         Ok(())
     }
 
+    // notice that every node starts from first header with key (i.e. there is no way for record
+    // with the same key to be on the left side from the start of leaf node, where it is)
     async fn go_left(
         &self,
         headers: &mut Vec<RecordHeader>,
         buf: &[u8],
         mut offset: usize,
-        leaf_offset: u64,
     ) -> Result<()> {
         let record_header_size = self.header.record_header_size;
         while offset >= record_header_size {
@@ -275,30 +275,6 @@ impl BPTreeFileIndex {
                 return Ok(());
             }
             offset = record_start;
-        }
-        self.go_left_file(headers, leaf_offset + offset as u64)
-            .await?;
-        Ok(())
-    }
-
-    async fn go_left_file(&self, headers: &mut Vec<RecordHeader>, mut offset: u64) -> Result<()> {
-        // TODO: read headers one by one from file may be inefficient
-        let record_header_size = self.header.record_header_size as u64;
-        let mut buf = vec![0; record_header_size as usize];
-        let leaves_start = self.metadata.leaves_offset;
-        while offset > leaves_start + record_header_size {
-            let new_offset = offset - record_header_size;
-            let read_buf_size = self.file.read_at(&mut buf, new_offset).await?;
-            if read_buf_size != buf.len() {
-                return Err(anyhow!("Can't read header from file"));
-            }
-            let header: RecordHeader = deserialize(&buf)?;
-            if header.key() == headers[0].key() {
-                headers.push(header);
-            } else {
-                return Ok(());
-            }
-            offset = new_offset;
         }
         Ok(())
     }

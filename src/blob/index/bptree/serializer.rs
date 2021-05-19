@@ -183,7 +183,7 @@ impl<'a> LeavesStage<'a> {
         } else {
             buf.len() - (offset - tree_offset) as usize
         };
-        let appendix_size = BLOCK_SIZE - root_node_size;
+        let appendix_size = BLOCK_SIZE.saturating_sub(root_node_size);
         buf.resize(buf.len() + appendix_size, 0);
         offset
     }
@@ -213,9 +213,11 @@ impl<'a> TreeStage<'a> {
     }
 
     fn append_headers(headers_btree: &InMemoryIndex, buf: &mut Vec<u8>) -> Result<()> {
+        // headers are pushed in reversed order because it helps to perform something like update
+        // operation: the latest written (the first after reverse) record will be retrieved from file
         headers_btree
             .iter()
-            .flat_map(|r| r.1)
+            .flat_map(|r| r.1.iter().rev())
             .map(|h| serialize(&h))
             .try_fold(buf, |buf, h_buf| -> Result<_> {
                 buf.extend_from_slice(&h_buf?);
