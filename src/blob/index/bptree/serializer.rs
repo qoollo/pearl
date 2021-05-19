@@ -3,15 +3,12 @@ use super::prelude::*;
 pub(super) struct HeaderStage<'a> {
     headers_btree: &'a InMemoryIndex,
     header: IndexHeader,
-    key_size: usize,
     meta: Vec<u8>,
 }
 
 pub(super) struct LeavesStage<'a> {
     headers_btree: &'a InMemoryIndex,
     header: IndexHeader,
-    leaf_size: usize,
-    leaves_buf: Vec<u8>,
     leaves_offset: u64,
     headers_size: usize,
     meta: Vec<u8>,
@@ -23,7 +20,6 @@ pub(super) struct TreeStage<'a> {
     header: IndexHeader,
     meta_buf: Vec<u8>,
     tree_buf: Vec<u8>,
-    leaves_buf: Vec<u8>,
     headers_size: usize,
     meta: Vec<u8>,
 }
@@ -44,11 +40,9 @@ impl<'a> Serializer<'a> {
                 .iter()
                 .fold(0, |acc, (_k, v)| acc + v.len());
             let header = IndexHeader::new(record_header_size, headers_len, meta.len());
-            let key_size = record_header.key().len();
             Ok(HeaderStage {
                 headers_btree: self.headers_btree,
                 header,
-                key_size,
                 meta,
             })
         } else {
@@ -61,58 +55,29 @@ impl<'a> HeaderStage<'a> {
     pub(super) fn leaves_stage(self) -> Result<LeavesStage<'a>> {
         let hs = self.header.serialized_size()? as usize;
         let fsize = self.header.meta_size;
-        let msize: usize = TreeMeta::serialized_size_default()? as usize;
         let headers_start_offset = (hs + fsize) as u64;
         let headers_size = self.header.records_count * self.header.record_header_size;
-        let leaves_offset = headers_start_offset + (headers_size + msize) as u64;
+        let leaves_offset = headers_start_offset;
         // leaf contains pair: (key, offset in file for first record's header with this key)
-        let leaf_size = self.key_size + std::mem::size_of::<u64>();
-        let leaves_buf = Self::serialize_leaves(
-            self.headers_btree,
-            headers_start_offset,
-            leaf_size,
-            self.header.record_header_size,
-        );
         Ok(LeavesStage {
             headers_btree: self.headers_btree,
-            leaf_size,
-            leaves_buf,
             leaves_offset,
             headers_size,
             meta: self.meta,
             header: self.header,
         })
     }
-
-    fn serialize_leaves(
-        headers_btree: &InMemoryIndex,
-        headers_start_offset: u64,
-        leaf_size: usize,
-        record_header_size: usize,
-    ) -> Vec<u8> {
-        let mut leaves_buf = Vec::with_capacity(leaf_size * headers_btree.len());
-        headers_btree.iter().fold(
-            (headers_start_offset, &mut leaves_buf),
-            |(offset, leaves_buf), (leaf, hds)| {
-                leaves_buf.extend_from_slice(&leaf);
-                let offsetb = serialize(&offset).expect("serialize u64");
-                leaves_buf.extend_from_slice(&offsetb);
-                let res = (offset + (hds.len() * record_header_size) as u64, leaves_buf);
-                res
-            },
-        );
-        leaves_buf
-    }
 }
 
 impl<'a> LeavesStage<'a> {
     pub(super) fn tree_stage(self) -> Result<TreeStage<'a>> {
-        let tree_offset = self.leaves_offset + self.leaves_buf.len() as u64;
+        let tree_offset =
+            self.leaves_offset + TreeMeta::serialized_size_default()? + self.headers_size as u64;
         let (root_offset, tree_buf) = Self::serialize_bptree(
             self.headers_btree,
             self.leaves_offset,
-            self.leaf_size as u64,
             tree_offset,
+            self.header.record_header_size as u64,
         )?;
         let metadata = TreeMeta::new(root_offset, self.leaves_offset, tree_offset);
         let meta_buf = serialize(&metadata)?;
@@ -123,43 +88,33 @@ impl<'a> LeavesStage<'a> {
             tree_buf,
             header: self.header,
             headers_size: self.headers_size,
-            leaves_buf: self.leaves_buf,
             meta: self.meta,
         })
-    }
-
-    fn key_from_iter<'k>(keys_iter: &mut impl Iterator<Item = &'k Vec<u8>>) -> Result<Vec<u8>> {
-        if let Some(key) = keys_iter.next() {
-            Ok(key.clone())
-        } else {
-            Err(anyhow!("Unexpected end of keys sequence"))
-        }
     }
 
     fn serialize_bptree(
         btree: &InMemoryIndex,
         leaves_offset: u64,
-        leaf_size: u64,
         tree_offset: u64,
+        record_header_size: u64,
     ) -> Result<(u64, Vec<u8>)> {
-        let max_amount = Self::max_leaf_node_capacity(btree.keys().next().unwrap().len());
-        let min_amount = (max_amount - 1) / 2 + 1;
         let mut leaf_nodes_compressed = Vec::new();
         let mut offset = leaves_offset;
-        let mut keys_iter = btree.keys();
-        let elems_amount = btree.len();
-        let mut current = 0;
-        while elems_amount - current > max_amount {
-            let amount = std::cmp::min(max_amount, elems_amount - current - min_amount);
-            leaf_nodes_compressed.push((Self::key_from_iter(&mut keys_iter)?, offset));
-            (0..(amount - 1)).for_each(|_| {
-                keys_iter.next();
-            });
-            offset += amount as u64 * leaf_size;
-            current += amount;
+        let mut left = BLOCK_SIZE as u64;
+        let mut min_k = btree.keys().next().unwrap().clone();
+        let mut min_o = offset;
+        for (k, v) in btree.iter() {
+            if left < record_header_size {
+                leaf_nodes_compressed.push((min_k, min_o));
+                min_k = k.clone();
+                min_o = offset;
+                left = BLOCK_SIZE as u64;
+            }
+            let delta_size = v.len() as u64 * record_header_size;
+            offset += delta_size;
+            left = left.saturating_sub(delta_size);
         }
-        leaf_nodes_compressed.push((Self::key_from_iter(&mut keys_iter)?, offset));
-
+        leaf_nodes_compressed.push((min_k, min_o));
         let mut buf = Vec::new();
         let root_offset = Self::build_tree(leaf_nodes_compressed, tree_offset, &mut buf)?;
         Ok((root_offset, buf))
@@ -215,11 +170,6 @@ impl<'a> LeavesStage<'a> {
         Self::build_tree(new_nodes, tree_offset, buf)
     }
 
-    fn max_leaf_node_capacity(key_size: usize) -> usize {
-        let offset_size = std::mem::size_of::<u64>();
-        BLOCK_SIZE / (key_size + offset_size) - 1
-    }
-
     fn max_nonleaf_node_capacity(key_size: usize) -> usize {
         let offset_size = std::mem::size_of::<u64>();
         let meta_size =
@@ -244,14 +194,12 @@ impl<'a> TreeStage<'a> {
         let hs = self.header.serialized_size()? as usize;
         let fsize = self.header.meta_size;
         let msize = self.meta_buf.len();
-        let data_size =
-            hs + fsize + self.headers_size + msize + self.leaves_buf.len() + self.tree_buf.len();
+        let data_size = hs + fsize + self.headers_size + msize + self.tree_buf.len();
         let mut buf = Vec::with_capacity(data_size);
         serialize_into(&mut buf, &self.header)?;
         buf.extend_from_slice(&self.meta);
         Self::append_headers(self.headers_btree, &mut buf)?;
         buf.extend_from_slice(&self.meta_buf);
-        buf.extend_from_slice(&self.leaves_buf);
         buf.extend_from_slice(&self.tree_buf);
         let hash = get_hash(&buf);
         let header = IndexHeader::with_hash(

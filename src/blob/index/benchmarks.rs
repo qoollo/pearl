@@ -1,6 +1,6 @@
 use rand::prelude::SliceRandom;
 
-use super::{prelude::*, simple::SimpleFileIndex};
+use super::prelude::*;
 use std::time::Instant;
 
 type FileIndexStruct = BPTreeFileIndex;
