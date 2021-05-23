@@ -2,15 +2,13 @@ use super::*;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(super) struct TreeMeta {
-    pub(super) root_offset: u64,
     pub(super) leaves_offset: u64,
     pub(super) tree_offset: u64,
 }
 
 impl TreeMeta {
-    pub(super) fn new(root_offset: u64, leaves_offset: u64, tree_offset: u64) -> Self {
+    pub(super) fn new(leaves_offset: u64, tree_offset: u64) -> Self {
         Self {
-            root_offset,
             leaves_offset,
             tree_offset,
         }

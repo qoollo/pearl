@@ -48,7 +48,20 @@ async fn check_get_any() {
     .expect("Can't create file index");
     let presented_keys = RANGE_FROM..RANGE_TO;
     for key in presented_keys.map(|k| serialize(&k).unwrap()) {
-        assert_eq!(inmem[&key][0], findex.get_any(&key).await.unwrap().unwrap());
+        if let Ok(inner_res) = findex.get_any(&key).await {
+            if let Some(actual_header) = inner_res {
+                let key_deserialized: u32 = deserialize(&key).unwrap();
+                assert_eq!(
+                    inmem[&key][0], actual_header,
+                    "Key doesn't exists: {}",
+                    key_deserialized
+                );
+            } else {
+                panic!("Key is not found");
+            }
+        } else {
+            panic!("Error in get_any for file index");
+        }
     }
     let not_presented_ranges = [0..RANGE_FROM, RANGE_TO..(RANGE_TO + 100)];
     for not_presented_keys in not_presented_ranges.iter() {
@@ -84,10 +97,20 @@ async fn check_get() {
     .expect("Can't create file index");
     let presented_keys = RANGE_FROM..RANGE_TO;
     for key in presented_keys.map(|k| serialize(&k).unwrap()) {
-        assert_eq!(
-            inmem[&key],
-            findex.find_by_key(&key).await.unwrap().unwrap()
-        );
+        if let Ok(inner_res) = findex.get_any(&key).await {
+            if let Some(actual_header) = inner_res {
+                let key_deserialized: u32 = deserialize(&key).unwrap();
+                assert_eq!(
+                    inmem[&key][0], actual_header,
+                    "Key doesn't exists: {}",
+                    key_deserialized
+                );
+            } else {
+                panic!("Key is not found");
+            }
+        } else {
+            panic!("Error in get_any for file index");
+        }
     }
     let not_presented_ranges = [0..RANGE_FROM, RANGE_TO..(RANGE_TO + 100)];
     for not_presented_keys in not_presented_ranges.iter() {

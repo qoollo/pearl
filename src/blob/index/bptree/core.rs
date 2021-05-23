@@ -1,11 +1,12 @@
 /// structure of b+-tree index file from the beginning:
 /// 1. Header
 /// 2. Bloom filter
-/// 3. Sorted by keys array of record headers
-/// 4. Metadata
-/// 5. Non-leaf nodes of btree in format
+/// 3. Tree metadata (tree_offset [4] (tree starts from root, so that is also root_offset),
+///    and leaves_offset [5])
+/// 4. Tree: Non-leaf nodes of btree in format
 ///    `NodeMeta | keys_arr | pointers_arr`,
 ///    where pointer is offset in file of underlying node with searched key
+/// 5. Sorted by key array of record headers (coupled leaf nodes)
 use super::prelude::*;
 
 pub(super) const BLOCK_SIZE: usize = 4096;
@@ -27,7 +28,7 @@ impl FileIndexTrait for BPTreeFileIndex {
             .context(format!("failed to open index file: {}", name))?;
         let header = Self::read_index_header(&file).await?;
         let metadata = Self::read_tree_meta(&file, &header).await?;
-        let root_node = Self::read_root(&file, metadata.root_offset).await?;
+        let root_node = Self::read_root(&file, metadata.tree_offset).await?;
 
         Ok(Self {
             file,
@@ -55,7 +56,7 @@ impl FileIndexTrait for BPTreeFileIndex {
         let serialized_header = serialize(&header)?;
         file.write_at(0, &serialized_header).await?;
         file.fsyncdata().await?;
-        let root_node = Self::read_root(&file, metadata.root_offset).await?;
+        let root_node = Self::read_root(&file, metadata.tree_offset).await?;
         Ok(Self {
             file,
             metadata,
@@ -83,7 +84,7 @@ impl FileIndexTrait for BPTreeFileIndex {
     }
 
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
-        let root_offset = self.metadata.root_offset;
+        let root_offset = self.metadata.tree_offset;
         let mut buf = [0u8; BLOCK_SIZE];
         let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
         self.read_headers(leaf_offset, key, &mut buf).await
@@ -93,8 +94,7 @@ impl FileIndexTrait for BPTreeFileIndex {
         let mut buf = self.file.read_all().await?;
         self.validate_header(&mut buf).await?;
         let offset = self.metadata.leaves_offset as usize;
-        let records_size = self.header.records_count * self.header.record_header_size;
-        let records_end = self.metadata.leaves_offset as usize + records_size;
+        let records_end = self.file_size() as usize;
         let records_buf = &buf[offset..records_end];
         (0..self.header.records_count)
             .try_fold(InMemoryIndex::new(), |mut headers, i| {
@@ -114,7 +114,7 @@ impl FileIndexTrait for BPTreeFileIndex {
     }
 
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
-        let root_offset = self.metadata.root_offset;
+        let root_offset = self.metadata.tree_offset;
         let mut buf = [0u8; BLOCK_SIZE];
         let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
         self.read_header(leaf_offset, key, &mut buf).await
@@ -131,8 +131,8 @@ impl FileIndexTrait for BPTreeFileIndex {
 
 impl BPTreeFileIndex {
     async fn find_leaf_node(&self, key: &[u8], mut offset: u64, buf: &mut [u8]) -> Result<u64> {
-        while offset >= self.metadata.tree_offset {
-            offset = if offset >= self.metadata.root_offset {
+        while offset < self.metadata.leaves_offset {
+            offset = if offset == self.metadata.tree_offset {
                 Node::key_offset_serialized(&self.root_node, key)?
             } else {
                 self.file.read_at(buf, offset).await?;
@@ -159,8 +159,8 @@ impl BPTreeFileIndex {
     }
 
     fn leaf_node_buf_size(&self, leaf_offset: u64) -> usize {
-        let leaves_end = self.metadata.tree_offset - self.metadata.serialized_size().unwrap();
-        ((leaves_end - leaf_offset) as usize).min(BLOCK_SIZE)
+        // if we read last leaf, it may be shorter
+        ((self.file_size() - leaf_offset) as usize).min(BLOCK_SIZE)
     }
 
     fn read_header_buf(
@@ -309,7 +309,8 @@ impl BPTreeFileIndex {
 
     async fn read_root(file: &File, root_offset: u64) -> Result<[u8; BLOCK_SIZE]> {
         let mut buf = [0; BLOCK_SIZE];
-        file.read_at(&mut buf, root_offset).await?;
+        let buf_size = std::cmp::min((file.size() - root_offset) as usize, BLOCK_SIZE);
+        file.read_at(&mut buf[..buf_size], root_offset).await?;
         Ok(buf)
     }
 
@@ -318,7 +319,7 @@ impl BPTreeFileIndex {
         let mut buf = vec![0; meta_size];
         let fsize = header.meta_size as u64;
         let hs = header.serialized_size()?;
-        let meta_offset = hs + fsize + (header.records_count * header.record_header_size) as u64;
+        let meta_offset = hs + fsize;
         file.read_at(&mut buf, meta_offset).await?;
         TreeMeta::from_raw(&buf).map_err(Into::into)
     }
