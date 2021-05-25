@@ -1,9 +1,9 @@
 /// structure of b+-tree index file from the beginning:
 /// 1. Header
-/// 2. Bloom filter
+/// 2. b+-tree user buffer (now Bloom filter is stored as this buffer)
 /// 3. Tree metadata (tree_offset [4] (tree starts from root, so that is also root_offset),
 ///    and leaves_offset [5])
-/// 4. Tree: Non-leaf nodes of btree in format
+/// 4. Tree: Non-leaf nodes of bptree in format
 ///    `NodeMeta | keys_arr | pointers_arr`,
 ///    where pointer is offset in file of underlying node with searched key
 /// 5. Sorted by key array of record headers (coupled leaf nodes)
