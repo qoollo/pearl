@@ -122,7 +122,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
         .collect();
     let handles = handles.try_collect::<Vec<_>>().await.unwrap();
     let index = path.join("test.0.index");
-    sleep(Duration::from_millis(32)).await;
+    sleep(Duration::from_millis(64)).await;
     assert!(index.exists());
     assert_eq!(handles.len(), threads);
     let keys = indexes

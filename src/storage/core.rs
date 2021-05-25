@@ -423,9 +423,8 @@ impl<K: Key> Storage<K> {
 
     async fn init_new(&mut self) -> Result<()> {
         let next = self.inner.next_blob_name()?;
-        let config = self.filter_config();
         let mut safe = self.inner.safe.write().await;
-        let blob = Blob::open_new(next, self.inner.ioring.clone(), config)
+        let blob = Blob::open_new(next, self.inner.ioring.clone(), self.inner.config.index())
             .await?
             .boxed();
         safe.active_blob = Some(blob);
@@ -492,7 +491,7 @@ impl<K: Key> Storage<K> {
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(file.clone(), ioring.clone(), config.filter(), K::LEN)
+                Blob::from_file(file.clone(), ioring.clone(), config.index(), K::LEN)
                     .await
                     .map_err(|e| (e, file))
             })
@@ -600,10 +599,6 @@ impl<K: Key> Storage<K> {
     /// Or if there are any problems with syncronization.
     pub async fn close_active_blob(&self) {
         self.observer.close_active_blob().await
-    }
-
-    fn filter_config(&self) -> Option<BloomConfig> {
-        self.inner.config.filter()
     }
 
     fn launch_observer(&mut self) {
