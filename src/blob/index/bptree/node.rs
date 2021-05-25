@@ -21,16 +21,21 @@ impl Node {
         keys_amount: usize,
     ) -> Result<Vec<u8>> {
         let meta_buf = serialize(&NodeMeta::new(keys_amount as u64))?;
-        let keys_buf_size = key_size * keys_amount;
-        let offsets_buf_size = (keys_amount + 1) * size_of::<u64>();
-        let buf_size = meta_buf.len() + keys_buf_size + offsets_buf_size;
-        let mut buf = Vec::with_capacity(buf_size);
+        let buf_size = Self::serialized_size_with_keys(key_size, keys_amount)?;
+        let mut buf = Vec::with_capacity(buf_size as usize);
         buf.extend_from_slice(&meta_buf);
         keys.for_each(|k| buf.extend_from_slice(k));
         offsets
             .map(|off| serialize(&off))
             .try_for_each(|res| Result::<_>::Ok(buf.extend_from_slice(&res?)))?;
         Ok(buf)
+    }
+
+    pub(super) fn serialized_size_with_keys(key_size: usize, keys_amount: usize) -> Result<u64> {
+        let meta_size = NodeMeta::serialized_size_default()?;
+        let keys_buf_size = key_size * keys_amount;
+        let offsets_buf_size = (keys_amount + 1) * size_of::<u64>();
+        Ok(meta_size + (keys_buf_size + offsets_buf_size) as u64)
     }
 
     pub(super) fn binary_search_serialized(key: &[u8], buf: &[u8]) -> Result<usize, usize> {
