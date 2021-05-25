@@ -330,7 +330,6 @@ impl BPTreeFileIndex {
     ) -> Result<(IndexHeader, TreeMeta, Vec<u8>)> {
         Serializer::new(headers_btree)
             .header_stage(meta)?
-            .leaves_stage()?
             .tree_stage()?
             .build()
     }

@@ -6,14 +6,6 @@ pub(super) struct HeaderStage<'a> {
     meta: Vec<u8>,
 }
 
-pub(super) struct LeavesStage<'a> {
-    headers_btree: &'a InMemoryIndex,
-    header: IndexHeader,
-    meta_and_buf_end: u64,
-    headers_size: usize,
-    meta: Vec<u8>,
-}
-
 pub(super) struct TreeStage<'a> {
     headers_btree: &'a InMemoryIndex,
     metadata: TreeMeta,
@@ -52,25 +44,12 @@ impl<'a> Serializer<'a> {
 }
 
 impl<'a> HeaderStage<'a> {
-    pub(super) fn leaves_stage(self) -> Result<LeavesStage<'a>> {
-        let hs = self.header.serialized_size()? as usize;
-        let fsize = self.header.meta_size;
-        let meta_and_buf_end = (hs + fsize) as u64;
-        let headers_size = self.header.records_count * self.header.record_header_size;
-        // leaf contains pair: (key, offset in file for first record's header with this key)
-        Ok(LeavesStage {
-            headers_btree: self.headers_btree,
-            meta_and_buf_end,
-            headers_size,
-            meta: self.meta,
-            header: self.header,
-        })
-    }
-}
-
-impl<'a> LeavesStage<'a> {
     pub(super) fn tree_stage(self) -> Result<TreeStage<'a>> {
-        let tree_offset = self.meta_and_buf_end + TreeMeta::serialized_size_default()?;
+        let hs = self.header.serialized_size()? as usize;
+        let external_buf_size = self.header.meta_size;
+        let meta_and_buf_end = (hs + external_buf_size) as u64;
+        let headers_size = self.header.records_count * self.header.record_header_size;
+        let tree_offset = meta_and_buf_end + TreeMeta::serialized_size_default()?;
         let tree_buf = Self::serialize_bptree(
             self.headers_btree,
             tree_offset,
@@ -85,7 +64,7 @@ impl<'a> LeavesStage<'a> {
             meta_buf,
             tree_buf,
             header: self.header,
-            headers_size: self.headers_size,
+            headers_size,
             meta: self.meta,
         })
     }
