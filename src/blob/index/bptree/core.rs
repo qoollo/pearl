@@ -130,13 +130,10 @@ impl FileIndexTrait for BPTreeFileIndex {
         let root_offset = self.metadata.root_offset;
         let mut buf = [0u8; BLOCK_SIZE];
         let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
-        if let Some((first_offset, amount)) =
+        if let Some((first_header_offset, _amount)) =
             self.find_first_header(leaf_offset, key, &mut buf).await?
         {
-            // read last header to enable `update` option: to update something just push new
-            // version (latest version will be retrieved by get_any)
-            let last_offset = first_offset + (amount - 1) * self.header.record_header_size;
-            let header = self.read_headers(last_offset, 1).await?.remove(0);
+            let header = self.read_headers(first_header_offset, 1).await?.remove(0);
             Ok(Some(header))
         } else {
             Ok(None)
