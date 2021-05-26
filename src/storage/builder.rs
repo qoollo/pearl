@@ -136,7 +136,7 @@ impl Builder {
     #[must_use]
     pub fn set_filter_config(mut self, config: BloomConfig) -> Self {
         let mut index_config = self.config.index();
-        index_config.filter = Some(config);
+        index_config.bloom_config = Some(config);
         self.config.set_index(index_config);
         self
     }
