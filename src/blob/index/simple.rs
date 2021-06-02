@@ -357,7 +357,7 @@ impl Index for Simple {
         .and_then(|headers| {
             let res = headers
                 .into_iter()
-                .filter(|header| header.is_deleted())
+                .filter(|header| !header.is_deleted())
                 .collect::<Vec<_>>();
             if res.is_empty() {
                 None
