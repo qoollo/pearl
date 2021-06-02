@@ -1,59 +1,6 @@
 use super::prelude::*;
 use std::mem::size_of;
 
-pub(crate) async fn mark_all_as_deleted(
-    file: &File,
-    key: &[u8],
-    index_header: &IndexHeader,
-) -> Result<Option<u64>> {
-    if let Some((mut record_header, pos)) = binary_search(file, key, index_header).await? {
-        let mut marked = 1u64;
-        record_header.mark_as_deleted()?;
-        write_at(file, pos, index_header, &record_header).await?;
-        for pos in (0..pos).rev() {
-            let mut record_header = read_at(file, pos, index_header).await?;
-            if key != record_header.key() {
-                break;
-            }
-            record_header.mark_as_deleted()?;
-            write_at(file, pos, index_header, &record_header).await?;
-            marked += 1;
-        }
-        for pos in (pos + 1)..index_header.records_count {
-            let mut record_header = read_at(file, pos, index_header).await?;
-            if key != record_header.key() {
-                break;
-            }
-            record_header.mark_as_deleted()?;
-            write_at(file, pos, index_header, &record_header).await?;
-            marked += 1;
-        }
-        Ok(Some(marked))
-    } else {
-        Ok(None)
-    }
-}
-
-pub(crate) async fn write_at(
-    file: &File,
-    index: usize,
-    index_header: &IndexHeader,
-    record_header: &RecordHeader,
-) -> Result<()> {
-    debug!("blob index simple write at");
-    let index_header_size = bincode::serialized_size(&index_header)?;
-    debug!(
-        "blob index simple read at index header size {}",
-        index_header_size
-    );
-    let offset = index_header_size
-        + index_header.filter_buf_size as u64
-        + (index_header.record_header_size * index) as u64;
-    let buf = serialize(record_header)?;
-    file.write_at(offset, &buf).await?;
-    Ok(())
-}
-
 pub(crate) async fn read_at(
     file: &File,
     index: usize,

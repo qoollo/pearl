@@ -278,6 +278,28 @@ impl Simple {
             0
         }
     }
+
+    fn mark_all_as_deleted_in_memory(&mut self, key: &[u8]) -> Result<Option<u64>> {
+        if let State::InMemory(headers) = &mut self.inner {
+            debug!(
+                "simple index mark all as deleted in memory headers: {}",
+                headers.len()
+            );
+            if let Some(vec_headers) = headers.get_mut(key) {
+                for header in vec_headers.iter_mut() {
+                    header.mark_as_deleted()?;
+                }
+                Ok(Some(vec_headers.len() as u64))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Err(Error::from(ErrorKind::Index(
+                "Failed to load index to memory".to_string(),
+            ))
+            .into())
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -379,25 +401,15 @@ impl Index for Simple {
 
     async fn mark_all_as_deleted(&mut self, key: &[u8]) -> Result<Option<u64>> {
         debug!("index mark all as deleted all");
-        match &mut self.inner {
-            State::InMemory(headers) => {
-                debug!(
-                    "index mark all as deleted all in memory headers: {}",
-                    headers.len()
-                );
-                if let Some(vec_headers) = headers.get_mut(key) {
-                    for header in vec_headers.iter_mut() {
-                        header.mark_as_deleted()?;
-                    }
-                    Ok(Some(vec_headers.len() as u64))
-                } else {
-                    Ok(None)
-                }
-            }
-            State::OnDisk(file) => {
-                debug!("index mark all as deleted all on disk");
-                mark_all_as_deleted(file, key, &self.header).await
-            }
+        if self.on_disk() {
+            debug!("index mark all as deleted all on disk");
+            self.load().await?;
+            let res = self.mark_all_as_deleted_in_memory(key)?;
+            self.dump().await?;
+            Ok(res)
+        } else {
+            debug!("index mark all as deleted all in memory");
+            self.mark_all_as_deleted_in_memory(key)
         }
     }
 }
