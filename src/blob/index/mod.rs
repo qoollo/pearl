@@ -26,5 +26,5 @@ pub(crate) trait Index: Send + Sync {
     fn count(&self) -> usize;
     async fn dump(&mut self) -> Result<usize>;
     async fn load(&mut self) -> Result<()>;
-    async fn mark_as_deleted(&mut self, key: &[u8]) -> Result<Option<u64>>;
+    async fn mark_all_as_deleted(&mut self, key: &[u8]) -> Result<Option<u64>>;
 }

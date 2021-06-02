@@ -246,4 +246,8 @@ impl Header {
         self.flags |= DELETE_FLAG;
         self.update_checksum()
     }
+
+    pub(crate) fn is_deleted(&self) -> bool {
+        self.flags & DELETE_FLAG == DELETE_FLAG
+    }
 }

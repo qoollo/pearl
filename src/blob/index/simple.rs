@@ -332,6 +332,7 @@ impl Index for Simple {
             State::InMemory(headers) => Ok(headers.get(key).cloned()),
             State::OnDisk(file) => search_all(file, key, &self.header).await,
         }
+        .map(|headers| headers.filter(|headers| !headers.iter().any(|header| header.is_deleted())))
     }
 
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
@@ -347,6 +348,7 @@ impl Index for Simple {
                 Ok(header.map(|h| h.0))
             }
         }
+        .map(|header| header.filter(|header| !header.is_deleted()))
     }
 
     async fn dump(&mut self) -> Result<usize> {
@@ -375,14 +377,14 @@ impl Index for Simple {
         self.header.records_count
     }
 
-    async fn mark_as_deleted(&mut self, key: &[u8]) -> Result<Option<u64>> {
-        if let Some(has_key) = self.check_bloom_key(key) {
-            if !has_key {
-                return Ok(None);
-            }
-        }
+    async fn mark_all_as_deleted(&mut self, key: &[u8]) -> Result<Option<u64>> {
+        debug!("index mark all as deleted all");
         match &mut self.inner {
             State::InMemory(headers) => {
+                debug!(
+                    "index mark all as deleted all in memory headers: {}",
+                    headers.len()
+                );
                 if let Some(vec_headers) = headers.get_mut(key) {
                     for header in vec_headers.iter_mut() {
                         header.mark_as_deleted()?;
@@ -392,7 +394,10 @@ impl Index for Simple {
                     Ok(None)
                 }
             }
-            State::OnDisk(file) => mark_all_as_deleted(file, key, &self.header).await,
+            State::OnDisk(file) => {
+                debug!("index mark all as deleted all on disk");
+                mark_all_as_deleted(file, key, &self.header).await
+            }
         }
     }
 }
