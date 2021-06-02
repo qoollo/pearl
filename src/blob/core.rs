@@ -244,6 +244,20 @@ impl Blob {
         }))
     }
 
+    #[inline]
+    pub(crate) async fn mark_all_as_deleted(&mut self, key: &[u8]) -> Result<Option<u64>> {
+        if let Some(headers) = self.index.get_all(key).await? {
+            for mut header in headers {
+                header.mark_as_deleted()?;
+                let buf = serialize(&header)?;
+                self.file.write_at(header.blob_offset(), &buf).await?;
+            }
+            self.index.mark_as_deleted(key).await
+        } else {
+            Ok(None)
+        }
+    }
+
     fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
         headers
             .into_iter()

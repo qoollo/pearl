@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
+const DELETE_FLAG: u8 = 0x01;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Record {
@@ -239,5 +240,10 @@ impl Header {
 
     fn crc32(&self) -> bincode::Result<u32> {
         self.to_raw().map(|raw| crc32(&raw))
+    }
+
+    pub(crate) fn mark_as_deleted(&mut self) -> bincode::Result<()> {
+        self.flags |= DELETE_FLAG;
+        self.update_checksum()
     }
 }

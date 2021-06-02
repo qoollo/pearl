@@ -315,6 +315,47 @@ impl<K: Key> Storage<K> {
             .with_context(|| "no results in closed blobs")
     }
 
+    /// Mark as deleted entries with matching key
+    /// # Errors
+    /// Fails after any disk IO errors.
+    pub async fn mark_all_as_deleted(&self, key: impl AsRef<K>) -> Result<u64> {
+        let key = key.as_ref().as_ref();
+        let mut total_count = 0u64;
+        let mut safe = self.inner.safe.write().await;
+        let active_blob = safe
+            .active_blob
+            .as_deref_mut()
+            .ok_or_else(Error::active_blob_not_set)?;
+        if let Some(count) = active_blob.mark_all_as_deleted(key).await? {
+            debug!(
+                "storage core mark all as deleted active blob count {}",
+                count
+            );
+            total_count += count;
+        }
+        let mut blobs = safe.blobs.write().await;
+        let entries_closed_blobs = blobs
+            .iter_mut()
+            .map(|b| b.mark_all_as_deleted(key))
+            .collect::<FuturesUnordered<_>>();
+        entries_closed_blobs
+            .try_filter_map(future::ok)
+            .try_for_each(|count| {
+                debug!(
+                    "storage core mark all as deleted closed blob count {}",
+                    count
+                );
+                total_count += count;
+                future::ok(())
+            })
+            .await?;
+        debug!(
+            "storage core mark all as deleted total count {}",
+            total_count
+        );
+        Ok(total_count)
+    }
+
     /// Stop blob updater and release lock file
     /// # Errors
     /// Fails because of any IO errors

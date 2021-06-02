@@ -374,4 +374,25 @@ impl Index for Simple {
     fn count(&self) -> usize {
         self.header.records_count
     }
+
+    async fn mark_as_deleted(&mut self, key: &[u8]) -> Result<Option<u64>> {
+        if let Some(has_key) = self.check_bloom_key(key) {
+            if !has_key {
+                return Ok(None);
+            }
+        }
+        match &mut self.inner {
+            State::InMemory(headers) => {
+                if let Some(vec_headers) = headers.get_mut(key) {
+                    for header in vec_headers.iter_mut() {
+                        header.mark_as_deleted()?;
+                    }
+                    Ok(Some(vec_headers.len() as u64))
+                } else {
+                    Ok(None)
+                }
+            }
+            State::OnDisk(file) => mark_all_as_deleted(file, key, &self.header).await,
+        }
+    }
 }
