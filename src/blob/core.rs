@@ -321,6 +321,14 @@ impl Blob {
         self.index.check_bloom_key(key)
     }
 
+    pub(crate) async fn check_bloom_async<'a, R>(&'a self, key: &[u8], index: R) -> Option<R> {
+        if self.check_bloom(key).unwrap_or(true) {
+            Some(index)
+        } else {
+            None
+        }
+    }
+
     pub(crate) fn index_memory(&self) -> usize {
         self.index.memory_used()
     }

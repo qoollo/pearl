@@ -81,7 +81,7 @@ mod prelude {
     pub(crate) use futures::{
         future,
         lock::Mutex,
-        stream::{futures_unordered::FuturesUnordered, TryStreamExt},
+        stream::{futures_unordered::FuturesUnordered, FuturesOrdered, TryStreamExt},
     };
     pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
     pub(crate) use rio::Rio;
