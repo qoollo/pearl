@@ -510,15 +510,21 @@ impl RawRecords {
 }
 
 pub(crate) fn filter_deleted_headers(headers: Vec<RecordHeader>) -> Vec<RecordHeader> {
-    let mut headers_map = BTreeMap::new();
-    for h in headers {
-        let key = h.key().to_owned();
-        headers_map.entry(key).or_insert(vec![]).push(h);
+    let mut headers_map: BTreeMap<Vec<u8>, Vec<RecordHeader>> = BTreeMap::new();
+    // Avoid of unnecessary copying keys
+    for header in headers {
+        if let Some(v) = headers_map.get_mut(header.key()) {
+            v.push(header)
+        } else {
+            headers_map.insert(header.key().to_vec(), vec![header]);
+        }
     }
 
-    headers_map.into_values()
-    .flat_map(|mut headers| {
-        headers.sort_by_key(|h| h.created());
-        headers.into_iter().rev().take_while(|h| !h.is_deleted())
-    }).collect()
+    headers_map
+        .into_values()
+        .flat_map(|mut headers| {
+            headers.sort_by_key(|h| h.created());
+            headers.into_iter().rev().take_while(|h| !h.is_deleted())
+        })
+        .collect()
 }
