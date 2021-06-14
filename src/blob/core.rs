@@ -176,6 +176,7 @@ impl Blob {
                 self.name.to_path()
             )
         })? {
+            let headers = filter_deleted_headers(headers);
             for header in headers {
                 self.index.push(header).context("index push failed")?;
             }
@@ -509,4 +510,18 @@ impl RawRecords {
         self.current_offset += header.data_size();
         Ok(header)
     }
+}
+
+pub(crate) fn filter_deleted_headers(headers: Vec<RecordHeader>) -> Vec<RecordHeader> {
+    let mut headers_map = BTreeMap::new();
+    for h in headers {
+        let key = h.key().to_owned();
+        headers_map.entry(key).or_insert(vec![]).push(h);
+    }
+
+    headers_map.into_values()
+    .flat_map(|mut headers| {
+        headers.sort_by_key(|h| h.created());
+        headers.into_iter().rev().take_while(|h| !h.is_deleted())
+    }).collect()
 }
