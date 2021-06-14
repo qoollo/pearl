@@ -247,13 +247,10 @@ impl Blob {
 
     #[inline]
     pub(crate) async fn mark_all_as_deleted(&mut self, key: &[u8]) -> Result<Option<u64>> {
-        if let Some(headers) = self.index.get_all(key).await? {
-            debug!("blob core mark all as deleted {} headers", headers.len());
-            for mut header in headers {
-                header.mark_as_deleted()?;
-                let buf = serialize(&header)?;
-                self.file.write_at(header.blob_offset(), &buf).await?;
-            }
+        if self.index.get_any(key).await?.is_some() {
+            debug!("blob core mark all as deleted");
+            let record = Record::deleted(key)?;
+            self.write(record).await?;
             self.index.mark_all_as_deleted(key).await
         } else {
             Ok(None)
