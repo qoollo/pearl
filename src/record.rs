@@ -106,7 +106,8 @@ impl Record {
         let meta = Meta::default();
         let data = vec![];
         let meta_size = meta.serialized_size()?;
-        let header = Header::new(key, meta_size, data.len() as u64, crc32(&data));
+        let mut header = Header::new(key, meta_size, data.len() as u64, crc32(&data));
+        header.mark_as_deleted()?;
         Ok(Self { header, meta, data })
     }
 

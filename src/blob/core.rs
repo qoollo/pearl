@@ -246,12 +246,24 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) async fn mark_all_as_deleted(&mut self, key: &[u8]) -> Result<Option<u64>> {
+    pub(crate) async fn mark_all_as_deleted(
+        &mut self,
+        key: &[u8],
+        blob_key_size: u16,
+    ) -> Result<Option<u64>> {
         if self.index.get_any(key).await?.is_some() {
             debug!("blob core mark all as deleted");
+            let on_disk = self.index.on_disk();
+            if on_disk {
+                self.load_index(blob_key_size).await?;
+            }
             let record = Record::deleted(key)?;
             self.write(record).await?;
-            self.index.mark_all_as_deleted(key).await
+            let res = self.index.mark_all_as_deleted(key).await?;
+            if on_disk {
+                self.dump().await?;
+            }
+            Ok(res)
         } else {
             Ok(None)
         }

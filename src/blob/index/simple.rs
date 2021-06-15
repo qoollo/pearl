@@ -426,18 +426,6 @@ impl Index for Simple {
 
     async fn mark_all_as_deleted(&mut self, key: &[u8]) -> Result<Option<u64>> {
         debug!("index mark all as deleted all");
-        if self.on_disk() {
-            debug!("index mark all as deleted all on disk");
-            self.load().await?;
-            let res = self.mark_all_as_deleted_in_memory(key)?;
-            self.dump().await?;
-            Ok(res)
-        } else {
-            debug!("index mark all as deleted all in memory");
-            let res = self.mark_all_as_deleted_in_memory(key);
-            self.dump().await?;
-            self.load().await?;
-            res
-        }
+        self.mark_all_as_deleted_in_memory(key)
     }
 }

@@ -326,7 +326,7 @@ impl<K: Key> Storage<K> {
             .active_blob
             .as_deref_mut()
             .ok_or_else(Error::active_blob_not_set)?;
-        if let Some(count) = active_blob.mark_all_as_deleted(key).await? {
+        if let Some(count) = active_blob.mark_all_as_deleted(key, K::LEN).await? {
             debug!(
                 "storage core mark all as deleted active blob count {}",
                 count
@@ -336,7 +336,7 @@ impl<K: Key> Storage<K> {
         let mut blobs = safe.blobs.write().await;
         let entries_closed_blobs = blobs
             .iter_mut()
-            .map(|b| b.mark_all_as_deleted(key))
+            .map(|b| b.mark_all_as_deleted(key, K::LEN))
             .collect::<FuturesUnordered<_>>();
         entries_closed_blobs
             .try_filter_map(future::ok)
