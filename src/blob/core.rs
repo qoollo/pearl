@@ -176,6 +176,7 @@ impl Blob {
                 self.name.to_path()
             )
         })? {
+            let headers = filter_deleted_headers(headers);
             for header in headers {
                 self.index.push(header).context("index push failed")?;
             }
@@ -242,6 +243,26 @@ impl Blob {
             debug!("blob core read all {} headers", h.len());
             Self::headers_to_entries(h, &self.file)
         }))
+    }
+
+    #[inline]
+    pub(crate) async fn mark_all_as_deleted<K: Key>(&mut self, key: &K) -> Result<Option<u64>> {
+        if self.index.get_any(key.as_ref()).await?.is_some() {
+            debug!("blob core mark all as deleted");
+            let on_disk = self.index.on_disk();
+            if on_disk {
+                self.load_index(K::LEN).await?;
+            }
+            let record = Record::deleted(key)?;
+            self.write(record).await?;
+            let res = self.index.mark_all_as_deleted(key.as_ref()).await?;
+            if on_disk {
+                self.dump().await?;
+            }
+            Ok(res)
+        } else {
+            Ok(None)
+        }
     }
 
     fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
@@ -494,4 +515,24 @@ impl RawRecords {
         self.current_offset += header.data_size();
         Ok(header)
     }
+}
+
+pub(crate) fn filter_deleted_headers(headers: Vec<RecordHeader>) -> Vec<RecordHeader> {
+    let mut headers_map: BTreeMap<Vec<u8>, Vec<RecordHeader>> = BTreeMap::new();
+    // Avoid of unnecessary copying keys
+    for header in headers {
+        if let Some(v) = headers_map.get_mut(header.key()) {
+            v.push(header)
+        } else {
+            headers_map.insert(header.key().to_vec(), vec![header]);
+        }
+    }
+
+    headers_map
+        .into_values()
+        .flat_map(|mut headers| {
+            headers.sort_by_key(|h| h.created());
+            headers.into_iter().rev().take_while(|h| !h.is_deleted())
+        })
+        .collect()
 }
