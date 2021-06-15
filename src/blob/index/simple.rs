@@ -350,21 +350,10 @@ impl Index for Simple {
     }
 
     async fn get_all(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
-        Ok(match &self.inner {
-            State::InMemory(headers) => headers.get(key).cloned(),
-            State::OnDisk(file) => search_all(file, key, &self.header).await?,
+        match &self.inner {
+            State::InMemory(headers) => Ok(headers.get(key).cloned()),
+            State::OnDisk(file) => search_all(file, key, &self.header).await,
         }
-        .and_then(|headers| {
-            let res = headers
-                .into_iter()
-                .filter(|header| !header.is_deleted())
-                .collect::<Vec<_>>();
-            if res.is_empty() {
-                None
-            } else {
-                Some(res)
-            }
-        }))
     }
 
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
@@ -372,28 +361,12 @@ impl Index for Simple {
         match &self.inner {
             State::InMemory(headers) => {
                 debug!("index get any in memory headers: {}", headers.len());
-                Ok(headers
-                    .get(key)
-                    .and_then(|h| h.iter().find(|h| !h.is_deleted()))
-                    .cloned())
+                Ok(headers.get(key).and_then(|h| h.first()).cloned())
             }
             State::OnDisk(index_file) => {
                 debug!("index get any on disk");
                 let header = binary_search(index_file, &key.to_vec(), &self.header).await?;
-                let header = if let Some((header, _)) = header {
-                    if header.is_deleted() {
-                        search_all(index_file, key, &self.header)
-                            .await?
-                            .and_then(|headers| {
-                                headers.into_iter().find(|header| !header.is_deleted())
-                            })
-                    } else {
-                        Some(header)
-                    }
-                } else {
-                    None
-                };
-                Ok(header)
+                Ok(header.map(|h| h.0))
             }
         }
     }
