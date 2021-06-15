@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["pearl"] = [{"text":"impl <a class=\"trait\" href=\"serde/ser/trait.Serialize.html\" title=\"trait serde::ser::Serialize\">Serialize</a> for <a class=\"struct\" href=\"pearl/filter/struct.Config.html\" title=\"struct pearl::filter::Config\">Config</a>","synthetic":false,"types":["pearl::blob::index::bloom::Config"]},{"text":"impl <a class=\"trait\" href=\"serde/ser/trait.Serialize.html\" title=\"trait serde::ser::Serialize\">Serialize</a> for <a class=\"struct\" href=\"pearl/struct.Meta.html\" title=\"struct pearl::Meta\">Meta</a>","synthetic":false,"types":["pearl::record::Meta"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
