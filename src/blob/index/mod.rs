@@ -5,6 +5,7 @@ pub mod bloom;
 mod bptree;
 mod core;
 mod header;
+mod range;
 mod simple;
 mod tools;
 
@@ -19,6 +20,7 @@ pub(crate) use self::core::{
 };
 pub(crate) use super::prelude::*;
 pub(crate) use bloom::{Bloom, Config as BloomConfig};
+pub(crate) use range::RangeFilter;
 
 mod prelude {
     pub(crate) use super::*;
