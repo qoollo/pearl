@@ -1,4 +1,5 @@
 use super::prelude::*;
+use futures::stream::FuturesOrdered;
 
 const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
@@ -303,7 +304,31 @@ impl<K: Key> Storage<K> {
         }
     }
 
-    async fn get_any_data(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_last(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+        let blobs = safe.blobs.read().await;
+        let blobs_stream: FuturesOrdered<_> = blobs
+            .iter()
+            .enumerate()
+            .map(|(i, blob)| blob.check_filters_async(key, i))
+            .collect();
+        let possible_blobs: Vec<_> = blobs_stream.filter_map(|e| e).collect().await;
+        debug!(
+            "len of possible blobs: {} (start len: {})",
+            possible_blobs.len(),
+            blobs.len()
+        );
+        let stream: FuturesOrdered<_> = possible_blobs
+            .iter()
+            .rev()
+            .map(|i| blobs[*i].read_any(key, meta))
+            .collect();
+        debug!("read with optional meta {} closed blobs", stream.len());
+        let mut task = stream.skip_while(Result::is_err);
+        task.next().await.ok_or_else(Error::not_found)?
+    }
+
+    #[allow(dead_code)]
+    async fn get_data_any(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
         let blobs = safe.blobs.read().await;
         let stream: FuturesUnordered<_> =
             blobs.iter().map(|blob| blob.read_any(key, meta)).collect();
@@ -313,6 +338,10 @@ impl<K: Key> Storage<K> {
             .await
             .ok_or_else(Error::not_found)?
             .with_context(|| "no results in closed blobs")
+    }
+
+    async fn get_any_data(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+        Self::get_data_last(safe, key, meta).await
     }
 
     /// Stop blob updater and release lock file

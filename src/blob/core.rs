@@ -321,6 +321,14 @@ impl Blob {
         self.index.check_filters_key(key)
     }
 
+    pub(crate) async fn check_filters_async<R>(&self, key: &[u8], index: R) -> Option<R> {
+        if self.check_filters(key).unwrap_or(true) {
+            Some(index)
+        } else {
+            None
+        }
+    }
+
     pub(crate) fn index_memory(&self) -> usize {
         self.index.memory_used()
     }

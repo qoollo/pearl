@@ -1,6 +1,6 @@
 use super::prelude::*;
 
-/// It's worth notice, that current version may be inefficient in case of little endian keys
+/// NOTE: le and lt operations are written for big-endian format of keys
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub(crate) struct RangeFilter {
     min: Vec<u8>,
@@ -30,29 +30,15 @@ impl RangeFilter {
     }
 
     pub(crate) fn lt(lv: &[u8], rv: &[u8]) -> bool {
-        if cfg!(target_endian = "big") {
-            lv < rv
-        } else {
-            // @FIXME: maybe there is a faster way to compare bytes of slices in reversed order?
-            if let CmpOrdering::Less = Iterator::cmp(lv.iter().rev(), rv.iter().rev()) {
-                true
-            } else {
-                false
-            }
-        }
+        // NOTE: if it's keys are serialized in little-endian format you should use other
+        // comparison method: Iterator::cmp(lv.iter().rev(), rv.iter().rev())
+        lv < rv
     }
 
     pub(crate) fn le(lv: &[u8], rv: &[u8]) -> bool {
-        if cfg!(target_endian = "big") {
-            lv <= rv
-        } else {
-            // @FIXME: maybe there is a faster way to compare bytes of slices in reversed order?
-            if let CmpOrdering::Less = Iterator::cmp(rv.iter().rev(), lv.iter().rev()) {
-                false
-            } else {
-                true
-            }
-        }
+        // NOTE: if it's keys are serialized in little-endian format you should use other
+        // comparison method: Iterator::cmp(lv.iter().rev(), rv.iter().rev())
+        lv <= rv
     }
 
     pub(crate) fn contains(&self, key: impl AsRef<[u8]>) -> bool {
