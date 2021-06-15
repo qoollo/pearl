@@ -319,14 +319,13 @@ impl<K: Key> Storage<K> {
     /// # Errors
     /// Fails after any disk IO errors.
     pub async fn mark_all_as_deleted(&self, key: impl AsRef<K>) -> Result<u64> {
-        let key = key.as_ref().as_ref();
         let mut total_count = 0u64;
         let mut safe = self.inner.safe.write().await;
         let active_blob = safe
             .active_blob
             .as_deref_mut()
             .ok_or_else(Error::active_blob_not_set)?;
-        if let Some(count) = active_blob.mark_all_as_deleted(key, K::LEN).await? {
+        if let Some(count) = active_blob.mark_all_as_deleted(key.as_ref()).await? {
             debug!(
                 "storage core mark all as deleted active blob count {}",
                 count
@@ -336,7 +335,7 @@ impl<K: Key> Storage<K> {
         let mut blobs = safe.blobs.write().await;
         let entries_closed_blobs = blobs
             .iter_mut()
-            .map(|b| b.mark_all_as_deleted(key, K::LEN))
+            .map(|b| b.mark_all_as_deleted(key.as_ref()))
             .collect::<FuturesUnordered<_>>();
         entries_closed_blobs
             .try_filter_map(future::ok)

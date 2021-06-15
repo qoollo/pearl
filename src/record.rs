@@ -101,14 +101,10 @@ impl Record {
         Ok(buf)
     }
 
-    pub(crate) fn deleted(key: impl AsRef<[u8]>) -> bincode::Result<Self> {
-        let key = key.as_ref().to_vec();
-        let meta = Meta::default();
-        let data = vec![];
-        let meta_size = meta.serialized_size()?;
-        let mut header = Header::new(key, meta_size, data.len() as u64, crc32(&data));
-        header.mark_as_deleted()?;
-        Ok(Self { header, meta, data })
+    pub(crate) fn deleted<K: Key>(key: &K) -> bincode::Result<Self> {
+        let mut record = Record::create(key, vec![], Meta::default())?;
+        record.header.mark_as_deleted()?;
+        Ok(record)
     }
 
     pub(crate) fn set_offset(&mut self, offset: u64) -> bincode::Result<()> {
