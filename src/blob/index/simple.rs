@@ -3,6 +3,7 @@ use std::mem::size_of;
 
 const HEADER_VERSION: u64 = 1;
 
+// All usizes in structures are serialized as u64 in binary
 #[derive(Debug)]
 pub(crate) struct Simple {
     header: IndexHeader,
