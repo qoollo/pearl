@@ -36,7 +36,7 @@ struct Save {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            elements: 1_000_000,
+            elements: 100_000,
             hashers_count: 2,
             max_buf_bits_count: 8_388_608, // 1Mb
             buf_increase_step: 8196,
@@ -170,7 +170,7 @@ mod tests {
     #[test]
     fn check_inversed_formula() {
         use super::Config;
-        const EPSILON: f64 = 0.0001;
+        const EPSILON: f64 = 0.01;
 
         let config = Config::default();
 
