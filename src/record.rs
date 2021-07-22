@@ -80,7 +80,8 @@ impl Record {
     pub fn create<K: Key>(key: &K, data: Vec<u8>, meta: Meta) -> bincode::Result<Self> {
         let key = key.as_ref().to_vec();
         let meta_size = meta.serialized_size()?;
-        let header = Header::new(key, meta_size, data.len() as u64, crc32(&data));
+        let data_checksum = CASTAGNOLI.checksum(&data);
+        let header = Header::new(key, meta_size, data.len() as u64, data_checksum);
         Ok(Self { header, meta, data })
     }
 
@@ -122,7 +123,7 @@ impl Record {
     }
 
     fn check_data_checksum(&self) -> Result<()> {
-        let calc_crc = crc32(&self.data);
+        let calc_crc = CASTAGNOLI.checksum(&self.data);
         if calc_crc == self.header.data_checksum {
             Ok(())
         } else {
@@ -238,6 +239,6 @@ impl Header {
     }
 
     fn crc32(&self) -> bincode::Result<u32> {
-        self.to_raw().map(|raw| crc32(&raw))
+        self.to_raw().map(|raw| CASTAGNOLI.checksum(&raw))
     }
 }

@@ -432,10 +432,10 @@ impl RawRecords {
         file.read_at(&mut buf, current_offset).await?;
         let (magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         debug!("blob raw records start, read at {} bytes", buf.len());
-        let magic_byte = bincode::deserialize::<u64>(&magic_byte_buf)
+        let magic_byte = bincode::deserialize::<u64>(magic_byte_buf)
             .context("failed to deserialize magic byte")?;
         Self::check_record_header_magic_byte(magic_byte)?;
-        let key_len = bincode::deserialize::<usize>(&key_len_buf)
+        let key_len = bincode::deserialize::<usize>(key_len_buf)
             .context("failed to deserialize index buf vec length")?;
         if key_len != key_size {
             let msg = "blob key_sizeis not equal to pearl compile-time key size";
