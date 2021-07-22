@@ -7,6 +7,7 @@ use super::index::Index;
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
+const CORRUPTED_DIR: &str = "corrupted";
 
 /// A [`Blob`] struct representing file with records,
 /// provides methods for read/write access by key
@@ -159,12 +160,12 @@ impl Blob {
     }
 
     async fn dump_corrupted(&self) -> Result<()> {
-        warn!("Blob {} dump started!", self.name());
+        warn!("Blob {} is corrupted, dump started!", self.name());
         let source_name = self.name.to_path();
         let file_name = source_name
             .file_name()
             .ok_or_else(|| anyhow::anyhow!("Blob path is empty"))?;
-        let dir = self.name.dir.join("corrupted");
+        let dir = self.name.dir.join(CORRUPTED_DIR);
         if !dir.exists() {
             create_dir(&dir).await?;
         }
