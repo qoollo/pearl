@@ -152,7 +152,7 @@ pub enum CorruptionType {
     ZeroedAtBegin(u64),
 }
 
-pub fn corrupt_file(path: impl AsRef<Path>, corruption_type: CorruptionType) -> AnyResult<()> {
+pub fn corrupt_file(path: impl AsRef<Path>, corruption_type: CorruptionType) -> Result<()> {
     let mut file = std::fs::OpenOptions::new()
         .create(false)
         .write(true)
