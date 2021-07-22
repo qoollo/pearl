@@ -60,12 +60,11 @@ impl Bloom {
         let bits_step = config.buf_increase_step;
         let mut fpr = 1_f64;
         while fpr > config.preferred_false_positive_rate {
+            fpr = false_positive_rate(k as f64, elements, bits_count as f64);
             if bits_count >= max_bit_count {
-                fpr = false_positive_rate(k as f64, elements, bits_count as f64);
                 trace!("false positive: {:.6}", fpr,);
                 break;
             } else {
-                fpr = false_positive_rate(k as f64, elements, bits_count as f64);
                 bits_count = max_bit_count.min(bits_step + bits_count);
             }
         }

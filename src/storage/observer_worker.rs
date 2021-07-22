@@ -12,10 +12,10 @@ impl ObserverWorker {
     pub(crate) fn new(receiver: Receiver<Msg>, inner: Inner, dump_sem: Arc<Semaphore>) -> Self {
         let update_interval = Duration::from_millis(inner.config.update_interval_ms());
         Self {
-            receiver,
             inner,
-            update_interval,
+            receiver,
             dump_sem,
+            update_interval,
         }
     }
 

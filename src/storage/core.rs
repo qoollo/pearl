@@ -73,18 +73,18 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
         }
     }
 
-    if files
+    let content = if files
         .iter()
         .filter_map(|file| Some(file.file_name().as_os_str().to_str()?.to_owned()))
-        .find(|name| name.ends_with(BLOB_FILE_EXTENSION))
-        .is_none()
+        .any(|name| name.ends_with(BLOB_FILE_EXTENSION))
     {
-        debug!("working dir is uninitialized, starting empty storage");
-        Ok(None)
-    } else {
         debug!("working dir contains files, try init existing");
-        Ok(Some(files))
-    }
+        Some(files)
+    } else {
+        debug!("working dir is uninitialized, starting empty storage");
+        None
+    };
+    Ok(content)
 }
 
 impl<K: Key> Storage<K> {
@@ -456,7 +456,7 @@ impl<K: Key> Storage<K> {
             })?
             .boxed();
         let mut safe = self.inner.safe.write().await;
-        active_blob.load_index().await?;
+        active_blob.load_index(K::LEN).await?;
         for blob in &mut blobs {
             debug!("dump all blobs except active blob");
             blob.dump().await?;
@@ -492,7 +492,7 @@ impl<K: Key> Storage<K> {
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(file.clone(), ioring.clone(), config.filter())
+                Blob::from_file(file.clone(), ioring.clone(), config.filter(), K::LEN)
                     .await
                     .map_err(|e| (e, file))
             })
