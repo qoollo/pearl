@@ -6,6 +6,7 @@ Pearl changelog
 
 #### Changed
 - Add key size check for blob from file ([#99](https://github.com/qoollo/pearl/pull/99)) 
+- Rebuild corrupted index automatically during startup ([#94](https://github.com/qoollo/pearl/pull/94))
 
 #### Fixed
 - Fix warnings ([#100](https://github.com/qoollo/pearl/pull/100)) 
