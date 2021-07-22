@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
+pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Record {
@@ -77,7 +77,7 @@ impl Record {
     }
 
     /// Creates new `Record` with provided data, key and meta.
-    pub fn create(key: impl Key, data: Vec<u8>, meta: Meta) -> bincode::Result<Self> {
+    pub fn create<K: Key>(key: &K, data: Vec<u8>, meta: Meta) -> bincode::Result<Self> {
         let key = key.as_ref().to_vec();
         let meta_size = meta.serialized_size()?;
         let header = Header::new(key, meta_size, data.len() as u64, crc32(&data));

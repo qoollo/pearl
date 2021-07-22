@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate log;
 
-use anyhow::Result as AnyResult;
+use anyhow::Result;
 use futures::{
     future::FutureExt,
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
@@ -138,7 +138,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
 }
 
 #[tokio::test]
-async fn test_storage_multithread_blob_overflow() -> AnyResult<()> {
+async fn test_storage_multithread_blob_overflow() -> Result<()> {
     let now = Instant::now();
     let path = common::init("overflow");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
@@ -171,7 +171,7 @@ async fn test_storage_close() {
 }
 
 #[tokio::test]
-async fn test_on_disk_index() -> AnyResult<()> {
+async fn test_on_disk_index() -> Result<()> {
     let now = Instant::now();
     let path = common::init("index");
     let data_size = 500;
@@ -484,7 +484,7 @@ async fn test_check_bloom_filter_single() {
     let path = common::init("contains_bloom_filter_single");
     let storage = common::create_test_storage(&path, 10).await.unwrap();
     let data = b"some_random_data";
-    let repeat = 8192;
+    let repeat = 4096;
     for i in 0..repeat {
         let pos_key = KeyTest::new(i + repeat);
         let neg_key = KeyTest::new(i + 2 * repeat);
@@ -620,7 +620,7 @@ async fn write_one(
     key: u32,
     data: &[u8],
     version: Option<&str>,
-) -> AnyResult<()> {
+) -> Result<()> {
     let data = data.to_vec();
     let key = KeyTest::new(key);
     debug!("tests write one key: {:?}", key);

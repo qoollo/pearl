@@ -1,6 +1,6 @@
 #![allow(unused_attributes)]
 
-use anyhow::Result as AnyResult;
+use anyhow::Result;
 use chrono::Local;
 use env_logger::fmt::Color;
 use futures::{future, stream::futures_unordered::FuturesUnordered, FutureExt, StreamExt};
@@ -21,6 +21,12 @@ pub struct KeyTest(Vec<u8>);
 impl AsRef<[u8]> for KeyTest {
     fn as_ref(&self) -> &[u8] {
         &self.0
+    }
+}
+
+impl AsRef<KeyTest> for KeyTest {
+    fn as_ref(&self) -> &KeyTest {
+        &self
     }
 }
 
@@ -100,7 +106,7 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> AnyResult<()> {
+pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<()> {
     std::thread::sleep(std::time::Duration::from_millis(100));
     storage.close().await?;
     fs::remove_dir_all(path).map_err(Into::into)

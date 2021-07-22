@@ -14,6 +14,7 @@ mod prelude {
         generator::Generator,
         statistics::{Report, Statistics},
         writer::Writer,
+        Key128,
     };
     pub(crate) use clap::{App, Arg, ArgMatches};
     pub(crate) use env_logger::fmt::Color;
@@ -86,7 +87,7 @@ async fn start_app() {
         .map(|(key, data)| {
             let ltx = tx.clone();
             counter += 1;
-            writer.write(key.into(), data, ltx)
+            writer.write(key, data, ltx)
         })
         .collect();
     println!(
@@ -205,10 +206,16 @@ fn init_logger() {
         .try_init();
 }
 #[derive(Debug)]
-struct Key128(Vec<u8>);
+pub struct Key128(Vec<u8>);
 
 impl Key for Key128 {
     const LEN: u16 = 8;
+}
+
+impl AsRef<Key128> for Key128 {
+    fn as_ref(&self) -> &Self {
+        self
+    }
 }
 
 impl From<Vec<u8>> for Key128 {
