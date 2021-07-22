@@ -3,6 +3,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Move corrupted blobs into speacial directory ([#98](https://github.com/qoollo/pearl/pull/98)) 
 
 #### Changed
 - Add key size check for blob from file ([#99](https://github.com/qoollo/pearl/pull/99)) 
