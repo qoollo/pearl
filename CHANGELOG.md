@@ -3,6 +3,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Add record delete api method ([#103](https://github.com/qoollo/pearl/pull/103)) 
 
 #### Changed
 - Add key size check for blob from file ([#99](https://github.com/qoollo/pearl/pull/99)) 
