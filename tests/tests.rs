@@ -11,6 +11,7 @@ use pearl::{Builder, Meta, Storage};
 use rand::{seq::SliceRandom, Rng};
 use std::{
     fs,
+    hash::Hasher,
     time::{Duration, Instant},
 };
 use tokio::time::sleep;
@@ -18,6 +19,17 @@ use tokio::time::sleep;
 mod common;
 
 use common::KeyTest;
+
+#[test]
+fn test_hash() {
+    let data = (0..10).collect::<Vec<u8>>();
+
+    let mut hasher_7 = ahash::AHasher::new_with_keys(1, 2);
+    hasher_7.write(&data);
+    let hash_7 = hasher_7.finish();
+
+    assert_eq!(hash_7, 3604729491498336444);
+}
 
 #[tokio::test]
 async fn test_storage_init_new() {
