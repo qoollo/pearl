@@ -6,8 +6,7 @@ use super::prelude::*;
 use super::index::Index;
 
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
-const BLOB_INDEX_FILE_EXTENSION: &str = "index";
-const CORRUPTED_DIR: &str = "corrupted";
+pub(crate) const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 
 /// A [`Blob`] struct representing file with records,
 /// provides methods for read/write access by key
@@ -159,22 +158,6 @@ impl Blob {
         .context("failed to create iterator for raw records")
     }
 
-    async fn dump_corrupted(&self) -> Result<()> {
-        warn!("Blob {} is corrupted, dump started!", self.name());
-        let source_name = self.name.to_path();
-        let file_name = source_name
-            .file_name()
-            .ok_or_else(|| anyhow::anyhow!("Blob path is empty"))?;
-        let dir = self.name.dir.join(CORRUPTED_DIR);
-        if !dir.exists() {
-            create_dir(&dir).await?;
-        }
-        let target_name = dir.join(file_name);
-        tokio::fs::copy(source_name, target_name.clone()).await?;
-        warn!("Blob {} dumped to {}!", self.name(), target_name.display());
-        Ok(())
-    }
-
     pub(crate) async fn try_regenerate_index(&mut self, key_size: usize) -> Result<()> {
         info!("try regenerate index for blob: {}", self.name);
         if self.index.on_disk() {
@@ -245,18 +228,6 @@ impl Blob {
         debug!("blob read any entry found");
         let buf = entry
             .load()
-            .then(|result| async {
-                let error = match result {
-                    Err(e) => e,
-                    x => return x,
-                };
-                if let Some(e) = error.downcast_ref::<Error>() {
-                    if let ErrorKind::Validation(_) = e.kind() {
-                        self.dump_corrupted().await?;
-                    }
-                }
-                Err(error)
-            })
             .await
             .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?
             .into_data();

@@ -74,6 +74,15 @@ impl Builder {
         self
     }
 
+    /// Sets directory name for corrupted files. If path doesn't exists, Storage will try to create it
+    /// at initialization stage.
+    pub fn corrupted_dir_name(mut self, name: impl Into<String>) -> Self {
+        let name = name.into();
+        debug!("corrupted dir name set to: {}", name);
+        self.config.set_corrupted_dir_name(name);
+        self
+    }
+
     /// Sets blob file size approximate limit. When the file size exceeds it,
     /// active blob update is activated.
     /// Must be greater than zero

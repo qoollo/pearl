@@ -12,6 +12,7 @@ pub(crate) struct Config {
     ignore_corrupted: bool,
     filter: Option<BloomConfig>,
     dump_sem: Arc<Semaphore>,
+    corrupted_dir_name: String,
 }
 
 // Getters
@@ -49,6 +50,11 @@ impl Config {
     #[inline]
     pub const fn ignore_corrupted(&self) -> bool {
         self.ignore_corrupted
+    }
+
+    #[inline]
+    pub fn corrupted_dir_name(&self) -> &str {
+        self.corrupted_dir_name.as_str()
     }
 
     #[inline]
@@ -93,6 +99,10 @@ impl Config {
         self.ignore_corrupted = ignore_corrupted;
     }
 
+    pub fn set_corrupted_dir_name(&mut self, name: String) {
+        self.corrupted_dir_name = name;
+    }
+
     pub fn set_filter(&mut self, filter: BloomConfig) {
         self.filter = Some(filter);
     }
@@ -120,6 +130,7 @@ impl Default for Config {
             ignore_corrupted: false,
             filter: None,
             dump_sem: Arc::new(Semaphore::new(1)),
+            corrupted_dir_name: "corrupted".into(),
         }
     }
 }
