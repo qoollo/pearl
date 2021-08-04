@@ -319,31 +319,43 @@ impl<K: Key> Storage<K> {
     /// # Errors
     /// Fails after any disk IO errors.
     pub async fn mark_all_as_deleted(&self, key: impl AsRef<K>) -> Result<u64> {
-        let mut total_count = 0u64;
+        let mut total = 0;
+        total += self.mark_all_as_deleted_active(key.as_ref()).await?;
+        total += self.mark_all_as_deleted_closed(key.as_ref()).await?;
+        debug!("{} deleted total", total);
+        Ok(total)
+    }
+
+    async fn mark_all_as_deleted_closed(&self, key: &K) -> Result<u64> {
+        let safe = self.inner.safe.write().await;
+        let mut blobs = safe.blobs.write().await;
+        let entries_closed_blobs = blobs
+            .iter_mut()
+            .map(|b| b.mark_all_as_deleted(key))
+            .collect::<FuturesUnordered<_>>();
+        let total = entries_closed_blobs
+            .filter_map(|result| match result {
+                Ok(count) => count,
+                Err(error) => {
+                    warn!("failed to delete records: {}", error);
+                    None
+                }
+            })
+            .fold(0, |a, b| a + b)
+            .await;
+        debug!("{} deleted from closed blobs", total);
+        Ok(total)
+    }
+
+    async fn mark_all_as_deleted_active(&self, key: &K) -> Result<u64> {
         let mut safe = self.inner.safe.write().await;
         let active_blob = safe
             .active_blob
             .as_deref_mut()
             .ok_or_else(Error::active_blob_not_set)?;
-        if let Some(count) = active_blob.mark_all_as_deleted(key.as_ref()).await? {
-            debug!("{} deleted from active blob", count);
-            total_count += count;
-        }
-        let mut blobs = safe.blobs.write().await;
-        let entries_closed_blobs = blobs
-            .iter_mut()
-            .map(|b| b.mark_all_as_deleted(key.as_ref()))
-            .collect::<FuturesUnordered<_>>();
-        entries_closed_blobs
-            .try_filter_map(future::ok)
-            .try_for_each(|count| {
-                debug!("{} deleted from closed blob", count);
-                total_count += count;
-                future::ok(())
-            })
-            .await?;
-        debug!("{} deleted total", total_count);
-        Ok(total_count)
+        let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
+        debug!("{} deleted from active blob", count);
+        Ok(count)
     }
 
     /// Stop blob updater and release lock file
