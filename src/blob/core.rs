@@ -248,7 +248,6 @@ impl Blob {
     #[inline]
     pub(crate) async fn mark_all_as_deleted<K: Key>(&mut self, key: &K) -> Result<Option<u64>> {
         if self.index.get_any(key.as_ref()).await?.is_some() {
-            debug!("blob core mark all as deleted");
             let on_disk = self.index.on_disk();
             if on_disk {
                 self.load_index(K::LEN).await?;

@@ -279,25 +279,14 @@ impl Simple {
         }
     }
 
-    fn mark_all_as_deleted_in_memory(&mut self, key: &[u8]) -> Result<Option<u64>> {
-        match &mut self.inner {
-            State::InMemory(headers) => {
-                debug!(
-                    "simple index mark all as deleted in memory headers: {}",
-                    headers.len()
-                );
-                if let Some(vec_headers) = headers.get_mut(key) {
-                    let count = vec_headers.len();
-                    vec_headers.clear();
-                    Ok(Some(count as u64))
-                } else {
-                    Ok(None)
-                }
-            }
-            State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
-                "Index is closed, delete is unavalaible".to_string(),
-            ))
-            .into()),
+    fn mark_all_as_deleted_in_memory(headers: &mut InMemoryIndex, key: &[u8]) -> Option<u64> {
+        debug!("headers: {}", headers.len());
+        if let Some(vec_headers) = headers.get_mut(key) {
+            let count = vec_headers.len();
+            vec_headers.clear();
+            Some(count as u64)
+        } else {
+            None
         }
     }
 }
@@ -398,7 +387,13 @@ impl Index for Simple {
     }
 
     async fn mark_all_as_deleted(&mut self, key: &[u8]) -> Result<Option<u64>> {
-        debug!("index mark all as deleted all");
-        self.mark_all_as_deleted_in_memory(key)
+        debug!("mark all as deleted by {:?} key", key);
+        match &mut self.inner {
+            State::InMemory(headers) => Ok(Self::mark_all_as_deleted_in_memory(headers, key)),
+            State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
+                "Index is closed, delete is unavalaible".to_string(),
+            ))
+            .into()),
+        }
     }
 }
