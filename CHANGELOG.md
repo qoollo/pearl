@@ -3,7 +3,6 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-- Setup build and test with GitHub Actions ([#113](https://github.com/qoollo/pearl/pull/116))
 
 #### Changed
 - Add key size check for blob from file ([#99](https://github.com/qoollo/pearl/pull/99)) 
