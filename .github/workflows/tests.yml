@@ -1,0 +1,24 @@
+name: tests
+
+on:
+  pull_request:
+      types: [ opened, synchronize, reopened, ready_for_review ]
+  push:
+    branches: [ master, 113-setup-build-and-test-with-github-actions]
+    
+jobs:
+
+  tests:
+    runs-on: ubuntu-latest
+    container: rust:1.53.0
+    env:
+      RUST_TC_VER: nightly-2021-06-23
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Tests
+        run: |
+          export PEARL_COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)
+          rustup install ${{ env.RUST_TC_VER }}
+          rustup default ${{ env.RUST_TC_VER }}
+          cargo test
