@@ -10,13 +10,14 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
-    container: rust:1.53.0
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
       - name: Install latest nightly 
         uses: actions-rs/toolchain@v1
-        with:                                                                                                                     toolchain: nightly                                                                                                      default: true
+        with:
+          toolchain: nightly
+          default: true
       - name: Tests
         run: |
           export PEARL_COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)

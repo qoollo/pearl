@@ -10,7 +10,6 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    container: rust:1.53.0
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
