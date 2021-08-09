@@ -4,21 +4,25 @@ on:
   pull_request:
       types: [ opened, synchronize, reopened, ready_for_review ]
   push:
-    branches: [ master, 113-setup-build-and-test-with-github-actions]
+    branches: [ master, 113-setup-build-and-test-with-github-actions ]
     
 jobs:
 
   build:
     runs-on: ubuntu-latest
     container: rust:1.53.0
-    env:
-      RUST_TC_VER: nightly-2021-06-23
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
-      - name: Build
-        run: |
-          export PEARL_COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)
-          rustup install ${{ env.RUST_TC_VER }}
-          rustup default ${{ env.RUST_TC_VER }}
-          cargo build --all
+      - name: Set env variable
+        run: export PEARL_COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          default: true
+      - name: Build   
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --all 
