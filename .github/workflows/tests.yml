@@ -14,12 +14,10 @@ jobs:
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
-      - name: Set env variable
-        run: export PEARL_COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)
       - name: Install latest nightly 
         uses: actions-rs/toolchain@v1
         with:                                                                                                                     toolchain: nightly                                                                                                      default: true
       - name: Tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+        run: |
+          export PEARL_COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)
+          cargo test
