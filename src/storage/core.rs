@@ -109,6 +109,25 @@ impl<K: Key> Storage<K> {
     ///
     /// [`init()`]: struct.Storage.html#method.init
     pub async fn init(&mut self) -> Result<()> {
+        self.init_ext(true).await
+    }
+
+    /// [`init_noactive()`] used to prepare all environment to further work, but unlike `init`
+    /// doesn't set active blob, which means that write operations will fall with
+    /// `active_blob_not_set`.
+    ///
+    /// Storage works in directory provided to builder. If directory don't exist,
+    /// storage creates it, otherwise tries to init existing storage.
+    /// # Errors
+    /// Returns error in case of failures with IO operations or
+    /// if some of the required params are missed.
+    ///
+    /// [`init_noactive()`]: struct.Storage.html#method.init
+    pub async fn init_noactive(&mut self) -> Result<()> {
+        self.init_ext(false).await
+    }
+
+    async fn init_ext(&mut self, with_active: bool) -> Result<()> {
         // @TODO implement work dir validation
         self.prepare_work_dir().await?;
         let cont_res = work_dir_content(
@@ -121,7 +140,7 @@ impl<K: Key> Storage<K> {
         trace!("work dir content loaded");
         if let Some(files) = cont_res? {
             trace!("storage init from existing files");
-            self.init_from_existing(files)
+            self.init_from_existing(files, with_active)
                 .await
                 .context("failed to init from existing blobs")?
         } else {
@@ -131,6 +150,70 @@ impl<K: Key> Storage<K> {
         self.launch_observer();
         trace!("observer started");
         Ok(())
+    }
+
+    /// Checks if active blob is set
+    /// Returns boolean value
+    /// Never falls
+    pub async fn has_active_blob(&self) -> bool {
+        self.inner.has_active_blob().await
+    }
+
+    /// Creates active blob
+    /// NOTICE! This function works in current thread, so it may take time. To perform this
+    /// asyncronously, use [`create_active_blob_async()`]
+    /// Returns true if new blob was created else false
+    /// # Errors
+    /// Fails if it's not possible to create new blob
+    /// [`create_active_blob_async()`]: struct.Storage.html#method.create_active_blob_async
+    pub async fn create_active_blob(&self) -> Result<bool> {
+        self.inner.create_active_blob().await
+    }
+
+    /// Creates active blob
+    /// NOTICE! This function returns immediately, so you can't check result of operation. If you
+    /// want be sure about operation's result, use [`create_active_blob()`]
+    /// [`create_active_blob_async()`]: struct.Storage.html#method.create_active_blob_async
+    pub async fn create_active_blob_async(&self) {
+        self.observer.create_active_blob().await
+    }
+
+    /// Dumps active blob
+    /// NOTICE! This function works in current thread, so it may take time. To perform this
+    /// asyncronously, use [`close_active_blob_async()`]
+    /// Returns true if blob was really dumped else false
+    /// # Errors
+    /// Fails if there are some errors during dump
+    /// [`close_active_blob_async()`]: struct.Storage.html#method.create_active_blob_async
+    pub async fn close_active_blob(&self) -> Result<bool> {
+        self.inner.close_active_blob().await
+    }
+
+    /// Dumps active blob
+    /// NOTICE! This function returns immediately, so you can't check result of operation. If you
+    /// want be sure about operation's result, use [`close_active_blob()`]
+    /// [`close_active_blob_async()`]: struct.Storage.html#method.close_active_blob_async
+    pub async fn close_active_blob_async(&self) {
+        self.observer.close_active_blob().await
+    }
+
+    /// Sets last blob from closed blobs as active if there is no active blobs
+    /// NOTICE! This function works in current thread, so it may take time. To perform this
+    /// asyncronously, use [`restore_active_blob_async()`]
+    /// Returns true if last blob was set as active as false
+    /// # Errors
+    /// Fails if active blob is set or there is no closed blobs
+    /// [`restore_active_blob_async()`]: struct.Storage.html#method.restore_active_blob_async
+    pub async fn restore_active_blob(&self) -> Result<bool> {
+        self.inner.restore_active_blob().await
+    }
+
+    /// Sets last blob from closed blobs as active if there is no active blobs
+    /// NOTICE! This function returns immediately, so you can't check result of operation. If you
+    /// want be sure about operation's result, use [`restore_active_blob()`]
+    /// [`restore_active_blob_async()`]: struct.Storage.html#method.restore_active_blob_async
+    pub async fn restore_active_blob_async(&self) {
+        self.observer.restore_active_blob().await
     }
 
     /// Writes `data` to active blob asyncronously. If active blob reaches it limit, creates new
@@ -177,6 +260,10 @@ impl<K: Key> Storage<K> {
         meta: Option<Meta>,
     ) -> Result<()> {
         debug!("storage write with {:?}, {}b, {:?}", key, value.len(), meta);
+        // if active blob is set, this call will only check this fact and return
+        if self.create_active_blob().await? {
+            info!("Active blob was set during write operation");
+        }
         if !self.inner.config.allow_duplicates()
             && self.contains_with(key.as_ref(), meta.as_ref()).await?
         {
@@ -284,23 +371,16 @@ impl<K: Key> Storage<K> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
         let key = key.as_ref();
-        let active_blob_read_res = safe
-            .active_blob
-            .as_ref()
-            .ok_or_else(Error::active_blob_not_set)?
-            .read_any(key, meta)
-            .await;
-        debug!("storage read with optional meta from active blob finished");
-        match active_blob_read_res {
-            Ok(data) => {
-                debug!("storage read with optional meta active blob returned data");
-                Ok(data)
-            }
-            Err(e) => {
-                debug!("read with optional meta active blob returned: {:#?}", e);
-                Self::get_any_data(&safe, key, meta).await
+        if let Some(ablob) = safe.active_blob.as_ref() {
+            match ablob.read_any(key, meta).await {
+                Ok(data) => {
+                    debug!("storage read with optional meta active blob returned data");
+                    return Ok(data);
+                }
+                Err(e) => debug!("read with optional meta active blob returned: {:#?}", e),
             }
         }
+        Self::get_any_data(&safe, key, meta).await
     }
 
     async fn get_any_data(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
@@ -432,7 +512,7 @@ impl<K: Key> Storage<K> {
         Ok(())
     }
 
-    async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
+    async fn init_from_existing(&mut self, files: Vec<DirEntry>, with_active: bool) -> Result<()> {
         trace!("init from existing: {:#?}", files);
         let disk_access_sem = self.observer.get_dump_sem();
         let mut blobs = Self::read_blobs(
@@ -446,27 +526,39 @@ impl<K: Key> Storage<K> {
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
-        let mut active_blob = blobs
-            .pop()
-            .ok_or_else(|| {
-                let wd = self.inner.config.work_dir();
-                error!("There are some blob files in the work dir: {:?}", wd);
-                error!("Creating blobs from all these files failed");
-                Error::from(ErrorKind::Uninitialized)
-            })?
-            .boxed();
-        let mut safe = self.inner.safe.write().await;
-        active_blob.load_index(K::LEN).await?;
+
+        let active_blob = if with_active {
+            Some(Self::pop_active(&mut blobs, &self.inner.config).await?)
+        } else {
+            None
+        };
+
         for blob in &mut blobs {
             debug!("dump all blobs except active blob");
             blob.dump().await?;
         }
-        safe.active_blob = Some(active_blob);
+
+        let mut safe = self.inner.safe.write().await;
+        safe.active_blob = active_blob;
         *safe.blobs.write().await = blobs;
         self.inner
             .next_blob_id
             .store(safe.max_id().await.map_or(0, |i| i + 1), ORD);
         Ok(())
+    }
+
+    async fn pop_active(blobs: &mut Vec<Blob>, config: &Config) -> Result<Box<Blob>> {
+        let mut active_blob = blobs
+            .pop()
+            .ok_or_else(|| {
+                let wd = config.work_dir();
+                error!("There are some blob files in the work dir: {:?}", wd);
+                error!("Creating blobs from all these files failed");
+                Error::from(ErrorKind::Uninitialized)
+            })?
+            .boxed();
+        active_blob.load_index(K::LEN).await?;
+        Ok(active_blob)
     }
 
     async fn read_blobs(
@@ -593,13 +685,15 @@ impl<K: Key> Storage<K> {
         self.inner.fsyncdata().await
     }
 
-    /// Force closes active blob to dump index on disk and free RAM.
+    /// Force updates active blob on new one to dump index of old one on disk and free RAM.
+    /// This function was used previously instead of [`close_active_blob_async()`]
     /// Creates new active blob.
     /// # Errors
     /// Fails because of any IO errors.
-    /// Or if there are any problems with syncronization.
-    pub async fn close_active_blob(&self) {
-        self.observer.close_active_blob().await
+    /// Or if there are some problems with syncronization.
+    /// [`close_active_blob_async()`]: struct.Storage.html#method.close_active_blob_async
+    pub async fn force_update_active_blob(&self) {
+        self.observer.force_update_active_blob().await
     }
 
     fn filter_config(&self) -> Option<BloomConfig> {
@@ -621,6 +715,67 @@ impl Inner {
         }
     }
 
+    pub(crate) async fn restore_active_blob(&self) -> Result<bool> {
+        if self.has_active_blob().await {
+            return Ok(false);
+        }
+        let mut safe = self.safe.write().await;
+        if let None = safe.active_blob {
+            let blob_opt = safe.blobs.write().await.pop().map(|b| b.boxed());
+            if let Some(blob) = blob_opt {
+                safe.active_blob = Some(blob);
+                Ok(true)
+            } else {
+                // NOTE: maybe it would be better panic in case of this operation with empty blob list?
+                Ok(false)
+            }
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub(crate) async fn create_active_blob(&self) -> Result<bool> {
+        if self.has_active_blob().await {
+            return Ok(false);
+        }
+        let mut safe = self.safe.write().await;
+        if let None = safe.active_blob {
+            let next = self.next_blob_name()?;
+            let config = self.config.filter();
+            let blob = Blob::open_new(next, self.ioring.clone(), config)
+                .await?
+                .boxed();
+            safe.active_blob = Some(blob);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub(crate) async fn close_active_blob(&self) -> Result<bool> {
+        if !self.has_active_blob().await {
+            return Ok(false);
+        }
+        let mut safe = self.safe.write().await;
+        if safe.active_blob.is_none() {
+            Ok(false)
+        } else {
+            safe.active_blob.as_mut().unwrap(/*None case checked*/).dump().await?;
+            safe.active_blob = None;
+            Ok(true)
+        }
+    }
+
+    pub(crate) async fn has_active_blob(&self) -> bool {
+        if let None = self.safe.read().await.active_blob {
+            false
+        } else {
+            true
+        }
+    }
+
+    // FIXME: Maybe we should revert counter if new blob creation failed?
+    // It'll make code a bit more complicated, but blobs will sequentially grow for sure
     pub(crate) fn next_blob_name(&self) -> Result<blob::FileName> {
         let next_id = self.next_blob_id.fetch_add(1, ORD);
         let prefix = self
@@ -714,11 +869,10 @@ impl Safe {
     }
 
     pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob>) -> Result<()> {
-        let old_active = self
-            .active_blob
-            .replace(blob)
-            .ok_or_else(Error::active_blob_not_set)?;
-        self.blobs.write().await.push(*old_active);
+        let old_active = self.active_blob.replace(blob);
+        if let Some(blob) = old_active {
+            self.blobs.write().await.push(*blob);
+        }
         Ok(())
     }
 

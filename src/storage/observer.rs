@@ -5,7 +5,10 @@ use tokio::{
 };
 
 pub(crate) enum Msg {
+    CreateActiveBlob,
     CloseActiveBlob,
+    RestoreActiveBlob,
+    ForceUpdateActiveBlob,
 }
 
 #[derive(Debug, Clone)]
@@ -33,10 +36,29 @@ impl Observer {
         }
     }
 
+    pub(crate) async fn force_update_active_blob(&self) {
+        self.send_msg(Msg::ForceUpdateActiveBlob).await
+    }
+
+    pub(crate) async fn restore_active_blob(&self) {
+        self.send_msg(Msg::RestoreActiveBlob).await
+    }
+
     pub(crate) async fn close_active_blob(&self) {
+        self.send_msg(Msg::CloseActiveBlob).await
+    }
+
+    pub(crate) async fn create_active_blob(&self) {
+        self.send_msg(Msg::CreateActiveBlob).await
+    }
+
+    async fn send_msg(&self, msg: Msg) {
         if let Some(sender) = &self.sender {
-            if let Err(e) = sender.send(Msg::CloseActiveBlob).await {
-                error!("observer cannot close active blob: task failed: {}", e);
+            if let Err(e) = sender.send(msg).await {
+                error!(
+                    "observer cannot force update active blob: task failed: {}",
+                    e
+                );
             }
         } else {
             error!("storage observer task was not launched");

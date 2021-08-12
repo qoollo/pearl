@@ -33,11 +33,16 @@ impl ObserverWorker {
 
     async fn tick(&mut self) -> Result<()> {
         match timeout(self.update_interval, self.receiver.recv()).await {
-            Ok(Some(Msg::CloseActiveBlob)) => {
+            Ok(Some(Msg::ForceUpdateActiveBlob)) => {
                 update_active_blob(self.inner.clone()).await?;
                 self.inner
                     .try_dump_old_blob_indexes(self.dump_sem.clone())
                     .await;
+            }
+            Ok(Some(Msg::CloseActiveBlob)) => self.inner.close_active_blob().await.map(|_| ())?,
+            Ok(Some(Msg::CreateActiveBlob)) => self.inner.create_active_blob().await.map(|_| ())?,
+            Ok(Some(Msg::RestoreActiveBlob)) => {
+                self.inner.restore_active_blob().await.map(|_| ())?
             }
             Ok(None) => {
                 return Err(anyhow!(
@@ -67,13 +72,12 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
         trace!("await for lock");
         let safe_locked = inner.safe.read().await;
         trace!("lock acquired");
-        let active_blob = safe_locked
-            .active_blob
-            .as_ref()
-            .ok_or_else(Error::active_blob_not_set)?;
-        let size = active_blob.file_size();
-        let count = active_blob.records_count() as u64;
-        (size, count)
+        if let Some(active_blob) = safe_locked.active_blob.as_ref() {
+            (active_blob.file_size(), active_blob.records_count() as u64)
+        } else {
+            // if active blob doesn't exists, it doesn't need to be updated
+            return Ok(None);
+        }
     };
     trace!("lock released");
     let config_max_size = inner
