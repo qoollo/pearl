@@ -36,6 +36,18 @@ impl FileIndexTrait for SimpleFileIndex {
         Ok(buf)
     }
 
+    async fn read_meta_at(&self, i: usize) -> Result<u8> {
+        trace!("load byte from meta");
+        if i >= self.header.meta_size {
+            return Err(anyhow::anyhow!("read meta out of range"));
+        }
+        let mut buf = vec![0; 1];
+        self.file
+            .read_at(&mut buf, self.header.serialized_size()? + i as u64)
+            .await?;
+        Ok(buf[0])
+    }
+
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
         Self::search_all(&self.file, key, &self.header).await
     }

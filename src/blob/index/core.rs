@@ -84,11 +84,26 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         self.filter.clear();
     }
 
-    pub fn check_bloom_key(&self, key: &[u8]) -> Option<bool> {
+    pub async fn check_bloom_key(&self, key: &[u8]) -> Result<Option<bool>> {
         if self.params.filter_is_on {
-            Some(self.filter.contains(key))
+            if let Some(result) = self.filter.contains_in_memory(key) {
+                Ok(Some(result))
+            } else {
+                match &self.inner {
+                    State::OnDisk(findex) => {
+                        Ok(Some(self.filter.contains_in_file(findex, key).await?))
+                    }
+                    _ => Ok(None),
+                }
+            }
         } else {
-            None
+            Ok(None)
+        }
+    }
+
+    pub fn offload_filter(&mut self) {
+        if self.on_disk() {
+            self.filter.offload_from_memory();
         }
     }
 
@@ -182,7 +197,7 @@ impl<FileIndex: FileIndexTrait + Sync + Send + Clone> IndexTrait for IndexStruct
         match &mut self.inner {
             State::InMemory(headers) => {
                 debug!("blob index simple push bloom filter add");
-                self.filter.add(h.key());
+                self.filter.add(h.key())?;
                 debug!("blob index simple push key: {:?}", h.key());
                 let mem = self
                     .mem
@@ -274,6 +289,7 @@ pub(crate) trait FileIndexTrait: Sized {
     fn file_size(&self) -> u64;
     fn records_count(&self) -> usize;
     async fn read_meta(&self) -> Result<Vec<u8>>;
+    async fn read_meta_at(&self, i: usize) -> Result<u8>;
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)>;
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>>;

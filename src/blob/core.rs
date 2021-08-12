@@ -249,7 +249,7 @@ impl Blob {
 
     async fn get_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
-        if self.check_bloom(key) == Some(false) {
+        if self.check_bloom_simple(key).await == Some(false) {
             debug!("blob core get any entry check bloom returned Some(false)");
             Ok(None)
         } else if let Some(meta) = meta {
@@ -316,9 +316,20 @@ impl Blob {
         self.name.id
     }
 
-    pub(crate) fn check_bloom(&self, key: &[u8]) -> Option<bool> {
+    pub(crate) async fn check_bloom(&self, key: &[u8]) -> Result<Option<bool>> {
         trace!("check bloom filter");
-        self.index.check_bloom_key(key)
+        self.index.check_bloom_key(key).await
+    }
+
+    pub(crate) async fn check_bloom_simple(&self, key: &[u8]) -> Option<bool> {
+        match self.check_bloom(key).await {
+            Ok(x) => x,
+            _ => None,
+        }
+    }
+
+    pub(crate) fn offload_filter(&mut self) {
+        self.index.offload_filter()
     }
 
     pub(crate) fn index_memory(&self) -> usize {

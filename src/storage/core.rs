@@ -553,19 +553,35 @@ impl<K: Key> Storage<K> {
         let key = key.as_ref();
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.read().await;
-        let in_active = inner
-            .active_blob
-            .as_ref()
-            .map_or(Some(false), |active_blob| {
-                active_blob.check_bloom(key.as_ref())
-            })?;
+        let in_active = if let Some(active_blob) = inner.active_blob.as_ref() {
+            active_blob.check_bloom_simple(key.as_ref()).await == Some(true)
+        } else {
+            false
+        };
+
         let in_closed = inner
             .blobs
             .read()
             .await
             .iter()
-            .any(|blob| blob.check_bloom(key.as_ref()) == Some(true));
+            .map(|blob| blob.check_bloom_simple(key.as_ref()))
+            .collect::<FuturesUnordered<_>>()
+            .any(|value| value == Some(true))
+            .await;
+
         Some(in_active || in_closed)
+    }
+
+    /// Offload bloom filters for closed blobs
+    pub async fn offload_bloom(&self) {
+        trace!("offload bloom filters");
+        let inner = self.inner.safe.read().await;
+        inner
+            .blobs
+            .write()
+            .await
+            .iter_mut()
+            .for_each(|blob| blob.offload_filter());
     }
 
     /// Total records count in storage.
