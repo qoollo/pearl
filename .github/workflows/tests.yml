@@ -18,7 +18,10 @@ jobs:
         with:
           toolchain: nightly
           default: true
-      - name: Tests
+      - name: Set env variable
         run: |
           export PEARL_COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)
-          cargo test
+      - name: Tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
