@@ -113,8 +113,7 @@ impl<K: Key> Storage<K> {
     }
 
     /// [`init_noactive()`] used to prepare all environment to further work, but unlike `init`
-    /// doesn't set active blob, which means that write operations will fall with
-    /// `active_blob_not_set`.
+    /// doesn't set active blob, which means that first write may take time..
     ///
     /// Storage works in directory provided to builder. If directory don't exist,
     /// storage creates it, otherwise tries to init existing storage.
@@ -218,6 +217,8 @@ impl<K: Key> Storage<K> {
 
     /// Writes `data` to active blob asyncronously. If active blob reaches it limit, creates new
     /// and closes old.
+    /// NOTICE! First write into storage without active blob may take more time due to active blob
+    /// creation
     /// # Examples
     /// ```no-run
     /// async fn write_data() {
