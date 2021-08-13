@@ -54,3 +54,6 @@ name = "pearl"
 name = "benchmark"
 path = "src/benchmark/bin.rs"
 required-features = ["benchmark"]
+
+[build-dependencies]
+chrono = "0.4"
