@@ -289,7 +289,7 @@ pub(crate) trait FileIndexTrait: Sized {
     fn file_size(&self) -> u64;
     fn records_count(&self) -> usize;
     async fn read_meta(&self) -> Result<Vec<u8>>;
-    async fn read_meta_at(&self, i: usize) -> Result<u8>;
+    async fn read_meta_at(&self, i: u64) -> Result<u8>;
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)>;
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>>;

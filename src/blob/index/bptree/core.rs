@@ -83,14 +83,14 @@ impl FileIndexTrait for BPTreeFileIndex {
         Ok(buf)
     }
 
-    async fn read_meta_at(&self, i: usize) -> Result<u8> {
+    async fn read_meta_at(&self, i: u64) -> Result<u8> {
         trace!("load byte from meta");
-        if i >= self.header.meta_size {
+        if i >= self.header.meta_size as u64 {
             return Err(anyhow::anyhow!("read meta out of range"));
         }
         let mut buf = vec![0; 1];
         self.file
-            .read_at(&mut buf, self.header.serialized_size()? + i as u64)
+            .read_at(&mut buf, self.header.serialized_size()? + i)
             .await?;
         Ok(buf[0])
     }

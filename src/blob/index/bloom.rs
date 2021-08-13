@@ -127,7 +127,9 @@ impl Bloom {
     }
 
     pub fn to_raw(&self) -> Result<Vec<u8>> {
-        let save = self.save();
+        let save = self
+            .save()
+            .ok_or_else(|| anyhow::anyhow!("Filter buffer offloaded, can't serialize"))?;
         bincode::serialize(&save).map_err(Into::into)
     }
 
@@ -188,12 +190,9 @@ impl Bloom {
             hasher.write(item.as_ref());
             hasher.finish() % self.bits_count as u64
         }) {
-            let pos = start_pos + (index / 8) as usize;
+            let pos = start_pos + (index / 8);
             let byte = findex.read_meta_at(pos).await?;
-            if byte == 0 {
-                return Ok(false);
-            }
-            /*
+
             if !byte
                 .view_bits::<bitvec::order::Lsb0>()
                 .get(index as usize % 8)
@@ -201,18 +200,12 @@ impl Bloom {
             {
                 return Ok(false);
             }
-            */
         }
         Ok(true)
     }
 
-    // bincode write len as u64 before Vec elements
-    fn buffer_start_position(&self) -> Result<usize> {
-        Ok(bincode::serialized_size(&self.config)? as usize + 8)
-    }
-
-    // sizeof(u64) / sizeof(usize). bincode serialize usize as u64
-    fn multiplier() -> usize {
-        8 / std::mem::size_of::<usize>()
+    // bincode write len as u64 before Vec elements. sizeof(config) + sizeof(u64)
+    fn buffer_start_position(&self) -> Result<u64> {
+        Ok(bincode::serialized_size(&self.config)? + std::mem::size_of::<u64>() as u64)
     }
 }
