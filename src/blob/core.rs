@@ -419,16 +419,16 @@ impl RawRecords {
     async fn start(file: File, blob_header_size: u64, key_size: usize) -> Result<Self> {
         let current_offset = blob_header_size;
         debug!("blob raw records start, current offset: {}", current_offset);
-        let size_of_usize = std::mem::size_of::<usize>();
-        let size_of_magic_byte = std::mem::size_of::<u64>();
+        let size_of_len = bincode::serialized_size(&(0_usize))? as usize;
+        let size_of_magic_byte =  bincode::serialized_size(&RECORD_MAGIC_BYTE)? as usize;
         debug!(
             "blob raw records start, read at: size {}, offset: {}",
-            size_of_usize,
-            current_offset + size_of_usize as u64
+            size_of_len,
+            current_offset + size_of_len as u64
         );
         // plus size of usize because serialized
         // vector contains usize len in front
-        let mut buf = vec![0; size_of_magic_byte + size_of_usize];
+        let mut buf = vec![0; size_of_magic_byte + size_of_len];
         file.read_at(&mut buf, current_offset).await?;
         let (magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         debug!("blob raw records start, read at {} bytes", buf.len());

@@ -1,5 +1,6 @@
 use super::prelude::*;
 
+// All usizes in structures are serialized as u64 in binary
 #[derive(Debug, Default, Clone)]
 pub(crate) struct Bloom {
     inner: BitVec,
