@@ -172,7 +172,7 @@ impl<K: Key> Storage<K> {
     /// Creates active blob
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`create_active_blob()`]
-    /// [`create_active_blob_async()`]: struct.Storage.html#method.create_active_blob_async
+    /// [`create_active_blob()`]: struct.Storage.html#method.create_active_blob
     pub async fn create_active_blob_async(&self) {
         self.observer.create_active_blob().await
     }
@@ -191,7 +191,7 @@ impl<K: Key> Storage<K> {
     /// Dumps active blob
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`close_active_blob()`]
-    /// [`close_active_blob_async()`]: struct.Storage.html#method.close_active_blob_async
+    /// [`close_active_blob()`]: struct.Storage.html#method.close_active_blob
     pub async fn close_active_blob_async(&self) {
         self.observer.close_active_blob().await
     }
@@ -210,7 +210,7 @@ impl<K: Key> Storage<K> {
     /// Sets last blob from closed blobs as active if there is no active blobs
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`restore_active_blob()`]
-    /// [`restore_active_blob_async()`]: struct.Storage.html#method.restore_active_blob_async
+    /// [`restore_active_blob()`]: struct.Storage.html#method.restore_active_blob
     pub async fn restore_active_blob_async(&self) {
         self.observer.restore_active_blob().await
     }
@@ -261,7 +261,7 @@ impl<K: Key> Storage<K> {
         meta: Option<Meta>,
     ) -> Result<()> {
         debug!("storage write with {:?}, {}b, {:?}", key, value.len(), meta);
-        // if active blob is set, this call will only check this fact and return
+        // if active blob is set, this function will only check this fact and return false
         if self.create_active_blob().await? {
             info!("Active blob was set during write operation");
         }
