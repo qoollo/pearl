@@ -40,12 +40,12 @@ pub(crate) async fn binary_search(
 
     while start <= end {
         let mid = (start + end) / 2;
-        let mid_record_header = read_at(file, mid, &header).await?;
+        let mid_record_header = read_at(file, mid, header).await?;
         debug!(
             "blob index simple binary search mid header: {:?}",
             mid_record_header
         );
-        let cmp = mid_record_header.key().cmp(&key);
+        let cmp = mid_record_header.key().cmp(key);
         debug!("mid read: {:?}, key: {:?}", mid_record_header.key(), key);
         debug!("before mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
         match cmp {
@@ -94,7 +94,7 @@ pub(crate) async fn search_all(
                 headers.len(),
                 pos
             );
-            let rh = read_at(file, pos, &index_header)
+            let rh = read_at(file, pos, index_header)
                 .await
                 .with_context(|| "blob, index simple, search all, read at failed")?;
             if rh.key() == key {
@@ -116,7 +116,7 @@ pub(crate) async fn search_all(
                 headers.len(),
                 pos
             );
-            let rh = read_at(file, pos, &index_header)
+            let rh = read_at(file, pos, index_header)
                 .await
                 .with_context(|| "blob, index simple, search all, read at failed")?;
             if rh.key() == key {

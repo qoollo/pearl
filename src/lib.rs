@@ -59,10 +59,10 @@ extern crate anyhow;
 extern crate ring;
 
 mod blob;
+mod build_time;
 mod error;
 mod record;
 mod storage;
-mod build_time;
 
 pub use blob::{filter, Entry};
 pub use error::{Error, Kind as ErrorKind};
@@ -85,6 +85,9 @@ pub fn get_pearl_build_time() -> &'static str {
 }
 
 mod prelude {
+    use crc::{Crc, CRC_32_ISCSI};
+    pub const CRC32C: Crc<u32> = Crc::<u32>::new(&CRC_32_ISCSI);
+
     pub(crate) use super::*;
     pub(crate) use std::collections::BTreeMap;
     pub(crate) const ORD: Ordering = Ordering::Relaxed;
@@ -92,7 +95,6 @@ mod prelude {
     pub(crate) use anyhow::{Context as ErrorContexts, Result};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use blob::{self, Blob, BloomConfig};
-    pub(crate) use crc::crc32::checksum_castagnoli as crc32;
     pub(crate) use futures::{
         future,
         lock::Mutex,
@@ -125,4 +127,3 @@ mod prelude {
     };
     pub(crate) use tokio_stream::StreamExt;
 }
-

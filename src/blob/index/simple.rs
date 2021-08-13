@@ -1,7 +1,7 @@
 use super::prelude::*;
 use std::mem::size_of;
 
-const HEADER_VERSION: u64 = 1;
+const HEADER_VERSION: u64 = 2;
 
 // All usizes in structures are serialized as u64 in binary
 #[derive(Debug)]
@@ -258,7 +258,7 @@ impl Simple {
         header.hash = vec![0; ring::digest::SHA256.output_len];
         header.written = 0;
         serialize_into(buf.as_mut_slice(), &header)?;
-        let new_hash = get_hash(&buf);
+        let new_hash = get_hash(buf);
         Ok(hash == new_hash)
     }
 

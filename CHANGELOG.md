@@ -5,7 +5,8 @@ Pearl changelog
 #### Added
 
 #### Changed
-- Add key size check for blob from file ([#99](https://github.com/qoollo/pearl/pull/99)) 
+- Add key size check for blob from file ([#99](https://github.com/qoollo/pearl/pull/99))
+- `ahash` version fixed on `=v0.7.4` ([#112](https://github.com/qoollo/pearl/pull/112))
 
 #### Fixed
 - Fix warnings ([#100](https://github.com/qoollo/pearl/pull/100)) 
