@@ -1,7 +1,7 @@
 use super::prelude::*;
 use std::mem::size_of;
 
-const HEADER_VERSION: u64 = 1;
+const HEADER_VERSION: u64 = 2;
 
 // All usizes in structures are serialized as u64 in binary
 #[derive(Debug)]
