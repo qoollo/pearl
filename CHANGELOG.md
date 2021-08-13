@@ -5,13 +5,20 @@ Pearl changelog
 #### Added
 
 #### Changed
-- Add key size check for blob from file ([#99](https://github.com/qoollo/pearl/pull/99))
-- `ahash` version fixed on `=v0.7.4` ([#112](https://github.com/qoollo/pearl/pull/112))
 
 #### Fixed
-- Fix warnings ([#100](https://github.com/qoollo/pearl/pull/100)) 
 
 #### Updated
+
+
+## [0.6.0] - 2021-08-13
+#### Changed
+- Add key size check for blob from file (#99)
+- `ahash` version fixed on `=v0.7.4` (#112)
+
+
+#### Fixed
+- Fix lint warnings (#100)
 
 
 ## [0.5.14] - 2021-04-14
