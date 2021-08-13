@@ -4,6 +4,7 @@ use super::prelude::*;
 
 use super::index::Index;
 
+const BLOB_VERSION: u32 = 1;
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 
@@ -397,7 +398,7 @@ impl Header {
     pub const fn new() -> Self {
         Self {
             magic_byte: BLOB_MAGIC_BYTE,
-            version: 0,
+            version: BLOB_VERSION,
             flags: 0,
         }
     }
@@ -420,7 +421,7 @@ impl RawRecords {
         let current_offset = blob_header_size;
         debug!("blob raw records start, current offset: {}", current_offset);
         let size_of_len = bincode::serialized_size(&(0_usize))? as usize;
-        let size_of_magic_byte =  bincode::serialized_size(&RECORD_MAGIC_BYTE)? as usize;
+        let size_of_magic_byte = bincode::serialized_size(&RECORD_MAGIC_BYTE)? as usize;
         debug!(
             "blob raw records start, read at: size {}, offset: {}",
             size_of_len,

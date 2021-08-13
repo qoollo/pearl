@@ -9,6 +9,7 @@ Pearl changelog
 #### Fixed
 
 #### Updated
+- Blob version v0 -> v1
 
 
 ## [0.6.0] - 2021-08-13
