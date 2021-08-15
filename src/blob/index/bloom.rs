@@ -12,9 +12,7 @@ impl Default for Bloom {
     fn default() -> Self {
         Self {
             inner: Some(Default::default()),
-            bits_count: Default::default(),
-            hashers: Default::default(),
-            config: Config::default(),
+            ..Default::default()
         }
     }
 }
