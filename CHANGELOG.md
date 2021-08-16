@@ -3,6 +3,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Setup build and test with GitHub Actions ([#113](https://github.com/qoollo/pearl/pull/116))
 
 #### Changed
 
