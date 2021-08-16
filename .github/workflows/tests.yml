@@ -4,7 +4,7 @@ on:
   pull_request:
       types: [ opened, synchronize, reopened, ready_for_review ]
   push:
-    branches: [ master, 113-setup-build-and-test-with-github-actions]
+    branches: [ master ]
     
 jobs:
 
