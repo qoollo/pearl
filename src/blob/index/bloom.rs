@@ -1,8 +1,9 @@
 use super::prelude::*;
+use bitvec::order::Lsb0;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Bloom {
-    inner: Option<BitVec>,
+    inner: Option<BitVec<Lsb0, u64>>,
     bits_count: usize,
     hashers: Vec<AHasher>,
     config: Config,
@@ -39,7 +40,7 @@ pub struct Config {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Save {
     config: Config,
-    buf: Vec<usize>,
+    buf: Vec<u64>,
     bits_count: usize,
 }
 
@@ -79,7 +80,7 @@ impl Bloom {
             }
         }
         Self {
-            inner: Some(bitvec![0; bits_count]),
+            inner: Some(bitvec![Lsb0, u64; 0; bits_count]),
             hashers: Self::hashers(k),
             config,
             bits_count,
@@ -87,7 +88,7 @@ impl Bloom {
     }
 
     pub fn clear(&mut self) {
-        self.inner = Some(bitvec![0; self.bits_count]);
+        self.inner = Some(bitvec![Lsb0, u64; 0; self.bits_count]);
     }
 
     pub fn offload_from_memory(&mut self) {
@@ -192,7 +193,7 @@ impl Bloom {
             let byte = findex.read_meta_at(pos).await?;
 
             if !byte
-                .view_bits::<bitvec::order::Lsb0>()
+                .view_bits::<Lsb0>()
                 .get(index as usize % 8)
                 .expect("unreachable")
             {
