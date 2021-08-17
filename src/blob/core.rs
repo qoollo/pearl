@@ -335,6 +335,10 @@ impl Blob {
     pub(crate) fn index_memory(&self) -> usize {
         self.index.memory_used()
     }
+
+    pub(crate) fn filter_memory_allocated(&self) -> usize {
+        self.index.bloom_memory_allocated()
+    }
 }
 
 #[derive(Debug, Clone)]

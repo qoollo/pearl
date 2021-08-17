@@ -371,6 +371,26 @@ impl<K: Key> Storage<K> {
         }
     }
 
+    /// Returns memory allocated for bloom filter buffer
+    pub async fn filter_memory_allocated(&self) -> usize {
+        let safe = self.inner.safe.read().await;
+        let active = if let Some(ablob) = safe.active_blob.as_ref() {
+            ablob.filter_memory_allocated()
+        } else {
+            0
+        };
+
+        let closed: usize = safe
+            .blobs
+            .read()
+            .await
+            .iter()
+            .map(|blob| blob.filter_memory_allocated())
+            .sum();
+
+        active + closed
+    }
+
     /// Returns next blob ID. If pearl dir structure wasn't changed from the outside,
     /// returned number is equal to `blobs_count`. But this method doesn't require
     /// lock. So it is much faster than `blobs_count`.

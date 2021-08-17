@@ -1,3 +1,5 @@
+use crate::filter::BloomDataProvider;
+
 use super::prelude::*;
 
 pub(crate) type Index = IndexStruct<BPTreeFileIndex>;
@@ -63,7 +65,7 @@ pub(crate) enum State<FileIndex: FileIndexTrait> {
     OnDisk(FileIndex),
 }
 
-impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
+impl<FileIndex: FileIndexTrait + BloomDataProvider> IndexStruct<FileIndex> {
     pub(crate) fn new(name: FileName, ioring: Option<Rio>, config: IndexConfig) -> Self {
         let params = IndexParams::new(config.filter.is_some(), config.recreate_index_file);
         let filter = config.filter.map(Bloom::new).unwrap_or_default();
@@ -99,6 +101,10 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         } else {
             Ok(None)
         }
+    }
+
+    pub fn bloom_memory_allocated(&self) -> usize {
+        self.filter.memory_allocated()
     }
 
     pub fn offload_filter(&mut self) {
@@ -187,7 +193,10 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
 }
 
 #[async_trait::async_trait]
-impl<FileIndex: FileIndexTrait + Sync + Send + Clone> IndexTrait for IndexStruct<FileIndex> {
+impl<FileIndex> IndexTrait for IndexStruct<FileIndex>
+where
+    FileIndex: FileIndexTrait + BloomDataProvider + Sync + Send + Clone,
+{
     async fn contains_key(&self, key: &[u8]) -> Result<bool> {
         self.get_any(key).await.map(|h| h.is_some())
     }

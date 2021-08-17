@@ -138,7 +138,7 @@ impl Bloom {
     }
 
     pub async fn from_provider<P: BloomDataProvider>(provider: &P) -> Result<Self> {
-        let buf = provider.read_all().await;
+        let buf = provider.read_all().await?;
         Self::from_raw(&buf)
     }
 
@@ -212,10 +212,14 @@ impl Bloom {
     fn buffer_start_position(&self) -> Result<u64> {
         Ok(bincode::serialized_size(&self.config)? + std::mem::size_of::<u64>() as u64)
     }
+
+    pub fn memory_allocated(&self) -> usize {
+        self.inner.as_ref().map_or(0, |buf| buf.capacity() / 8)
+    }
 }
 
 #[async_trait::async_trait]
-pub trait BloomDataProvider {
-    async fn read_byte(&self, index: usize) -> Result<u8>;
+pub(crate) trait BloomDataProvider {
+    async fn read_byte(&self, index: u64) -> Result<u8>;
     async fn read_all(&self) -> Result<Vec<u8>>;
 }

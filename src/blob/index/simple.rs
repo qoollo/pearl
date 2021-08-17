@@ -1,3 +1,5 @@
+use crate::filter::BloomDataProvider;
+
 use super::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -115,7 +117,7 @@ impl FileIndexTrait for SimpleFileIndex {
 }
 
 #[async_trait::async_trait]
-impl BloomDataProvider for BPTreeFileIndex {
+impl BloomDataProvider for SimpleFileIndex {
     async fn read_byte(&self, index: u64) -> Result<u8> {
         self.read_meta_at(index).await
     }
