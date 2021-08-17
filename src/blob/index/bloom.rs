@@ -137,6 +137,11 @@ impl Bloom {
         Ok(Self::from(save))
     }
 
+    pub async fn from_provider<P: BloomDataProvider>(provider: &P) -> Result<Self> {
+        let buf = provider.read_all().await;
+        Self::from_raw(&buf)
+    }
+
     pub fn add(&mut self, item: impl AsRef<[u8]>) -> Result<()> {
         if let Some(inner) = &mut self.inner {
             let mut hashers = self.hashers.clone();
@@ -175,9 +180,9 @@ impl Bloom {
         }
     }
 
-    pub async fn contains_in_file<F: FileIndexTrait>(
+    pub async fn contains_in_file<P: BloomDataProvider>(
         &self,
-        findex: &F,
+        provider: &P,
         item: impl AsRef<[u8]>,
     ) -> Result<bool> {
         let mut hashers = self.hashers.clone();
@@ -190,7 +195,7 @@ impl Bloom {
             hasher.finish() % self.bits_count as u64
         }) {
             let pos = start_pos + (index / 8);
-            let byte = findex.read_meta_at(pos).await?;
+            let byte = provider.read_byte(pos).await?;
 
             if !byte
                 .view_bits::<Lsb0>()
@@ -207,4 +212,10 @@ impl Bloom {
     fn buffer_start_position(&self) -> Result<u64> {
         Ok(bincode::serialized_size(&self.config)? + std::mem::size_of::<u64>() as u64)
     }
+}
+
+#[async_trait::async_trait]
+pub trait BloomDataProvider {
+    async fn read_byte(&self, index: usize) -> Result<u8>;
+    async fn read_all(&self) -> Result<Vec<u8>>;
 }

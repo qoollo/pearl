@@ -1,3 +1,5 @@
+use crate::filter::BloomDataProvider;
+
 /// structure of b+-tree index file from the beginning:
 /// 1. Header
 /// 2. b+-tree user buffer (now Bloom filter is stored as this buffer)
@@ -138,6 +140,17 @@ impl FileIndexTrait for BPTreeFileIndex {
         } else {
             Err(Error::validation("Index Header is not valid").into())
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl BloomDataProvider for BPTreeFileIndex {
+    async fn read_byte(&self, index: u64) -> Result<u8> {
+        self.read_meta_at(index).await
+    }
+
+    async fn read_all(&self) -> Result<Vec<u8>> {
+        self.read_meta().await
     }
 }
 

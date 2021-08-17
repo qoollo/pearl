@@ -118,7 +118,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
     ) -> Result<Self> {
         let findex = FileIndex::from_file(name.clone(), ioring.clone()).await?;
         findex.validate().with_context(|| "Header is corrupt")?;
-        let filter = Bloom::from_raw(&findex.read_meta().await?)?;
+        let filter = Bloom::from_provider(&findex).await?;
         let params = IndexParams::new(config.filter.is_some(), config.recreate_index_file);
         trace!("index restored successfuly");
         let index = Self {
@@ -163,7 +163,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         let (record_headers, records_count) = findex.get_records_headers().await?;
         self.mem = Some(compute_mem_attrs(&record_headers, records_count));
         self.inner = State::InMemory(record_headers);
-        self.filter = Bloom::from_raw(&findex.read_meta().await?)?;
+        self.filter = Bloom::from_provider(&findex).await?;
         Ok(())
     }
 

@@ -114,6 +114,17 @@ impl FileIndexTrait for SimpleFileIndex {
     }
 }
 
+#[async_trait::async_trait]
+impl BloomDataProvider for BPTreeFileIndex {
+    async fn read_byte(&self, index: u64) -> Result<u8> {
+        self.read_meta_at(index).await
+    }
+
+    async fn read_all(&self) -> Result<Vec<u8>> {
+        self.read_meta().await
+    }
+}
+
 // helpers
 impl SimpleFileIndex {
     fn hash_valid(header: &IndexHeader, buf: &mut Vec<u8>) -> Result<bool> {
