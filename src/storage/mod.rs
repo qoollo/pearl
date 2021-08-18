@@ -13,7 +13,7 @@ mod prelude {
     pub(crate) use {
         super::{
             config::Config, core::Inner, observer::Msg, observer::Observer,
-            observer_worker::ObserverWorker,
+            observer::OperationType, observer_worker::ObserverWorker,
         },
         crate::prelude::*,
     };

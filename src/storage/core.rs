@@ -151,6 +151,17 @@ impl<K: Key> Storage<K> {
         Ok(())
     }
 
+    /// Checks if there is a pending async operation
+    /// Returns boolean value (true - if there is, false otherwise)
+    /// Never falls
+    pub fn is_pending(&self) -> bool {
+        self.observer.is_pending()
+    }
+
+    /// FIXME: maybe it would be better to add check of `is_pending` state of observer for all
+    /// sync operations and return result in more appropriate way for that case (change Result<bool>
+    /// on Result<OpRes>, where OpRes = Pending|Done|NotDone for example)
+
     /// Checks if active blob is set
     /// Returns boolean value
     /// Never falls
@@ -172,8 +183,8 @@ impl<K: Key> Storage<K> {
     /// Creates active blob
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`create_active_blob()`]
-    /// [`create_active_blob_async()`]: struct.Storage.html#method.create_active_blob_async
-    pub async fn create_active_blob_async(&self) {
+    /// [`create_active_blob()`]: struct.Storage.html#method.create_active_blob
+    pub async fn create_active_blob_async(&self) -> bool {
         self.observer.create_active_blob().await
     }
 
@@ -192,7 +203,7 @@ impl<K: Key> Storage<K> {
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`close_active_blob()`]
     /// [`close_active_blob_async()`]: struct.Storage.html#method.close_active_blob_async
-    pub async fn close_active_blob_async(&self) {
+    pub async fn close_active_blob_async(&self) -> bool {
         self.observer.close_active_blob().await
     }
 
@@ -211,7 +222,7 @@ impl<K: Key> Storage<K> {
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`restore_active_blob()`]
     /// [`restore_active_blob_async()`]: struct.Storage.html#method.restore_active_blob_async
-    pub async fn restore_active_blob_async(&self) {
+    pub async fn restore_active_blob_async(&self) -> bool {
         self.observer.restore_active_blob().await
     }
 
@@ -693,7 +704,7 @@ impl<K: Key> Storage<K> {
     /// Fails because of any IO errors.
     /// Or if there are some problems with syncronization.
     /// [`close_active_blob_async()`]: struct.Storage.html#method.close_active_blob_async
-    pub async fn force_update_active_blob(&self) {
+    pub async fn force_update_active_blob(&self) -> bool {
         self.observer.force_update_active_blob().await
     }
 

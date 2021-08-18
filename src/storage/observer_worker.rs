@@ -33,17 +33,24 @@ impl ObserverWorker {
 
     async fn tick(&mut self) -> Result<()> {
         match timeout(self.update_interval, self.receiver.recv()).await {
-            Ok(Some(Msg::ForceUpdateActiveBlob)) => {
-                update_active_blob(self.inner.clone()).await?;
-                self.inner
-                    .try_dump_old_blob_indexes(self.dump_sem.clone())
-                    .await;
-            }
-            Ok(Some(Msg::CloseActiveBlob)) => self.inner.close_active_blob().await.map(|_| ())?,
-            Ok(Some(Msg::CreateActiveBlob)) => self.inner.create_active_blob().await.map(|_| ())?,
-            Ok(Some(Msg::RestoreActiveBlob)) => {
-                self.inner.restore_active_blob().await.map(|_| ())?
-            }
+            Ok(Some(mut msg)) => match msg.optype() {
+                OperationType::ForceUpdateActiveBlob => {
+                    update_active_blob(self.inner.clone()).await?;
+                    msg.commit();
+                    self.inner
+                        .try_dump_old_blob_indexes(self.dump_sem.clone())
+                        .await
+                }
+                OperationType::CloseActiveBlob => {
+                    self.inner.close_active_blob().await.map(|_| ())?
+                }
+                OperationType::CreateActiveBlob => {
+                    self.inner.create_active_blob().await.map(|_| ())?
+                }
+                OperationType::RestoreActiveBlob => {
+                    self.inner.restore_active_blob().await.map(|_| ())?
+                }
+            },
             Ok(None) => {
                 return Err(anyhow!(
                     "all observer connected to this worker are dropped, so worker is done"
