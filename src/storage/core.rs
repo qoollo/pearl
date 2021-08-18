@@ -771,8 +771,13 @@ impl Inner {
         if safe.active_blob.is_none() {
             Ok(false)
         } else {
+            // FIXME: write lock is still held, so everyone will wait for dump, maybe it's better
+            // to derive this operation to `try_dump_old_blob_indexes`
             safe.active_blob.as_mut().unwrap(/*None case checked*/).dump().await?;
-            safe.active_blob = None;
+            // always true
+            if let Some(ablob) = safe.active_blob.take() {
+                safe.blobs.write().await.push(*ablob);
+            }
             Ok(true)
         }
     }
