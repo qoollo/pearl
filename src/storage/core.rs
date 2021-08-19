@@ -184,8 +184,8 @@ impl<K: Key> Storage<K> {
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`create_active_blob()`]
     /// [`create_active_blob()`]: struct.Storage.html#method.create_active_blob
-    pub async fn create_active_blob_async(&self) -> bool {
-        self.observer.create_active_blob().await
+    pub async fn create_active_blob_async(&self, cond_checker: Box<dyn CondChecker>) -> bool {
+        self.observer.create_active_blob(cond_checker).await
     }
 
     /// Dumps active blob
@@ -202,8 +202,8 @@ impl<K: Key> Storage<K> {
     /// Dumps active blob
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`close_active_blob()`]
-    pub async fn close_active_blob_async(&self) -> bool {
-        self.observer.close_active_blob().await
+    pub async fn close_active_blob_async(&self, cond_checker: Box<dyn CondChecker>) -> bool {
+        self.observer.close_active_blob(cond_checker).await
     }
 
     /// Sets last blob from closed blobs as active if there is no active blobs
@@ -221,8 +221,8 @@ impl<K: Key> Storage<K> {
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`restore_active_blob()`]
     /// [`restore_active_blob()`]: struct.Storage.html#method.restore_active_blob
-    pub async fn restore_active_blob_async(&self) -> bool {
-        self.observer.restore_active_blob().await
+    pub async fn restore_active_blob_async(&self, cond_checker: Box<dyn CondChecker>) -> bool {
+        self.observer.restore_active_blob(cond_checker).await
     }
 
     /// Writes `data` to active blob asyncronously. If active blob reaches it limit, creates new
@@ -703,8 +703,8 @@ impl<K: Key> Storage<K> {
     /// Fails because of any IO errors.
     /// Or if there are some problems with syncronization.
     /// [`close_active_blob_async()`]: struct.Storage.html#method.close_active_blob_async
-    pub async fn force_update_active_blob(&self) -> bool {
-        self.observer.force_update_active_blob().await
+    pub async fn force_update_active_blob(&self, cond_checker: Box<dyn CondChecker>) -> bool {
+        self.observer.force_update_active_blob(cond_checker).await
     }
 
     fn filter_config(&self) -> Option<BloomConfig> {

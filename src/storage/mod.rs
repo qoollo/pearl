@@ -12,7 +12,7 @@ pub use self::{
 mod prelude {
     pub(crate) use {
         super::{
-            config::Config, core::Inner, observer::Msg, observer::Observer,
+            config::Config, core::Inner, observer::CondChecker, observer::Msg, observer::Observer,
             observer::OperationType, observer_worker::ObserverWorker,
         },
         crate::prelude::*,

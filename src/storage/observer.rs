@@ -1,10 +1,18 @@
-use std::sync::atomic::AtomicBool;
-
 use super::prelude::*;
+use futures::Future;
+use std::pin::Pin;
+use std::sync::Arc;
 use tokio::{
-    sync::mpsc::{channel, Sender},
     sync::Semaphore,
+    sync::{
+        mpsc::{channel, Sender},
+        Mutex,
+    },
 };
+
+pub trait CondChecker: Send + Sync {
+    fn check(&self) -> Pin<Box<dyn Send + Future<Output = bool>>>;
+}
 
 pub(crate) enum OperationType {
     CreateActiveBlob = 0,
@@ -13,43 +21,35 @@ pub(crate) enum OperationType {
     ForceUpdateActiveBlob = 3,
 }
 
-// NOTE: this must be FnOnce function, because it mustn't be executed more than once
-// This will be an error in case:
-// 1. user of Msg[1] struct commits explicitly
-// 2. after that commit next observer operation changes `is_pending` on true and creates new Msg
-// 3. Then Msg[1] is dropped (and commits again during that drop)
-// * `is_pending` has wrong value (false, but operation may be in pending state) after that drop
-type CommitFn = Box<dyn FnOnce() + Send + Sync>;
-
-// Option<CommitFn> is used, because Drop::drop(&mut self) use mutable ref and commit_fn can't be moved
-// from structure
 pub(crate) struct Msg {
     optype: OperationType,
-    commit_fn: Option<CommitFn>,
+    checker: Box<dyn CondChecker>,
+    oplocker: Arc<Mutex<()>>,
 }
 
 impl Msg {
-    pub(crate) fn new(optype: OperationType, commit_fn: CommitFn) -> Self {
+    pub(crate) fn new(
+        optype: OperationType,
+        checker: Box<dyn CondChecker>,
+        oplocker: Arc<Mutex<()>>,
+    ) -> Self {
         Self {
             optype,
-            commit_fn: Some(commit_fn),
-        }
-    }
-
-    pub(crate) fn commit(&mut self) {
-        if let Some(commit_fn) = self.commit_fn.take() {
-            commit_fn()
+            checker,
+            oplocker,
         }
     }
 
     pub(crate) fn optype(&self) -> &OperationType {
         &self.optype
     }
-}
 
-impl Drop for Msg {
-    fn drop(&mut self) {
-        self.commit();
+    pub(crate) fn locker(&self) -> Arc<Mutex<()>> {
+        self.oplocker.clone()
+    }
+
+    pub(crate) fn checker(&self) -> &Box<dyn CondChecker> {
+        &self.checker
     }
 }
 
@@ -58,7 +58,7 @@ pub(crate) struct Observer {
     inner: Option<Inner>,
     pub sender: Option<Sender<Msg>>,
     dump_sem: Arc<Semaphore>,
-    is_pending: Arc<AtomicBool>,
+    oplocker: Arc<Mutex<()>>,
 }
 
 impl Observer {
@@ -67,12 +67,12 @@ impl Observer {
             inner: Some(inner),
             sender: None,
             dump_sem,
-            is_pending: Arc::new(AtomicBool::new(false)),
+            oplocker: Arc::new(Mutex::new(())),
         }
     }
 
     pub(crate) fn is_pending(&self) -> bool {
-        self.is_pending.load(ORD)
+        self.oplocker.try_lock().is_ok()
     }
 
     pub(crate) fn run(&mut self) {
@@ -84,51 +84,35 @@ impl Observer {
         }
     }
 
-    pub(crate) async fn force_update_active_blob(&self) -> bool {
-        if let Some(msg) = self.build_msg(OperationType::ForceUpdateActiveBlob) {
-            self.send_msg(msg).await;
-            true
-        } else {
-            false
-        }
+    pub(crate) async fn force_update_active_blob(
+        &self,
+        cond_checker: Box<dyn CondChecker>,
+    ) -> bool {
+        let msg = self.build_msg(OperationType::ForceUpdateActiveBlob, cond_checker);
+        self.send_msg(msg).await;
+        true
     }
 
-    pub(crate) async fn restore_active_blob(&self) -> bool {
-        if let Some(msg) = self.build_msg(OperationType::RestoreActiveBlob) {
-            self.send_msg(msg).await;
-            true
-        } else {
-            false
-        }
+    pub(crate) async fn restore_active_blob(&self, cond_checker: Box<dyn CondChecker>) -> bool {
+        let msg = self.build_msg(OperationType::RestoreActiveBlob, cond_checker);
+        self.send_msg(msg).await;
+        true
     }
 
-    pub(crate) async fn close_active_blob(&self) -> bool {
-        if let Some(msg) = self.build_msg(OperationType::CloseActiveBlob) {
-            self.send_msg(msg).await;
-            true
-        } else {
-            false
-        }
+    pub(crate) async fn close_active_blob(&self, cond_checker: Box<dyn CondChecker>) -> bool {
+        let msg = self.build_msg(OperationType::CloseActiveBlob, cond_checker);
+        self.send_msg(msg).await;
+        true
     }
 
-    pub(crate) async fn create_active_blob(&self) -> bool {
-        if let Some(msg) = self.build_msg(OperationType::CreateActiveBlob) {
-            self.send_msg(msg).await;
-            true
-        } else {
-            false
-        }
+    pub(crate) async fn create_active_blob(&self, cond_checker: Box<dyn CondChecker>) -> bool {
+        let msg = self.build_msg(OperationType::CreateActiveBlob, cond_checker);
+        self.send_msg(msg).await;
+        true
     }
 
-    fn build_msg(&self, optype: OperationType) -> Option<Msg> {
-        let res = self.is_pending.compare_exchange(false, true, ORD, ORD);
-        if res.is_ok() {
-            let is_pending = self.is_pending.clone();
-            let commit_fn = Box::new(move || is_pending.store(false, ORD));
-            Some(Msg::new(optype, commit_fn))
-        } else {
-            None
-        }
+    fn build_msg(&self, optype: OperationType, cond_checker: Box<dyn CondChecker>) -> Msg {
+        Msg::new(optype, cond_checker, self.oplocker.clone())
     }
 
     async fn send_msg(&self, msg: Msg) {

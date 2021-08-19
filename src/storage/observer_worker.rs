@@ -33,22 +33,61 @@ impl ObserverWorker {
 
     async fn tick(&mut self) -> Result<()> {
         match timeout(self.update_interval, self.receiver.recv()).await {
-            Ok(Some(mut msg)) => match msg.optype() {
+            Ok(Some(msg)) => match msg.optype() {
                 OperationType::ForceUpdateActiveBlob => {
-                    update_active_blob(self.inner.clone()).await?;
-                    msg.commit();
+                    if msg.checker().check().await {
+                        return Ok(());
+                    }
+                    {
+                        let locker = msg.locker();
+                        let _lock = locker.lock().await;
+                        if !msg.checker().check().await {
+                            return Ok(());
+                        }
+                        update_active_blob(self.inner.clone()).await?;
+                    }
                     self.inner
                         .try_dump_old_blob_indexes(self.dump_sem.clone())
                         .await
                 }
                 OperationType::CloseActiveBlob => {
-                    self.inner.close_active_blob().await.map(|_| ())?
+                    if msg.checker().check().await {
+                        return Ok(());
+                    }
+                    {
+                        let locker = msg.locker();
+                        let _lock = locker.lock().await;
+                        if !msg.checker().check().await {
+                            return Ok(());
+                        }
+                        self.inner.close_active_blob().await.map(|_| ())?
+                    }
                 }
                 OperationType::CreateActiveBlob => {
-                    self.inner.create_active_blob().await.map(|_| ())?
+                    if msg.checker().check().await {
+                        return Ok(());
+                    }
+                    {
+                        let locker = msg.locker();
+                        let _lock = locker.lock().await;
+                        if !msg.checker().check().await {
+                            return Ok(());
+                        }
+                        self.inner.create_active_blob().await.map(|_| ())?
+                    }
                 }
                 OperationType::RestoreActiveBlob => {
-                    self.inner.restore_active_blob().await.map(|_| ())?
+                    if msg.checker().check().await {
+                        return Ok(());
+                    }
+                    {
+                        let locker = msg.locker();
+                        let _lock = locker.lock().await;
+                        if !msg.checker().check().await {
+                            return Ok(());
+                        }
+                        self.inner.restore_active_blob().await.map(|_| ())?
+                    }
                 }
             },
             Ok(None) => {
