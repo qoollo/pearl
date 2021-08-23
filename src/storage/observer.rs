@@ -11,44 +11,33 @@ pub(crate) enum OperationType {
     ForceUpdateActiveBlob = 3,
 }
 
+#[derive(Debug)]
 pub struct ActiveBlobStat {
     pub records_count: usize,
-    pub index_memory: Option<usize>,
-    pub file_size: Option<usize>,
+    pub index_memory: usize,
+    pub file_size: usize,
 }
 
-pub struct ActiveBlobStatReq {
-    pub records_count: bool,
-    pub index_memory: bool,
-    pub file_size: bool,
+impl ActiveBlobStat {
+    pub fn new(records_count: usize, index_memory: usize, file_size: usize) -> Self {
+        Self {
+            records_count,
+            index_memory,
+            file_size,
+        }
+    }
 }
 
-// NOTE: this must be FnOnce function, because it mustn't be executed more than once
-// This will be an error in case:
-// 1. user of Msg[1] struct commits explicitly
-// 2. after that commit next observer operation changes `is_pending` on true and creates new Msg
-// 3. Then Msg[1] is dropped (and commits again during that drop)
-// * `is_pending` has wrong value (false, but operation may be in pending state) after that drop
-type ActiveBlobPred = Box<dyn Fn(Option<ActiveBlobStat>) -> bool + Send + Sync>;
+pub type ActiveBlobPred = Box<dyn Fn(Option<ActiveBlobStat>) -> bool + Send + Sync>;
 
-// Option<CommitFn> is used, because Drop::drop(&mut self) use mutable ref and commit_fn can't be moved
-// from structure
 pub(crate) struct Msg {
-    optype: OperationType,
-    predicate: ActiveBlobPred,
+    pub(crate) optype: OperationType,
+    pub(crate) predicate: Option<ActiveBlobPred>,
 }
 
 impl Msg {
-    pub(crate) fn new(optype: OperationType, predicate: ActiveBlobPred) -> Self {
+    pub(crate) fn new(optype: OperationType, predicate: Option<ActiveBlobPred>) -> Self {
         Self { optype, predicate }
-    }
-
-    pub(crate) fn predicate(&self, stat: Option<ActiveBlobStat>) -> bool {
-        (self.predicate)(stat)
-    }
-
-    pub(crate) fn optype(&self) -> &OperationType {
-        &self.optype
     }
 }
 
@@ -88,51 +77,27 @@ impl Observer {
         }
     }
 
-    pub(crate) async fn force_update_active_blob(&self) -> bool {
-        if let Some(msg) = self.build_msg(OperationType::ForceUpdateActiveBlob) {
-            self.send_msg(msg).await;
-            true
-        } else {
-            false
-        }
+    pub(crate) async fn force_update_active_blob(&self, predicate: ActiveBlobPred) {
+        self.send_msg(Msg::new(
+            OperationType::ForceUpdateActiveBlob,
+            Some(predicate),
+        ))
+        .await
     }
 
-    pub(crate) async fn restore_active_blob(&self) -> bool {
-        if let Some(msg) = self.build_msg(OperationType::RestoreActiveBlob) {
-            self.send_msg(msg).await;
-            true
-        } else {
-            false
-        }
+    pub(crate) async fn restore_active_blob(&self) {
+        self.send_msg(Msg::new(OperationType::RestoreActiveBlob, None))
+            .await
     }
 
-    pub(crate) async fn close_active_blob(&self) -> bool {
-        if let Some(msg) = self.build_msg(OperationType::CloseActiveBlob) {
-            self.send_msg(msg).await;
-            true
-        } else {
-            false
-        }
+    pub(crate) async fn close_active_blob(&self) {
+        self.send_msg(Msg::new(OperationType::CloseActiveBlob, None))
+            .await
     }
 
-    pub(crate) async fn create_active_blob(&self) -> bool {
-        if let Some(msg) = self.build_msg(OperationType::CreateActiveBlob) {
-            self.send_msg(msg).await;
-            true
-        } else {
-            false
-        }
-    }
-
-    fn build_msg(&self, optype: OperationType) -> Option<Msg> {
-        let res = self.is_pending.compare_exchange(false, true, ORD, ORD);
-        if res.is_ok() {
-            let is_pending = self.is_pending.clone();
-            let commit_fn = Box::new(move || is_pending.store(false, ORD));
-            Some(Msg::new(optype, commit_fn))
-        } else {
-            None
-        }
+    pub(crate) async fn create_active_blob(&self) {
+        self.send_msg(Msg::new(OperationType::CreateActiveBlob, None))
+            .await
     }
 
     async fn send_msg(&self, msg: Msg) {
