@@ -6,16 +6,23 @@ pub(crate) struct ObserverWorker {
     receiver: Receiver<Msg>,
     dump_sem: Arc<Semaphore>,
     update_interval: Duration,
+    async_oplock: Arc<Mutex<()>>,
 }
 
 impl ObserverWorker {
-    pub(crate) fn new(receiver: Receiver<Msg>, inner: Inner, dump_sem: Arc<Semaphore>) -> Self {
+    pub(crate) fn new(
+        receiver: Receiver<Msg>,
+        inner: Inner,
+        dump_sem: Arc<Semaphore>,
+        async_oplock: Arc<Mutex<()>>,
+    ) -> Self {
         let update_interval = Duration::from_millis(inner.config.update_interval_ms());
         Self {
             inner,
             receiver,
             dump_sem,
             update_interval,
+            async_oplock,
         }
     }
 
@@ -33,23 +40,11 @@ impl ObserverWorker {
 
     async fn tick(&mut self) -> Result<()> {
         match timeout(self.update_interval, self.receiver.recv()).await {
-            Ok(Some(mut msg)) => match msg.optype() {
-                OperationType::ForceUpdateActiveBlob => {
-                    update_active_blob(self.inner.clone()).await?;
-                    msg.commit();
-                    self.inner
-                        .try_dump_old_blob_indexes(self.dump_sem.clone())
-                        .await
-                }
-                OperationType::CloseActiveBlob => {
-                    self.inner.close_active_blob().await.map(|_| ())?
-                }
-                OperationType::CreateActiveBlob => {
-                    self.inner.create_active_blob().await.map(|_| ())?
-                }
-                OperationType::RestoreActiveBlob => {
-                    self.inner.restore_active_blob().await.map(|_| ())?
-                }
+            Ok(Some(msg)) => match msg.optype {
+                OperationType::ForceUpdateActiveBlob => self.update_active_blob(msg).await?,
+                OperationType::CloseActiveBlob => self.close_active_blob(msg).await?,
+                OperationType::CreateActiveBlob => self.create_active_blob(msg).await?,
+                OperationType::RestoreActiveBlob => self.restore_active_blob(msg).await?,
             },
             Ok(None) => {
                 return Err(anyhow!(
@@ -61,6 +56,57 @@ impl ObserverWorker {
         }
         trace!("check active blob");
         self.try_update().await
+    }
+
+    async fn predicate_wrapper(&self, predicate: &Option<ActiveBlobPred>) -> bool {
+        if let Some(predicate) = predicate {
+            predicate(self.inner.active_blob_stat().await)
+        } else {
+            true
+        }
+    }
+
+    async fn close_active_blob(&self, msg: Msg) -> Result<()> {
+        if self.predicate_wrapper(&msg.predicate).await {
+            let _lock = self.async_oplock.lock().await;
+            if self.predicate_wrapper(&msg.predicate).await {
+                self.inner.close_active_blob().await?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn create_active_blob(&self, msg: Msg) -> Result<()> {
+        if self.predicate_wrapper(&msg.predicate).await {
+            let _lock = self.async_oplock.lock().await;
+            if self.predicate_wrapper(&msg.predicate).await {
+                self.inner.create_active_blob().await?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn restore_active_blob(&self, msg: Msg) -> Result<()> {
+        if self.predicate_wrapper(&msg.predicate).await {
+            let _lock = self.async_oplock.lock().await;
+            if self.predicate_wrapper(&msg.predicate).await {
+                self.inner.restore_active_blob().await?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn update_active_blob(&mut self, msg: Msg) -> Result<()> {
+        if self.predicate_wrapper(&msg.predicate).await {
+            let _lock = self.async_oplock.lock().await;
+            if self.predicate_wrapper(&msg.predicate).await {
+                update_active_blob(self.inner.clone()).await?;
+                self.inner
+                    .try_dump_old_blob_indexes(self.dump_sem.clone())
+                    .await;
+            }
+        }
+        Ok(())
     }
 
     async fn try_update(&self) -> Result<()> {
