@@ -28,7 +28,7 @@ impl ActiveBlobStat {
     }
 }
 
-pub type ActiveBlobPred = Box<dyn Fn(Option<ActiveBlobStat>) -> bool + Send + Sync>;
+pub type ActiveBlobPred = fn(Option<ActiveBlobStat>) -> bool;
 
 pub(crate) struct Msg {
     pub(crate) optype: OperationType,
