@@ -6,16 +6,23 @@ pub(crate) struct ObserverWorker {
     receiver: Receiver<Msg>,
     dump_sem: Arc<Semaphore>,
     update_interval: Duration,
+    async_oplock: Arc<Mutex<()>>,
 }
 
 impl ObserverWorker {
-    pub(crate) fn new(receiver: Receiver<Msg>, inner: Inner, dump_sem: Arc<Semaphore>) -> Self {
+    pub(crate) fn new(
+        receiver: Receiver<Msg>,
+        inner: Inner,
+        dump_sem: Arc<Semaphore>,
+        async_oplock: Arc<Mutex<()>>,
+    ) -> Self {
         let update_interval = Duration::from_millis(inner.config.update_interval_ms());
         Self {
             inner,
             receiver,
             dump_sem,
             update_interval,
+            async_oplock,
         }
     }
 

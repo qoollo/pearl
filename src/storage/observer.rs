@@ -1,5 +1,3 @@
-use std::sync::atomic::AtomicBool;
-
 use super::prelude::*;
 use tokio::{
     sync::mpsc::{channel, Sender},
@@ -13,43 +11,44 @@ pub(crate) enum OperationType {
     ForceUpdateActiveBlob = 3,
 }
 
+pub struct ActiveBlobStat {
+    pub records_count: usize,
+    pub index_memory: Option<usize>,
+    pub file_size: Option<usize>,
+}
+
+pub struct ActiveBlobStatReq {
+    pub records_count: bool,
+    pub index_memory: bool,
+    pub file_size: bool,
+}
+
 // NOTE: this must be FnOnce function, because it mustn't be executed more than once
 // This will be an error in case:
 // 1. user of Msg[1] struct commits explicitly
 // 2. after that commit next observer operation changes `is_pending` on true and creates new Msg
 // 3. Then Msg[1] is dropped (and commits again during that drop)
 // * `is_pending` has wrong value (false, but operation may be in pending state) after that drop
-type CommitFn = Box<dyn FnOnce() + Send + Sync>;
+type ActiveBlobPred = Box<dyn Fn(Option<ActiveBlobStat>) -> bool + Send + Sync>;
 
 // Option<CommitFn> is used, because Drop::drop(&mut self) use mutable ref and commit_fn can't be moved
 // from structure
 pub(crate) struct Msg {
     optype: OperationType,
-    commit_fn: Option<CommitFn>,
+    predicate: ActiveBlobPred,
 }
 
 impl Msg {
-    pub(crate) fn new(optype: OperationType, commit_fn: CommitFn) -> Self {
-        Self {
-            optype,
-            commit_fn: Some(commit_fn),
-        }
+    pub(crate) fn new(optype: OperationType, predicate: ActiveBlobPred) -> Self {
+        Self { optype, predicate }
     }
 
-    pub(crate) fn commit(&mut self) {
-        if let Some(commit_fn) = self.commit_fn.take() {
-            commit_fn()
-        }
+    pub(crate) fn predicate(&self, stat: Option<ActiveBlobStat>) -> bool {
+        (self.predicate)(stat)
     }
 
     pub(crate) fn optype(&self) -> &OperationType {
         &self.optype
-    }
-}
-
-impl Drop for Msg {
-    fn drop(&mut self) {
-        self.commit();
     }
 }
 
@@ -58,7 +57,7 @@ pub(crate) struct Observer {
     inner: Option<Inner>,
     pub sender: Option<Sender<Msg>>,
     dump_sem: Arc<Semaphore>,
-    is_pending: Arc<AtomicBool>,
+    async_oplock: Arc<Mutex<()>>,
 }
 
 impl Observer {
@@ -67,19 +66,24 @@ impl Observer {
             inner: Some(inner),
             sender: None,
             dump_sem,
-            is_pending: Arc::new(AtomicBool::new(false)),
+            async_oplock: Arc::new(Mutex::new(())),
         }
     }
 
     pub(crate) fn is_pending(&self) -> bool {
-        self.is_pending.load(ORD)
+        self.async_oplock.try_lock().is_some()
     }
 
     pub(crate) fn run(&mut self) {
         if let Some(inner) = self.inner.take() {
             let (sender, receiver) = channel(1024);
             self.sender = Some(sender);
-            let worker = ObserverWorker::new(receiver, inner, self.dump_sem.clone());
+            let worker = ObserverWorker::new(
+                receiver,
+                inner,
+                self.dump_sem.clone(),
+                self.async_oplock.clone(),
+            );
             tokio::spawn(worker.run());
         }
     }
