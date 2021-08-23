@@ -60,7 +60,7 @@ impl Observer {
     }
 
     pub(crate) fn is_pending(&self) -> bool {
-        self.async_oplock.try_lock().is_some()
+        self.async_oplock.try_lock().is_none()
     }
 
     pub(crate) fn run(&mut self) {
