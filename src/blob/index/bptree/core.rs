@@ -153,9 +153,41 @@ impl BPTreeFileIndex {
         if read_buf_size != buf_size {
             Err(anyhow!("Can't read entire leaf node"))
         } else {
-            self.read_header_buf(&buf[..buf_size], key, self.header.record_header_size)
-                .map(|opt| opt.map(|(header, _)| header))
+            if let Some((record_header, offset)) =
+                self.read_header_buf(&buf[..buf_size], key, self.header.record_header_size)?
+            {
+                let leftmost_header = self.get_leftmost(
+                    &buf[..buf_size],
+                    key,
+                    offset as usize,
+                    record_header,
+                    self.header.record_header_size,
+                )?;
+                Ok(Some(leftmost_header))
+            } else {
+                Ok(None)
+            }
         }
+    }
+
+    fn get_leftmost(
+        &self,
+        raw_headers_buf: &[u8],
+        key: &[u8],
+        mut offset: usize,
+        mut prev_header: RecordHeader, // it's expected, that this header is from raw_headers_buf[offset..]
+        record_header_size: usize,
+    ) -> Result<RecordHeader> {
+        while offset > 0 {
+            offset = offset.saturating_sub(record_header_size);
+            let record_end = offset + record_header_size;
+            let current_header: RecordHeader = deserialize(&raw_headers_buf[offset..record_end])?;
+            if !current_header.key().eq(key) {
+                return Ok(prev_header);
+            }
+            prev_header = current_header;
+        }
+        Ok(prev_header)
     }
 
     fn leaf_node_buf_size(&self, leaf_offset: u64) -> usize {
@@ -165,17 +197,17 @@ impl BPTreeFileIndex {
 
     fn read_header_buf(
         &self,
-        headers: &[u8],
+        raw_headers_buf: &[u8],
         key: &[u8],
         record_header_size: usize,
     ) -> Result<Option<(RecordHeader, usize)>> {
         let mut l = 0i32;
-        let mut r: i32 = (headers.len() / record_header_size) as i32 - 1;
+        let mut r: i32 = (raw_headers_buf.len() / record_header_size) as i32 - 1;
         while l <= r {
             let m = (l + r) / 2;
             let m_off = record_header_size * m as usize;
             let record_end = m_off + record_header_size;
-            let record_header: RecordHeader = deserialize(&headers[m_off..record_end])?;
+            let record_header: RecordHeader = deserialize(&raw_headers_buf[m_off..record_end])?;
             match key.cmp(record_header.key()) {
                 CmpOrdering::Less => r = m - 1,
                 CmpOrdering::Greater => l = m + 1,
@@ -281,11 +313,11 @@ impl BPTreeFileIndex {
 
     async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
         self.validate()?;
-        if !Self::hash_valid(&self.header, buf)? {
-            return Err(Error::validation("header hash mismatch").into());
-        }
         if self.header.version() != HEADER_VERSION {
             return Err(Error::validation("header version mismatch").into());
+        }
+        if !Self::hash_valid(&self.header, buf)? {
+            return Err(Error::validation("header hash mismatch").into());
         }
         Ok(())
     }
