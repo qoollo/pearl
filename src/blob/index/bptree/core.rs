@@ -1,5 +1,3 @@
-use crate::filter::BloomDataProvider;
-
 /// structure of b+-tree index file from the beginning:
 /// 1. Header
 /// 2. b+-tree user buffer (now Bloom filter is stored as this buffer)
@@ -14,7 +12,7 @@ use super::prelude::*;
 pub(super) const BLOCK_SIZE: usize = 4096;
 
 #[derive(Debug, Clone)]
-pub(crate) struct BPTreeFileIndex {
+pub struct BPTreeFileIndex {
     file: File,
     header: IndexHeader,
     metadata: TreeMeta,

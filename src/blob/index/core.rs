@@ -1,5 +1,3 @@
-use crate::filter::BloomDataProvider;
-
 use super::prelude::*;
 
 pub(crate) type Index = IndexStruct<BPTreeFileIndex>;
@@ -37,9 +35,9 @@ impl Default for IndexConfig {
 }
 
 #[derive(Debug)]
-pub(crate) struct IndexStruct<FileIndex: FileIndexTrait> {
+pub struct IndexStruct<FileIndex: FileIndexTrait> {
     mem: Option<MemoryAttrs>,
-    filter: Bloom,
+    filter: Bloom<FileIndex>,
     params: IndexParams,
     inner: State<FileIndex>,
     name: FileName,
@@ -88,16 +86,7 @@ impl<FileIndex: FileIndexTrait + BloomDataProvider> IndexStruct<FileIndex> {
 
     pub async fn check_bloom_key(&self, key: &[u8]) -> Result<Option<bool>> {
         if self.params.filter_is_on {
-            if let Some(result) = self.filter.contains_in_memory(key) {
-                Ok(Some(result))
-            } else {
-                match &self.inner {
-                    State::OnDisk(findex) => {
-                        Ok(Some(self.filter.contains_in_file(findex, key).await?))
-                    }
-                    _ => Ok(None),
-                }
-            }
+            Ok(Some(self.filter.contains(key).await?))
         } else {
             Ok(None)
         }
@@ -108,8 +97,8 @@ impl<FileIndex: FileIndexTrait + BloomDataProvider> IndexStruct<FileIndex> {
     }
 
     pub fn offload_filter(&mut self) {
-        if self.on_disk() {
-            self.filter.offload_from_memory();
+        if let State::OnDisk(file_index) = &mut self.inner {
+            self.filter.offload_from_memory(file_index.clone())
         }
     }
 
@@ -144,7 +133,7 @@ impl<FileIndex: FileIndexTrait + BloomDataProvider> IndexStruct<FileIndex> {
 
     async fn dump_in_memory(&mut self) -> Result<usize> {
         if let State::InMemory(headers) = &self.inner {
-            if headers.len() == 0 {
+            if headers.is_empty() {
                 return Ok(0);
             }
             debug!("blob index simple in memory headers {}", headers.len());
@@ -286,7 +275,25 @@ where
 }
 
 #[async_trait::async_trait]
-pub(crate) trait FileIndexTrait: Sized {
+impl<FileIndex> BloomProvider for IndexStruct<FileIndex>
+where
+    FileIndex: FileIndexTrait + BloomDataProvider + Sync + Send + Clone,
+{
+    type Inner = Bloom<Self::DataProvider>;
+
+    type DataProvider = FileIndex;
+
+    async fn get_bloom(&self) -> Option<&Bloom<Self::DataProvider>> {
+        self.filter.get_bloom().await
+    }
+
+    async fn contains(&self, item: &[u8]) -> Result<bool> {
+        self.filter.contains(item).await
+    }
+}
+
+#[async_trait::async_trait]
+pub trait FileIndexTrait: Sized + BloomDataProvider {
     async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self>;
     async fn from_records(
         path: &Path,

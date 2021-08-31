@@ -341,6 +341,25 @@ impl Blob {
     }
 }
 
+#[async_trait::async_trait]
+impl BloomProvider for Blob {
+    type Inner = Index;
+
+    type DataProvider = <Self::Inner as BloomProvider>::DataProvider;
+
+    async fn contains(&self, item: &[u8]) -> Result<bool> {
+        self.index.contains(item).await
+    }
+
+    async fn get_bloom(&self) -> Option<&Bloom<Self::DataProvider>> {
+        self.index.get_bloom().await
+    }
+
+    async fn children(&self) -> Vec<&Self::Inner> {
+        vec![]
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct FileName {
     name_prefix: String,

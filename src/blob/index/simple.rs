@@ -1,5 +1,3 @@
-use crate::filter::BloomDataProvider;
-
 use super::prelude::*;
 
 #[derive(Debug, Clone)]

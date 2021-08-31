@@ -1,7 +1,5 @@
 use crate::prelude::*;
 
-/// bloom filter for faster check record contains in blob
-pub mod bloom;
 mod bptree;
 mod core;
 mod header;
@@ -22,9 +20,6 @@ pub(crate) use bloom::{Bloom, Config as BloomConfig};
 
 mod prelude {
     pub(crate) use super::*;
-    pub(crate) use ahash::AHasher;
-    pub(crate) use bitvec::prelude::*;
-    pub(crate) use std::hash::Hasher;
     pub(crate) use tools::*;
 }
 

@@ -6,7 +6,6 @@ mod index;
 pub(crate) use self::core::{Blob, FileName};
 pub use self::entry::Entry;
 pub(crate) use self::file::File;
-pub use self::index::bloom as filter;
 pub(crate) use self::index::{BloomConfig, IndexConfig};
 pub(crate) use super::prelude::*;
 
