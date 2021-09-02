@@ -6,6 +6,7 @@ Pearl changelog
 - Setup build and test with GitHub Actions ([#113](https://github.com/qoollo/pearl/pull/116))
 
 #### Changed
+- Remove second file descriptor from File ([#124](https://github.com/qoollo/pearl/pull/125))
 
 #### Fixed
 
