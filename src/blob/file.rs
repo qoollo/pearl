@@ -6,7 +6,6 @@ use super::prelude::*;
 pub struct File {
     ioring: Option<Rio>,
     no_lock_fd: Arc<StdFile>, // requires only for read_at/write_at methods
-    write_fd: Arc<RwLock<TokioFile>>,
     size: Arc<AtomicU64>,
 }
 
@@ -33,10 +32,6 @@ impl File {
 
     pub fn size(&self) -> u64 {
         self.size.load(ORD)
-    }
-
-    pub(crate) async fn _metadata(&self) -> IOResult<Metadata> {
-        self.write_fd.read().await.metadata().await
     }
 
     pub(crate) async fn write_append(&self, buf: &[u8]) -> IOResult<usize> {
@@ -151,14 +146,12 @@ impl File {
     }
 
     async fn from_tokio_file(file: TokioFile, ioring: Option<Rio>) -> IOResult<Self> {
-        let tokio_file = file.try_clone().await?;
-        let size = tokio_file.metadata().await?.len();
+        let size = file.metadata().await?.len();
         let size = Arc::new(AtomicU64::new(size));
-        let std_file = tokio_file.try_into_std().expect("tokio file into std");
+        let std_file = file.try_into_std().expect("tokio file into std");
         let file = Self {
             ioring,
             no_lock_fd: Arc::new(std_file),
-            write_fd: Arc::new(RwLock::new(file)),
             size,
         };
         Ok(file)
@@ -169,7 +162,8 @@ impl File {
             let compl = ioring.fsync(&*self.no_lock_fd);
             compl.await
         } else {
-            self.write_fd.read().await.sync_all().await
+            let fd = self.no_lock_fd.clone();
+            Self::blocking_call(move || fd.sync_all()).await
         }
     }
 
