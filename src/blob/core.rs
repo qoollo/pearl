@@ -215,10 +215,15 @@ impl Blob {
         Ok(())
     }
 
-    pub(crate) async fn read_any(&self, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+    pub(crate) async fn read_any(
+        &self,
+        key: &[u8],
+        meta: Option<&Meta>,
+        check_bloom: bool,
+    ) -> Result<Vec<u8>> {
         debug!("blob read any");
         let entry = self
-            .get_entry(key, meta)
+            .get_entry(key, meta, check_bloom)
             .await?
             .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
         debug!("blob read any entry found");
@@ -247,9 +252,14 @@ impl Blob {
             .collect()
     }
 
-    async fn get_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {
+    async fn get_entry(
+        &self,
+        key: &[u8],
+        meta: Option<&Meta>,
+        check_bloom: bool,
+    ) -> Result<Option<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
-        if self.check_bloom(key) == Some(false) {
+        if check_bloom && self.check_bloom(key) == Some(false) {
             debug!("blob core get any entry check bloom returned Some(false)");
             Ok(None)
         } else if let Some(meta) = meta {
@@ -293,7 +303,7 @@ impl Blob {
 
     pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
         debug!("blob contains");
-        let contains = self.get_entry(key, meta).await?.is_some();
+        let contains = self.get_entry(key, meta, true).await?.is_some();
         debug!("blob contains any: {}", contains);
         Ok(contains)
     }
@@ -321,11 +331,11 @@ impl Blob {
         self.index.check_bloom_key(key)
     }
 
-    pub(crate) async fn check_bloom_async<'a, R>(&'a self, key: &[u8], index: R) -> Option<R> {
+    pub(crate) async fn check_bloom_non_blocking<'a>(&'a self, key: &[u8]) -> bool {
         if self.check_bloom(key).unwrap_or(true) {
-            Some(index)
+            true
         } else {
-            None
+            false
         }
     }
 

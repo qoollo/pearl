@@ -288,7 +288,7 @@ impl<K: Key> Storage<K> {
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?
-            .read_any(key, meta)
+            .read_any(key, meta, true)
             .await;
         debug!("storage read with optional meta from active blob finished");
         match active_blob_read_res {
@@ -308,7 +308,13 @@ impl<K: Key> Storage<K> {
         let blobs_stream: FuturesOrdered<_> = blobs
             .iter()
             .enumerate()
-            .map(|(i, blob)| blob.check_bloom_async(key, i))
+            .map(|(i, blob)| async move {
+                if blob.check_bloom_non_blocking(key).await {
+                    Some(i)
+                } else {
+                    None
+                }
+            })
             .collect();
         let possible_blobs: Vec<_> = blobs_stream.filter_map(|e| e).collect().await;
         debug!(
@@ -319,7 +325,7 @@ impl<K: Key> Storage<K> {
         let stream: FuturesOrdered<_> = possible_blobs
             .iter()
             .rev()
-            .map(|i| blobs[*i].read_any(key, meta))
+            .map(|i| blobs[*i].read_any(key, meta, false))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
@@ -329,8 +335,10 @@ impl<K: Key> Storage<K> {
     #[allow(dead_code)]
     async fn get_data_any(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
         let blobs = safe.blobs.read().await;
-        let stream: FuturesUnordered<_> =
-            blobs.iter().map(|blob| blob.read_any(key, meta)).collect();
+        let stream: FuturesUnordered<_> = blobs
+            .iter()
+            .map(|blob| blob.read_any(key, meta, true))
+            .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
         task.next()
