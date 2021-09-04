@@ -41,28 +41,7 @@ impl ObserverWorker {
     async fn tick(&mut self) -> Result<()> {
         match timeout(self.update_interval, self.receiver.recv()).await {
             Ok(Some(msg)) => {
-                if self.predicate_wrapper(&msg.predicate).await {
-                    let _lock = self.async_oplock.lock().await;
-                    if self.predicate_wrapper(&msg.predicate).await {
-                        match msg.optype {
-                            OperationType::ForceUpdateActiveBlob => {
-                                update_active_blob(self.inner.clone()).await?;
-                                self.inner
-                                    .try_dump_old_blob_indexes(self.dump_sem.clone())
-                                    .await;
-                            }
-                            OperationType::CloseActiveBlob => {
-                                self.inner.close_active_blob().await?;
-                            }
-                            OperationType::CreateActiveBlob => {
-                                self.inner.create_active_blob().await?;
-                            }
-                            OperationType::RestoreActiveBlob => {
-                                self.inner.restore_active_blob().await?;
-                            }
-                        }
-                    }
-                }
+                self.process_msg(msg).await?;
             }
             Ok(None) => {
                 return Err(anyhow!(
@@ -74,6 +53,34 @@ impl ObserverWorker {
         }
         trace!("check active blob");
         self.try_update().await
+    }
+
+    async fn process_msg(&mut self, msg: Msg) -> Result<()> {
+        if !self.predicate_wrapper(&msg.predicate).await {
+            return Ok(());
+        }
+        let _lock = self.async_oplock.lock().await;
+        if !self.predicate_wrapper(&msg.predicate).await {
+            return Ok(());
+        }
+        match msg.optype {
+            OperationType::ForceUpdateActiveBlob => {
+                update_active_blob(self.inner.clone()).await?;
+                self.inner
+                    .try_dump_old_blob_indexes(self.dump_sem.clone())
+                    .await;
+            }
+            OperationType::CloseActiveBlob => {
+                self.inner.close_active_blob().await?;
+            }
+            OperationType::CreateActiveBlob => {
+                self.inner.create_active_blob().await?;
+            }
+            OperationType::RestoreActiveBlob => {
+                self.inner.restore_active_blob().await?;
+            }
+        }
+        Ok(())
     }
 
     async fn predicate_wrapper(&self, predicate: &Option<ActiveBlobPred>) -> bool {
