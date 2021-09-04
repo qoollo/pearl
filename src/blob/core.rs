@@ -4,6 +4,7 @@ use super::prelude::*;
 
 use super::index::IndexTrait;
 
+const BLOB_VERSION: u32 = 1;
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 
@@ -393,7 +394,7 @@ impl Header {
     pub const fn new() -> Self {
         Self {
             magic_byte: BLOB_MAGIC_BYTE,
-            version: 0,
+            version: BLOB_VERSION,
             flags: 0,
         }
     }
@@ -415,23 +416,23 @@ impl RawRecords {
     async fn start(file: File, blob_header_size: u64, key_size: usize) -> Result<Self> {
         let current_offset = blob_header_size;
         debug!("blob raw records start, current offset: {}", current_offset);
-        let size_of_usize = std::mem::size_of::<usize>();
-        let size_of_magic_byte = std::mem::size_of::<u64>();
+        let size_of_len = bincode::serialized_size(&(0_usize))? as usize;
+        let size_of_magic_byte = bincode::serialized_size(&RECORD_MAGIC_BYTE)? as usize;
         debug!(
             "blob raw records start, read at: size {}, offset: {}",
-            size_of_usize,
-            current_offset + size_of_usize as u64
+            size_of_len,
+            current_offset + size_of_len as u64
         );
         // plus size of usize because serialized
         // vector contains usize len in front
-        let mut buf = vec![0; size_of_magic_byte + size_of_usize];
+        let mut buf = vec![0; size_of_magic_byte + size_of_len];
         file.read_at(&mut buf, current_offset).await?;
         let (magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         debug!("blob raw records start, read at {} bytes", buf.len());
-        let magic_byte = bincode::deserialize::<u64>(&magic_byte_buf)
+        let magic_byte = bincode::deserialize::<u64>(magic_byte_buf)
             .context("failed to deserialize magic byte")?;
         Self::check_record_header_magic_byte(magic_byte)?;
-        let key_len = bincode::deserialize::<usize>(&key_len_buf)
+        let key_len = bincode::deserialize::<usize>(key_len_buf)
             .context("failed to deserialize index buf vec length")?;
         if key_len != key_size {
             let msg = "blob key_sizeis not equal to pearl compile-time key size";
