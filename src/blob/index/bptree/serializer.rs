@@ -121,6 +121,7 @@ impl<'a> HeaderStage<'a> {
         tree_offset: u64,
         buf: &mut Vec<u8>,
     ) -> Result<()> {
+        assert!(!nodes_arr.empty(), "Impossible to build tree without nodes");
         if nodes_arr.len() == 1 {
             return Ok(());
         }
