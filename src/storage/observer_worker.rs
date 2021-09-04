@@ -40,12 +40,30 @@ impl ObserverWorker {
 
     async fn tick(&mut self) -> Result<()> {
         match timeout(self.update_interval, self.receiver.recv()).await {
-            Ok(Some(msg)) => match msg.optype {
-                OperationType::ForceUpdateActiveBlob => self.update_active_blob(msg).await?,
-                OperationType::CloseActiveBlob => self.close_active_blob(msg).await?,
-                OperationType::CreateActiveBlob => self.create_active_blob(msg).await?,
-                OperationType::RestoreActiveBlob => self.restore_active_blob(msg).await?,
-            },
+            Ok(Some(msg)) => {
+                if self.predicate_wrapper(&msg.predicate).await {
+                    let _lock = self.async_oplock.lock().await;
+                    if self.predicate_wrapper(&msg.predicate).await {
+                        match msg.optype {
+                            OperationType::ForceUpdateActiveBlob => {
+                                update_active_blob(self.inner.clone()).await?;
+                                self.inner
+                                    .try_dump_old_blob_indexes(self.dump_sem.clone())
+                                    .await;
+                            }
+                            OperationType::CloseActiveBlob => {
+                                self.inner.close_active_blob().await?;
+                            }
+                            OperationType::CreateActiveBlob => {
+                                self.inner.create_active_blob().await?;
+                            }
+                            OperationType::RestoreActiveBlob => {
+                                self.inner.restore_active_blob().await?;
+                            }
+                        }
+                    }
+                }
+            }
             Ok(None) => {
                 return Err(anyhow!(
                     "all observer connected to this worker are dropped, so worker is done"
@@ -64,49 +82,6 @@ impl ObserverWorker {
         } else {
             true
         }
-    }
-
-    async fn close_active_blob(&self, msg: Msg) -> Result<()> {
-        if self.predicate_wrapper(&msg.predicate).await {
-            let _lock = self.async_oplock.lock().await;
-            if self.predicate_wrapper(&msg.predicate).await {
-                self.inner.close_active_blob().await?;
-            }
-        }
-        Ok(())
-    }
-
-    async fn create_active_blob(&self, msg: Msg) -> Result<()> {
-        if self.predicate_wrapper(&msg.predicate).await {
-            let _lock = self.async_oplock.lock().await;
-            if self.predicate_wrapper(&msg.predicate).await {
-                self.inner.create_active_blob().await?;
-            }
-        }
-        Ok(())
-    }
-
-    async fn restore_active_blob(&self, msg: Msg) -> Result<()> {
-        if self.predicate_wrapper(&msg.predicate).await {
-            let _lock = self.async_oplock.lock().await;
-            if self.predicate_wrapper(&msg.predicate).await {
-                self.inner.restore_active_blob().await?;
-            }
-        }
-        Ok(())
-    }
-
-    async fn update_active_blob(&mut self, msg: Msg) -> Result<()> {
-        if self.predicate_wrapper(&msg.predicate).await {
-            let _lock = self.async_oplock.lock().await;
-            if self.predicate_wrapper(&msg.predicate).await {
-                update_active_blob(self.inner.clone()).await?;
-                self.inner
-                    .try_dump_old_blob_indexes(self.dump_sem.clone())
-                    .await;
-            }
-        }
-        Ok(())
     }
 
     async fn try_update(&self) -> Result<()> {

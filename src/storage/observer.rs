@@ -4,6 +4,7 @@ use tokio::{
     sync::Semaphore,
 };
 
+#[derive(Debug, Clone)]
 pub(crate) enum OperationType {
     CreateActiveBlob = 0,
     CloseActiveBlob = 1,
@@ -30,6 +31,7 @@ impl ActiveBlobStat {
 
 pub type ActiveBlobPred = fn(Option<ActiveBlobStat>) -> bool;
 
+#[derive(Debug)]
 pub(crate) struct Msg {
     pub(crate) optype: OperationType,
     pub(crate) predicate: Option<ActiveBlobPred>,
@@ -102,10 +104,11 @@ impl Observer {
 
     async fn send_msg(&self, msg: Msg) {
         if let Some(sender) = &self.sender {
+            let optype = msg.optype.clone();
             if let Err(e) = sender.send(msg).await {
                 error!(
-                    "observer cannot force update active blob: task failed: {}",
-                    e
+                    "Can't send message to worker:\nOperation: {:?}\nReason: {:?}",
+                    optype, e
                 );
             }
         } else {

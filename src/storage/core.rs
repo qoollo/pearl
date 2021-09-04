@@ -171,11 +171,11 @@ impl<K: Key> Storage<K> {
 
     /// Creates active blob
     /// NOTICE! This function works in current thread, so it may take time. To perform this
-    /// asyncronously, use [`create_active_blob_async()`]
+    /// asyncronously, use [`create_active_blob_non_blocking()`]
     /// Returns true if new blob was created else false
     /// # Errors
     /// Fails if it's not possible to create new blob
-    /// [`create_active_blob_async()`]: struct.Storage.html#method.create_active_blob_async
+    /// [`create_active_blob_non_blocking()`]: struct.Storage.html#method.create_active_blob_async
     pub async fn create_active_blob(&self) -> Result<bool> {
         self.inner.create_active_blob().await
     }
@@ -184,17 +184,17 @@ impl<K: Key> Storage<K> {
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`create_active_blob()`]
     /// [`create_active_blob()`]: struct.Storage.html#method.create_active_blob
-    pub async fn create_active_blob_async(&self) {
+    pub async fn create_active_blob_non_blocking(&self) {
         self.observer.create_active_blob().await
     }
 
     /// Dumps active blob
     /// NOTICE! This function works in current thread, so it may take time. To perform this
-    /// asyncronously, use [`close_active_blob_async()`]
+    /// asyncronously, use [`close_active_blob_non_blocking()`]
     /// Returns true if blob was really dumped else false
     /// # Errors
     /// Fails if there are some errors during dump
-    /// [`close_active_blob_async()`]: struct.Storage.html#method.create_active_blob_async
+    /// [`close_active_blob_non_blocking()`]: struct.Storage.html#method.create_active_blob_async
     pub async fn close_active_blob(&self) -> Result<bool> {
         self.inner.close_active_blob().await
     }
@@ -202,17 +202,17 @@ impl<K: Key> Storage<K> {
     /// Dumps active blob
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`close_active_blob()`]
-    pub async fn close_active_blob_async(&self) {
+    pub async fn nlose_active_blob_non_blocking(&self) {
         self.observer.close_active_blob().await
     }
 
     /// Sets last blob from closed blobs as active if there is no active blobs
     /// NOTICE! This function works in current thread, so it may take time. To perform this
-    /// asyncronously, use [`restore_active_blob_async()`]
+    /// asyncronously, use [`restore_active_blob_non_blocking()`]
     /// Returns true if last blob was set as active as false
     /// # Errors
     /// Fails if active blob is set or there is no closed blobs
-    /// [`restore_active_blob_async()`]: struct.Storage.html#method.restore_active_blob_async
+    /// [`restore_active_blob_non_blocking()`]: struct.Storage.html#method.restore_active_blob_async
     pub async fn restore_active_blob(&self) -> Result<bool> {
         self.inner.restore_active_blob().await
     }
@@ -221,7 +221,7 @@ impl<K: Key> Storage<K> {
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`restore_active_blob()`]
     /// [`restore_active_blob()`]: struct.Storage.html#method.restore_active_blob
-    pub async fn restore_active_blob_async(&self) {
+    pub async fn restore_active_blob_non_blocking(&self) {
         self.observer.restore_active_blob().await
     }
 
@@ -563,8 +563,7 @@ impl<K: Key> Storage<K> {
             .pop()
             .ok_or_else(|| {
                 let wd = config.work_dir();
-                error!("There are some blob files in the work dir: {:?}", wd);
-                error!("Creating blobs from all these files failed");
+                error!("No blobs in {:?} to create an active one", wd);
                 Error::from(ErrorKind::Uninitialized)
             })?
             .boxed();
@@ -697,12 +696,12 @@ impl<K: Key> Storage<K> {
     }
 
     /// Force updates active blob on new one to dump index of old one on disk and free RAM.
-    /// This function was used previously instead of [`close_active_blob_async()`]
+    /// This function was used previously instead of [`close_active_blob_non_blocking()`]
     /// Creates new active blob.
     /// # Errors
     /// Fails because of any IO errors.
     /// Or if there are some problems with syncronization.
-    /// [`close_active_blob_async()`]: struct.Storage.html#method.close_active_blob_async
+    /// [`close_active_blob_non_blocking()`]: struct.Storage.html#method.close_active_blob_async
     pub async fn force_update_active_blob(&self, predicate: ActiveBlobPred) {
         self.observer.force_update_active_blob(predicate).await
     }
