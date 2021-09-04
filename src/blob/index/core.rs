@@ -88,13 +88,13 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         self.range_filter.clear();
     }
 
-    pub(crate) fn check_filters_key(&self, key: &[u8]) -> Option<bool> {
+    pub(crate) fn check_filters_key(&self, key: &[u8]) -> bool {
         if !self.range_filter.contains(key) {
-            Some(false)
+            false
         } else if self.params.bloom_is_on {
-            Some(self.bloom_filter.contains(key))
+            self.bloom_filter.contains(key)
         } else {
-            None
+            true
         }
     }
 
