@@ -328,7 +328,7 @@ impl Blob {
         }
     }
 
-    pub(crate) fn offload_filter(&mut self) {
+    pub(crate) fn offload_filter(&mut self) -> usize {
         self.index.offload_filter()
     }
 
@@ -343,20 +343,13 @@ impl Blob {
 
 #[async_trait::async_trait]
 impl BloomProvider for Blob {
-    type Inner = Index;
-
-    type DataProvider = <Self::Inner as BloomProvider>::DataProvider;
-
-    async fn contains(&self, item: &[u8]) -> Result<bool> {
-        self.index.contains(item).await
+    type Key = [u8];
+    async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>> {
+        self.index.check_filter(item).await
     }
 
-    async fn get_bloom(&self) -> Option<&Bloom<Self::DataProvider>> {
-        self.index.get_bloom().await
-    }
-
-    async fn children(&self) -> Vec<&Self::Inner> {
-        vec![]
+    async fn offload_buffer(&mut self, needed_memory: usize) -> usize {
+        self.index.offload_buffer(needed_memory).await
     }
 }
 

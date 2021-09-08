@@ -37,7 +37,7 @@ impl Default for IndexConfig {
 #[derive(Debug)]
 pub struct IndexStruct<FileIndex: FileIndexTrait> {
     mem: Option<MemoryAttrs>,
-    filter: Bloom<FileIndex>,
+    filter: Bloom,
     params: IndexParams,
     inner: State<FileIndex>,
     name: FileName,
@@ -86,7 +86,12 @@ impl<FileIndex: FileIndexTrait + BloomDataProvider> IndexStruct<FileIndex> {
 
     pub async fn check_bloom_key(&self, key: &[u8]) -> Result<Option<bool>> {
         if self.params.filter_is_on {
-            Ok(Some(self.filter.contains(key).await?))
+            let file_index = if let State::OnDisk(index) = &self.inner {
+                Some(index)
+            } else {
+                None
+            };
+            Ok(Some(self.filter.contains(key, file_index).await?))
         } else {
             Ok(None)
         }
@@ -96,9 +101,11 @@ impl<FileIndex: FileIndexTrait + BloomDataProvider> IndexStruct<FileIndex> {
         self.filter.memory_allocated()
     }
 
-    pub fn offload_filter(&mut self) {
-        if let State::OnDisk(file_index) = &mut self.inner {
-            self.filter.offload_from_memory(file_index.clone())
+    pub fn offload_filter(&mut self) -> usize {
+        if self.on_disk() {
+            self.filter.offload_from_memory()
+        } else {
+            0
         }
     }
 
@@ -279,16 +286,17 @@ impl<FileIndex> BloomProvider for IndexStruct<FileIndex>
 where
     FileIndex: FileIndexTrait + BloomDataProvider + Sync + Send + Clone,
 {
-    type Inner = Bloom<Self::DataProvider>;
-
-    type DataProvider = FileIndex;
-
-    async fn get_bloom(&self) -> Option<&Bloom<Self::DataProvider>> {
-        self.filter.get_bloom().await
+    type Key = [u8];
+    async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>> {
+        self.check_bloom_key(item.as_ref()).await
     }
 
-    async fn contains(&self, item: &[u8]) -> Result<bool> {
-        self.filter.contains(item).await
+    async fn offload_buffer(&mut self, needed_memory: usize) -> usize {
+        if needed_memory > 0 {
+            self.filter.offload_from_memory()
+        } else {
+            0
+        }
     }
 }
 

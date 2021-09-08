@@ -49,7 +49,7 @@ pub(crate) struct Inner {
 #[derive(Debug)]
 pub(crate) struct Safe {
     pub(crate) active_blob: Option<Box<Blob>>,
-    pub(crate) blobs: Arc<RwLock<Vec<Blob>>>,
+    pub(crate) blobs: Arc<RwLock<HierarchicalBloom<Blob>>>,
     lock_file: Option<StdFile>,
 }
 
@@ -481,7 +481,7 @@ impl<K: Key> Storage<K> {
             blob.dump().await?;
         }
         safe.active_blob = Some(active_blob);
-        *safe.blobs.write().await = blobs;
+        *safe.blobs.write().await = blobs.into();
         self.inner
             .next_blob_id
             .store(safe.max_id().await.map_or(0, |i| i + 1), ORD);
@@ -569,8 +569,7 @@ impl<K: Key> Storage<K> {
     /// Uses bloom filter under the hood, so false positive results are possible,
     /// but false negatives are not.
     /// In other words, `check_bloom` returns either "possibly in storage" or "definitely not".
-    pub async fn check_bloom(&self, key: impl AsRef<K>) -> Option<bool> {
-        let key = key.as_ref();
+    pub async fn check_bloom(&self, key: &K) -> Option<bool> {
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.read().await;
         let in_active = if let Some(active_blob) = inner.active_blob.as_ref() {
@@ -593,15 +592,17 @@ impl<K: Key> Storage<K> {
     }
 
     /// Offload bloom filters for closed blobs
-    pub async fn offload_bloom(&self) {
+    pub async fn offload_bloom(&self) -> usize {
         trace!("offload bloom filters");
         let inner = self.inner.safe.read().await;
-        inner
+        let freed = inner
             .blobs
             .write()
             .await
             .iter_mut()
-            .for_each(|blob| blob.offload_filter());
+            .map(|blob| blob.offload_filter())
+            .sum();
+        freed
     }
 
     /// Total records count in storage.
@@ -780,5 +781,30 @@ pub trait Key: AsRef<[u8]> + Debug {
     /// Convert `Self` into `Vec<u8>`
     fn to_vec(&self) -> Vec<u8> {
         self.as_ref().to_vec()
+    }
+}
+
+#[async_trait::async_trait]
+impl<K> BloomProvider for Storage<K>
+where
+    K: Key + Send + Sync,
+{
+    type Key = K;
+    async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>> {
+        Ok(self.check_bloom(item).await)
+    }
+
+    async fn offload_buffer(&mut self, needed_memory: usize) -> usize {
+        let mut total_freed = 0;
+        trace!("offload bloom filters");
+        let inner = self.inner.safe.read().await;
+        for blob in inner.blobs.write().await.iter_mut() {
+            if total_freed < needed_memory as usize {
+                total_freed += blob.offload_buffer(needed_memory).await;
+            } else {
+                break;
+            }
+        }
+        total_freed
     }
 }

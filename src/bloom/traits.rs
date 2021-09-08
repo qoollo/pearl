@@ -11,19 +11,28 @@ pub trait BloomDataProvider: Clone + Send + Sync {
 
 /// Trait for scructs which contains bloom filters
 #[async_trait::async_trait]
-pub trait BloomProvider: Send + Sync {
-    /// Provider
-    type Inner: BloomProvider;
-    /// Data provider
-    type DataProvider: BloomDataProvider;
-    /// Get filter
-    async fn get_bloom(&self) -> Option<&Bloom<Self::DataProvider>> {
-        None
-    }
-    /// Get children filters
-    async fn children(&self) -> Vec<&Self::Inner> {
-        vec![]
-    }
+pub trait BloomProvider {
+    /// Bloom key
+    type Key: ?Sized + Sync + Send;
     /// Check if element in filter
-    async fn contains(&self, item: &[u8]) -> Result<bool>;
+    async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>>;
+    /// Returns freed memory
+    async fn offload_buffer(&mut self, needed_memory: usize) -> usize;
+}
+
+#[async_trait::async_trait]
+impl<P, K> BloomProvider for Arc<P>
+where
+    P: BloomProvider<Key = K> + Send + Sync,
+    K: Sync + Send + ?Sized,
+{
+    type Key = K;
+
+    async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>> {
+        P::check_filter(self, item).await
+    }
+
+    async fn offload_buffer(&mut self, needed_memory: usize) -> usize {
+        P::offload_buffer(&mut self, needed_memory).await
+    }
 }

@@ -1,5 +1,8 @@
-mod impls;
-mod traits;
+/// Hierarchical container for filters
+pub mod hierarchical;
+/// Traits for bloom filters
+pub mod traits;
+pub use hierarchical::*;
 pub use traits::*;
 
 pub use ahash::AHasher;
@@ -11,23 +14,17 @@ use bitvec::order::Lsb0;
 
 /// Bloom filter
 #[derive(Debug, Clone)]
-pub struct Bloom<P: BloomDataProvider> {
-    inner: BloomInner<P>,
+pub struct Bloom {
+    inner: Option<BitVec<Lsb0, u64>>,
     bits_count: usize,
     hashers: Vec<AHasher>,
     config: Config,
 }
 
-#[derive(Debug, Clone)]
-enum BloomInner<P: BloomDataProvider> {
-    InMemory(BitVec<Lsb0, u64>),
-    OnDisk(P),
-}
-
-impl<P: BloomDataProvider> Default for Bloom<P> {
+impl Default for Bloom {
     fn default() -> Self {
         Self {
-            inner: BloomInner::InMemory(Default::default()),
+            inner: Some(Default::default()),
             ..Default::default()
         }
     }
@@ -75,7 +72,7 @@ fn false_positive_rate(k: f64, n: f64, m: f64) -> f64 {
     (1_f64 - 1_f64.exp().powf(-k * n / m)).powi(k as i32)
 }
 
-impl<P: BloomDataProvider> Bloom<P> {
+impl Bloom {
     /// Create new bloom filter
     pub fn new(config: Config) -> Self {
         let elements = config.elements as f64;
@@ -96,7 +93,7 @@ impl<P: BloomDataProvider> Bloom<P> {
             }
         }
         Self {
-            inner: BloomInner::InMemory(bitvec![Lsb0, u64; 0; bits_count]),
+            inner: Some(bitvec![Lsb0, u64; 0; bits_count]),
             hashers: Self::hashers(k),
             config,
             bits_count,
@@ -104,11 +101,9 @@ impl<P: BloomDataProvider> Bloom<P> {
     }
 
     /// Merge filters
-    pub fn checked_add_assign<O: BloomDataProvider>(&mut self, other: &Bloom<O>) -> Option<()> {
+    pub fn checked_add_assign(&mut self, other: &Bloom) -> Option<()> {
         match (&mut self.inner, &other.inner) {
-            (BloomInner::InMemory(inner), BloomInner::InMemory(other_inner))
-                if inner.len() == other_inner.len() =>
-            {
+            (Some(inner), Some(other_inner)) if inner.len() == other_inner.len() => {
                 inner
                     .as_mut_raw_slice()
                     .iter_mut()
@@ -121,25 +116,31 @@ impl<P: BloomDataProvider> Bloom<P> {
     }
 
     /// Read filter buffer
-    pub async fn read_buffer(&self) -> Result<Vec<u64>> {
-        match &self.inner {
-            BloomInner::InMemory(buf) => Ok(buf.as_raw_slice().to_vec()),
-            BloomInner::OnDisk(provider) => {
-                let buf = provider.read_all().await?;
-                let save: Save = bincode::deserialize(&buf)?;
-                Ok(save.buf)
-            }
+    pub async fn read_buffer<P>(&self, provider: Option<P>) -> Result<Vec<u64>>
+    where
+        P: BloomDataProvider,
+    {
+        if let Some(buf) = &self.inner {
+            Ok(buf.as_raw_slice().to_vec())
+        } else if let Some(provider) = provider {
+            let buf = provider.read_all().await?;
+            let save: Save = bincode::deserialize(&buf)?;
+            Ok(save.buf)
+        } else {
+            Err(anyhow::anyhow!("Can't find any source of filter data"))
         }
     }
 
     /// Clear filter
     pub fn clear(&mut self) {
-        self.inner = BloomInner::InMemory(bitvec![Lsb0, u64; 0; self.bits_count]);
+        self.inner = Some(bitvec![Lsb0, u64; 0; self.bits_count]);
     }
 
     /// Offload filter buffer
-    pub fn offload_from_memory(&mut self, provider: P) {
-        self.inner = BloomInner::OnDisk(provider);
+    pub fn offload_from_memory(&mut self) -> usize {
+        let size = self.memory_allocated();
+        self.inner = None;
+        size
     }
 
     pub(crate) fn hashers(k: usize) -> Vec<AHasher> {
@@ -150,15 +151,11 @@ impl<P: BloomDataProvider> Bloom<P> {
     }
 
     fn save(&self) -> Option<Save> {
-        if let BloomInner::InMemory(inner) = &self.inner {
-            Some(Save {
-                config: self.config.clone(),
-                buf: inner.as_raw_slice().to_vec(),
-                bits_count: inner.len(),
-            })
-        } else {
-            None
-        }
+        self.inner.as_ref().map(|inner| Save {
+            config: self.config.clone(),
+            buf: inner.as_raw_slice().to_vec(),
+            bits_count: inner.len(),
+        })
     }
 
     fn from(save: Save) -> Self {
@@ -167,7 +164,7 @@ impl<P: BloomDataProvider> Bloom<P> {
         Self {
             hashers: Self::hashers(save.config.hashers_count),
             config: save.config,
-            inner: BloomInner::InMemory(inner),
+            inner: Some(inner),
             bits_count: save.bits_count,
         }
     }
@@ -187,14 +184,17 @@ impl<P: BloomDataProvider> Bloom<P> {
     }
 
     /// Create filter from provider
-    pub async fn from_provider(provider: &P) -> Result<Self> {
+    pub async fn from_provider<P>(provider: &P) -> Result<Self>
+    where
+        P: BloomDataProvider,
+    {
         let buf = provider.read_all().await?;
         Self::from_raw(&buf)
     }
 
     /// Add item to filter
     pub fn add(&mut self, item: impl AsRef<[u8]>) -> Result<()> {
-        if let BloomInner::InMemory(inner) = &mut self.inner {
+        if let Some(inner) = &mut self.inner {
             let mut hashers = self.hashers.clone();
             let len = inner.len() as u64;
             for h in hashers.iter_mut().map(|hasher| {
@@ -211,21 +211,66 @@ impl<P: BloomDataProvider> Bloom<P> {
         }
     }
 
-    pub(crate) async fn get_bit(&self, index: usize) -> Result<bool> {
-        Ok(match &self.inner {
-            BloomInner::InMemory(buf) => *buf.get(index).expect("unreachable"),
-            BloomInner::OnDisk(provider) => {
-                let start_pos = self.buffer_start_position()?;
-                let pos = start_pos + (index / 8) as u64;
-                let byte = provider.read_byte(pos).await?;
-                let res = *byte
-                    .view_bits::<Lsb0>()
-                    .get(index as usize % 8)
-                    .expect("unreachable")
-                    .clone();
-                res
+    pub(crate) async fn get_bit<P>(&self, index: usize, provider: Option<&P>) -> Result<bool>
+    where
+        P: BloomDataProvider,
+    {
+        if let Some(buf) = &self.inner {
+            Ok(*buf.get(index).expect("unreachable"))
+        } else if let Some(provider) = provider {
+            let start_pos = self.buffer_start_position()?;
+            let pos = start_pos + (index / 8) as u64;
+            let byte = provider.read_byte(pos).await?;
+            let res = *byte
+                .view_bits::<Lsb0>()
+                .get(index as usize % 8)
+                .expect("unreachable")
+                .clone();
+            Ok(res)
+        } else {
+            Err(anyhow::anyhow!("Can't find any source of filter data"))
+        }
+    }
+
+    /// Check if key is presented
+    pub fn contains_in_memory(&self, item: impl AsRef<[u8]>) -> Result<bool> {
+        if let Some(buf) = &self.inner {
+            let mut hashers = self.hashers.clone();
+            if self.bits_count == 0 {
+                return Ok(false);
             }
-        })
+            for index in hashers.iter_mut().map(|hasher| {
+                hasher.write(item.as_ref());
+                hasher.finish() % self.bits_count as u64
+            }) {
+                if !*buf.get(index as usize).expect("unreachable") {
+                    return Ok(false);
+                }
+            }
+            Ok(true)
+        } else {
+            Err(anyhow::anyhow!("Can't find any source of filter data"))
+        }
+    }
+
+    /// Check if key is presented
+    pub async fn contains<P>(&self, item: impl AsRef<[u8]>, p: Option<&P>) -> Result<bool>
+    where
+        P: BloomDataProvider,
+    {
+        let mut hashers = self.hashers.clone();
+        if self.bits_count == 0 {
+            return Ok(false);
+        }
+        for index in hashers.iter_mut().map(|hasher| {
+            hasher.write(item.as_ref());
+            hasher.finish() % self.bits_count as u64
+        }) {
+            if !self.get_bit(index as usize, p).await? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     // bincode write len as u64 before Vec elements. sizeof(config) + sizeof(u64)
@@ -235,9 +280,6 @@ impl<P: BloomDataProvider> Bloom<P> {
 
     /// Get memory allocated for buffer in heap
     pub fn memory_allocated(&self) -> usize {
-        match &self.inner {
-            BloomInner::InMemory(inner) => inner.capacity() / 8,
-            BloomInner::OnDisk(_) => 0,
-        }
+        self.inner.as_ref().map_or(0, |buf| buf.capacity() / 8)
     }
 }
