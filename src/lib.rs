@@ -58,7 +58,7 @@ extern crate anyhow;
 
 extern crate ring;
 
-/// Contains basic info about current build: build_time, commit and version.
+/// Basic info about current build.
 pub mod build_info;
 
 mod blob;
