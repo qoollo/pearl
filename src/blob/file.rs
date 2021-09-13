@@ -1,4 +1,4 @@
-use std::os::unix::prelude::FileExt;
+use std::os::unix::prelude::{AsRawFd, FileExt};
 
 use super::prelude::*;
 
@@ -149,6 +149,9 @@ impl File {
         let size = file.metadata().await?.len();
         let size = Arc::new(AtomicU64::new(size));
         let std_file = file.try_into_std().expect("tokio file into std");
+
+        Self::advisory_write_lock_file(std_file.as_raw_fd());
+
         let file = Self {
             ioring,
             no_lock_fd: Arc::new(std_file),
@@ -164,6 +167,24 @@ impl File {
         } else {
             let fd = self.no_lock_fd.clone();
             Self::blocking_call(move || fd.sync_all()).await
+        }
+    }
+
+    fn advisory_write_lock_file(fd: i32) {
+        let flock = libc::flock {
+            l_len: 0, // 0 means "whole file"
+            l_start: 0,
+            l_whence: libc::SEEK_SET as i16,
+            l_type: libc::F_WRLCK as i16,
+            l_pid: -1, // pid of current file owner, if any (when fcntl is invoked with F_GETLK)
+        };
+
+        let res = unsafe { libc::fcntl(fd, libc::F_SETLK, &flock) };
+        let errno = unsafe { *libc::__errno_location() };
+
+        debug!("fcntl result: {}", res);
+        if res != 0 {
+            warn!("acquiring writelock failed, fcntl errno: {}", errno);
         }
     }
 
