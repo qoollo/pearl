@@ -58,8 +58,10 @@ extern crate anyhow;
 
 extern crate ring;
 
+/// Contains basic info about current build: build_time, commit and version.
+pub mod build_info;
+
 mod blob;
-mod build_time;
 mod error;
 mod record;
 mod storage;
@@ -69,20 +71,6 @@ pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
 pub use storage::{Builder, Key, Storage};
-
-/// Get pearl version
-pub fn get_pearl_version() -> String {
-    format!(
-        "{}-{}",
-        env!("CARGO_PKG_VERSION"),
-        option_env!("PEARL_COMMIT_HASH").unwrap_or("hash-undefined"),
-    )
-}
-
-/// Get pearl build time
-pub fn get_pearl_build_time() -> &'static str {
-    crate::build_time::BUILD_TIME
-}
 
 mod prelude {
     use crc::{Crc, CRC_32_ISCSI};
