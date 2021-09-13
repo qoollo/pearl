@@ -722,6 +722,10 @@ impl Safe {
         Ok(())
     }
 
+    pub(crate) fn unlock_directory(&mut self) {
+        let _ = self.lock_file.take();
+    }
+
     pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
         let blobs = self.blobs.clone();
         tokio::spawn(async move {
