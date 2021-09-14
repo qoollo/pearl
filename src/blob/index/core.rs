@@ -5,6 +5,11 @@ pub(crate) type Index = IndexStruct<BPTreeFileIndex>;
 
 pub(crate) const HEADER_VERSION: u8 = 1;
 
+pub(crate) enum FilterResult {
+    NeedAdditionalCheck,
+    NotContains,
+}
+
 #[derive(Debug)]
 struct IndexParams {
     bloom_is_on: bool,
@@ -88,13 +93,13 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         self.range_filter.clear();
     }
 
-    pub(crate) fn check_filters_key(&self, key: &[u8]) -> bool {
+    pub(crate) fn check_filters_key(&self, key: &[u8]) -> FilterResult {
         if !self.range_filter.contains(key) {
-            false
-        } else if self.params.bloom_is_on {
-            self.bloom_filter.contains(key)
+            FilterResult::NotContains
+        } else if self.params.bloom_is_on && !self.bloom_filter.contains(key) {
+            FilterResult::NotContains
         } else {
-            true
+            FilterResult::NeedAdditionalCheck
         }
     }
 

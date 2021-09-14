@@ -328,7 +328,11 @@ impl Blob {
 
     pub(crate) fn check_filters(&self, key: &[u8]) -> bool {
         trace!("check filters (range and bloom)");
-        self.index.check_filters_key(key)
+        if let FilterResult::NotContains = self.index.check_filters_key(key) {
+            false
+        } else {
+            true
+        }
     }
 
     pub(crate) async fn check_filters_non_blocking(&self, key: &[u8]) -> bool {
