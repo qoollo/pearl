@@ -3,13 +3,21 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-- Setup build and test with GitHub Actions ([#113](https://github.com/qoollo/pearl/pull/116))
+- B+ Tree indexes (#84)
 
 #### Changed
 
 #### Fixed
 
 #### Updated
+
+
+## [0.6.2] - 2021-09-14
+#### Added
+- Setup build and test with GitHub Actions (#113)
+
+#### Changed
+- Helpers for build time, commit hash and version moved to `build_info` mod.
 
 
 ## [0.6.1] - 2021-08-13
