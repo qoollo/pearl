@@ -3,7 +3,6 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-- Setup build and test with GitHub Actions ([#113](https://github.com/qoollo/pearl/pull/116))
 
 #### Changed
 - Remove second file descriptor from File ([#124](https://github.com/qoollo/pearl/pull/125))
@@ -11,6 +10,16 @@ Pearl changelog
 #### Fixed
 
 #### Updated
+
+
+## [0.6.2] - 2021-09-14
+#### Added
+- Setup build and test with GitHub Actions (#113)
+
+#### Changed
+- Helpers for build time, commit hash and version moved to `build_info` mod.
+- Build time format.
+- `build_time.rs` added to `.gitignore`.
 
 
 ## [0.6.1] - 2021-08-13
