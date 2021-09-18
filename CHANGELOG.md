@@ -18,6 +18,8 @@ Pearl changelog
 
 #### Changed
 - Helpers for build time, commit hash and version moved to `build_info` mod.
+- Build time format.
+- `build_time.rs` added to `.gitignore`.
 
 
 ## [0.6.1] - 2021-08-13
