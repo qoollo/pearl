@@ -112,7 +112,7 @@ impl<K: Key> Storage<K> {
         self.init_ext(true).await
     }
 
-    /// [`init_noactive()`] used to prepare all environment to further work, but unlike `init`
+    /// [`init_lazy()`] used to prepare all environment to further work, but unlike `init`
     /// doesn't set active blob, which means that first write may take time..
     ///
     /// Storage works in directory provided to builder. If directory don't exist,
@@ -121,8 +121,8 @@ impl<K: Key> Storage<K> {
     /// Returns error in case of failures with IO operations or
     /// if some of the required params are missed.
     ///
-    /// [`init_noactive()`]: struct.Storage.html#method.init
-    pub async fn init_noactive(&mut self) -> Result<()> {
+    /// [`init_lazy()`]: struct.Storage.html#method.init
+    pub async fn init_lazy(&mut self) -> Result<()> {
         self.init_ext(false).await
     }
 
@@ -171,57 +171,57 @@ impl<K: Key> Storage<K> {
 
     /// Creates active blob
     /// NOTICE! This function works in current thread, so it may take time. To perform this
-    /// asyncronously, use [`create_active_blob_non_blocking()`]
+    /// asyncronously, use [`create_active_blob_in_background()`]
     /// Returns true if new blob was created else false
     /// # Errors
     /// Fails if it's not possible to create new blob
-    /// [`create_active_blob_non_blocking()`]: struct.Storage.html#method.create_active_blob_async
-    pub async fn create_active_blob(&self) -> Result<bool> {
+    /// [`create_active_blob_in_background()`]: struct.Storage.html#method.create_active_blob_async
+    pub async fn try_create_active_blob(&self) -> Result<()> {
         self.inner.create_active_blob().await
     }
 
     /// Creates active blob
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
-    /// want be sure about operation's result, use [`create_active_blob()`]
-    /// [`create_active_blob()`]: struct.Storage.html#method.create_active_blob
-    pub async fn create_active_blob_non_blocking(&self) {
+    /// want be sure about operation's result, use [`try_create_active_blob()`]
+    /// [`try_create_active_blob()`]: struct.Storage.html#method.try_create_active_blob
+    pub async fn create_active_blob_in_background(&self) {
         self.observer.create_active_blob().await
     }
 
     /// Dumps active blob
     /// NOTICE! This function works in current thread, so it may take time. To perform this
-    /// asyncronously, use [`close_active_blob_non_blocking()`]
+    /// asyncronously, use [`close_active_blob_in_background()`]
     /// Returns true if blob was really dumped else false
     /// # Errors
     /// Fails if there are some errors during dump
-    /// [`close_active_blob_non_blocking()`]: struct.Storage.html#method.create_active_blob_async
-    pub async fn close_active_blob(&self) -> Result<bool> {
+    /// [`close_active_blob_in_background()`]: struct.Storage.html#method.create_active_blob_async
+    pub async fn try_close_active_blob(&self) -> Result<()> {
         self.inner.close_active_blob().await
     }
 
     /// Dumps active blob
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
-    /// want be sure about operation's result, use [`close_active_blob()`]
-    pub async fn nlose_active_blob_non_blocking(&self) {
+    /// want be sure about operation's result, use [`try_close_active_blob()`]
+    pub async fn close_active_blob_in_background(&self) {
         self.observer.close_active_blob().await
     }
 
     /// Sets last blob from closed blobs as active if there is no active blobs
     /// NOTICE! This function works in current thread, so it may take time. To perform this
-    /// asyncronously, use [`restore_active_blob_non_blocking()`]
+    /// asyncronously, use [`restore_active_blob_in_background()`]
     /// Returns true if last blob was set as active as false
     /// # Errors
     /// Fails if active blob is set or there is no closed blobs
-    /// [`restore_active_blob_non_blocking()`]: struct.Storage.html#method.restore_active_blob_async
-    pub async fn restore_active_blob(&self) -> Result<bool> {
+    /// [`restore_active_blob_in_background()`]: struct.Storage.html#method.restore_active_blob_async
+    pub async fn try_restore_active_blob(&self) -> Result<()> {
         self.inner.restore_active_blob().await
     }
 
     /// Sets last blob from closed blobs as active if there is no active blobs
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
-    /// want be sure about operation's result, use [`restore_active_blob()`]
-    /// [`restore_active_blob()`]: struct.Storage.html#method.restore_active_blob
-    pub async fn restore_active_blob_non_blocking(&self) {
+    /// want be sure about operation's result, use [`try_restore_active_blob()`]
+    /// [`try_restore_active_blob()`]: struct.Storage.html#method.try_restore_active_blob
+    pub async fn restore_active_blob_in_background(&self) {
         self.observer.restore_active_blob().await
     }
 
@@ -272,7 +272,7 @@ impl<K: Key> Storage<K> {
     ) -> Result<()> {
         debug!("storage write with {:?}, {}b, {:?}", key, value.len(), meta);
         // if active blob is set, this function will only check this fact and return false
-        if self.create_active_blob().await? {
+        if self.try_create_active_blob().await.is_ok() {
             info!("Active blob was set during write operation");
         }
         if !self.inner.config.allow_duplicates()
@@ -696,12 +696,12 @@ impl<K: Key> Storage<K> {
     }
 
     /// Force updates active blob on new one to dump index of old one on disk and free RAM.
-    /// This function was used previously instead of [`close_active_blob_non_blocking()`]
+    /// This function was used previously instead of [`close_active_blob_in_background()`]
     /// Creates new active blob.
     /// # Errors
     /// Fails because of any IO errors.
     /// Or if there are some problems with syncronization.
-    /// [`close_active_blob_non_blocking()`]: struct.Storage.html#method.close_active_blob_async
+    /// [`close_active_blob_in_background()`]: struct.Storage.html#method.close_active_blob_async
     pub async fn force_update_active_blob(&self, predicate: ActiveBlobPred) {
         self.observer.force_update_active_blob(predicate).await
     }
@@ -725,28 +725,27 @@ impl Inner {
         }
     }
 
-    pub(crate) async fn restore_active_blob(&self) -> Result<bool> {
+    pub(crate) async fn restore_active_blob(&self) -> Result<()> {
         if self.has_active_blob().await {
-            return Ok(false);
+            return Err(Error::active_blob_already_exists().into());
         }
         let mut safe = self.safe.write().await;
         if let None = safe.active_blob {
             let blob_opt = safe.blobs.write().await.pop().map(|b| b.boxed());
             if let Some(blob) = blob_opt {
                 safe.active_blob = Some(blob);
-                Ok(true)
+                Ok(())
             } else {
-                // NOTE: maybe it would be better panic in case of this operation with empty blob list?
-                Ok(false)
+                Err(Error::uninitialized().into())
             }
         } else {
-            Ok(false)
+            Err(Error::active_blob_not_set().into())
         }
     }
 
-    pub(crate) async fn create_active_blob(&self) -> Result<bool> {
+    pub(crate) async fn create_active_blob(&self) -> Result<()> {
         if self.has_active_blob().await {
-            return Ok(false);
+            return Err(Error::active_blob_already_exists().into());
         }
         let mut safe = self.safe.write().await;
         if let None = safe.active_blob {
@@ -756,19 +755,19 @@ impl Inner {
                 .await?
                 .boxed();
             safe.active_blob = Some(blob);
-            Ok(true)
+            Ok(())
         } else {
-            Ok(false)
+            Ok(())
         }
     }
 
-    pub(crate) async fn close_active_blob(&self) -> Result<bool> {
+    pub(crate) async fn close_active_blob(&self) -> Result<()> {
         if !self.has_active_blob().await {
-            return Ok(false);
+            return Err(Error::active_blob_doesnt_exist().into());
         }
         let mut safe = self.safe.write().await;
         if safe.active_blob.is_none() {
-            Ok(false)
+            Err(Error::active_blob_doesnt_exist().into())
         } else {
             // FIXME: write lock is still held, so everyone will wait for dump, maybe it's better
             // to derive this operation to `try_dump_old_blob_indexes`
@@ -777,7 +776,7 @@ impl Inner {
             if let Some(ablob) = safe.active_blob.take() {
                 safe.blobs.write().await.push(*ablob);
             }
-            Ok(true)
+            Ok(())
         }
     }
 

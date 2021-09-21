@@ -684,7 +684,7 @@ async fn test_manual_close_active_blob() {
     assert_eq!(storage.blobs_count().await, 1);
     assert!(path.join("test.0.blob").exists());
     sleep(Duration::from_millis(1000)).await;
-    storage.close_active_blob().await;
+    storage.try_close_active_blob().await.unwrap();
     assert!(path.join("test.0.blob").exists());
     assert!(!path.join("test.1.blob").exists());
     common::clean(storage, path).await.unwrap();
@@ -780,7 +780,7 @@ async fn test_memory_index() {
         KEY_AND_DATA_SIZE * 4 + RECORD_HEADER_SIZE * 13 - 6 * std::mem::size_of::<u32>()
     ); // 4 keys, 7 records in active blob (13 allocated (6 without key on heap))
     assert!(path.join("test.0.blob").exists());
-    storage.close_active_blob().await;
+    storage.try_close_active_blob().await.unwrap();
     // Doesn't work without this: indices are written in old btree (which I want to dump in memory)
     sleep(Duration::from_millis(100)).await;
     for (key, data) in records.iter().skip(7) {
