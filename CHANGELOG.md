@@ -3,7 +3,8 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-- B+ Tree indexes (#84)
+- B+ Tree indexes ([#84](https://github.com/qoollo/pearl/pull/93))
+- Range indexes ([#11](https://github.com/qoollo/pearl/pull/102))
 
 #### Changed
 

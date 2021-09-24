@@ -95,7 +95,7 @@ impl FileIndexTrait for SimpleFileIndex {
 
     fn validate(&self) -> Result<()> {
         // FIXME: check hash here?
-        if self.header.is_written() {
+        if self.header.is_written() && self.header.version() == HEADER_VERSION {
             Ok(())
         } else {
             Err(Error::validation("Index Header is not valid").into())
