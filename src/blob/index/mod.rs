@@ -2,12 +2,25 @@ use crate::prelude::*;
 
 /// bloom filter for faster check record contains in blob
 pub mod bloom;
+mod bptree;
+mod core;
+mod header;
+mod range;
 mod simple;
 mod tools;
 
+#[cfg(test)]
+mod benchmarks;
+
+use bptree::BPTreeFileIndex;
+use header::IndexHeader;
+
+pub(crate) use self::core::{
+    FileIndexTrait, FilterResult, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,
+};
 pub(crate) use super::prelude::*;
-pub(crate) use bloom::{Bloom, Config};
-pub(crate) use simple::{InMemoryIndex, IndexHeader, MemoryAttrs, Simple};
+pub(crate) use bloom::{Bloom, Config as BloomConfig};
+pub(crate) use range::RangeFilter;
 
 mod prelude {
     pub(crate) use super::*;
@@ -18,7 +31,7 @@ mod prelude {
 }
 
 #[async_trait::async_trait]
-pub(crate) trait Index: Send + Sync {
+pub(crate) trait IndexTrait: Send + Sync {
     async fn get_all(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>>;
     fn push(&mut self, h: RecordHeader) -> Result<()>;

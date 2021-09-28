@@ -82,7 +82,7 @@ mod prelude {
 
     pub(crate) use anyhow::{Context as ErrorContexts, Result};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
-    pub(crate) use blob::{self, Blob, BloomConfig};
+    pub(crate) use blob::{self, Blob, BloomConfig, IndexConfig};
     pub(crate) use futures::{
         future,
         lock::Mutex,

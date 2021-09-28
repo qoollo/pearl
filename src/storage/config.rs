@@ -10,7 +10,7 @@ pub(crate) struct Config {
     update_interval_ms: u64,
     allow_duplicates: bool,
     ignore_corrupted: bool,
-    filter: Option<BloomConfig>,
+    index: IndexConfig,
     dump_sem: Arc<Semaphore>,
 }
 
@@ -52,8 +52,8 @@ impl Config {
     }
 
     #[inline]
-    pub fn filter(&self) -> Option<BloomConfig> {
-        self.filter.clone()
+    pub fn index(&self) -> IndexConfig {
+        self.index.clone()
     }
 
     #[inline]
@@ -93,8 +93,8 @@ impl Config {
         self.ignore_corrupted = ignore_corrupted;
     }
 
-    pub fn set_filter(&mut self, filter: BloomConfig) {
-        self.filter = Some(filter);
+    pub fn set_index(&mut self, index: IndexConfig) {
+        self.index = index
     }
 
     pub fn set_create_work_dir(&mut self, create: bool) {
@@ -118,7 +118,7 @@ impl Default for Config {
             update_interval_ms: 100,
             allow_duplicates: false,
             ignore_corrupted: false,
-            filter: None,
+            index: Default::default(),
             dump_sem: Arc::new(Semaphore::new(1)),
         }
     }

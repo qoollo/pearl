@@ -41,7 +41,7 @@ tokio-stream = "0.1"
 
 [dependencies.tokio]
 version = "1.10"
-features = ["fs", "sync", "time", "rt", "macros", "rt-multi-thread"]
+features = ["fs", "io-util", "sync", "time", "rt", "macros", "rt-multi-thread"]
 
 [features]
 # default = ["benchmark"]
