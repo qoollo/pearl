@@ -8,7 +8,10 @@ documentation = "https://docs.rs/pearl"
 keywords = ["blob", "blob-storage", "append-only", "key-value", "async"]
 categories = ["data-structures", "filesystem"]
 license = "MIT"
-authors = ["Pavel Yakushin <p.yakushin@qoollo.com>", "Kirill Bushminkin <kbushminkin@gmail.com>"]
+authors = [
+    "Pavel Yakushin <p.yakushin@qoollo.com>",
+    "Kirill Bushminkin <kbushminkin@gmail.com>",
+]
 edition = "2018"
 readme = "README.md"
 
@@ -21,6 +24,7 @@ codegen-units = 1
 ahash = "0.7"
 anyhow = "1.0"
 async-trait = "0.1"
+async-recursion = "0.3.2"
 bincode = "1.3"
 bitvec = "0.22"
 chrono = "0.4"
@@ -29,7 +33,8 @@ env_logger = "0.8"
 futures = "0.3"
 log = "0.4"
 rand = "0.8"
-rio = "0.9.4"
+#rio = "0.9.4"
+rio = { path = "../rio" }
 serde = "1.0"
 serde_derive = "1.0"
 thiserror = "1.0"
@@ -39,7 +44,7 @@ tokio-stream = "0.1"
 
 [dependencies.tokio]
 version = "1.5"
-features = ["fs","sync", "time", "rt", "macros", "rt-multi-thread"]
+features = ["fs", "sync", "time", "rt", "macros", "rt-multi-thread"]
 
 [features]
 # default = ["benchmark"]

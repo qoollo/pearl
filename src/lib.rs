@@ -66,7 +66,9 @@ mod record;
 mod storage;
 
 pub use blob::Entry;
-pub use bloom::*;
+pub use bloom::{
+    Bloom, BloomDataProvider, BloomProvider, Config as BloomConfig, HierarchicalBloom,
+};
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;

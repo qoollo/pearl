@@ -13,26 +13,11 @@ pub trait BloomDataProvider: Clone + Send + Sync {
 #[async_trait::async_trait]
 pub trait BloomProvider {
     /// Bloom key
-    type Key: ?Sized + Sync + Send;
+    type Key: Sync + Send + ?Sized;
     /// Check if element in filter
     async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>>;
     /// Returns freed memory
     async fn offload_buffer(&mut self, needed_memory: usize) -> usize;
-}
-
-#[async_trait::async_trait]
-impl<P, K> BloomProvider for Arc<P>
-where
-    P: BloomProvider<Key = K> + Send + Sync,
-    K: Sync + Send + ?Sized,
-{
-    type Key = K;
-
-    async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>> {
-        P::check_filter(self, item).await
-    }
-
-    async fn offload_buffer(&mut self, needed_memory: usize) -> usize {
-        P::offload_buffer(&mut self, needed_memory).await
-    }
+    /// Returns overall filter
+    async fn get_filter(&self) -> Option<Bloom>;
 }

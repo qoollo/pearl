@@ -298,6 +298,10 @@ where
             0
         }
     }
+
+    async fn get_filter(&self) -> Option<Bloom> {
+        Some(self.filter.clone())
+    }
 }
 
 #[async_trait::async_trait]

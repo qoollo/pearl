@@ -46,7 +46,7 @@ impl Builder {
     /// returns error if not all params are set.
     /// # Errors
     /// Return error if some of the required params is missed
-    pub fn build<K: Key>(self) -> Result<Storage<K>> {
+    pub fn build<K: Key + Send + Sync>(self) -> Result<Storage<K>> {
         let mut missed_params = String::new();
         if self.config.work_dir().is_none() {
             missed_params.push_str("> work_dir\n");

@@ -351,6 +351,10 @@ impl BloomProvider for Blob {
     async fn offload_buffer(&mut self, needed_memory: usize) -> usize {
         self.index.offload_buffer(needed_memory).await
     }
+
+    async fn get_filter(&self) -> Option<Bloom> {
+        self.index.get_filter().await
+    }
 }
 
 #[derive(Debug, Clone)]

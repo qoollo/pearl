@@ -87,7 +87,7 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     Ok(content)
 }
 
-impl<K: Key> Storage<K> {
+impl<K: Key + Send + Sync> Storage<K> {
     pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
         let dump_sem = config.dump_sem();
         let inner = Inner::new(config, ioring);
@@ -570,25 +570,7 @@ impl<K: Key> Storage<K> {
     /// but false negatives are not.
     /// In other words, `check_bloom` returns either "possibly in storage" or "definitely not".
     pub async fn check_bloom(&self, key: &K) -> Option<bool> {
-        trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
-        let inner = self.inner.safe.read().await;
-        let in_active = if let Some(active_blob) = inner.active_blob.as_ref() {
-            active_blob.check_bloom_simple(key.as_ref()).await == Some(true)
-        } else {
-            false
-        };
-
-        let in_closed = inner
-            .blobs
-            .read()
-            .await
-            .iter()
-            .map(|blob| blob.check_bloom_simple(key.as_ref()))
-            .collect::<FuturesUnordered<_>>()
-            .any(|value| value == Some(true))
-            .await;
-
-        Some(in_active || in_closed)
+        self.check_filter(key).await.unwrap_or(None)
     }
 
     /// Offload bloom filters for closed blobs
@@ -705,7 +687,7 @@ impl Safe {
     fn new() -> Self {
         Self {
             active_blob: None,
-            blobs: Arc::new(RwLock::new(Vec::new())),
+            blobs: Default::default(),
             lock_file: None,
         }
     }
@@ -791,20 +773,32 @@ where
 {
     type Key = K;
     async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>> {
-        Ok(self.check_bloom(item).await)
+        trace!("offload bloom filters");
+        let inner = self.inner.safe.read().await;
+        let mut contains = if let Some(blob) = &inner.active_blob {
+            blob.check_filter(item.as_ref()).await?.unwrap_or(false)
+        } else {
+            false
+        };
+        contains = contains || {
+            let blobs = inner.blobs.read().await;
+            blobs.check_filter(item.as_ref()).await?.unwrap_or(false)
+        };
+        Ok(Some(contains))
     }
 
     async fn offload_buffer(&mut self, needed_memory: usize) -> usize {
-        let mut total_freed = 0;
         trace!("offload bloom filters");
         let inner = self.inner.safe.read().await;
-        for blob in inner.blobs.write().await.iter_mut() {
-            if total_freed < needed_memory as usize {
-                total_freed += blob.offload_buffer(needed_memory).await;
-            } else {
-                break;
-            }
-        }
-        total_freed
+        let mut blobs = inner.blobs.write().await;
+        blobs.offload_buffer(needed_memory).await
+    }
+
+    async fn get_filter(&self) -> Option<Bloom> {
+        let safe = self.inner.safe.read().await;
+        let mut filter = safe.blobs.read().await.get_filter().await?;
+        let active_filter = safe.active_blob.as_ref()?.get_filter().await?;
+        filter.checked_add_assign(&active_filter)?;
+        Some(filter)
     }
 }
