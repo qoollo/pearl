@@ -114,7 +114,7 @@ impl Blob {
         let mut is_index_corrupted = false;
         let index = if index_name.exists() {
             trace!("file exists");
-            Index::from_file(index_name.clone(), index_config.clone(), ioring)
+            Index::from_file(index_name.clone(), index_config.clone(), ioring.clone())
                 .await
                 .or_else(|error| {
                     if let Some(io_error) = error.downcast_ref::<IOError>() {
