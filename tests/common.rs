@@ -26,7 +26,7 @@ impl AsRef<[u8]> for KeyTest {
 
 impl AsRef<KeyTest> for KeyTest {
     fn as_ref(&self) -> &KeyTest {
-        &self
+        self
     }
 }
 

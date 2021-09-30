@@ -3,15 +3,40 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- B+ Tree indexes ([#84](https://github.com/qoollo/pearl/pull/93))
+- Range indexes ([#11](https://github.com/qoollo/pearl/pull/102))
 
 #### Changed
-- Add key size check for blob from file ([#99](https://github.com/qoollo/pearl/pull/99)) 
 - Rebuild corrupted index automatically during startup ([#94](https://github.com/qoollo/pearl/pull/94))
 
 #### Fixed
-- Fix warnings ([#100](https://github.com/qoollo/pearl/pull/100)) 
 
 #### Updated
+
+
+## [0.6.2] - 2021-09-14
+#### Added
+- Setup build and test with GitHub Actions (#113)
+
+#### Changed
+- Helpers for build time, commit hash and version moved to `build_info` mod.
+- Build time format.
+- `build_time.rs` added to `.gitignore`.
+
+
+## [0.6.1] - 2021-08-13
+#### Updated
+- Blob version v0 -> v1
+
+
+## [0.6.0] - 2021-08-13
+#### Changed
+- Add key size check for blob from file (#99)
+- `ahash` version fixed on `=v0.7.4` (#112)
+
+
+#### Fixed
+- Fix lint warnings (#100)
 
 
 ## [0.5.14] - 2021-04-14
