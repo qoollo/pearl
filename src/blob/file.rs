@@ -1,4 +1,5 @@
 use std::os::unix::prelude::FileExt;
+use tokio::io::AsyncWriteExt;
 
 use super::prelude::*;
 
@@ -171,6 +172,10 @@ impl File {
         } else {
             self.write_fd.read().await.sync_all().await
         }
+    }
+
+    pub(crate) async fn flush(&self) -> IOResult<()> {
+        self.write_fd.write().await.flush().await
     }
 
     async fn blocking_call<F, R>(f: F) -> R
