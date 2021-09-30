@@ -114,7 +114,7 @@ impl Blob {
         let mut is_index_corrupted = false;
         let index = if index_name.exists() {
             trace!("file exists");
-            Index::from_file(index_name, index_config, ioring)
+            Index::from_file(index_name.clone(), index_config.clone(), ioring)
                 .await
                 .or_else(|error| {
                     if let Some(io_error) = error.downcast_ref::<IOError>() {
@@ -127,7 +127,7 @@ impl Blob {
                         }
                     }
                     is_index_corrupted = true;
-                    Ok(SimpleIndex::new(index_name, ioring, filter_config))
+                    Ok(Index::new(index_name, ioring, index_config))
                 })?
         } else {
             trace!("file not found, create new");
