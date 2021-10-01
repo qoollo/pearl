@@ -320,10 +320,6 @@ impl BPTreeFileIndex {
 
     async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
         self.validate()?;
-        if self.header.version() != HEADER_VERSION {
-            let param = ValidationParam::IndexVersion;
-            return Err(Error::validation(param, "header version mismatch").into());
-        }
         if !Self::hash_valid(&self.header, buf)? {
             let param = ValidationParam::IndexChecksum;
             return Err(Error::validation(param, "header hash mismatch").into());

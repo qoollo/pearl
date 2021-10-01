@@ -249,10 +249,6 @@ impl SimpleFileIndex {
             let param = ValidationParam::IndexChecksum;
             return Err(Error::validation(param, "header hash mismatch").into());
         }
-        if self.header.version() != HEADER_VERSION {
-            let param = ValidationParam::IndexVersion;
-            return Err(Error::validation(param, "header version mismatch").into());
-        }
         Ok(())
     }
 
