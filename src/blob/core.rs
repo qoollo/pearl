@@ -201,7 +201,13 @@ impl Blob {
     }
 
     fn check_blob_header(header: &Header) -> Result<()> {
-        if header.magic_byte == BLOB_MAGIC_BYTE {
+        if header.version != BLOB_VERSION {
+            panic!(
+                "old blob version: {}, expected: {}",
+                header.version, BLOB_VERSION
+            );
+        }
+        if header.magic_byte != BLOB_MAGIC_BYTE {
             Ok(())
         } else {
             Err(Error::validation("blob header magic byte is wrong").into())
