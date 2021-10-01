@@ -7,6 +7,7 @@ Pearl changelog
 - Range indexes ([#11](https://github.com/qoollo/pearl/pull/102))
 
 #### Changed
+- Rebuild corrupted index automatically during startup ([#94](https://github.com/qoollo/pearl/pull/94))
 
 #### Fixed
 
