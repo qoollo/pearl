@@ -1,5 +1,8 @@
+use crate::error::ValidationErrorKind;
+
 use super::prelude::*;
 use futures::stream::FuturesOrdered;
+use tokio::fs::{create_dir, create_dir_all};
 
 const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
@@ -10,7 +13,7 @@ const O_EXCL: i32 = 128;
 ///
 /// This type is clonable, cloning it will only create a new reference,
 /// not a new storage.
-/// Storage has a type parameter K.
+/// Storage has a type kindeter K.
 /// To perform read/write operations K must implement [`Key`] trait.
 ///
 /// # Examples
@@ -106,19 +109,22 @@ impl<K: Key> Storage<K> {
     /// storage creates it, otherwise tries to init existing storage.
     /// # Errors
     /// Returns error in case of failures with IO operations or
-    /// if some of the required params are missed.
+    /// if some of the required kinds are missed.
     ///
     /// [`init()`]: struct.Storage.html#method.init
     pub async fn init(&mut self) -> Result<()> {
         // @TODO implement work dir validation
-        self.prepare_work_dir().await?;
-        let cont_res = work_dir_content(
-            self.inner
-                .config
-                .work_dir()
-                .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?,
-        )
-        .await;
+        self.prepare_work_dir()
+            .await
+            .context("failed to prepare work dir")?;
+        let wd = self
+            .inner
+            .config
+            .work_dir()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
+        let cont_res = work_dir_content(wd)
+            .await
+            .with_context(|| format!("failed to read work dir content: {}", wd.display()));
         trace!("work dir content loaded");
         if let Some(files) = cont_res? {
             trace!("storage init from existing files");
@@ -426,7 +432,7 @@ impl<K: Key> Storage<K> {
             debug!("work dir exists: {}", path.display());
         } else if self.inner.config.create_work_dir() {
             debug!("creating work dir recursively: {}", path.display());
-            std::fs::create_dir_all(path)?;
+            create_dir_all(path).await?;
         } else {
             error!("work dir path not found: {}", path.display());
             return Err(Error::work_dir_unavailable(
@@ -441,9 +447,16 @@ impl<K: Key> Storage<K> {
             debug!("{} dir exists", path.display());
         } else {
             debug!("creating dir for corrupted files: {}", path.display());
-            std::fs::create_dir(corrupted_dir_path)?;
+            create_dir(corrupted_dir_path).await.with_context(|| {
+                format!(
+                    "failed to create dir for corrupted files: {}",
+                    path.display()
+                )
+            })?;
         }
-        self.try_lock_dir(path).await
+        self.try_lock_dir(path)
+            .await
+            .with_context(|| format!("failed to lock work dir: {}", path.display()))
     }
 
     async fn try_lock_dir<'a>(&'a self, path: &'a Path) -> Result<()> {
@@ -546,14 +559,11 @@ impl<K: Key> Storage<K> {
             match blob_res {
                 Ok(blob) => blobs.push(blob),
                 Err((e, file)) => {
-                    let msg = format!(
-                        "Failed to read existing blob!\nPath: {:?};\nReason: {:?}.",
-                        file, e
-                    );
+                    let msg = format!("Failed to read existing blob: {}", file.display());
                     if config.ignore_corrupted() {
-                        error!("{}", msg);
+                        error!("{}, cause: {:#}", msg, e);
                     } else if Self::should_save_corrupted_blob(&e) {
-                        log::error!(
+                        error!(
                             "save corrupted blob '{}' to directory '{}'",
                             file.display(),
                             config.corrupted_dir_name()
@@ -561,7 +571,7 @@ impl<K: Key> Storage<K> {
                         Self::save_corrupted_blob(&file, config.corrupted_dir_name())
                             .await
                             .with_context(|| {
-                                anyhow::anyhow!(format!("failed to save corrupted blob {:?}", file))
+                                anyhow!(format!("failed to save corrupted blob {:?}", file))
                             })?;
                     } else {
                         return Err(e.context(msg));
@@ -573,9 +583,13 @@ impl<K: Key> Storage<K> {
     }
 
     fn should_save_corrupted_blob(error: &anyhow::Error) -> bool {
+        debug!("decide wether to save corrupted blobs: {:#}", error);
         if let Some(error) = error.downcast_ref::<Error>() {
             return match error.kind() {
-                ErrorKind::Bincode(_) | ErrorKind::Validation(_) => true,
+                ErrorKind::Bincode(_) => true,
+                ErrorKind::Validation { kind, cause: _ } => {
+                    !matches!(kind, ValidationErrorKind::BlobVersion)
+                }
                 _ => false,
             };
         }
@@ -583,18 +597,18 @@ impl<K: Key> Storage<K> {
     }
 
     async fn save_corrupted_blob(path: &Path, corrupted_dir_name: &str) -> Result<()> {
-        let parent = path.parent().ok_or_else(|| {
-            anyhow::anyhow!("[{}] blob path don't have parent directory", path.display())
-        })?;
+        let parent = path
+            .parent()
+            .ok_or_else(|| anyhow!("[{}] blob path don't have parent directory", path.display()))?;
         let file_name = path
             .file_name()
-            .ok_or_else(|| anyhow::anyhow!("[{}] blob path don't have file name", path.display()))?
+            .ok_or_else(|| anyhow!("[{}] blob path don't have file name", path.display()))?
             .to_os_string();
         let corrupted_path = parent.join(corrupted_dir_name).join(file_name);
         tokio::fs::rename(&path, &corrupted_path)
             .await
             .with_context(|| {
-                anyhow::anyhow!(format!(
+                anyhow!(format!(
                     "failed to move file {:?} to {:?}",
                     path, corrupted_path
                 ))
@@ -606,9 +620,9 @@ impl<K: Key> Storage<K> {
     async fn remove_index_by_blob_path(path: &Path) -> Result<()> {
         let index_path = path.with_extension(blob::BLOB_INDEX_FILE_EXTENSION);
         if index_path.exists() {
-            tokio::fs::remove_file(&index_path).await.with_context(|| {
-                anyhow::anyhow!(format!("failed to remove file {:?}", index_path))
-            })?;
+            tokio::fs::remove_file(&index_path)
+                .await
+                .with_context(|| anyhow!(format!("failed to remove file {:?}", index_path)))?;
         }
         Ok(())
     }

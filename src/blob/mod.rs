@@ -1,6 +1,7 @@
 mod core;
 mod entry;
 mod file;
+mod header;
 mod index;
 
 pub(crate) use self::core::BLOB_INDEX_FILE_EXTENSION;
