@@ -1,3 +1,5 @@
+use crate::error::ValidationParam;
+
 use super::prelude::*;
 use futures::stream::FuturesOrdered;
 use tokio::fs::{create_dir, create_dir_all};
@@ -557,14 +559,11 @@ impl<K: Key> Storage<K> {
             match blob_res {
                 Ok(blob) => blobs.push(blob),
                 Err((e, file)) => {
-                    let msg = format!(
-                        "Failed to read existing blob!\nPath: {:?};\nReason: {:?}.",
-                        file, e
-                    );
+                    let msg = format!("Failed to read existing blob: {}", file.display());
                     if config.ignore_corrupted() {
-                        error!("{}", msg);
+                        error!("{}, cause: {:#}", msg, e);
                     } else if Self::should_save_corrupted_blob(&e) {
-                        log::error!(
+                        error!(
                             "save corrupted blob '{}' to directory '{}'",
                             file.display(),
                             config.corrupted_dir_name()
@@ -572,7 +571,7 @@ impl<K: Key> Storage<K> {
                         Self::save_corrupted_blob(&file, config.corrupted_dir_name())
                             .await
                             .with_context(|| {
-                                anyhow::anyhow!(format!("failed to save corrupted blob {:?}", file))
+                                anyhow!(format!("failed to save corrupted blob {:?}", file))
                             })?;
                     } else {
                         return Err(e.context(msg));
@@ -584,12 +583,15 @@ impl<K: Key> Storage<K> {
     }
 
     fn should_save_corrupted_blob(error: &anyhow::Error) -> bool {
+        debug!("decide wether to save corrupted blobs: {:#}", error);
         if let Some(error) = error.downcast_ref::<Error>() {
             return match error.kind() {
-                ErrorKind::Bincode(_)
-                | ErrorKind::BlobValidation(_)
-                | ErrorKind::RecordValidation(_)
-                | ErrorKind::IndexValidation(_) => true,
+                ErrorKind::Bincode(_) => true,
+                ErrorKind::Validation { param, cause: _ }
+                    if param != &ValidationParam::BlobVersion =>
+                {
+                    true
+                }
                 _ => false,
             };
         }
@@ -597,18 +599,18 @@ impl<K: Key> Storage<K> {
     }
 
     async fn save_corrupted_blob(path: &Path, corrupted_dir_name: &str) -> Result<()> {
-        let parent = path.parent().ok_or_else(|| {
-            anyhow::anyhow!("[{}] blob path don't have parent directory", path.display())
-        })?;
+        let parent = path
+            .parent()
+            .ok_or_else(|| anyhow!("[{}] blob path don't have parent directory", path.display()))?;
         let file_name = path
             .file_name()
-            .ok_or_else(|| anyhow::anyhow!("[{}] blob path don't have file name", path.display()))?
+            .ok_or_else(|| anyhow!("[{}] blob path don't have file name", path.display()))?
             .to_os_string();
         let corrupted_path = parent.join(corrupted_dir_name).join(file_name);
         tokio::fs::rename(&path, &corrupted_path)
             .await
             .with_context(|| {
-                anyhow::anyhow!(format!(
+                anyhow!(format!(
                     "failed to move file {:?} to {:?}",
                     path, corrupted_path
                 ))
@@ -620,9 +622,9 @@ impl<K: Key> Storage<K> {
     async fn remove_index_by_blob_path(path: &Path) -> Result<()> {
         let index_path = path.with_extension(blob::BLOB_INDEX_FILE_EXTENSION);
         if index_path.exists() {
-            tokio::fs::remove_file(&index_path).await.with_context(|| {
-                anyhow::anyhow!(format!("failed to remove file {:?}", index_path))
-            })?;
+            tokio::fs::remove_file(&index_path)
+                .await
+                .with_context(|| anyhow!(format!("failed to remove file {:?}", index_path)))?;
         }
         Ok(())
     }

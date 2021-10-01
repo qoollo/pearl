@@ -1,5 +1,7 @@
 use tokio::time::Instant;
 
+use crate::error::ValidationParam;
+
 use super::prelude::*;
 
 use super::{header::Header, index::IndexTrait};
@@ -438,7 +440,7 @@ impl RawRecords {
             .context("failed to deserialize index buf vec length")?;
         if key_len != key_size {
             let msg = "blob key_size is not equal to pearl compile-time key size";
-            return Err(Error::blob_validation(msg).into());
+            return Err(Error::validation(ValidationParam::BlobKeySize, msg).into());
         }
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
         debug!(
@@ -456,7 +458,8 @@ impl RawRecords {
         if magic_byte == RECORD_MAGIC_BYTE {
             Ok(())
         } else {
-            Err(Error::record_validation("First record's magic byte is wrong").into())
+            let param = ValidationParam::RecordMagicByte;
+            Err(Error::validation(param, "First record's magic byte is wrong").into())
         }
     }
 

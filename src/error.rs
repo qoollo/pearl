@@ -21,16 +21,9 @@ impl Error {
         Self::new(Kind::WrongFileNamePattern(path))
     }
 
-    pub(crate) fn blob_validation(cause: impl Into<String>) -> Self {
-        Self::new(Kind::BlobValidation(cause.into()))
-    }
-
-    pub(crate) fn record_validation(cause: impl Into<String>) -> Self {
-        Self::new(Kind::RecordValidation(cause.into()))
-    }
-
-    pub(crate) fn index_validation(cause: impl Into<String>) -> Self {
-        Self::new(Kind::IndexValidation(cause.into()))
+    pub(crate) fn validation(param: ValidationParam, cause: impl Into<String>) -> Self {
+        let cause = cause.into();
+        Self::new(Kind::Validation { param, cause })
     }
 
     pub(crate) fn uninitialized() -> Self {
@@ -123,15 +116,39 @@ pub enum Kind {
     WrongFileNamePattern(PathBuf),
     /// Conversion error
     Conversion(String),
-    /// lob validation errors, eg. magic byte check
-    BlobValidation(String),
-    /// Record validation errors, eg. magic byte check
-    RecordValidation(String),
-    /// Index validation errors, eg. magic byte check
-    IndexValidation(String),
+    /// Validation errors, eg. magic byte check
+    Validation {
+        /// Describes what check failed.
+        param: ValidationParam,
+        /// Description of an error cause.
+        cause: String,
+    },
 
     /// Other error
     Other,
+}
+
+/// Variants of validation errors.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ValidationParam {
+    /// Blob key size.
+    BlobKeySize,
+    /// Blob magic byte.
+    BlobMagicByte,
+    /// Blob version.
+    BlobVersion,
+    /// Index checksum.
+    IndexChecksum,
+    /// Existing index write was successfully finished.
+    IndexIsWritten,
+    /// Index version.
+    IndexVersion,
+    /// Record data checksum.
+    RecordDataChecksum,
+    /// Record header checksum.
+    RecordHeaderChecksum,
+    /// Record magic byte.
+    RecordMagicByte,
 }
 
 /// Convenient helper for downcasting anyhow error to pearl error.

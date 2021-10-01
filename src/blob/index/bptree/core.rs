@@ -1,3 +1,5 @@
+use crate::error::ValidationParam;
+
 /// structure of b+-tree index file from the beginning:
 /// 1. Header
 /// 2. b+-tree user buffer (now Bloom filter is stored as this buffer)
@@ -122,11 +124,15 @@ impl FileIndexTrait for BPTreeFileIndex {
 
     fn validate(&self) -> Result<()> {
         // FIXME: check hash here?
-        if self.header.is_written() && self.header.version() == HEADER_VERSION {
-            Ok(())
-        } else {
-            Err(Error::index_validation("Index Header is not valid").into())
+        if !self.header.is_written() {
+            let param = ValidationParam::IndexIsWritten;
+            return Err(Error::validation(param, "Index Header version is not valid").into());
         }
+        if self.header.version() != HEADER_VERSION {
+            let param = ValidationParam::IndexVersion;
+            return Err(Error::validation(param, "Index Header version is not valid").into());
+        }
+        Ok(())
     }
 }
 
@@ -315,10 +321,12 @@ impl BPTreeFileIndex {
     async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
         self.validate()?;
         if self.header.version() != HEADER_VERSION {
-            return Err(Error::index_validation("header version mismatch").into());
+            let param = ValidationParam::IndexVersion;
+            return Err(Error::validation(param, "header version mismatch").into());
         }
         if !Self::hash_valid(&self.header, buf)? {
-            return Err(Error::index_validation("header hash mismatch").into());
+            let param = ValidationParam::IndexChecksum;
+            return Err(Error::validation(param, "header hash mismatch").into());
         }
         Ok(())
     }

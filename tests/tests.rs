@@ -842,29 +842,27 @@ async fn test_memory_index() {
 
 #[tokio::test]
 async fn test_blob_header_validation() {
-    use pearl::error::AsPearlError;
+    use pearl::error::{AsPearlError, ValidationParam};
     use std::os::unix::fs::FileExt;
 
-    let dir_name = common::init("blob_header_validation");
-    let storage = common::create_test_storage(&dir_name, 10_000)
-        .await
-        .unwrap();
+    let path = common::init("blob_header_validation");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let data = vec![1, 1, 2, 3, 5, 8];
     write_one(&storage, 42, &data, None).await.unwrap();
     storage.close().await.expect("storage close failed");
-    let path = std::env::temp_dir().join(&dir_name).join("test.0.blob");
-    info!("path: {}", path.display());
+    let blob_path = std::env::temp_dir().join(&path).join("test.0.blob");
+    info!("path: {}", blob_path.display());
     let file = fs::OpenOptions::new()
         .write(true)
         .create(false)
-        .open(&path)
+        .open(&blob_path)
         .expect("failed to open file");
     let buf = bincode::serialize(&0_u32).expect("failed to serialize u32");
     file.write_at(&buf, 8)
         .expect("failed to overwrite blob version");
 
     let builder = Builder::new()
-        .work_dir(&dir_name)
+        .work_dir(&path)
         .blob_file_name_prefix("test")
         .max_blob_size(10_000)
         .max_data_in_blob(100_000)
@@ -881,10 +879,17 @@ async fn test_blob_header_validation() {
         .init()
         .await
         .expect_err("storage initialized with invalid blob header");
-    info!("{:#?}", err);
+    info!("{:#}", err);
     let pearl_err = err
         .as_pearl_error()
         .expect("result doesn't contains pearl error");
-    let is_correct = matches!(pearl_err.kind(), pearl::ErrorKind::BlobValidation(_));
+    let is_correct = matches!(
+        pearl_err.kind(),
+        pearl::ErrorKind::Validation {
+            param: ValidationParam::BlobVersion,
+            cause: _
+        }
+    );
     assert!(is_correct);
+    common::clean(storage, path).await.unwrap();
 }
