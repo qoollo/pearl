@@ -842,7 +842,7 @@ async fn test_memory_index() {
 
 #[tokio::test]
 async fn test_blob_header_validation() {
-    use pearl::error::{AsPearlError, ValidationParam};
+    use pearl::error::{AsPearlError, ValidationErrorKind};
     use std::os::unix::fs::FileExt;
 
     let path = common::init("blob_header_validation");
@@ -886,7 +886,7 @@ async fn test_blob_header_validation() {
     let is_correct = matches!(
         pearl_err.kind(),
         pearl::ErrorKind::Validation {
-            param: ValidationParam::BlobMagicByte,
+            kind: ValidationErrorKind::BlobMagicByte,
             cause: _
         }
     );

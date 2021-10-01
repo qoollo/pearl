@@ -21,9 +21,9 @@ impl Error {
         Self::new(Kind::WrongFileNamePattern(path))
     }
 
-    pub(crate) fn validation(param: ValidationParam, cause: impl Into<String>) -> Self {
+    pub(crate) fn validation(kind: ValidationErrorKind, cause: impl Into<String>) -> Self {
         let cause = cause.into();
-        Self::new(Kind::Validation { param, cause })
+        Self::new(Kind::Validation { kind, cause })
     }
 
     pub(crate) fn uninitialized() -> Self {
@@ -119,7 +119,7 @@ pub enum Kind {
     /// Validation errors, eg. magic byte check
     Validation {
         /// Describes what check failed.
-        param: ValidationParam,
+        kind: ValidationErrorKind,
         /// Description of an error cause.
         cause: String,
     },
@@ -130,7 +130,7 @@ pub enum Kind {
 
 /// Variants of validation errors.
 #[derive(Debug, Clone, PartialEq)]
-pub enum ValidationParam {
+pub enum ValidationErrorKind {
     /// Blob key size.
     BlobKeySize,
     /// Blob magic byte.

@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use bincode::{deserialize, serialized_size};
 use rio::Rio;
 
-use crate::{blob::File, error::ValidationParam, Error};
+use crate::{blob::File, error::ValidationErrorKind, Error};
 
 use super::FileName;
 
@@ -46,10 +46,10 @@ impl Header {
                 "old blob version: {}, expected: {}",
                 self.version, BLOB_VERSION
             );
-            return Err(Error::validation(ValidationParam::BlobVersion, cause).into());
+            return Err(Error::validation(ValidationErrorKind::BlobVersion, cause).into());
         }
         if self.magic_byte != BLOB_MAGIC_BYTE {
-            let param = ValidationParam::BlobMagicByte;
+            let param = ValidationErrorKind::BlobMagicByte;
             return Err(Error::validation(param, "blob header magic byte mismatch").into());
         }
 
