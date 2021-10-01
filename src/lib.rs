@@ -63,7 +63,8 @@ extern crate ring;
 pub mod build_info;
 
 mod blob;
-mod error;
+/// Types representing various errors that can occur in pearl.
+pub mod error;
 mod record;
 mod storage;
 

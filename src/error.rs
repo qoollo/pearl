@@ -120,3 +120,15 @@ pub enum Kind {
     /// Other error
     Other,
 }
+
+/// Convenient helper for downcasting anyhow error to pearl error.
+pub trait AsPearlError {
+    /// Performs conversion.
+    fn as_pearl_error(&self) -> Option<&Error>;
+}
+
+impl AsPearlError for anyhow::Error {
+    fn as_pearl_error(&self) -> Option<&Error> {
+        todo!()
+    }
+}
