@@ -5,6 +5,7 @@ Pearl changelog
 #### Added
 - B+ Tree indexes ([#84](https://github.com/qoollo/pearl/pull/93))
 - Range indexes ([#11](https://github.com/qoollo/pearl/pull/102))
+- Move corrupted blobs into speacial directory ([#98](https://github.com/qoollo/pearl/pull/98))
 - Blob version validation ([#120](https://github.com/qoollo/pearl/pull/129))
 
 #### Changed

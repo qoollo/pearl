@@ -6,7 +6,7 @@ use super::index::IndexTrait;
 
 const BLOB_VERSION: u32 = 1;
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
-const BLOB_INDEX_FILE_EXTENSION: &str = "index";
+pub(crate) const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 
 /// A [`Blob`] struct representing file with records,
 /// provides methods for read/write access by key
@@ -71,8 +71,7 @@ impl Blob {
         if self.index.on_disk() {
             Ok(0) // 0 bytes dumped
         } else {
-            self.file
-                .fsyncdata()
+            self.fsyncdata()
                 .await
                 .with_context(|| "Blob file dump failed!")?;
             self.index
