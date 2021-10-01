@@ -1,4 +1,4 @@
-use crate::error::ValidationParam;
+use crate::error::ValidationErrorKind;
 
 use super::prelude::*;
 
@@ -98,11 +98,11 @@ impl FileIndexTrait for SimpleFileIndex {
     fn validate(&self) -> Result<()> {
         // FIXME: check hash here?
         if !self.header.is_written() {
-            let param = ValidationParam::IndexIsWritten;
+            let param = ValidationErrorKind::IndexIsWritten;
             return Err(Error::validation(param, "Index Header version is not valid").into());
         }
         if self.header.version() != HEADER_VERSION {
-            let param = ValidationParam::IndexVersion;
+            let param = ValidationErrorKind::IndexVersion;
             return Err(Error::validation(param, "Index Header version is not valid").into());
         }
         Ok(())
@@ -246,12 +246,8 @@ impl SimpleFileIndex {
     async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
         self.validate()?;
         if !Self::hash_valid(&self.header, buf)? {
-            let param = ValidationParam::IndexChecksum;
+            let param = ValidationErrorKind::IndexChecksum;
             return Err(Error::validation(param, "header hash mismatch").into());
-        }
-        if self.header.version() != HEADER_VERSION {
-            let param = ValidationParam::IndexVersion;
-            return Err(Error::validation(param, "header version mismatch").into());
         }
         Ok(())
     }

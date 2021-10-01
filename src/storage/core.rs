@@ -1,4 +1,4 @@
-use crate::error::ValidationParam;
+use crate::error::ValidationErrorKind;
 
 use super::prelude::*;
 use futures::stream::FuturesOrdered;
@@ -13,7 +13,7 @@ const O_EXCL: i32 = 128;
 ///
 /// This type is clonable, cloning it will only create a new reference,
 /// not a new storage.
-/// Storage has a type parameter K.
+/// Storage has a type kindeter K.
 /// To perform read/write operations K must implement [`Key`] trait.
 ///
 /// # Examples
@@ -109,7 +109,7 @@ impl<K: Key> Storage<K> {
     /// storage creates it, otherwise tries to init existing storage.
     /// # Errors
     /// Returns error in case of failures with IO operations or
-    /// if some of the required params are missed.
+    /// if some of the required kinds are missed.
     ///
     /// [`init()`]: struct.Storage.html#method.init
     pub async fn init(&mut self) -> Result<()> {
@@ -575,10 +575,8 @@ impl<K: Key> Storage<K> {
         if let Some(error) = error.downcast_ref::<Error>() {
             return match error.kind() {
                 ErrorKind::Bincode(_) => true,
-                ErrorKind::Validation { param, cause: _ }
-                    if param != &ValidationParam::BlobVersion =>
-                {
-                    true
+                ErrorKind::Validation { kind, cause: _ } => {
+                    !matches!(kind, ValidationErrorKind::BlobVersion)
                 }
                 _ => false,
             };

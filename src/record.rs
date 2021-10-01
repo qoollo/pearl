@@ -1,4 +1,4 @@
-use crate::{error::ValidationParam, prelude::*};
+use crate::{error::ValidationErrorKind, prelude::*};
 
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
@@ -118,7 +118,7 @@ impl Record {
         if self.header().magic_byte == RECORD_MAGIC_BYTE {
             Ok(())
         } else {
-            let param = ValidationParam::RecordMagicByte;
+            let param = ValidationErrorKind::RecordMagicByte;
             Err(Error::validation(param, "wrong magic byte").into())
         }
     }
@@ -132,7 +132,7 @@ impl Record {
                 "wrong data checksum {} vs {}",
                 calc_crc, self.header.data_checksum
             );
-            let param = ValidationParam::RecordDataChecksum;
+            let param = ValidationErrorKind::RecordDataChecksum;
             let e = Error::validation(param, cause);
             error!("{:#?}", e);
             Err(e.into())
@@ -152,7 +152,7 @@ impl Record {
                 "wrong header checksum {} vs {}",
                 calc_crc, self.header.header_checksum
             );
-            let param = ValidationParam::RecordHeaderChecksum;
+            let param = ValidationErrorKind::RecordHeaderChecksum;
             let e = Error::validation(param, cause);
             error!("{:#?}", e);
             Err(Error::from(e).into())

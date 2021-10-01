@@ -2,22 +2,22 @@ use anyhow::{Context, Result};
 use bincode::{deserialize, serialized_size};
 use rio::Rio;
 
-use crate::{blob::File, error::ValidationParam, Error};
+use crate::{blob::File, error::ValidationErrorKind, Error};
 
 use super::FileName;
 
-crate const BLOB_VERSION: u32 = 1;
-crate const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
+pub(crate) const BLOB_VERSION: u32 = 1;
+pub(crate) const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-crate struct Header {
+pub(crate) struct Header {
     magic_byte: u64,
     version: u32,
     flags: u64,
 }
 
 impl Header {
-    crate const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             magic_byte: BLOB_MAGIC_BYTE,
             version: BLOB_VERSION,
@@ -25,7 +25,7 @@ impl Header {
         }
     }
 
-    crate async fn from_file(name: &FileName, ioring: Option<Rio>) -> Result<Self> {
+    pub(crate) async fn from_file(name: &FileName, ioring: Option<Rio>) -> Result<Self> {
         let file = File::open(name.to_path(), ioring)
             .await
             .with_context(|| format!("failed to open blob file: {}", name))?;
@@ -41,16 +41,16 @@ impl Header {
     }
 
     fn validate(&self) -> Result<()> {
+        if self.magic_byte != BLOB_MAGIC_BYTE {
+            let param = ValidationErrorKind::BlobMagicByte;
+            return Err(Error::validation(param, "blob header magic byte mismatch").into());
+        }
         if self.version != BLOB_VERSION {
             let cause = format!(
                 "old blob version: {}, expected: {}",
                 self.version, BLOB_VERSION
             );
-            return Err(Error::validation(ValidationParam::BlobVersion, cause).into());
-        }
-        if self.magic_byte != BLOB_MAGIC_BYTE {
-            let param = ValidationParam::BlobMagicByte;
-            return Err(Error::validation(param, "blob header magic byte is wrong").into());
+            return Err(Error::validation(ValidationErrorKind::BlobVersion, cause).into());
         }
 
         Ok(())
