@@ -12,6 +12,7 @@ Pearl changelog
 - Rebuild corrupted index automatically during startup ([#94](https://github.com/qoollo/pearl/pull/94))
 
 #### Fixed
+- Create corrupted directory only when needed ([#94](https://github.com/qoollo/pearl/pull/131))
 
 #### Updated
 
