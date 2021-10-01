@@ -106,8 +106,12 @@ impl Blob {
         let name = FileName::from_path(&path)?;
         info!("{} blob init started", name);
         let size = file.size();
-        let header = Header::new();
+
+        let header = Header::from_file(&name, ioring.clone())
+            .await
+            .context("failed to read blob header")?;
         Self::check_blob_header(&header)?;
+
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         trace!("looking for index file: [{}]", index_name);
@@ -437,12 +441,19 @@ impl Header {
             flags: 0,
         }
     }
-}
 
-#[derive(Debug)]
-pub struct Location {
-    offset: u64,
-    size: usize,
+    pub async fn from_file(name: &FileName, ioring: Option<Rio>) -> Result<Self> {
+        let file = File::open(name.to_path(), ioring)
+            .await
+            .with_context(|| format!("failed to open blob file: {}", name))?;
+        let size = serialized_size(&Header::new()).expect("failed to serialize default header");
+        let mut buf = vec![0; size as usize];
+        file.read_at(&mut buf, 0)
+            .await
+            .with_context(|| format!("failed to read from file: {}", name))?;
+        deserialize(&buf)
+            .with_context(|| format!("failed to deserialize header from file: {}", name))
+    }
 }
 
 struct RawRecords {
