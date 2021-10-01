@@ -8,6 +8,7 @@ Pearl changelog
 - Move corrupted blobs into speacial directory ([#98](https://github.com/qoollo/pearl/pull/98)) 
 
 #### Changed
+- Rebuild corrupted index automatically during startup ([#94](https://github.com/qoollo/pearl/pull/94))
 
 #### Fixed
 

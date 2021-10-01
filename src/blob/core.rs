@@ -110,9 +110,24 @@ impl Blob {
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         trace!("looking for index file: [{}]", index_name);
+        let mut is_index_corrupted = false;
         let index = if index_name.exists() {
             trace!("file exists");
-            Index::from_file(index_name, index_config, ioring).await?
+            Index::from_file(index_name.clone(), index_config.clone(), ioring.clone())
+                .await
+                .or_else(|error| {
+                    if let Some(io_error) = error.downcast_ref::<IOError>() {
+                        match io_error.kind() {
+                            IOErrorKind::PermissionDenied | IOErrorKind::Other => {
+                                warn!("index cannot be regenerated due to error: {}", io_error);
+                                return Err(error);
+                            }
+                            _ => {}
+                        }
+                    }
+                    is_index_corrupted = true;
+                    Ok(Index::new(index_name, ioring, index_config))
+                })?
         } else {
             trace!("file not found, create new");
             Index::new(index_name, ioring, index_config)
@@ -127,7 +142,7 @@ impl Blob {
             current_offset: Arc::new(Mutex::new(size)),
         };
         trace!("call update index");
-        if size as u64 > header_size {
+        if is_index_corrupted || size as u64 > header_size {
             blob.try_regenerate_index(blob_key_size as usize)
                 .await
                 .context("failed to regenerate index")?;
