@@ -2,10 +2,8 @@ use tokio::time::Instant;
 
 use super::prelude::*;
 
-use super::index::IndexTrait;
+use super::{header::Header, index::IndexTrait};
 
-const BLOB_VERSION: u32 = 1;
-const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 pub(crate) const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 
 /// A [`Blob`] struct representing file with records,
@@ -109,7 +107,6 @@ impl Blob {
         let header = Header::from_file(&name, ioring.clone())
             .await
             .context("failed to read blob header")?;
-        Self::check_blob_header(&header)?;
 
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
@@ -201,20 +198,6 @@ impl Blob {
 
     pub(crate) const fn check_data_consistency() {
         // @TODO implement
-    }
-
-    fn check_blob_header(header: &Header) -> Result<()> {
-        if header.version != BLOB_VERSION {
-            panic!(
-                "old blob version: {}, expected: {}",
-                header.version, BLOB_VERSION
-            );
-        }
-        if header.magic_byte != BLOB_MAGIC_BYTE {
-            Ok(())
-        } else {
-            Err(Error::validation("blob header magic byte is wrong").into())
-        }
     }
 
     pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
@@ -422,36 +405,6 @@ impl FileName {
 impl Display for FileName {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "{}.{}.{}", self.name_prefix, self.id, self.extension)
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Header {
-    magic_byte: u64,
-    version: u32,
-    flags: u64,
-}
-
-impl Header {
-    pub const fn new() -> Self {
-        Self {
-            magic_byte: BLOB_MAGIC_BYTE,
-            version: BLOB_VERSION,
-            flags: 0,
-        }
-    }
-
-    pub async fn from_file(name: &FileName, ioring: Option<Rio>) -> Result<Self> {
-        let file = File::open(name.to_path(), ioring)
-            .await
-            .with_context(|| format!("failed to open blob file: {}", name))?;
-        let size = serialized_size(&Header::new()).expect("failed to serialize default header");
-        let mut buf = vec![0; size as usize];
-        file.read_at(&mut buf, 0)
-            .await
-            .with_context(|| format!("failed to read from file: {}", name))?;
-        deserialize(&buf)
-            .with_context(|| format!("failed to deserialize header from file: {}", name))
     }
 }
 

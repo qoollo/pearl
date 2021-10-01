@@ -1,3 +1,4 @@
+#![feature(crate_visibility_modifier)]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 #![warn(clippy::all)]
