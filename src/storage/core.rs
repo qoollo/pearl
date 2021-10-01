@@ -436,6 +436,13 @@ impl<K: Key> Storage<K> {
             ))
             .with_context(|| "failed to prepare work dir");
         }
+        let corrupted_dir_path = path.join(self.inner.config.corrupted_dir_name());
+        if corrupted_dir_path.exists() {
+            debug!("{} dir exists", path.display());
+        } else {
+            debug!("creating dir for corrupted files: {}", path.display());
+            std::fs::create_dir(corrupted_dir_path)?;
+        }
         self.try_lock_dir(path).await
     }
 
@@ -545,6 +552,17 @@ impl<K: Key> Storage<K> {
                     );
                     if config.ignore_corrupted() {
                         error!("{}", msg);
+                    } else if Self::should_save_corrupted_blob(&e) {
+                        log::error!(
+                            "save corrupted blob '{}' to directory '{}'",
+                            file.display(),
+                            config.corrupted_dir_name()
+                        );
+                        Self::save_corrupted_blob(&file, config.corrupted_dir_name())
+                            .await
+                            .with_context(|| {
+                                anyhow::anyhow!(format!("failed to save corrupted blob {:?}", file))
+                            })?;
                     } else {
                         return Err(e.context(msg));
                     }
@@ -552,6 +570,47 @@ impl<K: Key> Storage<K> {
             }
         }
         Ok(blobs)
+    }
+
+    fn should_save_corrupted_blob(error: &anyhow::Error) -> bool {
+        if let Some(error) = error.downcast_ref::<Error>() {
+            return match error.kind() {
+                ErrorKind::Bincode(_) | ErrorKind::Validation(_) => true,
+                _ => false,
+            };
+        }
+        false
+    }
+
+    async fn save_corrupted_blob(path: &Path, corrupted_dir_name: &str) -> Result<()> {
+        let parent = path.parent().ok_or_else(|| {
+            anyhow::anyhow!("[{}] blob path don't have parent directory", path.display())
+        })?;
+        let file_name = path
+            .file_name()
+            .ok_or_else(|| anyhow::anyhow!("[{}] blob path don't have file name", path.display()))?
+            .to_os_string();
+        let corrupted_path = parent.join(corrupted_dir_name).join(file_name);
+        tokio::fs::rename(&path, &corrupted_path)
+            .await
+            .with_context(|| {
+                anyhow::anyhow!(format!(
+                    "failed to move file {:?} to {:?}",
+                    path, corrupted_path
+                ))
+            })?;
+        Self::remove_index_by_blob_path(path).await?;
+        Ok(())
+    }
+
+    async fn remove_index_by_blob_path(path: &Path) -> Result<()> {
+        let index_path = path.with_extension(blob::BLOB_INDEX_FILE_EXTENSION);
+        if index_path.exists() {
+            tokio::fs::remove_file(&index_path).await.with_context(|| {
+                anyhow::anyhow!(format!("failed to remove file {:?}", index_path))
+            })?;
+        }
+        Ok(())
     }
 
     /// `contains` is used to check whether a key is in storage.
