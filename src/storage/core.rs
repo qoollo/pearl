@@ -442,18 +442,6 @@ impl<K: Key> Storage<K> {
             ))
             .with_context(|| "failed to prepare work dir");
         }
-        let corrupted_dir_path = path.join(self.inner.config.corrupted_dir_name());
-        if corrupted_dir_path.exists() {
-            debug!("{} dir exists", path.display());
-        } else {
-            debug!("creating dir for corrupted files: {}", path.display());
-            create_dir(corrupted_dir_path).await.with_context(|| {
-                format!(
-                    "failed to create dir for corrupted files: {}",
-                    path.display()
-                )
-            })?;
-        }
         self.try_lock_dir(path)
             .await
             .with_context(|| format!("failed to lock work dir: {}", path.display()))
@@ -606,7 +594,19 @@ impl<K: Key> Storage<K> {
             .file_name()
             .ok_or_else(|| anyhow!("[{}] blob path don't have file name", path.display()))?
             .to_os_string();
-        let corrupted_path = parent.join(corrupted_dir_name).join(file_name);
+        let corrupted_dir_path = parent.join(corrupted_dir_name);
+        let corrupted_path = corrupted_dir_path.join(file_name);
+        if corrupted_dir_path.exists() {
+            debug!("{} dir exists", path.display());
+        } else {
+            debug!("creating dir for corrupted files: {}", path.display());
+            create_dir(corrupted_dir_path).await.with_context(|| {
+                format!(
+                    "failed to create dir for corrupted files: {}",
+                    path.display()
+                )
+            })?;
+        }
         tokio::fs::rename(&path, &corrupted_path)
             .await
             .with_context(|| {
