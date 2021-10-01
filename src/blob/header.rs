@@ -42,15 +42,16 @@ impl Header {
 
     fn validate(&self) -> Result<()> {
         if self.version != BLOB_VERSION {
-            panic!(
+            let cause = format!(
                 "old blob version: {}, expected: {}",
                 self.version, BLOB_VERSION
             );
+            return Err(Error::blob_validation(cause).into());
         }
         if self.magic_byte != BLOB_MAGIC_BYTE {
-            Ok(())
-        } else {
-            Err(Error::validation("blob header magic byte is wrong").into())
+            return Err(Error::blob_validation("blob header magic byte is wrong").into());
         }
+
+        Ok(())
     }
 }

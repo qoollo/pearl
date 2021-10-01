@@ -125,7 +125,7 @@ impl FileIndexTrait for BPTreeFileIndex {
         if self.header.is_written() && self.header.version() == HEADER_VERSION {
             Ok(())
         } else {
-            Err(Error::validation("Index Header is not valid").into())
+            Err(Error::index_validation("Index Header is not valid").into())
         }
     }
 }
@@ -315,10 +315,10 @@ impl BPTreeFileIndex {
     async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
         self.validate()?;
         if self.header.version() != HEADER_VERSION {
-            return Err(Error::validation("header version mismatch").into());
+            return Err(Error::index_validation("header version mismatch").into());
         }
         if !Self::hash_valid(&self.header, buf)? {
-            return Err(Error::validation("header hash mismatch").into());
+            return Err(Error::index_validation("header hash mismatch").into());
         }
         Ok(())
     }

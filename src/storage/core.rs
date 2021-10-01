@@ -1,5 +1,6 @@
 use super::prelude::*;
 use futures::stream::FuturesOrdered;
+use tokio::fs::{create_dir, create_dir_all};
 
 const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
@@ -111,14 +112,17 @@ impl<K: Key> Storage<K> {
     /// [`init()`]: struct.Storage.html#method.init
     pub async fn init(&mut self) -> Result<()> {
         // @TODO implement work dir validation
-        self.prepare_work_dir().await?;
-        let cont_res = work_dir_content(
-            self.inner
-                .config
-                .work_dir()
-                .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?,
-        )
-        .await;
+        self.prepare_work_dir()
+            .await
+            .context("failed to prepare work dir")?;
+        let wd = self
+            .inner
+            .config
+            .work_dir()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
+        let cont_res = work_dir_content(wd)
+            .await
+            .with_context(|| format!("failed to read work dir content: {}", wd.display()));
         trace!("work dir content loaded");
         if let Some(files) = cont_res? {
             trace!("storage init from existing files");
@@ -426,7 +430,7 @@ impl<K: Key> Storage<K> {
             debug!("work dir exists: {}", path.display());
         } else if self.inner.config.create_work_dir() {
             debug!("creating work dir recursively: {}", path.display());
-            std::fs::create_dir_all(path)?;
+            create_dir_all(path).await?;
         } else {
             error!("work dir path not found: {}", path.display());
             return Err(Error::work_dir_unavailable(
@@ -441,9 +445,16 @@ impl<K: Key> Storage<K> {
             debug!("{} dir exists", path.display());
         } else {
             debug!("creating dir for corrupted files: {}", path.display());
-            std::fs::create_dir(corrupted_dir_path)?;
+            create_dir(corrupted_dir_path).await.with_context(|| {
+                format!(
+                    "failed to create dir for corrupted files: {}",
+                    path.display()
+                )
+            })?;
         }
-        self.try_lock_dir(path).await
+        self.try_lock_dir(path)
+            .await
+            .with_context(|| format!("failed to lock work dir: {}", path.display()))
     }
 
     async fn try_lock_dir<'a>(&'a self, path: &'a Path) -> Result<()> {
@@ -575,7 +586,10 @@ impl<K: Key> Storage<K> {
     fn should_save_corrupted_blob(error: &anyhow::Error) -> bool {
         if let Some(error) = error.downcast_ref::<Error>() {
             return match error.kind() {
-                ErrorKind::Bincode(_) | ErrorKind::Validation(_) => true,
+                ErrorKind::Bincode(_)
+                | ErrorKind::BlobValidation(_)
+                | ErrorKind::RecordValidation(_)
+                | ErrorKind::IndexValidation(_) => true,
                 _ => false,
             };
         }

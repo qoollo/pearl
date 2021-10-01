@@ -437,8 +437,8 @@ impl RawRecords {
         let key_len = bincode::deserialize::<usize>(key_len_buf)
             .context("failed to deserialize index buf vec length")?;
         if key_len != key_size {
-            let msg = "blob key_sizeis not equal to pearl compile-time key size";
-            return Err(Error::validation(msg).into());
+            let msg = "blob key_size is not equal to pearl compile-time key size";
+            return Err(Error::blob_validation(msg).into());
         }
         let record_header_size = RecordHeader::default().serialized_size() + key_len as u64;
         debug!(
@@ -456,7 +456,7 @@ impl RawRecords {
         if magic_byte == RECORD_MAGIC_BYTE {
             Ok(())
         } else {
-            Err(Error::validation("First record's magic byte is wrong").into())
+            Err(Error::record_validation("First record's magic byte is wrong").into())
         }
     }
 

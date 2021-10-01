@@ -21,8 +21,16 @@ impl Error {
         Self::new(Kind::WrongFileNamePattern(path))
     }
 
-    pub(crate) fn validation(cause: impl Into<String>) -> Self {
-        Self::new(Kind::Validation(cause.into()))
+    pub(crate) fn blob_validation(cause: impl Into<String>) -> Self {
+        Self::new(Kind::BlobValidation(cause.into()))
+    }
+
+    pub(crate) fn record_validation(cause: impl Into<String>) -> Self {
+        Self::new(Kind::RecordValidation(cause.into()))
+    }
+
+    pub(crate) fn index_validation(cause: impl Into<String>) -> Self {
+        Self::new(Kind::IndexValidation(cause.into()))
     }
 
     pub(crate) fn uninitialized() -> Self {
@@ -115,8 +123,13 @@ pub enum Kind {
     WrongFileNamePattern(PathBuf),
     /// Conversion error
     Conversion(String),
+    /// lob validation errors, eg. magic byte check
+    BlobValidation(String),
     /// Record validation errors, eg. magic byte check
-    Validation(String),
+    RecordValidation(String),
+    /// Index validation errors, eg. magic byte check
+    IndexValidation(String),
+
     /// Other error
     Other,
 }
@@ -129,6 +142,6 @@ pub trait AsPearlError {
 
 impl AsPearlError for anyhow::Error {
     fn as_pearl_error(&self) -> Option<&Error> {
-        todo!()
+        self.downcast_ref()
     }
 }

@@ -118,7 +118,7 @@ impl Record {
         if self.header().magic_byte == RECORD_MAGIC_BYTE {
             Ok(())
         } else {
-            Err(Error::validation("wrong magic byte").into())
+            Err(Error::record_validation("wrong magic byte").into())
         }
     }
 
@@ -131,7 +131,7 @@ impl Record {
                 "wrong data checksum {} vs {}",
                 calc_crc, self.header.data_checksum
             );
-            let e = Error::validation(cause);
+            let e = Error::record_validation(cause);
             error!("{:#?}", e);
             Err(e.into())
         }
@@ -146,10 +146,11 @@ impl Record {
         if calc_crc == self.header.header_checksum {
             Ok(())
         } else {
-            let e = ErrorKind::Validation(format!(
+            let cause = format!(
                 "wrong header checksum {} vs {}",
                 calc_crc, self.header.header_checksum
-            ));
+            );
+            let e = Error::record_validation(cause);
             error!("{:#?}", e);
             Err(Error::from(e).into())
         }
