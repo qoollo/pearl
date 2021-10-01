@@ -857,8 +857,8 @@ async fn test_blob_header_validation() {
         .create(false)
         .open(&blob_path)
         .expect("failed to open file");
-    let buf = bincode::serialize(&0_u64).expect("failed to serialize u32");
-    file.write_at(&buf, 0)
+    let buf = bincode::serialize(&0_u32).expect("failed to serialize u32");
+    file.write_at(&buf, 8)
         .expect("failed to overwrite blob version");
 
     let builder = Builder::new()
@@ -886,7 +886,7 @@ async fn test_blob_header_validation() {
     let is_correct = matches!(
         pearl_err.kind(),
         pearl::ErrorKind::Validation {
-            kind: ValidationErrorKind::BlobMagicByte,
+            kind: ValidationErrorKind::BlobVersion,
             cause: _
         }
     );
