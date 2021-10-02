@@ -24,6 +24,7 @@ Pearl changelog
 
 #### Changed
 - Rebuild corrupted index automatically during startup (#94)
+- Move build_time.rs file to OUT_DIR.
 
 #### Fixed
 - Create corrupted directory only when needed (#94)
