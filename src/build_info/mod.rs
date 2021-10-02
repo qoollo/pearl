@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-mod build_time;
+include!(concat!(env!("OUT_DIR"), "/build_time.rs"));
 
 /// Contains info about current build:
 /// name, version, commit and build time (if built with `--release` flag).
@@ -20,7 +20,7 @@ impl BuildInfo {
             name: env!("CARGO_PKG_NAME"),
             version: env!("CARGO_PKG_VERSION"),
             commit: option_env!("PEARL_COMMIT_HASH").unwrap_or("hash-undefined"),
-            build_time: build_time::BUILD_TIME,
+            build_time: BUILD_TIME,
         }
     }
 
