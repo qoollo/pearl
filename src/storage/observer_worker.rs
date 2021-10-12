@@ -134,7 +134,7 @@ async fn update_active_blob(inner: Inner) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
     trace!("obtaining new active blob");
-    let new_active = Blob::open_new(next_name, inner.ioring, inner.config.filter())
+    let new_active = Blob::open_new(next_name, inner.ioring, inner.config.index())
         .await?
         .boxed();
     inner

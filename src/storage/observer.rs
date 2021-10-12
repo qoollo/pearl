@@ -1,7 +1,6 @@
 use super::prelude::*;
 use tokio::{
-    sync::mpsc::{channel, Sender},
-    sync::Semaphore,
+    sync::{mpsc::{channel, Sender}, Semaphore},
 };
 
 #[derive(Debug, Clone)]

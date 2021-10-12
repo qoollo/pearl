@@ -6,7 +6,12 @@ use env_logger::fmt::Color;
 use futures::{future, stream::futures_unordered::FuturesUnordered, FutureExt, StreamExt};
 use log::Level;
 use rand::Rng;
-use std::{env, fs, io::Write, path::Path, path::PathBuf};
+use std::{
+    env, fs,
+    io::{Seek, SeekFrom, Write},
+    path::Path,
+    path::PathBuf,
+};
 
 use pearl::{Builder, Key, Storage};
 
@@ -21,7 +26,7 @@ impl AsRef<[u8]> for KeyTest {
 
 impl AsRef<KeyTest> for KeyTest {
     fn as_ref(&self) -> &KeyTest {
-        &self
+        self
     }
 }
 
@@ -141,4 +146,26 @@ pub fn generate_records(count: usize, avg_size: usize) -> Vec<(u32, Vec<u8>)> {
             (gen.gen(), buf)
         })
         .collect()
+}
+
+pub enum CorruptionType {
+    ZeroedAtBegin(u64),
+}
+
+pub fn corrupt_file(path: impl AsRef<Path>, corruption_type: CorruptionType) -> Result<()> {
+    let mut file = std::fs::OpenOptions::new()
+        .create(false)
+        .write(true)
+        .truncate(false)
+        .open(path)?;
+    let size = file.metadata()?.len();
+    match corruption_type {
+        CorruptionType::ZeroedAtBegin(zeroed_size) => {
+            let write_size = zeroed_size.min(size);
+            file.seek(SeekFrom::Start(0))?;
+            file.write_all(&vec![0u8; write_size as usize])?;
+        }
+    }
+    file.sync_all()?;
+    Ok(())
 }
