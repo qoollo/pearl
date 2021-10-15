@@ -171,20 +171,13 @@ impl File {
     }
 
     fn advisory_write_lock_file(fd: i32) {
-        let flock = libc::flock {
-            l_len: 0, // 0 means "whole file"
-            l_start: 0,
-            l_whence: libc::SEEK_SET as i16,
-            l_type: libc::F_WRLCK as i16,
-            l_pid: -1, // pid of current file owner, if any (when fcntl is invoked with F_GETLK)
-        };
-
-        let res = unsafe { libc::fcntl(fd, libc::F_SETLK, &flock) };
-        let errno = unsafe { *libc::__errno_location() };
-
-        debug!("fcntl result: {}", res);
-        if res != 0 {
-            warn!("acquiring writelock failed, fcntl errno: {}", errno);
+        if let Err(e) = nix::fcntl::flock(fd, nix::fcntl::FlockArg::LockExclusive) {
+            match e {
+                nix::errno::Errno::EACCES | nix::errno::Errno::EAGAIN => {
+                    error!("acquiring writelock failed, file is in use")
+                }
+                e => warn!("acquiring writelock failed, errno: {:?}", e),
+            }
         }
     }
 
