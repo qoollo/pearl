@@ -1,9 +1,6 @@
 use std::os::unix::prelude::{AsRawFd, FileExt};
 
-use nix::{
-    errno::Errno,
-    fcntl::{flock, FlockArg},
-};
+use nix::{errno::Errno, fcntl::FcntlArg};
 
 use super::prelude::*;
 
@@ -184,16 +181,19 @@ impl File {
     }
 
     fn advisory_write_lock_file(fd: i32) -> LockAcquisitionResult {
-        if let Err(e) = flock(fd, FlockArg::LockExclusive) {
+        let flock = libc::flock {
+            l_len: 0, // 0 means "whole file"
+            l_start: 0,
+            l_whence: libc::SEEK_SET as i16,
+            l_type: libc::F_WRLCK as i16,
+            l_pid: -1, // pid of current file owner, if any (when fcntl is invoked with F_GETLK)
+        };
+        let res = nix::fcntl::fcntl(fd, FcntlArg::F_SETLK(&flock));
+        if let Err(e) = res {
+            warn!("acquiring writelock failed, errno: {:?}", e);
             match e {
-                Errno::EACCES | Errno::EAGAIN => {
-                    error!("acquiring writelock failed, file is in use");
-                    LockAcquisitionResult::AlreadyLocked
-                }
-                e => {
-                    warn!("acquiring writelock failed, errno: {:?}", e);
-                    LockAcquisitionResult::Error(e)
-                }
+                Errno::EACCES | Errno::EAGAIN => LockAcquisitionResult::AlreadyLocked,
+                e => LockAcquisitionResult::Error(e),
             }
         } else {
             LockAcquisitionResult::Acquired
