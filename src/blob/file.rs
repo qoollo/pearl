@@ -1,5 +1,10 @@
 use std::os::unix::prelude::{AsRawFd, FileExt};
 
+use nix::{
+    errno::Errno,
+    fcntl::{flock, FlockArg},
+};
+
 use super::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -9,24 +14,34 @@ pub struct File {
     size: Arc<AtomicU64>,
 }
 
+#[derive(PartialEq, Eq)]
+enum LockAcquisitionResult {
+    Acquired,
+    AlreadyLocked,
+    Error(Errno),
+}
+
 impl File {
     pub(crate) async fn open(path: impl AsRef<Path>, ioring: Option<Rio>) -> IOResult<Self> {
-        let file = OpenOptions::new()
-            .create(false)
-            .append(true)
-            .read(true)
-            .open(path.as_ref())
-            .await?;
-        Self::from_tokio_file(file, ioring).await
+        Self::from_file(path, |f| f.create(false).append(true).read(true), ioring).await
     }
 
     pub(crate) async fn create(path: impl AsRef<Path>, ioring: Option<Rio>) -> IOResult<Self> {
-        let file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .read(true)
-            .open(path)
-            .await?;
+        Self::from_file(path, |f| f.create(true).write(true).read(true), ioring).await
+    }
+
+    async fn from_file(
+        path: impl AsRef<Path>,
+        setup: impl Fn(&mut OpenOptions) -> &mut OpenOptions,
+        ioring: Option<Rio>,
+    ) -> IOResult<Self> {
+        let file = setup(&mut OpenOptions::new()).open(path.as_ref()).await?;
+
+        if Self::advisory_write_lock_file(file.as_raw_fd()) == LockAcquisitionResult::AlreadyLocked
+        {
+            panic!("File {:?} is locked", path.as_ref());
+        }
+
         Self::from_tokio_file(file, ioring).await
     }
 
@@ -150,8 +165,6 @@ impl File {
         let size = Arc::new(AtomicU64::new(size));
         let std_file = file.try_into_std().expect("tokio file into std");
 
-        Self::advisory_write_lock_file(std_file.as_raw_fd());
-
         let file = Self {
             ioring,
             no_lock_fd: Arc::new(std_file),
@@ -170,14 +183,20 @@ impl File {
         }
     }
 
-    fn advisory_write_lock_file(fd: i32) {
-        if let Err(e) = nix::fcntl::flock(fd, nix::fcntl::FlockArg::LockExclusive) {
+    fn advisory_write_lock_file(fd: i32) -> LockAcquisitionResult {
+        if let Err(e) = flock(fd, FlockArg::LockExclusive) {
             match e {
-                nix::errno::Errno::EACCES | nix::errno::Errno::EAGAIN => {
-                    error!("acquiring writelock failed, file is in use")
+                Errno::EACCES | Errno::EAGAIN => {
+                    error!("acquiring writelock failed, file is in use");
+                    LockAcquisitionResult::AlreadyLocked
                 }
-                e => warn!("acquiring writelock failed, errno: {:?}", e),
+                e => {
+                    warn!("acquiring writelock failed, errno: {:?}", e);
+                    LockAcquisitionResult::Error(e)
+                }
             }
+        } else {
+            LockAcquisitionResult::Acquired
         }
     }
 
