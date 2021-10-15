@@ -1,17 +1,36 @@
 # Changelog
 Pearl changelog
 
+
 ## [Unreleased]
 #### Added
+
 
 #### Changed
 - Remove second file descriptor from File ([#124](https://github.com/qoollo/pearl/pull/125))
 - Acquire advisory write lock on files ([#124](https://github.com/qoollo/pearl/pull/125))
 - Remove lock files from non-active blobs ([#124](https://github.com/qoollo/pearl/pull/125))
 
+
 #### Fixed
 
+
 #### Updated
+
+
+## [0.7.0] - 2021-10-02
+#### Added
+- B+ Tree indexes (#84)
+- Range indexes (#11)
+- Move corrupted blobs into speacial directory (#98)
+- Blob version validation (#120)
+
+#### Changed
+- Rebuild corrupted index automatically during startup (#94)
+- Move build_time.rs file to OUT_DIR.
+
+#### Fixed
+- Create corrupted directory only when needed (#94)
 
 
 ## [0.6.2] - 2021-09-14

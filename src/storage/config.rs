@@ -10,8 +10,9 @@ pub(crate) struct Config {
     update_interval_ms: u64,
     allow_duplicates: bool,
     ignore_corrupted: bool,
-    filter: Option<BloomConfig>,
+    index: IndexConfig,
     dump_sem: Arc<Semaphore>,
+    corrupted_dir_name: String,
 }
 
 // Getters
@@ -52,8 +53,13 @@ impl Config {
     }
 
     #[inline]
-    pub fn filter(&self) -> Option<BloomConfig> {
-        self.filter.clone()
+    pub fn corrupted_dir_name(&self) -> &str {
+        self.corrupted_dir_name.as_str()
+    }
+
+    #[inline]
+    pub fn index(&self) -> IndexConfig {
+        self.index.clone()
     }
 
     #[inline]
@@ -93,8 +99,12 @@ impl Config {
         self.ignore_corrupted = ignore_corrupted;
     }
 
-    pub fn set_filter(&mut self, filter: BloomConfig) {
-        self.filter = Some(filter);
+    pub fn set_corrupted_dir_name(&mut self, name: String) {
+        self.corrupted_dir_name = name;
+    }
+
+    pub fn set_index(&mut self, index: IndexConfig) {
+        self.index = index
     }
 
     pub fn set_create_work_dir(&mut self, create: bool) {
@@ -118,8 +128,9 @@ impl Default for Config {
             update_interval_ms: 100,
             allow_duplicates: false,
             ignore_corrupted: false,
-            filter: None,
+            index: Default::default(),
             dump_sem: Arc::new(Semaphore::new(1)),
+            corrupted_dir_name: "corrupted".into(),
         }
     }
 }

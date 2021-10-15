@@ -81,6 +81,15 @@ impl Builder {
         self
     }
 
+    /// Sets directory name for corrupted files. If path doesn't exists, Storage will try to create it
+    /// at initialization stage.
+    pub fn corrupted_dir_name(mut self, name: impl Into<String>) -> Self {
+        let name = name.into();
+        debug!("corrupted dir name set to: {}", name);
+        self.config.set_corrupted_dir_name(name);
+        self
+    }
+
     /// Sets blob file size approximate limit. When the file size exceeds it,
     /// active blob update is activated.
     /// Must be greater than zero
@@ -142,7 +151,9 @@ impl Builder {
     /// Sets custom bloom filter config, if not set, use default values.
     #[must_use]
     pub fn set_filter_config(mut self, config: BloomConfig) -> Self {
-        self.config.set_filter(config);
+        let mut index_config = self.config.index();
+        index_config.bloom_config = Some(config);
+        self.config.set_index(index_config);
         self
     }
 

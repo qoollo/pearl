@@ -62,7 +62,8 @@ extern crate ring;
 pub mod build_info;
 
 mod blob;
-mod error;
+/// Types representing various errors that can occur in pearl.
+pub mod error;
 mod record;
 mod storage;
 
@@ -82,7 +83,7 @@ mod prelude {
 
     pub(crate) use anyhow::{Context as ErrorContexts, Result};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
-    pub(crate) use blob::{self, Blob, BloomConfig};
+    pub(crate) use blob::{self, Blob, BloomConfig, IndexConfig};
     pub(crate) use futures::{
         future,
         lock::Mutex,

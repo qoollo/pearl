@@ -1,6 +1,6 @@
 [package]
 name = "pearl"
-version = "0.6.2"
+version = "0.7.0"
 description = "Pearl is a low level blob-based I/O library"
 repository = "https://github.com/qoollo/pearl"
 homepage = "https://github.com/qoollo/pearl"
@@ -42,7 +42,7 @@ nix = "0.23.0"
 
 [dependencies.tokio]
 version = "1.10"
-features = ["fs", "sync", "time", "rt", "macros", "rt-multi-thread"]
+features = ["fs", "io-util", "sync", "time", "rt", "macros", "rt-multi-thread"]
 
 [features]
 # default = ["benchmark"]
