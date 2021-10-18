@@ -36,6 +36,7 @@ impl File {
 
         if Self::advisory_write_lock_file(file.as_raw_fd()) == LockAcquisitionResult::AlreadyLocked
         {
+            error!("File {:?} is locked", path.as_ref());
             panic!("File {:?} is locked", path.as_ref());
         }
 
