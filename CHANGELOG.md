@@ -4,6 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Add more functions to interface to support work with optional active blob ([#118](https://github.com/qoollo/pearl/pull/118))
 
 
 #### Changed

@@ -34,6 +34,14 @@ impl Error {
         Self::new(Kind::ActiveBlobNotSet)
     }
 
+    pub(crate) fn active_blob_doesnt_exist() -> Self {
+        Self::new(Kind::ActiveBlobDoesntExist)
+    }
+
+    pub(crate) fn active_blob_already_exists() -> Self {
+        Self::new(Kind::ActiveBlobExists)
+    }
+
     pub(crate) fn not_found() -> Self {
         Self::new(Kind::RecordNotFound)
     }
@@ -102,6 +110,10 @@ pub enum Kind {
     FileUnavailable(IOErrorKind),
     /// Storage was initialized with different key size
     KeySizeMismatch,
+    /// Active blob doesn't exist
+    ActiveBlobDoesntExist,
+    /// Active blob already exists
+    ActiveBlobExists,
     /// Record with the same key and the same metadata already exists
     RecordExists,
     /// Any error not part of this list
