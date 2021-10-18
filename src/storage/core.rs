@@ -390,7 +390,7 @@ impl<K: Key> Storage<K> {
         let safe = self.inner.safe.read().await;
         let key = key.as_ref();
         if let Some(ablob) = safe.active_blob.as_ref() {
-            match ablob.read_any(key, meta).await {
+            match ablob.read_any(key, meta, true).await {
                 Ok(data) => {
                     debug!("storage read with optional meta active blob returned data");
                     return Ok(data);
@@ -853,7 +853,7 @@ impl Inner {
         let mut safe = self.safe.write().await;
         if let None = safe.active_blob {
             let next = self.next_blob_name()?;
-            let config = self.config.filter();
+            let config = self.config.index();
             let blob = Blob::open_new(next, self.ioring.clone(), config)
                 .await?
                 .boxed();
