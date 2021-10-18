@@ -18,6 +18,11 @@ Pearl changelog
 #### Updated
 
 
+## [0.7.1] - 2021-10-18
+#### Added
+- Add more functions to interface to support work with optional active blob (#118)
+
+
 ## [0.7.0] - 2021-10-02
 #### Added
 - B+ Tree indexes (#84)
