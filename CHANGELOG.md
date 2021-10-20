@@ -7,6 +7,7 @@ Pearl changelog
 
 
 #### Changed
+- Dump blob indices in separate thread on active blob close (#136) [https://github.com/qoollo/pearl/pull/137]
 
 
 #### Fixed
