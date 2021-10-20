@@ -66,12 +66,11 @@ impl ObserverWorker {
         match msg.optype {
             OperationType::ForceUpdateActiveBlob => {
                 update_active_blob(self.inner.clone()).await?;
-                self.inner
-                    .try_dump_old_blob_indexes(self.dump_sem.clone())
-                    .await;
+                self.try_dump_old_blob_indexes().await;
             }
             OperationType::CloseActiveBlob => {
                 self.inner.close_active_blob().await?;
+                self.try_dump_old_blob_indexes().await;
             }
             OperationType::CreateActiveBlob => {
                 self.inner.create_active_blob().await?;
@@ -81,6 +80,12 @@ impl ObserverWorker {
             }
         }
         Ok(())
+    }
+
+    async fn try_dump_old_blob_indexes(&self) {
+        self.inner
+            .try_dump_old_blob_indexes(self.dump_sem.clone())
+            .await;
     }
 
     async fn predicate_wrapper(&self, predicate: &Option<ActiveBlobPred>) -> bool {
@@ -94,7 +99,7 @@ impl ObserverWorker {
     async fn try_update(&self) -> Result<()> {
         trace!("try update active blob");
         let inner_cloned = self.inner.clone();
-        if let Some(mut inner) = active_blob_check(inner_cloned).await? {
+        if let Some(inner) = active_blob_check(inner_cloned).await? {
             update_active_blob(inner.clone()).await?;
             inner.try_dump_old_blob_indexes(self.dump_sem.clone()).await;
         }

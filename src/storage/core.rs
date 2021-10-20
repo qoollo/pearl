@@ -872,9 +872,6 @@ impl Inner {
         if safe.active_blob.is_none() {
             Err(Error::active_blob_doesnt_exist().into())
         } else {
-            // FIXME: write lock is still held, so everyone will wait for dump, maybe it's better
-            // to derive this operation to `try_dump_old_blob_indexes`
-            safe.active_blob.as_mut().unwrap(/*None case checked*/).dump().await?;
             // always true
             if let Some(ablob) = safe.active_blob.take() {
                 safe.blobs.write().await.push(*ablob);
@@ -947,7 +944,7 @@ impl Inner {
         self.safe.read().await.fsyncdata().await
     }
 
-    pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
+    pub(crate) async fn try_dump_old_blob_indexes(&self, sem: Arc<Semaphore>) {
         self.safe.write().await.try_dump_old_blob_indexes(sem).await;
     }
 }
