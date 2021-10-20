@@ -40,12 +40,6 @@ impl ObserverWorker {
 
     async fn tick(&mut self) -> Result<()> {
         match timeout(self.update_interval, self.receiver.recv()).await {
-            // Ok(Some(Msg::CloseActiveBlob)) => {
-            //     update_active_blob(self.inner.clone()).await?;
-            //     self.inner.safe.write().await.unlock_directory();
-            //     self.inner
-            //         .try_dump_old_blob_indexes(self.dump_sem.clone())
-            //         .await;
             Ok(Some(msg)) => {
                 self.process_msg(msg).await?;
             }

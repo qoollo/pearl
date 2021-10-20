@@ -9,7 +9,6 @@ Pearl changelog
 #### Changed
 - Remove second file descriptor from File ([#124](https://github.com/qoollo/pearl/pull/125))
 - Acquire advisory write lock on files ([#124](https://github.com/qoollo/pearl/pull/125))
-- Remove lock files from non-active blobs ([#124](https://github.com/qoollo/pearl/pull/125))
 
 
 #### Fixed
