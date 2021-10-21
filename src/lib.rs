@@ -96,12 +96,11 @@ mod prelude {
         collections::HashMap,
         convert::TryInto,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
-        fs::{File as StdFile, OpenOptions as StdOpenOptions},
+        fs::File as StdFile,
         io::Error as IOError,
         io::ErrorKind as IOErrorKind,
         io::Result as IOResult,
         marker::PhantomData,
-        os::unix::fs::OpenOptionsExt,
         path::{Path, PathBuf},
         sync::{
             atomic::{AtomicUsize, Ordering},
