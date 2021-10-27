@@ -263,10 +263,12 @@ impl<K: Key + Send + Sync> Storage<K> {
             );
             all_entries.extend(entries);
         }
+
         let blobs = safe.blobs.read().await;
         let entries_closed_blobs = blobs
             .iter()
-            .map(|b| b.read_all_entries(key))
+            .cloned()
+            .map(|b| async move { b.data().read().await.read_all_entries(key).await })
             .collect::<FuturesUnordered<_>>();
         entries_closed_blobs
             .try_filter_map(future::ok)
@@ -305,8 +307,14 @@ impl<K: Key + Send + Sync> Storage<K> {
 
     async fn get_any_data(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
         let blobs = safe.blobs.read().await;
-        let stream: FuturesUnordered<_> =
-            blobs.iter().map(|blob| blob.read_any(key, meta)).collect();
+        if let Some(false) = blobs.check_filter_without_leafs(key).await {
+            return Err(Error::not_found().into());
+        }
+        let stream: FuturesUnordered<_> = blobs
+            .iter()
+            .cloned()
+            .map(|blob| async move { blob.data().read().await.read_any(key, meta).await })
+            .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
         task.next()
@@ -369,26 +377,6 @@ impl<K: Key + Send + Sync> Storage<K> {
         } else {
             0
         }
-    }
-
-    /// Returns memory allocated for bloom filter buffer
-    pub async fn filter_memory_allocated(&self) -> usize {
-        let safe = self.inner.safe.read().await;
-        let active = if let Some(ablob) = safe.active_blob.as_ref() {
-            ablob.filter_memory_allocated()
-        } else {
-            0
-        };
-
-        let closed: usize = safe
-            .blobs
-            .read()
-            .await
-            .iter()
-            .map(|blob| blob.filter_memory_allocated())
-            .sum();
-
-        active + closed
     }
 
     /// Returns next blob ID. If pearl dir structure wasn't changed from the outside,
@@ -481,7 +469,12 @@ impl<K: Key + Send + Sync> Storage<K> {
             blob.dump().await?;
         }
         safe.active_blob = Some(active_blob);
-        *safe.blobs.write().await = blobs.into();
+        let mut closed_blobs = safe.blobs.write().await;
+        for blob in blobs {
+            closed_blobs.push(blob).await;
+        }
+        error!("Readed {:?}", closed_blobs);
+        drop(closed_blobs);
         self.inner
             .next_blob_id
             .store(safe.max_id().await.map_or(0, |i| i + 1), ORD);
@@ -556,7 +549,7 @@ impl<K: Key + Send + Sync> Storage<K> {
         }
         let blobs = inner.blobs.read().await;
         for blob in blobs.iter() {
-            if blob.contains(key, meta).await? {
+            if blob.data().read().await.contains(key, meta).await? {
                 return Ok(true);
             }
         }
@@ -570,20 +563,14 @@ impl<K: Key + Send + Sync> Storage<K> {
     /// but false negatives are not.
     /// In other words, `check_bloom` returns either "possibly in storage" or "definitely not".
     pub async fn check_bloom(&self, key: &K) -> Option<bool> {
-        self.check_filter(key).await.unwrap_or(None)
+        self.check_filter(key).await
     }
 
     /// Offload bloom filters for closed blobs
     pub async fn offload_bloom(&self) -> usize {
         trace!("offload bloom filters");
         let inner = self.inner.safe.read().await;
-        let freed = inner
-            .blobs
-            .write()
-            .await
-            .iter_mut()
-            .map(|blob| blob.offload_filter())
-            .sum();
+        let freed = inner.blobs.write().await.offload_buffer(usize::MAX).await;
         freed
     }
 
@@ -694,7 +681,11 @@ impl Safe {
 
     async fn max_id(&self) -> Option<usize> {
         let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
-        let blobs_max_id = self.blobs.read().await.last().map(Blob::id);
+        let blobs_max_id = if let Some(last) = self.blobs.read().await.last() {
+            Some(last.data().read().await.id())
+        } else {
+            None
+        };
         active_blob_id.max(blobs_max_id)
     }
 
@@ -707,6 +698,7 @@ impl Safe {
         let mut results = Vec::new();
         let blobs = self.blobs.read().await;
         for blob in blobs.iter() {
+            let blob = blob.data().read().await;
             let count = blob.records_count();
             let value = (blob.id(), count);
             debug!("push: {:?}", value);
@@ -732,7 +724,7 @@ impl Safe {
             .active_blob
             .replace(blob)
             .ok_or_else(Error::active_blob_not_set)?;
-        self.blobs.write().await.push(*old_active);
+        self.blobs.write().await.push(*old_active).await;
         Ok(())
     }
 
@@ -740,9 +732,10 @@ impl Safe {
         let blobs = self.blobs.clone();
         tokio::spawn(async move {
             trace!("acquire blobs write to dump old blobs");
-            let mut write_blobs = blobs.write().await;
+            let write_blobs = blobs.write().await;
             trace!("dump old blobs");
-            for blob in write_blobs.iter_mut() {
+            for blob in write_blobs.iter() {
+                let mut blob = blob.data().write().await;
                 trace!("dumping old blob");
                 let _ = sem.acquire().await;
                 trace!("acquired sem for dumping old blobs");
@@ -772,19 +765,19 @@ where
     K: Key + Send + Sync,
 {
     type Key = K;
-    async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>> {
+    async fn check_filter(&self, item: &Self::Key) -> Option<bool> {
         trace!("offload bloom filters");
         let inner = self.inner.safe.read().await;
         let mut contains = if let Some(blob) = &inner.active_blob {
-            blob.check_filter(item.as_ref()).await?.unwrap_or(false)
+            blob.check_filter(item.as_ref()).await.unwrap_or(false)
         } else {
             false
         };
         contains = contains || {
             let blobs = inner.blobs.read().await;
-            blobs.check_filter(item.as_ref()).await?.unwrap_or(false)
+            blobs.check_filter(item.as_ref()).await.unwrap_or(false)
         };
-        Ok(Some(contains))
+        Some(contains)
     }
 
     async fn offload_buffer(&mut self, needed_memory: usize) -> usize {
@@ -800,5 +793,16 @@ where
         let active_filter = safe.active_blob.as_ref()?.get_filter().await?;
         filter.checked_add_assign(&active_filter)?;
         Some(filter)
+    }
+
+    async fn filter_memory_allocated(&self) -> usize {
+        let safe = self.inner.safe.read().await;
+        let closed = safe.blobs.read().await.filter_memory_allocated().await;
+        let active = if let Some(blob) = safe.active_blob.as_ref() {
+            blob.filter_memory_allocated().await
+        } else {
+            0
+        };
+        closed + active
     }
 }

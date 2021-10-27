@@ -13,12 +13,27 @@ use super::prelude::*;
 use bitvec::order::Lsb0;
 
 /// Bloom filter
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Bloom {
     inner: Option<BitVec<Lsb0, u64>>,
     bits_count: usize,
     hashers: Vec<AHasher>,
     config: Config,
+}
+
+impl Debug for Bloom {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let inner = if let Some(inner) = &self.inner {
+            format!("{}/{}", inner.count_ones(), inner.len())
+        } else {
+            format!("Offloaded")
+        };
+        f.debug_struct("Bloom")
+            .field("inner", &inner)
+            .field("bits_count", &self.bits_count)
+            .field("config", &self.config)
+            .finish()
+    }
 }
 
 impl Default for Bloom {
@@ -235,23 +250,23 @@ impl Bloom {
     }
 
     /// Check if key is presented
-    pub fn contains_in_memory(&self, item: impl AsRef<[u8]>) -> Result<bool> {
+    pub fn contains_in_memory(&self, item: impl AsRef<[u8]>) -> Option<bool> {
         if let Some(buf) = &self.inner {
             let mut hashers = self.hashers.clone();
             if self.bits_count == 0 {
-                return Ok(false);
+                return Some(false);
             }
             for index in hashers.iter_mut().map(|hasher| {
                 hasher.write(item.as_ref());
                 hasher.finish() % self.bits_count as u64
             }) {
                 if !*buf.get(index as usize).expect("unreachable") {
-                    return Ok(false);
+                    return Some(false);
                 }
             }
-            Ok(true)
+            Some(true)
         } else {
-            Err(anyhow::anyhow!("Can't find any source of filter data"))
+            None
         }
     }
 

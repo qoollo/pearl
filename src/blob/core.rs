@@ -249,7 +249,7 @@ impl Blob {
 
     async fn get_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
-        if self.check_bloom_simple(key).await == Some(false) {
+        if self.check_filter(key).await == Some(false) {
             debug!("blob core get any entry check bloom returned Some(false)");
             Ok(None)
         } else if let Some(meta) = meta {
@@ -316,35 +316,15 @@ impl Blob {
         self.name.id
     }
 
-    pub(crate) async fn check_bloom(&self, key: &[u8]) -> Result<Option<bool>> {
-        trace!("check bloom filter");
-        self.index.check_bloom_key(key).await
-    }
-
-    pub(crate) async fn check_bloom_simple(&self, key: &[u8]) -> Option<bool> {
-        match self.check_bloom(key).await {
-            Ok(x) => x,
-            _ => None,
-        }
-    }
-
-    pub(crate) fn offload_filter(&mut self) -> usize {
-        self.index.offload_filter()
-    }
-
     pub(crate) fn index_memory(&self) -> usize {
         self.index.memory_used()
-    }
-
-    pub(crate) fn filter_memory_allocated(&self) -> usize {
-        self.index.bloom_memory_allocated()
     }
 }
 
 #[async_trait::async_trait]
 impl BloomProvider for Blob {
     type Key = [u8];
-    async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>> {
+    async fn check_filter(&self, item: &Self::Key) -> Option<bool> {
         self.index.check_filter(item).await
     }
 
@@ -354,6 +334,10 @@ impl BloomProvider for Blob {
 
     async fn get_filter(&self) -> Option<Bloom> {
         self.index.get_filter().await
+    }
+
+    async fn filter_memory_allocated(&self) -> usize {
+        self.index.filter_memory_allocated().await
     }
 }
 

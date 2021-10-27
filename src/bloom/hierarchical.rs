@@ -1,29 +1,81 @@
-use std::iter::FromIterator;
+use std::{
+    ops::{Deref, DerefMut},
+    sync::Weak,
+};
 
 use super::*;
 
 /// Container for types which is support bloom filtering
-#[derive(Debug)]
-pub struct HierarchicalBloom<Child>
-where
-    Child: BloomProvider + Send + Sync,
-{
-    inner: HierarchicalBloomInner,
-    children: Vec<Child>,
+pub struct HierarchicalBloom<Child> {
+    inner: Arc<RwLock<HierarchicalBloomInner<Child>>>,
+    children: Vec<Arc<Leaf<Child>>>,
     group_size: usize,
 }
 
+/// Leaf of filter tree
 #[derive(Debug)]
-enum HierarchicalBloomInner {
-    /// Inner filters
-    Vec(Option<Bloom>, Vec<HierarchicalBloomInner>),
-    /// Leaf
-    Item(usize),
+pub struct Leaf<T> {
+    parent: Weak<RwLock<HierarchicalBloomInner<T>>>,
+    data: RwLock<T>,
 }
 
-impl Default for HierarchicalBloomInner {
+impl<Child, Key> Leaf<Child>
+where
+    Child: BloomProvider<Key = Key> + Send + Sync,
+    Key: Send + Sync + AsRef<[u8]> + ?Sized,
+{
+    /// Data associated with leaf
+    pub fn data(&self) -> &RwLock<Child> {
+        &self.data
+    }
+
+    /// Adds key to parent nodes
+    pub async fn add_to_parents(&self, key: &[u8]) {
+        if let Some(parent) = self.parent.upgrade() {
+            parent.write().await.add_to_parents(key).await;
+        }
+    }
+}
+
+#[derive(Default)]
+struct Node<T> {
+    filter: Option<Bloom>,
+    children: Vec<Arc<RwLock<HierarchicalBloomInner<T>>>>,
+    parent: Weak<RwLock<HierarchicalBloomInner<T>>>,
+}
+
+impl<T> Debug for Node<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        f.debug_struct("Node")
+            .field("filter", &self.filter)
+            .finish()
+    }
+}
+
+impl<T: Debug> Debug for HierarchicalBloom<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        f.debug_struct("HierarchicalBloom")
+            .field("inner", &self.inner)
+            .field("group_size", &self.group_size)
+            .finish()
+    }
+}
+
+#[derive(Debug)]
+enum HierarchicalBloomInner<T> {
+    /// Inner filters
+    Node(Node<T>),
+    /// Leaf
+    Leaf(Weak<Leaf<T>>),
+}
+
+impl<T> Default for HierarchicalBloomInner<T> {
     fn default() -> Self {
-        Self::Vec(Default::default(), Default::default())
+        Self::Node(Node {
+            filter: None,
+            children: vec![],
+            parent: Default::default(),
+        })
     }
 }
 
@@ -40,69 +92,117 @@ where
     }
 }
 
-impl HierarchicalBloomInner {
+impl<Child, Key> HierarchicalBloomInner<Child>
+where
+    Child: BloomProvider<Key = Key> + Send + Sync,
+    Key: Send + Sync + AsRef<[u8]> + ?Sized,
+{
     #[async_recursion::async_recursion]
-    async fn check_filter<Child, Key>(&self, children: &[Child], item: &Key) -> Result<Option<bool>>
-    where
-        Child: BloomProvider<Key = Key> + Send + Sync,
-        Key: Send + Sync + AsRef<[u8]> + ?Sized,
-    {
+    async fn add_to_parents(&mut self, item: &[u8]) {
         match self {
-            HierarchicalBloomInner::Vec(filter, values) => {
-                if let Some(filter) = filter {
-                    if let Ok(true) = filter.contains_in_memory(item) {
-                        return Ok(Some(true));
-                    }
+            Self::Node(node) => {
+                if let Some(filter) = &mut node.filter {
+                    let _ = filter.add(item);
                 }
-                let mut falses = false;
-                for filter in values {
-                    match filter.check_filter(children, item).await {
-                        Ok(Some(true)) => return Ok(Some(true)),
-                        Ok(Some(false)) => {}
-                        _ => {
-                            falses = false;
-                        }
-                    }
-                }
-                if falses {
-                    Ok(Some(false))
-                } else {
-                    Ok(None)
+                if let Some(parent) = node.parent.upgrade() {
+                    parent.write().await.add_to_parents(item).await;
                 }
             }
-            HierarchicalBloomInner::Item(child) => {
-                children.get(*child).unwrap().check_filter(item).await
+            Self::Leaf(leaf) => {
+                if let Some(leaf) = leaf.upgrade() {
+                    if let Some(parent) = leaf.parent.upgrade() {
+                        parent.write().await.add_to_parents(item).await;
+                    }
+                }
+            }
+        }
+    }
+
+    fn is_child_dropped(&self) -> bool {
+        match self {
+            Self::Leaf(leaf) => leaf.strong_count() == 0,
+            _ => false,
+        }
+    }
+
+    #[async_recursion::async_recursion]
+    async fn filter_memory_allocated(&self) -> usize {
+        match &self {
+            Self::Node(node) => {
+                let mut allocated = node
+                    .filter
+                    .as_ref()
+                    .map(|x| x.memory_allocated())
+                    .unwrap_or_default();
+                for child in node.children.iter() {
+                    allocated += child.read().await.filter_memory_allocated().await;
+                }
+                allocated
+            }
+            Self::Leaf(leaf) => {
+                if let Some(leaf) = leaf.upgrade() {
+                    leaf.data.read().await.filter_memory_allocated().await
+                } else {
+                    0
+                }
             }
         }
     }
 
     #[async_recursion::async_recursion]
-    async fn offload_buffer<Child, Key>(
-        &mut self,
-        children: &mut [Child],
-        needed_memory: usize,
-    ) -> usize
-    where
-        Child: BloomProvider<Key = Key> + Send + Sync,
-        Key: Send + Sync + AsRef<[u8]> + ?Sized,
-    {
+    async fn check_filter(&self, item: &Key, check_leafs: bool) -> Option<bool> {
         match self {
-            Self::Vec(_, values) => {
+            HierarchicalBloomInner::Node(node) => {
+                if let Some(filter) = &node.filter {
+                    if let Some(false) = filter.contains_in_memory(item) {
+                        return Some(false);
+                    }
+                }
+                let mut has_none = false;
+                for filter in node.children.iter() {
+                    if self.is_child_dropped() {
+                        continue;
+                    }
+                    match filter.read().await.check_filter(item, check_leafs).await {
+                        Some(true) => return Some(true),
+                        Some(false) => {}
+                        _ => {
+                            has_none = true;
+                        }
+                    }
+                }
+                if has_none {
+                    None
+                } else {
+                    Some(false)
+                }
+            }
+            HierarchicalBloomInner::Leaf(leaf) if check_leafs => {
+                leaf.upgrade()?.data.read().await.check_filter(item).await
+            }
+            _ => None,
+        }
+    }
+
+    #[async_recursion::async_recursion]
+    async fn offload_buffer(&mut self, needed_memory: usize) -> usize {
+        match self {
+            Self::Node(node) => {
                 let mut freed = 0;
-                for filter in values {
+                for filter in node.children.iter() {
                     if freed >= needed_memory {
                         return freed;
                     }
-                    freed += filter.offload_buffer(children, needed_memory).await;
+                    freed += filter.write().await.offload_buffer(needed_memory).await;
                 }
                 freed
             }
-            Self::Item(child) => {
-                children
-                    .get_mut(*child)
-                    .unwrap()
-                    .offload_buffer(needed_memory)
-                    .await
+            Self::Leaf(child) => {
+                if let Some(child) = child.upgrade() {
+                    child.data.write().await.offload_buffer(needed_memory).await
+                } else {
+                    0
+                }
             }
         }
     }
@@ -115,6 +215,7 @@ impl HierarchicalBloomInner {
                     _ => None,
                 };
                 if res.is_none() {
+                    error!("{:?} + {:?}", dest, source);
                     *dest = None;
                 }
             }
@@ -122,49 +223,83 @@ impl HierarchicalBloomInner {
         }
     }
 
-    fn push_group(&mut self, value: Self) {
+    async fn get_filter(&self) -> Option<Bloom> {
         match self {
-            Self::Vec(filter, values) => {
-                match &value {
-                    Self::Vec(child_filter, _) => {
-                        Self::merge_filters(filter, child_filter);
-                    }
-                    _ => unreachable!(),
+            Self::Node(node) => node.filter.clone(),
+            Self::Leaf(leaf) => leaf.upgrade()?.data.read().await.get_filter().await,
+        }
+    }
+
+    async fn push_group(&mut self, value: Arc<RwLock<Self>>) {
+        match self {
+            Self::Node(node) => {
+                if node.children.is_empty() {
+                    node.filter = value.read().await.get_filter().await.clone();
+                    error!("Initial filter: {:?}", node.filter);
+                } else {
+                    Self::merge_filters(&mut node.filter, &value.read().await.get_filter().await);
                 }
-                values.push(value);
+                node.children.push(value);
             }
             _ => unreachable!(),
         }
     }
 
-    fn push_item(&mut self, id: usize, child_filter: &Option<Bloom>) {
+    async fn push_item(&mut self, child: Arc<Leaf<Child>>) {
         match self {
-            Self::Vec(filter, values) => {
-                values.push(Self::Item(id));
-                Self::merge_filters(filter, child_filter)
+            Self::Node(node) => {
+                if node.children.is_empty() {
+                    node.filter = child.data.read().await.get_filter().await.clone();
+                } else {
+                    Self::merge_filters(
+                        &mut node.filter,
+                        &child.data.read().await.get_filter().await,
+                    )
+                }
+                node.children
+                    .push(Arc::new(RwLock::new(Self::Leaf(Arc::downgrade(&child)))));
             }
             _ => unreachable!(),
         }
     }
 
-    fn push(&mut self, id: usize, filter: &Option<Bloom>, group_size: usize) {
-        match self {
-            Self::Vec(_, values) => {
-                if values.is_empty() {
-                    values.push(Default::default())
+    fn empty_child(this: &Arc<RwLock<Self>>) -> Arc<RwLock<Self>> {
+        Arc::new(RwLock::new(Self::Node(Node {
+            parent: Arc::downgrade(this),
+            children: vec![],
+            filter: Default::default(),
+        })))
+    }
+
+    async fn push(this: &Arc<RwLock<Self>>, child: Child, group_size: usize) -> Arc<Leaf<Child>> {
+        match this.write().await.deref_mut() {
+            Self::Node(node) => {
+                if node.children.is_empty() {
+                    node.children.push(Self::empty_child(this));
+                    node.filter = child.get_filter().await.clone();
+                } else {
+                    Self::merge_filters(&mut node.filter, &child.get_filter().await)
                 }
-                let last = values.last_mut().expect("Have values");
-                last.push_item(id, filter);
-                if last.len() >= group_size {
-                    drop(last);
-                    let last = values.pop().expect("Have values");
-                    if values.is_empty() {
-                        values.push(Default::default())
+                let last = node.children.last().expect("Have values").clone();
+                let leaf = Arc::new(Leaf {
+                    data: RwLock::new(child),
+                    parent: Arc::downgrade(&last),
+                });
+                let create_new_group = {
+                    let mut last_mut = last.write().await;
+                    last_mut.push_item(leaf.clone()).await;
+                    last_mut.len() >= group_size
+                };
+                if create_new_group {
+                    let last = node.children.pop().expect("Have values");
+                    if node.children.is_empty() {
+                        node.children.push(Self::empty_child(this));
                     }
-                    let pred_last = values.last_mut().expect("Have values");
-                    pred_last.push_group(last);
-                    values.push(Default::default());
+                    let pred_last = node.children.last().expect("Have values");
+                    pred_last.write().await.push_group(last).await;
+                    node.children.push(Default::default());
                 }
+                leaf
             }
             _ => unreachable!(),
         }
@@ -172,28 +307,8 @@ impl HierarchicalBloomInner {
 
     fn len(&self) -> usize {
         match self {
-            Self::Vec(_, values) => values.len(),
+            Self::Node(node) => node.children.len(),
             _ => 0,
-        }
-    }
-
-    fn add_to_intermediate_filters(&mut self, id: usize, item: &[u8]) -> Result<bool> {
-        match self {
-            Self::Vec(filter, values) => {
-                if let Some(filter) = filter {
-                    let mut should_add = false;
-                    for value in values.iter_mut() {
-                        should_add = should_add || value.add_to_intermediate_filters(id, item)?;
-                        if should_add {
-                            filter.add(item)?;
-                        }
-                    }
-                    Ok(should_add)
-                } else {
-                    Ok(false)
-                }
-            }
-            Self::Item(self_id) => Ok(*self_id == id),
         }
     }
 }
@@ -206,27 +321,30 @@ where
 {
     type Key = Key;
 
-    async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>> {
-        self.inner.check_filter(&self.children, item).await
+    async fn check_filter(&self, item: &Self::Key) -> Option<bool> {
+        self.inner.read().await.check_filter(item, true).await
     }
 
     async fn offload_buffer(&mut self, needed_memory: usize) -> usize {
-        self.inner
-            .offload_buffer(&mut self.children, needed_memory)
-            .await
+        self.inner.write().await.offload_buffer(needed_memory).await
     }
 
     async fn get_filter(&self) -> Option<Bloom> {
-        match &self.inner {
-            HierarchicalBloomInner::Vec(filter, _) => filter.clone(),
-            _ => unreachable!(),
+        match &self.inner.read().await.deref() {
+            HierarchicalBloomInner::Node(node) => node.filter.clone(),
+            _ => None,
         }
+    }
+
+    async fn filter_memory_allocated(&self) -> usize {
+        self.inner.read().await.filter_memory_allocated().await
     }
 }
 
 impl<Child> HierarchicalBloom<Child>
 where
     Child: BloomProvider + Send + Sync,
+    <Child as BloomProvider>::Key: AsRef<[u8]>,
 {
     /// Create new container
     pub fn new() -> Self {
@@ -243,81 +361,47 @@ where
         *self = Default::default();
     }
 
-    /// Returns an iterator over the childs
-    pub fn iter(&self) -> std::slice::Iter<'_, Child> {
+    /// Returns a iterator over the childs
+    pub fn iter(&self) -> core::slice::Iter<'_, Arc<Leaf<Child>>> {
         self.children.iter()
     }
 
-    /// Returns a mutable iterator over the childs
-    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, Child> {
-        self.children.iter_mut()
-    }
-
     /// Returns last child
-    pub fn last(&self) -> Option<&Child> {
+    pub fn last(&self) -> Option<&Arc<Leaf<Child>>> {
         self.children.last()
     }
 
     /// Add child to collection
-    pub fn push(&mut self, item: Child) {
-        let id = self.children.len();
-        self.inner.push(id, &None, self.group_size);
-        self.children.push(item);
+    pub async fn push(&mut self, item: Child) {
+        let leaf = HierarchicalBloomInner::push(&self.inner, item, self.group_size).await;
+        self.children.push(leaf);
     }
 
     /// Returns children elements as Vec
-    pub fn into_vec(self) -> Vec<Child> {
+    pub fn into_vec(self) -> Vec<Arc<Leaf<Child>>> {
         self.children
     }
 
-    /// Returns mutable reference to inner container. Use carefully
-    pub fn children_mut(&mut self) -> &mut Vec<Child> {
+    /// Returns mutable reference to inner container.
+    pub fn children_mut(&mut self) -> &mut Vec<Arc<Leaf<Child>>> {
         &mut self.children
     }
 
     /// Returns reference to inner container.
-    pub fn children(&self) -> &Vec<Child> {
+    pub fn children(&self) -> &Vec<Arc<Leaf<Child>>> {
         &self.children
     }
 
     /// Extends conatiner with values
-    pub fn extend(&mut self, values: Vec<Child>) {
+    pub async fn extend(&mut self, values: Vec<Child>) {
         for child in values {
-            self.push(child);
+            self.push(child).await;
         }
     }
 
-    /// Adds key to intermediate filters for children with index `id`
-    pub fn add_to_intermediate_filters(&mut self, id: usize, item: impl AsRef<[u8]>) {
-        self.inner
-            .add_to_intermediate_filters(id, item.as_ref())
-            .expect("Intermediate filters can't offload inner buffer");
-    }
-}
-
-impl<Child> From<Vec<Child>> for HierarchicalBloom<Child>
-where
-    Child: BloomProvider + Send + Sync,
-{
-    fn from(children: Vec<Child>) -> Self {
-        let mut res = Self::default();
-        for child in children {
-            res.push(child);
-        }
-        res
-    }
-}
-
-impl<Child> FromIterator<Child> for HierarchicalBloom<Child>
-where
-    Child: BloomProvider + Send + Sync,
-{
-    fn from_iter<T: IntoIterator<Item = Child>>(iter: T) -> Self {
-        let mut res = Self::default();
-        for child in iter {
-            res.push(child);
-        }
-        res
+    /// Checks intermediate filters and skip leafs
+    pub async fn check_filter_without_leafs(&self, item: &Child::Key) -> Option<bool> {
+        self.inner.read().await.check_filter(item, false).await
     }
 }
 
@@ -325,7 +409,7 @@ impl<Child> IntoIterator for HierarchicalBloom<Child>
 where
     Child: BloomProvider + Send + Sync,
 {
-    type Item = Child;
+    type Item = Arc<Leaf<Child>>;
 
     type IntoIter = std::vec::IntoIter<Self::Item>;
 

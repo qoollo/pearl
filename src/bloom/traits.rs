@@ -15,9 +15,11 @@ pub trait BloomProvider {
     /// Bloom key
     type Key: Sync + Send + ?Sized;
     /// Check if element in filter
-    async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>>;
+    async fn check_filter(&self, item: &Self::Key) -> Option<bool>;
     /// Returns freed memory
     async fn offload_buffer(&mut self, needed_memory: usize) -> usize;
     /// Returns overall filter
     async fn get_filter(&self) -> Option<Bloom>;
+    /// Returns allocated memory
+    async fn filter_memory_allocated(&self) -> usize;
 }

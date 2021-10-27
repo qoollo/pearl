@@ -84,28 +84,16 @@ impl<FileIndex: FileIndexTrait + BloomDataProvider> IndexStruct<FileIndex> {
         self.filter.clear();
     }
 
-    pub async fn check_bloom_key(&self, key: &[u8]) -> Result<Option<bool>> {
+    pub async fn check_bloom_key(&self, key: &[u8]) -> Option<bool> {
         if self.params.filter_is_on {
             let file_index = if let State::OnDisk(index) = &self.inner {
                 Some(index)
             } else {
                 None
             };
-            Ok(Some(self.filter.contains(key, file_index).await?))
+            self.filter.contains(key, file_index).await.ok()
         } else {
-            Ok(None)
-        }
-    }
-
-    pub fn bloom_memory_allocated(&self) -> usize {
-        self.filter.memory_allocated()
-    }
-
-    pub fn offload_filter(&mut self) -> usize {
-        if self.on_disk() {
-            self.filter.offload_from_memory()
-        } else {
-            0
+            None
         }
     }
 
@@ -287,7 +275,7 @@ where
     FileIndex: FileIndexTrait + BloomDataProvider + Sync + Send + Clone,
 {
     type Key = [u8];
-    async fn check_filter(&self, item: &Self::Key) -> Result<Option<bool>> {
+    async fn check_filter(&self, item: &Self::Key) -> Option<bool> {
         self.check_bloom_key(item.as_ref()).await
     }
 
@@ -301,6 +289,10 @@ where
 
     async fn get_filter(&self) -> Option<Bloom> {
         Some(self.filter.clone())
+    }
+
+    async fn filter_memory_allocated(&self) -> usize {
+        self.filter.memory_allocated()
     }
 }
 
