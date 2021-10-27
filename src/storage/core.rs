@@ -874,6 +874,7 @@ impl Inner {
         } else {
             // always true
             if let Some(ablob) = safe.active_blob.take() {
+                ablob.fsyncdata().await?;
                 safe.blobs.write().await.push(*ablob);
             }
             Ok(())
