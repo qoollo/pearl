@@ -11,6 +11,7 @@ use pearl::{Builder, Meta, Storage};
 use rand::{seq::SliceRandom, Rng};
 use std::{
     fs,
+    hash::Hasher,
     time::{Duration, Instant},
 };
 use tokio::time::sleep;
@@ -18,6 +19,22 @@ use tokio::time::sleep;
 mod common;
 
 use common::KeyTest;
+
+#[test]
+fn test_hash_algorithm_compat() {
+    test_hash(&(0..10).collect::<Vec<u8>>(), 3604729491498336444);
+    test_hash(&(245..255).collect::<Vec<u8>>(), 4698010058046694585);
+    test_hash(&(63..73).collect::<Vec<u8>>(), 7892047681755360091);
+    test_hash(&(101..111).collect::<Vec<u8>>(), 15822444892006722439);
+}
+
+fn test_hash(data: &[u8], eq_to: u64) {
+    let mut hasher_7 = ahash::AHasher::new_with_keys(1, 2);
+    hasher_7.write(data);
+    let hash_7 = hasher_7.finish();
+
+    assert_eq!(hash_7, eq_to);
+}
 
 #[tokio::test]
 async fn test_storage_init_new() {
@@ -464,11 +481,11 @@ async fn test_check_bloom_filter_single() {
         trace!("key: {}, pos: {:?}, negative: {:?}", i, pos_key, neg_key);
         let key = KeyTest::new(i);
         storage.write(&key, data.to_vec()).await.unwrap();
-        assert_eq!(storage.check_bloom(key).await, Some(true));
+        assert_eq!(storage.check_filters(key).await, Some(true));
         let data = b"other_random_data";
         storage.write(&pos_key, data.to_vec()).await.unwrap();
-        assert_eq!(storage.check_bloom(pos_key).await, Some(true));
-        assert_eq!(storage.check_bloom(neg_key).await, Some(false));
+        assert_eq!(storage.check_filters(pos_key).await, Some(true));
+        assert_eq!(storage.check_filters(neg_key).await, Some(false));
     }
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -487,10 +504,10 @@ async fn test_check_bloom_filter_multiple() {
         trace!("blobs count: {}", storage.blobs_count().await);
     }
     for i in 1..800 {
-        assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(true));
+        assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(true));
     }
     for i in 800..1600 {
-        assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(false));
+        assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(false));
     }
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -523,13 +540,13 @@ async fn test_check_bloom_filter_init_from_existing() {
     let storage = common::create_test_storage(&path, 100).await.unwrap();
     debug!("check check_bloom");
     for i in 1..base {
-        assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(true));
+        assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(true));
     }
     info!("check certainly missed keys");
     let mut false_positive_counter = 0usize;
     for i in base..base * 2 {
         trace!("check key: {}", i);
-        if storage.check_bloom(KeyTest::new(i)).await == Some(true) {
+        if storage.check_filters(KeyTest::new(i)).await == Some(true) {
             false_positive_counter += 1;
         }
     }
@@ -571,13 +588,13 @@ async fn test_check_bloom_filter_generated() {
     debug!("check check_bloom");
     for i in 1..base {
         trace!("check key: {}", i);
-        assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(true));
+        assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(true));
     }
     info!("check certainly missed keys");
     let mut false_positive_counter = 0usize;
     for i in base..base * 2 {
         trace!("check key: {}", i);
-        if storage.check_bloom(KeyTest::new(i)).await == Some(true) {
+        if storage.check_filters(KeyTest::new(i)).await == Some(true) {
             false_positive_counter += 1;
         }
     }

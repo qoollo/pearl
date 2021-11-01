@@ -1,5 +1,3 @@
-use crate::filter::BloomDataProvider;
-
 use super::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -116,26 +114,23 @@ impl FileIndexTrait for SimpleFileIndex {
     }
 }
 
-#[async_trait::async_trait]
-impl BloomDataProvider for SimpleFileIndex {
-    async fn read_byte(&self, index: u64) -> Result<u8> {
-        self.read_meta_at(index).await
-    }
-
-    async fn read_all(&self) -> Result<Vec<u8>> {
-        self.read_meta().await
-    }
-}
-
 // helpers
 impl SimpleFileIndex {
+    fn validate(&self) -> Result<()> {
+        // FIXME: check hash here?
+        if self.header.is_written() && self.header.version() == HEADER_VERSION {
+            Ok(())
+        } else {
+            Err(Error::validation("Index Header is not valid").into())
+        }
+    }
     fn hash_valid(header: &IndexHeader, buf: &mut Vec<u8>) -> Result<bool> {
         let hash = header.hash.clone();
         let mut header = header.clone();
         header.hash = vec![0; ring::digest::SHA256.output_len];
         header.set_written(false);
         serialize_into(buf.as_mut_slice(), &header)?;
-        let new_hash = get_hash(&buf);
+        let new_hash = get_hash(buf);
         Ok(hash == new_hash)
     }
 

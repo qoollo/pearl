@@ -134,10 +134,10 @@ mod tests {
     fn check_offset(keys: &[Vec<u8>], key: &[u8], offset: u64, off_to_index: impl Fn(u64) -> u64) {
         let offset_index = off_to_index(offset) as usize;
         if offset_index != 0 {
-            assert!(key >= &keys[offset_index - 1]);
+            assert!(key.cmp(&keys[offset_index - 1]).is_ge());
         }
         if offset_index != keys.len() {
-            assert!(key < &keys[offset_index])
+            assert!(key.cmp(keys[offset_index].as_ref()).is_lt())
         }
     }
 

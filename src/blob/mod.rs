@@ -12,6 +12,6 @@ pub(crate) use super::prelude::*;
 
 mod prelude {
     pub(crate) use super::*;
-    pub(crate) use index::Index;
+    pub(crate) use index::{FilterResult, Index};
     pub(crate) use std::sync::atomic::AtomicU64;
 }

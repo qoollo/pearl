@@ -4,6 +4,7 @@ use super::prelude::*;
 
 use super::index::IndexTrait;
 
+const BLOB_VERSION: u32 = 1;
 const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 
@@ -215,10 +216,15 @@ impl Blob {
         Ok(())
     }
 
-    pub(crate) async fn read_any(&self, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+    pub(crate) async fn read_any(
+        &self,
+        key: &[u8],
+        meta: Option<&Meta>,
+        check_filters: bool,
+    ) -> Result<Vec<u8>> {
         debug!("blob read any");
         let entry = self
-            .get_entry(key, meta)
+            .get_entry(key, meta, check_filters)
             .await?
             .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
         debug!("blob read any entry found");
@@ -247,10 +253,15 @@ impl Blob {
             .collect()
     }
 
-    async fn get_entry(&self, key: &[u8], meta: Option<&Meta>) -> Result<Option<Entry>> {
+    async fn get_entry(
+        &self,
+        key: &[u8],
+        meta: Option<&Meta>,
+        check_filters: bool,
+    ) -> Result<Option<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
-        if self.check_bloom_simple(key).await == Some(false) {
-            debug!("blob core get any entry check bloom returned Some(false)");
+        if check_filters && !self.check_filters(key).await {
+            debug!("Key was filtered out by filters");
             Ok(None)
         } else if let Some(meta) = meta {
             debug!("blob get any entry meta: {:?}", meta);
@@ -293,7 +304,7 @@ impl Blob {
 
     pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
         debug!("blob contains");
-        let contains = self.get_entry(key, meta).await?.is_some();
+        let contains = self.get_entry(key, meta, true).await?.is_some();
         debug!("blob contains any: {}", contains);
         Ok(contains)
     }
@@ -316,20 +327,17 @@ impl Blob {
         self.name.id
     }
 
-    pub(crate) async fn check_bloom(&self, key: &[u8]) -> Result<Option<bool>> {
-        trace!("check bloom filter");
-        self.index.check_bloom_key(key).await
-    }
-
-    pub(crate) async fn check_bloom_simple(&self, key: &[u8]) -> Option<bool> {
-        match self.check_bloom(key).await {
-            Ok(x) => x,
-            _ => None,
-        }
-    }
-
     pub(crate) fn offload_filter(&mut self) {
         self.index.offload_filter()
+    }
+
+    pub(crate) async fn check_filters(&self, key: &[u8]) -> bool {
+        trace!("check filters (range and bloom)");
+        if let FilterResult::NotContains = self.index.check_filters_key(key).await {
+            false
+        } else {
+            true
+        }
     }
 
     pub(crate) fn index_memory(&self) -> usize {
@@ -408,7 +416,7 @@ impl Header {
     pub const fn new() -> Self {
         Self {
             magic_byte: BLOB_MAGIC_BYTE,
-            version: 0,
+            version: BLOB_VERSION,
             flags: 0,
         }
     }
@@ -430,23 +438,23 @@ impl RawRecords {
     async fn start(file: File, blob_header_size: u64, key_size: usize) -> Result<Self> {
         let current_offset = blob_header_size;
         debug!("blob raw records start, current offset: {}", current_offset);
-        let size_of_usize = std::mem::size_of::<usize>();
-        let size_of_magic_byte = std::mem::size_of::<u64>();
+        let size_of_len = bincode::serialized_size(&(0_usize))? as usize;
+        let size_of_magic_byte = bincode::serialized_size(&RECORD_MAGIC_BYTE)? as usize;
         debug!(
             "blob raw records start, read at: size {}, offset: {}",
-            size_of_usize,
-            current_offset + size_of_usize as u64
+            size_of_len,
+            current_offset + size_of_len as u64
         );
         // plus size of usize because serialized
         // vector contains usize len in front
-        let mut buf = vec![0; size_of_magic_byte + size_of_usize];
+        let mut buf = vec![0; size_of_magic_byte + size_of_len];
         file.read_at(&mut buf, current_offset).await?;
         let (magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         debug!("blob raw records start, read at {} bytes", buf.len());
-        let magic_byte = bincode::deserialize::<u64>(&magic_byte_buf)
+        let magic_byte = bincode::deserialize::<u64>(magic_byte_buf)
             .context("failed to deserialize magic byte")?;
         Self::check_record_header_magic_byte(magic_byte)?;
-        let key_len = bincode::deserialize::<usize>(&key_len_buf)
+        let key_len = bincode::deserialize::<usize>(key_len_buf)
             .context("failed to deserialize index buf vec length")?;
         if key_len != key_size {
             let msg = "blob key_sizeis not equal to pearl compile-time key size";

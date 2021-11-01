@@ -5,6 +5,7 @@ pub mod bloom;
 mod bptree;
 mod core;
 mod header;
+mod range;
 mod simple;
 mod tools;
 
@@ -15,10 +16,11 @@ use bptree::BPTreeFileIndex;
 use header::IndexHeader;
 
 pub(crate) use self::core::{
-    FileIndexTrait, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,
+    FileIndexTrait, FilterResult, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,
 };
 pub(crate) use super::prelude::*;
 pub(crate) use bloom::{Bloom, Config as BloomConfig};
+pub(crate) use range::RangeFilter;
 
 mod prelude {
     pub(crate) use super::*;

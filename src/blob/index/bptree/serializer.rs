@@ -1,5 +1,8 @@
 use super::prelude::*;
 
+type MinKeyWithOffset = (Vec<u8>, u64);
+type NodesWithLayerSize = (Vec<MinKeyWithOffset>, u64);
+
 pub(super) struct HeaderStage<'a> {
     headers_btree: &'a InMemoryIndex,
     header: IndexHeader,
@@ -98,7 +101,7 @@ impl<'a> HeaderStage<'a> {
 
     fn process_keys_portion(
         buf: &mut Vec<u8>,
-        nodes_portion: &[(Vec<u8>, u64)],
+        nodes_portion: &[MinKeyWithOffset],
         shift: u64,
     ) -> Result<()> {
         let offsets_iter = nodes_portion.iter().map(|(_, offset)| *offset + shift);
@@ -114,10 +117,14 @@ impl<'a> HeaderStage<'a> {
     }
 
     pub(super) fn build_tree(
-        nodes_arr: Vec<(Vec<u8>, u64)>,
+        nodes_arr: Vec<MinKeyWithOffset>,
         tree_offset: u64,
         buf: &mut Vec<u8>,
     ) -> Result<()> {
+        assert!(
+            !nodes_arr.is_empty(),
+            "Impossible to build tree without nodes"
+        );
         if nodes_arr.len() == 1 {
             return Ok(());
         }
@@ -132,7 +139,7 @@ impl<'a> HeaderStage<'a> {
 
     fn shift_all_and_write(
         buf: &mut Vec<u8>,
-        nodes_arr: &[(Vec<u8>, u64)],
+        nodes_arr: &[MinKeyWithOffset],
         base_offset: u64,
         (min_amount, max_amount): (usize, usize),
     ) -> Result<()> {
@@ -152,9 +159,9 @@ impl<'a> HeaderStage<'a> {
     }
 
     fn collect_next_layer_nodes(
-        nodes_arr: &[(Vec<u8>, u64)],
+        nodes_arr: &[MinKeyWithOffset],
         (min_amount, max_amount): (usize, usize),
-    ) -> Result<(Vec<(Vec<u8>, u64)>, u64)> {
+    ) -> Result<NodesWithLayerSize> {
         let mut new_nodes = Vec::new();
         let mut current = 0;
         let mut current_offset = 0;

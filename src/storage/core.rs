@@ -1,4 +1,5 @@
 use super::prelude::*;
+use futures::stream::FuturesOrdered;
 
 const BLOB_FILE_EXTENSION: &str = "blob";
 const LOCK_FILE: &str = "pearl.lock";
@@ -288,7 +289,7 @@ impl<K: Key> Storage<K> {
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?
-            .read_any(key, meta)
+            .read_any(key, meta, true)
             .await;
         debug!("storage read with optional meta from active blob finished");
         match active_blob_read_res {
@@ -303,16 +304,52 @@ impl<K: Key> Storage<K> {
         }
     }
 
-    async fn get_any_data(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_last(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
         let blobs = safe.blobs.read().await;
-        let stream: FuturesUnordered<_> =
-            blobs.iter().map(|blob| blob.read_any(key, meta)).collect();
+        let blobs_stream: FuturesOrdered<_> = blobs
+            .iter()
+            .enumerate()
+            .map(|(i, blob)| async move {
+                if blob.check_filters(key).await {
+                    Some(i)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let possible_blobs: Vec<_> = blobs_stream.filter_map(|e| e).collect().await;
+        debug!(
+            "len of possible blobs: {} (start len: {})",
+            possible_blobs.len(),
+            blobs.len()
+        );
+        let stream: FuturesOrdered<_> = possible_blobs
+            .iter()
+            .rev()
+            .map(|i| blobs[*i].read_any(key, meta, false))
+            .collect();
+        debug!("read with optional meta {} closed blobs", stream.len());
+        let mut task = stream.skip_while(Result::is_err);
+        task.next().await.ok_or_else(Error::not_found)?
+    }
+
+    #[allow(dead_code)]
+    async fn get_data_any(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+        let blobs = safe.blobs.read().await;
+        let stream: FuturesUnordered<_> = blobs
+            .iter()
+            .map(|blob| blob.read_any(key, meta, true))
+            .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
         task.next()
             .await
             .ok_or_else(Error::not_found)?
             .with_context(|| "no results in closed blobs")
+    }
+
+    async fn get_any_data(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+        Self::get_data_last(safe, key, meta).await
     }
 
     /// Stop blob updater and release lock file
@@ -564,29 +601,28 @@ impl<K: Key> Storage<K> {
         Ok(false)
     }
 
-    /// `check_bloom` is used to check whether a key is in storage.
-    /// If bloom filter opt out, returns `None`.
-    /// Uses bloom filter under the hood, so false positive results are possible,
-    /// but false negatives are not.
-    /// In other words, `check_bloom` returns either "possibly in storage" or "definitely not".
-    pub async fn check_bloom(&self, key: impl AsRef<K>) -> Option<bool> {
+    /// `check_filters` is used to check whether a key is in storage.
+    /// Range (min-max test) and bloom filters are used.
+    /// If bloom filter opt out and range filter passes, returns `None`.
+    /// False positive results are possible, but false negatives are not.
+    /// In other words, `check_filters` returns either "possibly in storage" or "definitely not".
+    pub async fn check_filters(&self, key: impl AsRef<K>) -> Option<bool> {
         let key = key.as_ref();
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.read().await;
         let in_active = if let Some(active_blob) = inner.active_blob.as_ref() {
-            active_blob.check_bloom_simple(key.as_ref()).await == Some(true)
+            active_blob.check_filters(key.as_ref()).await
         } else {
             false
         };
-
         let in_closed = inner
             .blobs
             .read()
             .await
             .iter()
-            .map(|blob| blob.check_bloom_simple(key.as_ref()))
+            .map(|blob| blob.check_filters(key.as_ref()))
             .collect::<FuturesUnordered<_>>()
-            .any(|value| value == Some(true))
+            .any(|value| value)
             .await;
 
         Some(in_active || in_closed)
