@@ -6,10 +6,7 @@ fn main() {
         "pub(crate) const BUILD_TIME: &str = \"{}\";",
         time.format("%d-%m-%Y %H:%M:%S")
     );
-    let path = format!(
-        "{}/src/build_info/build_time.rs",
-        env!("CARGO_MANIFEST_DIR")
-    );
+    let path = format!("{}/build_time.rs", std::env::var("OUT_DIR").unwrap());
     if let Err(e) = std::fs::write(path, content) {
         println!("failed to write build time: {}", e);
     }

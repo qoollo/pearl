@@ -6,16 +6,23 @@ pub(crate) struct ObserverWorker {
     receiver: Receiver<Msg>,
     dump_sem: Arc<Semaphore>,
     update_interval: Duration,
+    async_oplock: Arc<Mutex<()>>,
 }
 
 impl ObserverWorker {
-    pub(crate) fn new(receiver: Receiver<Msg>, inner: Inner, dump_sem: Arc<Semaphore>) -> Self {
+    pub(crate) fn new(
+        receiver: Receiver<Msg>,
+        inner: Inner,
+        dump_sem: Arc<Semaphore>,
+        async_oplock: Arc<Mutex<()>>,
+    ) -> Self {
         let update_interval = Duration::from_millis(inner.config.update_interval_ms());
         Self {
             inner,
             receiver,
             dump_sem,
             update_interval,
+            async_oplock,
         }
     }
 
@@ -33,11 +40,8 @@ impl ObserverWorker {
 
     async fn tick(&mut self) -> Result<()> {
         match timeout(self.update_interval, self.receiver.recv()).await {
-            Ok(Some(Msg::CloseActiveBlob)) => {
-                update_active_blob(self.inner.clone()).await?;
-                self.inner
-                    .try_dump_old_blob_indexes(self.dump_sem.clone())
-                    .await;
+            Ok(Some(msg)) => {
+                self.process_msg(msg).await?;
             }
             Ok(None) => {
                 return Err(anyhow!(
@@ -49,6 +53,42 @@ impl ObserverWorker {
         }
         trace!("check active blob");
         self.try_update().await
+    }
+
+    async fn process_msg(&mut self, msg: Msg) -> Result<()> {
+        if !self.predicate_wrapper(&msg.predicate).await {
+            return Ok(());
+        }
+        let _lock = self.async_oplock.lock().await;
+        if !self.predicate_wrapper(&msg.predicate).await {
+            return Ok(());
+        }
+        match msg.optype {
+            OperationType::ForceUpdateActiveBlob => {
+                update_active_blob(self.inner.clone()).await?;
+                self.inner
+                    .try_dump_old_blob_indexes(self.dump_sem.clone())
+                    .await;
+            }
+            OperationType::CloseActiveBlob => {
+                self.inner.close_active_blob().await?;
+            }
+            OperationType::CreateActiveBlob => {
+                self.inner.create_active_blob().await?;
+            }
+            OperationType::RestoreActiveBlob => {
+                self.inner.restore_active_blob().await?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn predicate_wrapper(&self, predicate: &Option<ActiveBlobPred>) -> bool {
+        if let Some(predicate) = predicate {
+            predicate(self.inner.active_blob_stat().await)
+        } else {
+            true
+        }
     }
 
     async fn try_update(&self) -> Result<()> {
@@ -67,13 +107,12 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
         trace!("await for lock");
         let safe_locked = inner.safe.read().await;
         trace!("lock acquired");
-        let active_blob = safe_locked
-            .active_blob
-            .as_ref()
-            .ok_or_else(Error::active_blob_not_set)?;
-        let size = active_blob.file_size();
-        let count = active_blob.records_count() as u64;
-        (size, count)
+        if let Some(active_blob) = safe_locked.active_blob.as_ref() {
+            (active_blob.file_size(), active_blob.records_count() as u64)
+        } else {
+            // if active blob doesn't exists, it doesn't need to be updated
+            return Ok(None);
+        }
     };
     trace!("lock released");
     let config_max_size = inner

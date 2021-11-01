@@ -1,8 +1,10 @@
 mod core;
 mod entry;
 mod file;
+mod header;
 mod index;
 
+pub(crate) use self::core::BLOB_INDEX_FILE_EXTENSION;
 pub(crate) use self::core::{Blob, FileName};
 pub use self::entry::Entry;
 pub(crate) use self::file::File;

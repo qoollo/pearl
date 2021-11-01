@@ -244,6 +244,33 @@ async fn test_work_dir_lock() {
 }
 
 #[tokio::test]
+async fn test_corrupted_index_regeneration() {
+    let now = Instant::now();
+    let path = common::init("corrupted_index");
+    let storage = common::create_test_storage(&path, 70_000).await.unwrap();
+    let records = common::generate_records(100, 10_000);
+    for (i, data) in &records {
+        write_one(&storage, *i, data, None).await.unwrap();
+        sleep(Duration::from_millis(10)).await;
+    }
+    storage.close().await.unwrap();
+    let index_file_path = path.join("test.0.index");
+    assert!(index_file_path.exists());
+
+    common::corrupt_file(index_file_path, common::CorruptionType::ZeroedAtBegin(1024))
+        .expect("index corruption failed");
+
+    let new_storage = common::create_test_storage(&path, 1_000_000)
+        .await
+        .expect("storage should be loaded successfully");
+
+    common::clean(new_storage, path)
+        .map(|res| res.expect("clean failed"))
+        .await;
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
 async fn test_index_from_blob() {
     let now = Instant::now();
     let path = common::init("index_from_blob");
@@ -701,7 +728,7 @@ async fn test_manual_close_active_blob() {
     assert_eq!(storage.blobs_count().await, 1);
     assert!(path.join("test.0.blob").exists());
     sleep(Duration::from_millis(1000)).await;
-    storage.close_active_blob().await;
+    storage.try_close_active_blob().await.unwrap();
     assert!(path.join("test.0.blob").exists());
     assert!(!path.join("test.1.blob").exists());
     common::clean(storage, path).await.unwrap();
@@ -797,7 +824,7 @@ async fn test_memory_index() {
         KEY_AND_DATA_SIZE * 4 + RECORD_HEADER_SIZE * 13 - 6 * std::mem::size_of::<u32>()
     ); // 4 keys, 7 records in active blob (13 allocated (6 without key on heap))
     assert!(path.join("test.0.blob").exists());
-    storage.close_active_blob().await;
+    storage.try_close_active_blob().await.unwrap();
     // Doesn't work without this: indices are written in old btree (which I want to dump in memory)
     sleep(Duration::from_millis(100)).await;
     for (key, data) in records.iter().skip(7) {
@@ -810,5 +837,59 @@ async fn test_memory_index() {
         KEY_AND_DATA_SIZE * 3 + RECORD_HEADER_SIZE * 3
     ); // 3 keys, 3 records in active blob (3 allocated)
     assert!(path.join("test.1.blob").exists());
+    common::clean(storage, path).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_blob_header_validation() {
+    use pearl::error::{AsPearlError, ValidationErrorKind};
+    use std::os::unix::fs::FileExt;
+
+    let path = common::init("blob_header_validation");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
+    let data = vec![1, 1, 2, 3, 5, 8];
+    write_one(&storage, 42, &data, None).await.unwrap();
+    storage.close().await.expect("storage close failed");
+    let blob_path = std::env::temp_dir().join(&path).join("test.0.blob");
+    info!("path: {}", blob_path.display());
+    let file = fs::OpenOptions::new()
+        .write(true)
+        .create(false)
+        .open(&blob_path)
+        .expect("failed to open file");
+    let buf = bincode::serialize(&0_u32).expect("failed to serialize u32");
+    file.write_at(&buf, 8)
+        .expect("failed to overwrite blob version");
+
+    let builder = Builder::new()
+        .work_dir(&path)
+        .blob_file_name_prefix("test")
+        .max_blob_size(10_000)
+        .max_data_in_blob(100_000)
+        .set_filter_config(Default::default())
+        .allow_duplicates();
+    let builder = if let Ok(ioring) = rio::new() {
+        builder.enable_aio(ioring)
+    } else {
+        println!("current OS doesn't support AIO");
+        builder
+    };
+    let mut storage: Storage<KeyTest> = builder.build().unwrap();
+    let err = storage
+        .init()
+        .await
+        .expect_err("storage initialized with invalid blob header");
+    info!("{:#}", err);
+    let pearl_err = err
+        .as_pearl_error()
+        .expect("result doesn't contains pearl error");
+    let is_correct = matches!(
+        pearl_err.kind(),
+        pearl::ErrorKind::Validation {
+            kind: ValidationErrorKind::BlobVersion,
+            cause: _
+        }
+    );
+    assert!(is_correct);
     common::clean(storage, path).await.unwrap();
 }

@@ -1,3 +1,5 @@
+use crate::error::ValidationErrorKind;
+
 use super::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -106,24 +108,21 @@ impl FileIndexTrait for SimpleFileIndex {
     }
 
     fn validate(&self) -> Result<()> {
-        if self.header.is_written() {
-            Ok(())
-        } else {
-            Err(Error::validation("Index Header is not valid").into())
+        // FIXME: check hash here?
+        if !self.header.is_written() {
+            let param = ValidationErrorKind::IndexIsWritten;
+            return Err(Error::validation(param, "Index Header version is not valid").into());
         }
+        if self.header.version() != HEADER_VERSION {
+            let param = ValidationErrorKind::IndexVersion;
+            return Err(Error::validation(param, "Index Header version is not valid").into());
+        }
+        Ok(())
     }
 }
 
 // helpers
 impl SimpleFileIndex {
-    fn validate(&self) -> Result<()> {
-        // FIXME: check hash here?
-        if self.header.is_written() && self.header.version() == HEADER_VERSION {
-            Ok(())
-        } else {
-            Err(Error::validation("Index Header is not valid").into())
-        }
-    }
     fn hash_valid(header: &IndexHeader, buf: &mut Vec<u8>) -> Result<bool> {
         let hash = header.hash.clone();
         let mut header = header.clone();
@@ -259,10 +258,8 @@ impl SimpleFileIndex {
     async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
         self.validate()?;
         if !Self::hash_valid(&self.header, buf)? {
-            return Err(Error::validation("header hash mismatch").into());
-        }
-        if self.header.version() != HEADER_VERSION {
-            return Err(Error::validation("header version mismatch").into());
+            let param = ValidationErrorKind::IndexChecksum;
+            return Err(Error::validation(param, "header hash mismatch").into());
         }
         Ok(())
     }
