@@ -203,14 +203,17 @@ impl<K: Key> Storage<K> {
     /// Fails if there are some errors during dump
     /// [`close_active_blob_in_background()`]: struct.Storage.html#method.create_active_blob_async
     pub async fn try_close_active_blob(&self) -> Result<()> {
-        self.inner.close_active_blob().await
+        let result = self.inner.close_active_blob().await;
+        self.observer.try_dump_old_blob_indexes().await;
+        result
     }
 
     /// Dumps active blob
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`try_close_active_blob()`]
     pub async fn close_active_blob_in_background(&self) {
-        self.observer.close_active_blob().await
+        self.observer.close_active_blob().await;
+        self.observer.try_dump_old_blob_indexes().await
     }
 
     /// Sets last blob from closed blobs as active if there is no active blobs
@@ -810,7 +813,8 @@ impl<K: Key> Storage<K> {
     /// Or if there are some problems with syncronization.
     /// [`close_active_blob_in_background()`]: struct.Storage.html#method.close_active_blob_async
     pub async fn force_update_active_blob(&self, predicate: ActiveBlobPred) {
-        self.observer.force_update_active_blob(predicate).await
+        self.observer.force_update_active_blob(predicate).await;
+        self.observer.try_dump_old_blob_indexes().await
     }
 
     fn launch_observer(&mut self) {
