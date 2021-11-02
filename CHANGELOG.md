@@ -4,7 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Add method to offload bloom filters (#121)
 
 #### Changed
 
