@@ -168,7 +168,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
                 return Ok(0);
             }
             debug!("blob index simple in memory headers {}", headers.len());
-            let meta_buf = self.serialize_filters()?;
+            let (meta_buf, bloom_offset) = self.serialize_filters()?;
             let findex = FileIndex::from_records(
                 &self.name.to_path(),
                 self.ioring.clone(),
@@ -180,21 +180,23 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
             let size = findex.file_size() as usize;
             self.inner = State::OnDisk(findex);
             self.mem = None;
+            self.bloom_offset = bloom_offset;
             Ok(size)
         } else {
             Ok(0)
         }
     }
 
-    fn serialize_filters(&self) -> Result<Vec<u8>> {
+    fn serialize_filters(&self) -> Result<(Vec<u8>, usize)> {
         let range_buf = self.range_filter.to_raw()?;
         let range_buf_size = range_buf.len() as u64;
         let bloom_buf = self.bloom_filter.to_raw()?;
         let mut buf = Vec::with_capacity(size_of::<u64>() + range_buf.len() + bloom_buf.len());
+        let bloom_offset = size_of::<u64>() + range_buf.len();
         buf.extend_from_slice(&serialize(&range_buf_size)?);
         buf.extend_from_slice(&range_buf);
         buf.extend_from_slice(&bloom_buf);
-        Ok(buf)
+        Ok((buf, bloom_offset))
     }
 
     fn deserialize_filters(buf: &[u8]) -> Result<(Bloom, RangeFilter, usize)> {
