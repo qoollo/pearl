@@ -349,6 +349,19 @@ impl Blob {
         }
     }
 
+    pub(crate) fn check_filters_in_memory(&self, key: &[u8]) -> bool {
+        trace!("check filters (range and bloom)");
+        if let FilterResult::NotContains = self.index.check_filters_in_memory(key) {
+            false
+        } else {
+            true
+        }
+    }
+
+    pub(crate) fn is_filter_offloaded(&self) -> bool {
+        self.index.is_filter_offloaded()
+    }
+
     pub(crate) fn index_memory(&self) -> usize {
         self.index.memory_used()
     }

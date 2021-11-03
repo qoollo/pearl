@@ -5,6 +5,7 @@ use bitvec::order::Lsb0;
 #[derive(Debug, Clone)]
 pub(crate) struct Bloom {
     inner: Option<BitVec<Lsb0, u64>>,
+    offset_in_file: Option<u64>,
     bits_count: usize,
     hashers: Vec<AHasher>,
     config: Config,
@@ -17,6 +18,7 @@ impl Default for Bloom {
             bits_count: 0,
             hashers: vec![],
             config: Default::default(),
+            offset_in_file: None,
         }
     }
 }
@@ -109,15 +111,26 @@ impl Bloom {
             hashers: Self::hashers(config.hashers_count),
             config,
             bits_count,
+            offset_in_file: None,
         }
     }
 
     pub fn clear(&mut self) {
         self.inner = Some(bitvec![Lsb0, u64; 0; self.bits_count]);
+        self.offset_in_file = None;
+    }
+
+    pub fn is_offloaded(&self) -> bool {
+        self.inner.is_none()
     }
 
     pub fn offload_from_memory(&mut self) {
         self.inner = None;
+    }
+
+    pub fn set_offset_in_file(&mut self, offset: u64) {
+        self.offset_in_file =
+            Some(offset + self.buffer_start_position().expect("Should not fail") as u64);
     }
 
     pub fn hashers(k: usize) -> Vec<AHasher> {
@@ -147,6 +160,7 @@ impl Bloom {
             config: save.config,
             inner: Some(inner),
             bits_count: save.bits_count,
+            offset_in_file: None,
         }
     }
 
@@ -209,7 +223,9 @@ impl Bloom {
         if self.bits_count == 0 {
             return Ok(false);
         }
-        let start_pos = self.buffer_start_position()?;
+        let start_pos = self
+            .offset_in_file
+            .ok_or_else(|| anyhow::anyhow!("Offset should be set for in-file operations"))?;
         for index in hashers.iter_mut().map(|hasher| {
             hasher.write(item.as_ref());
             hasher.finish() % self.bits_count as u64
@@ -241,7 +257,6 @@ impl Bloom {
 #[async_trait::async_trait]
 pub(crate) trait BloomDataProvider {
     async fn read_byte(&self, index: u64) -> Result<u8>;
-    async fn read_all(&self) -> Result<Vec<u8>>;
 }
 
 mod tests {

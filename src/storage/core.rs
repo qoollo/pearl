@@ -795,12 +795,24 @@ impl<K: Key> Storage<K> {
             .read()
             .await
             .iter()
-            .map(|blob| blob.check_filters(key.as_ref()))
-            .collect::<FuturesUnordered<_>>()
-            .any(|value| value)
-            .await;
+            .filter(|blob| !blob.is_filter_offloaded())
+            .any(|blob| blob.check_filters_in_memory(key.as_ref()));
 
-        Some(in_active || in_closed)
+        if !(in_active || in_closed) {
+            let in_closed_offloaded = inner
+                .blobs
+                .read()
+                .await
+                .iter()
+                .filter(|blob| blob.is_filter_offloaded())
+                .map(|blob| blob.check_filters(key.as_ref()))
+                .collect::<FuturesUnordered<_>>()
+                .any(|value| value)
+                .await;
+            Some(in_closed_offloaded)
+        } else {
+            Some(true)
+        }
     }
 
     /// Offload bloom filters for closed blobs
