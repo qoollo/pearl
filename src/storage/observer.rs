@@ -1,6 +1,7 @@
 use super::prelude::*;
-use tokio::{
-    sync::{mpsc::{channel, Sender}, Semaphore},
+use tokio::sync::{
+    mpsc::{channel, Sender},
+    Semaphore,
 };
 
 #[derive(Debug, Clone)]
@@ -43,15 +44,15 @@ impl Msg {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Observer {
-    inner: Option<Inner>,
+pub(crate) struct Observer<K> {
+    inner: Option<Inner<K>>,
     pub sender: Option<Sender<Msg>>,
     dump_sem: Arc<Semaphore>,
     async_oplock: Arc<Mutex<()>>,
 }
 
-impl Observer {
-    pub(crate) fn new(inner: Inner, dump_sem: Arc<Semaphore>) -> Self {
+impl<K: Key + 'static> Observer<K> {
+    pub(crate) fn new(inner: Inner<K>, dump_sem: Arc<Semaphore>) -> Self {
         Self {
             inner: Some(inner),
             sender: None,

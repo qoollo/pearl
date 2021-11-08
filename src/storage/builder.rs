@@ -48,7 +48,7 @@ impl Builder {
     /// returns error if not all params are set.
     /// # Errors
     /// Return error if some of the required params is missed or wrong
-    pub fn build<K: Key>(self) -> Result<Storage<K>> {
+    pub fn build<K: Key + 'static>(self) -> Result<Storage<K>> {
         let mut error_params = String::new();
         if self.config.work_dir().is_none() {
             error_params.push_str("> work_dir\n");

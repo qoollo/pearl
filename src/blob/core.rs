@@ -13,15 +13,16 @@ pub(crate) const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 ///
 /// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
-pub struct Blob {
+pub struct Blob<K> {
     header: Header,
     index: Index,
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
+    key_type: PhantomData<K>,
 }
 
-impl Blob {
+impl<K: Key> Blob<K> {
     /// # Description
     /// Creates new blob file with given [`FileName`].
     /// And creates index from existing `.index` file or scans corresponding blob.
@@ -44,6 +45,7 @@ impl Blob {
             name,
             file,
             current_offset,
+            key_type: PhantomData,
         };
         blob.write_header().await?;
         Ok(blob)
@@ -81,11 +83,11 @@ impl Blob {
         }
     }
 
-    pub(crate) async fn load_index(&mut self, blob_key_size: u16) -> Result<()> {
+    pub(crate) async fn load_index(&mut self) -> Result<()> {
         if let Err(e) = self.index.load().await {
             warn!("error loading index: {}, regenerating", e);
             self.index.clear();
-            self.try_regenerate_index(blob_key_size as usize).await?;
+            self.try_regenerate_index().await?;
         }
         Ok(())
     }
@@ -98,7 +100,6 @@ impl Blob {
         path: PathBuf,
         ioring: Option<Rio>,
         index_config: IndexConfig,
-        blob_key_size: u16,
     ) -> Result<Self> {
         let now = Instant::now();
         let file = File::open(&path, ioring.clone()).await?;
@@ -143,10 +144,11 @@ impl Blob {
             name,
             index,
             current_offset: Arc::new(Mutex::new(size)),
+            key_type: PhantomData,
         };
         trace!("call update index");
         if is_index_corrupted || size as u64 > header_size {
-            blob.try_regenerate_index(blob_key_size as usize)
+            blob.try_regenerate_index()
                 .await
                 .context("failed to regenerate index")?;
         } else {
@@ -162,17 +164,17 @@ impl Blob {
         Ok(blob)
     }
 
-    async fn raw_records(&self, key_size: usize) -> Result<RawRecords> {
+    async fn raw_records(&self) -> Result<RawRecords> {
         RawRecords::start(
             self.file.clone(),
             bincode::serialized_size(&self.header)?,
-            key_size,
+            K::LEN as usize,
         )
         .await
         .context("failed to create iterator for raw records")
     }
 
-    pub(crate) async fn try_regenerate_index(&mut self, key_size: usize) -> Result<()> {
+    pub(crate) async fn try_regenerate_index(&mut self) -> Result<()> {
         info!("try regenerate index for blob: {}", self.name);
         if self.index.on_disk() {
             debug!("index already updated");
@@ -180,7 +182,7 @@ impl Blob {
         }
         debug!("index file missed");
         let raw_r = self
-            .raw_records(key_size)
+            .raw_records()
             .await
             .context("failed to read raw records")?;
         debug!("raw records loaded");
@@ -198,7 +200,7 @@ impl Blob {
         Ok(())
     }
 
-    pub(crate) const fn check_data_consistency() {
+    pub(crate) fn check_data_consistency() {
         // @TODO implement
     }
 
@@ -332,7 +334,7 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) const fn id(&self) -> usize {
+    pub(crate) fn id(&self) -> usize {
         self.name.id
     }
 
