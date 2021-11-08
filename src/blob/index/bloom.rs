@@ -152,7 +152,7 @@ impl Bloom {
         }
     }
 
-    fn from(save: Save) -> Self {
+    fn from(save: Save, offset_in_file: Option<u64>) -> Self {
         let mut inner = BitVec::from_vec(save.buf);
         inner.truncate(save.bits_count);
         Self {
@@ -160,7 +160,7 @@ impl Bloom {
             config: save.config,
             inner: Some(inner),
             bits_count: save.bits_count,
-            offset_in_file: None,
+            offset_in_file,
         }
     }
 
@@ -171,19 +171,15 @@ impl Bloom {
         bincode::serialize(&save).map_err(Into::into)
     }
 
-    pub fn from_raw(buf: &[u8]) -> Result<Self> {
+    pub fn from_raw(buf: &[u8], offset_in_file: Option<u64>) -> Result<Self> {
         let save: Save = bincode::deserialize(buf)?;
-        Ok(Self::from(save))
+        Ok(Self::from(save, offset_in_file))
     }
 
     pub fn add(&mut self, item: impl AsRef<[u8]>) -> Result<()> {
         if let Some(inner) = &mut self.inner {
-            let mut hashers = self.hashers.clone();
             let len = inner.len() as u64;
-            for h in hashers.iter_mut().map(|hasher| {
-                hasher.write(item.as_ref());
-                hasher.finish() % len
-            }) {
+            for h in Self::iter_indices_for_key(&self.hashers, len, item.as_ref()) {
                 *inner
                     .get_mut(h as usize)
                     .expect("impossible due to mod by len") = true;
@@ -196,22 +192,30 @@ impl Bloom {
 
     pub fn contains_in_memory(&self, item: impl AsRef<[u8]>) -> Option<bool> {
         if let Some(inner) = &self.inner {
-            let mut hashers = self.hashers.clone();
             let len = inner.len() as u64;
+            // Check because .all on empty iterator returns true
             if len == 0 {
                 return Some(false);
             }
-            let result = hashers
-                .iter_mut()
-                .map(|hasher| {
-                    hasher.write(item.as_ref());
-                    hasher.finish() % len
-                })
-                .all(|i| *inner.get(i as usize).expect("unreachable"));
-            Some(result)
+            Some(
+                Self::iter_indices_for_key(&self.hashers, len, item.as_ref())
+                    .all(|i| *inner.get(i as usize).expect("unreachable")),
+            )
         } else {
             None
         }
+    }
+
+    // Returns empty iterator on len == 0
+    fn iter_indices_for_key<'a>(
+        hashers: &'a Vec<AHasher>,
+        len: u64,
+        item: &'a [u8],
+    ) -> impl Iterator<Item = u64> + 'a {
+        hashers.iter().cloned().filter_map(move |mut hasher| {
+            hasher.write(item.as_ref());
+            hasher.finish().checked_rem(len)
+        })
     }
 
     pub async fn contains_in_file<P: BloomDataProvider>(
@@ -219,10 +223,10 @@ impl Bloom {
         provider: &P,
         item: impl AsRef<[u8]>,
     ) -> Result<bool> {
-        let mut hashers = self.hashers.clone();
         if self.bits_count == 0 {
             return Ok(false);
         }
+        let mut hashers = self.hashers.clone();
         let start_pos = self
             .offset_in_file
             .ok_or_else(|| anyhow::anyhow!("Offset should be set for in-file operations"))?;

@@ -790,29 +790,28 @@ impl<K: Key> Storage<K> {
         } else {
             false
         };
-        let in_closed = inner
-            .blobs
-            .read()
-            .await
-            .iter()
-            .filter(|blob| !blob.is_filter_offloaded())
-            .any(|blob| blob.check_filters_in_memory(key.as_ref()));
-
-        if !(in_active || in_closed) {
-            let in_closed_offloaded = inner
-                .blobs
-                .read()
-                .await
-                .iter()
-                .filter(|blob| blob.is_filter_offloaded())
-                .map(|blob| blob.check_filters(key.as_ref()))
-                .collect::<FuturesUnordered<_>>()
-                .any(|value| value)
-                .await;
-            Some(in_closed_offloaded)
-        } else {
-            Some(true)
+        if in_active {
+            return Some(true);
         }
+
+        let blobs = inner.blobs.read().await;
+        let (offloaded, in_memory): (Vec<&Blob>, Vec<&Blob>) =
+            blobs.iter().partition(|blob| blob.is_filter_offloaded());
+
+        let in_closed = in_memory
+            .iter()
+            .any(|blob| blob.check_filters_in_memory(key.as_ref()));
+        if in_closed {
+            return Some(true);
+        }
+
+        let in_closed_offloaded = offloaded
+            .iter()
+            .map(|blob| blob.check_filters(key.as_ref()))
+            .collect::<FuturesUnordered<_>>()
+            .any(|value| value)
+            .await;
+        Some(in_closed_offloaded)
     }
 
     /// Offload bloom filters for closed blobs

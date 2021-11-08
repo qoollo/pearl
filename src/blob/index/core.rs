@@ -216,8 +216,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         let (range_size_buf, rest_buf) = buf.split_at(size_of::<u64>());
         let range_size = deserialize(&range_size_buf)?;
         let (range_buf, bloom_buf) = rest_buf.split_at(range_size);
-        let mut bloom = Bloom::from_raw(bloom_buf)?;
-        bloom.set_offset_in_file((range_size + size_of::<u64>()) as u64);
+        let bloom = Bloom::from_raw(bloom_buf, Some((range_size + size_of::<u64>()) as u64))?;
         let range = RangeFilter::from_raw(range_buf)?;
         Ok((bloom, range))
     }
