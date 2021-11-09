@@ -1,6 +1,7 @@
 use super::prelude::*;
-use tokio::{
-    sync::{mpsc::{channel, Sender}, Semaphore},
+use tokio::sync::{
+    mpsc::{channel, Sender},
+    Semaphore,
 };
 
 #[derive(Debug, Clone)]
@@ -9,6 +10,7 @@ pub(crate) enum OperationType {
     CloseActiveBlob = 1,
     RestoreActiveBlob = 2,
     ForceUpdateActiveBlob = 3,
+    TryDumpBlobIndexes = 4,
 }
 
 #[derive(Debug)]
@@ -98,6 +100,11 @@ impl Observer {
 
     pub(crate) async fn create_active_blob(&self) {
         self.send_msg(Msg::new(OperationType::CreateActiveBlob, None))
+            .await
+    }
+
+    pub(crate) async fn try_dump_old_blob_indexes(&self) {
+        self.send_msg(Msg::new(OperationType::TryDumpBlobIndexes, None))
             .await
     }
 
