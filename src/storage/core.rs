@@ -407,7 +407,15 @@ impl<K: Key> Storage<K> {
             .iter()
             .enumerate()
             .map(|(i, blob)| async move {
-                if blob.check_filters(key).await {
+                if blob
+                    .check_filters(key)
+                    .await
+                    .map_err(|e| {
+                        error!("Failed to check filter for key {:?}: {}", key, e);
+                        e
+                    })
+                    .unwrap_or(false)
+                {
                     Some(i)
                 } else {
                     None
@@ -508,11 +516,10 @@ impl<K: Key> Storage<K> {
     /// Returns memory allocated for bloom filter buffer
     pub async fn filter_memory_allocated(&self) -> usize {
         let safe = self.inner.safe.read().await;
-        let active = if let Some(ablob) = safe.active_blob.as_ref() {
-            ablob.filter_memory_allocated()
-        } else {
-            0
-        };
+        let active = safe
+            .active_blob
+            .as_ref()
+            .map_or(0, |blob| blob.filter_memory_allocated());
 
         let closed: usize = safe
             .blobs
@@ -786,7 +793,17 @@ impl<K: Key> Storage<K> {
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.read().await;
         let in_active = if let Some(active_blob) = inner.active_blob.as_ref() {
-            active_blob.check_filters(key.as_ref()).await
+            active_blob
+                .check_filters(key.as_ref())
+                .await
+                .map_err(|e| {
+                    error!(
+                        "Failed to check filter for active blob for key {:?}: {}",
+                        key, e
+                    );
+                    e
+                })
+                .unwrap_or(false)
         } else {
             false
         };
@@ -809,7 +826,7 @@ impl<K: Key> Storage<K> {
             .iter()
             .map(|blob| blob.check_filters(key.as_ref()))
             .collect::<FuturesUnordered<_>>()
-            .any(|value| value)
+            .any(|value| value.unwrap_or(false))
             .await;
         Some(in_closed_offloaded)
     }

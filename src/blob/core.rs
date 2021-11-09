@@ -269,7 +269,7 @@ impl Blob {
         check_filters: bool,
     ) -> Result<Option<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
-        if check_filters && !self.check_filters(key).await {
+        if check_filters && !self.check_filters(key).await? {
             debug!("Key was filtered out by filters");
             Ok(None)
         } else if let Some(meta) = meta {
@@ -340,12 +340,12 @@ impl Blob {
         self.index.offload_filter()
     }
 
-    pub(crate) async fn check_filters(&self, key: &[u8]) -> bool {
+    pub(crate) async fn check_filters(&self, key: &[u8]) -> Result<bool> {
         trace!("check filters (range and bloom)");
-        if let FilterResult::NotContains = self.index.check_filters_key(key).await {
-            false
+        if let FilterResult::NotContains = self.index.check_filters_key(key).await? {
+            Ok(false)
         } else {
-            true
+            Ok(true)
         }
     }
 
