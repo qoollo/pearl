@@ -5,9 +5,6 @@ use futures::stream::FuturesOrdered;
 use tokio::fs::{create_dir, create_dir_all};
 
 const BLOB_FILE_EXTENSION: &str = "blob";
-const LOCK_FILE: &str = "pearl.lock";
-
-const O_EXCL: i32 = 128;
 
 /// A main storage struct.
 ///
@@ -203,14 +200,17 @@ impl<K: Key> Storage<K> {
     /// Fails if there are some errors during dump
     /// [`close_active_blob_in_background()`]: struct.Storage.html#method.create_active_blob_async
     pub async fn try_close_active_blob(&self) -> Result<()> {
-        self.inner.close_active_blob().await
+        let result = self.inner.close_active_blob().await;
+        self.observer.try_dump_old_blob_indexes().await;
+        result
     }
 
     /// Dumps active blob
     /// NOTICE! This function returns immediately, so you can't check result of operation. If you
     /// want be sure about operation's result, use [`try_close_active_blob()`]
     pub async fn close_active_blob_in_background(&self) {
-        self.observer.close_active_blob().await
+        self.observer.close_active_blob().await;
+        self.observer.try_dump_old_blob_indexes().await
     }
 
     /// Sets last blob from closed blobs as active if there is no active blobs
@@ -472,14 +472,6 @@ impl<K: Key> Storage<K> {
                     .with_context(|| format!("blob {} dump failed", blob.name())),
             )
         }
-        safe.lock_file = None;
-        if let Some(work_dir) = self.inner.config.work_dir() {
-            res = res.and(
-                std::fs::remove_file(work_dir.join(LOCK_FILE))
-                    .map(|_| info!("lock released"))
-                    .with_context(|| "failed to remove lockfile ({:?})"),
-            );
-        }
         res
     }
 
@@ -560,27 +552,6 @@ impl<K: Key> Storage<K> {
             ))
             .with_context(|| "failed to prepare work dir");
         }
-        self.try_lock_dir(path)
-            .await
-            .with_context(|| format!("failed to lock work dir: {}", path.display()))
-    }
-
-    async fn try_lock_dir<'a>(&'a self, path: &'a Path) -> Result<()> {
-        let lock_file_path = path.join(LOCK_FILE);
-        debug!("try to open lock file: {}", lock_file_path.display());
-        let lock_file = StdOpenOptions::new()
-            .create(true)
-            .write(true)
-            .custom_flags(O_EXCL)
-            .open(&lock_file_path)
-            .map_err(|e| {
-                error!("working directory is locked: {:?}", lock_file_path);
-                error!("check if any other bob instances are running");
-                error!("or delete .lock file and try again");
-                e
-            })?;
-        debug!("{} not locked", path.display());
-        self.inner.safe.write().await.lock_file = Some(lock_file);
         Ok(())
     }
 
@@ -875,7 +846,8 @@ impl<K: Key> Storage<K> {
     /// Or if there are some problems with syncronization.
     /// [`close_active_blob_in_background()`]: struct.Storage.html#method.close_active_blob_async
     pub async fn force_update_active_blob(&self, predicate: ActiveBlobPred) {
-        self.observer.force_update_active_blob(predicate).await
+        self.observer.force_update_active_blob(predicate).await;
+        self.observer.try_dump_old_blob_indexes().await
     }
 
     fn launch_observer(&mut self) {
@@ -937,11 +909,9 @@ impl Inner {
         if safe.active_blob.is_none() {
             Err(Error::active_blob_doesnt_exist().into())
         } else {
-            // FIXME: write lock is still held, so everyone will wait for dump, maybe it's better
-            // to derive this operation to `try_dump_old_blob_indexes`
-            safe.active_blob.as_mut().unwrap(/*None case checked*/).dump().await?;
             // always true
             if let Some(ablob) = safe.active_blob.take() {
+                ablob.fsyncdata().await?;
                 safe.blobs.write().await.push(*ablob);
             }
             Ok(())
@@ -1012,7 +982,7 @@ impl Inner {
         self.safe.read().await.fsyncdata().await
     }
 
-    pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
+    pub(crate) async fn try_dump_old_blob_indexes(&self, sem: Arc<Semaphore>) {
         self.safe.write().await.try_dump_old_blob_indexes(sem).await;
     }
 }

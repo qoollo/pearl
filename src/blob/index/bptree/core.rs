@@ -57,7 +57,7 @@ impl FileIndexTrait for BPTreeFileIndex {
         header.set_written(true);
         let serialized_header = serialize(&header)?;
         file.write_at(0, &serialized_header).await?;
-        file.flush().await?;
+        file.fsyncdata().await?;
         let root_node = Self::read_root(&file, metadata.tree_offset).await?;
         Ok(Self {
             file,
