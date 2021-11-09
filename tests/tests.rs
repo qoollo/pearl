@@ -227,20 +227,38 @@ async fn test_on_disk_index() -> Result<()> {
 
 #[tokio::test]
 async fn test_work_dir_lock() {
-    let now = Instant::now();
+    use nix::sys::wait::{waitpid, WaitStatus};
+    use nix::unistd::{fork, ForkResult};
+
     let path = common::init("work_dir_lock");
-    let storage_one = common::create_test_storage(&path, 1_000_000);
-    let res_one = storage_one.await;
-    assert!(res_one.is_ok());
-    let storage = res_one.unwrap();
-    let storage_two = common::create_test_storage(&path, 1_000_000);
-    let res_two = storage_two.await;
-    dbg!(&res_two);
-    assert!(res_two.is_err());
-    common::clean(storage, path)
-        .map(|res| res.expect("clean failed"))
-        .await;
-    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+
+    // We need separate processes because locks do not work within the same process
+    match unsafe { fork() } {
+        Ok(ForkResult::Parent { child }) => {
+            let now = Instant::now();
+
+            let storage_one = common::create_test_storage(&path, 1_000_000);
+            let res_one = storage_one.await;
+            assert!(res_one.is_ok());
+
+            let storage = res_one.unwrap();
+            let result = waitpid(child, None);
+            assert_eq!(Ok(WaitStatus::Exited(child, 0)), result);
+
+            common::clean(storage, path)
+                .map(|res| res.expect("clean failed"))
+                .await;
+
+            warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+        }
+        Ok(ForkResult::Child) => {
+            sleep(Duration::from_secs(1)).await;
+            let storage_two = common::create_test_storage(&path, 1_000_000);
+            let _ = storage_two.await;
+            unreachable!("Second storage process must panic")
+        }
+        Err(_) => unreachable!("Fork must not fail"),
+    }
 }
 
 #[tokio::test]
