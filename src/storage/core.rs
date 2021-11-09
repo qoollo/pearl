@@ -5,9 +5,6 @@ use futures::stream::FuturesOrdered;
 use tokio::fs::{create_dir, create_dir_all};
 
 const BLOB_FILE_EXTENSION: &str = "blob";
-const LOCK_FILE: &str = "pearl.lock";
-
-const O_EXCL: i32 = 128;
 
 /// A main storage struct.
 ///
@@ -467,14 +464,6 @@ impl<K: Key> Storage<K> {
                     .with_context(|| format!("blob {} dump failed", blob.name())),
             )
         }
-        safe.lock_file = None;
-        if let Some(work_dir) = self.inner.config.work_dir() {
-            res = res.and(
-                std::fs::remove_file(work_dir.join(LOCK_FILE))
-                    .map(|_| info!("lock released"))
-                    .with_context(|| "failed to remove lockfile ({:?})"),
-            );
-        }
         res
     }
 
@@ -536,27 +525,6 @@ impl<K: Key> Storage<K> {
             ))
             .with_context(|| "failed to prepare work dir");
         }
-        self.try_lock_dir(path)
-            .await
-            .with_context(|| format!("failed to lock work dir: {}", path.display()))
-    }
-
-    async fn try_lock_dir<'a>(&'a self, path: &'a Path) -> Result<()> {
-        let lock_file_path = path.join(LOCK_FILE);
-        debug!("try to open lock file: {}", lock_file_path.display());
-        let lock_file = StdOpenOptions::new()
-            .create(true)
-            .write(true)
-            .custom_flags(O_EXCL)
-            .open(&lock_file_path)
-            .map_err(|e| {
-                error!("working directory is locked: {:?}", lock_file_path);
-                error!("check if any other bob instances are running");
-                error!("or delete .lock file and try again");
-                e
-            })?;
-        debug!("{} not locked", path.display());
-        self.inner.safe.write().await.lock_file = Some(lock_file);
         Ok(())
     }
 
