@@ -407,7 +407,15 @@ impl<K: Key> Storage<K> {
             .iter()
             .enumerate()
             .map(|(i, blob)| async move {
-                if blob.check_filters_non_blocking(key).await {
+                if blob
+                    .check_filters(key)
+                    .await
+                    .map_err(|e| {
+                        error!("Failed to check filter for key {:?}: {}", key, e);
+                        e
+                    })
+                    .unwrap_or(false)
+                {
                     Some(i)
                 } else {
                     None
@@ -495,6 +503,25 @@ impl<K: Key> Storage<K> {
         } else {
             0
         }
+    }
+
+    /// Returns memory allocated for bloom filter buffer
+    pub async fn filter_memory_allocated(&self) -> usize {
+        let safe = self.inner.safe.read().await;
+        let active = safe
+            .active_blob
+            .as_ref()
+            .map_or(0, |blob| blob.filter_memory_allocated());
+
+        let closed: usize = safe
+            .blobs
+            .read()
+            .await
+            .iter()
+            .map(|blob| blob.filter_memory_allocated())
+            .sum();
+
+        active + closed
     }
 
     /// Returns next blob ID. If pearl dir structure wasn't changed from the outside,
@@ -736,17 +763,55 @@ impl<K: Key> Storage<K> {
         let key = key.as_ref();
         trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
         let inner = self.inner.safe.read().await;
-        let in_active = inner
-            .active_blob
-            .as_ref()
-            .map_or(false, |active_blob| active_blob.check_filters(key.as_ref()));
-        let in_closed = inner
-            .blobs
-            .read()
-            .await
+        let in_active = if let Some(active_blob) = inner.active_blob.as_ref() {
+            active_blob
+                .check_filters(key.as_ref())
+                .await
+                .map_err(|e| {
+                    error!(
+                        "Failed to check filter for active blob for key {:?}: {}",
+                        key, e
+                    );
+                    e
+                })
+                .unwrap_or(false)
+        } else {
+            false
+        };
+        if in_active {
+            return Some(true);
+        }
+
+        let blobs = inner.blobs.read().await;
+        let (offloaded, in_memory): (Vec<&Blob>, Vec<&Blob>) =
+            blobs.iter().partition(|blob| blob.is_filter_offloaded());
+
+        let in_closed = in_memory
             .iter()
-            .any(|blob| blob.check_filters(key.as_ref()) == true);
-        Some(in_active || in_closed)
+            .any(|blob| blob.check_filters_in_memory(key.as_ref()));
+        if in_closed {
+            return Some(true);
+        }
+
+        let in_closed_offloaded = offloaded
+            .iter()
+            .map(|blob| blob.check_filters(key.as_ref()))
+            .collect::<FuturesUnordered<_>>()
+            .any(|value| value.unwrap_or(false))
+            .await;
+        Some(in_closed_offloaded)
+    }
+
+    /// Offload bloom filters for closed blobs
+    pub async fn offload_bloom(&self) {
+        trace!("offload bloom filters");
+        let inner = self.inner.safe.read().await;
+        inner
+            .blobs
+            .write()
+            .await
+            .iter_mut()
+            .for_each(|blob| blob.offload_filter());
     }
 
     /// Total records count in storage.

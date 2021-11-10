@@ -269,7 +269,7 @@ impl Blob {
         check_filters: bool,
     ) -> Result<Option<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
-        if check_filters && !self.check_filters(key) {
+        if check_filters && !self.check_filters(key).await? {
             debug!("Key was filtered out by filters");
             Ok(None)
         } else if let Some(meta) = meta {
@@ -336,21 +336,38 @@ impl Blob {
         self.name.id
     }
 
-    pub(crate) fn check_filters(&self, key: &[u8]) -> bool {
+    pub(crate) fn offload_filter(&mut self) {
+        self.index.offload_filter()
+    }
+
+    pub(crate) async fn check_filters(&self, key: &[u8]) -> Result<bool> {
         trace!("check filters (range and bloom)");
-        if let FilterResult::NotContains = self.index.check_filters_key(key) {
+        if let FilterResult::NotContains = self.index.check_filters_key(key).await? {
+            Ok(false)
+        } else {
+            Ok(true)
+        }
+    }
+
+    pub(crate) fn check_filters_in_memory(&self, key: &[u8]) -> bool {
+        trace!("check filters (range and bloom)");
+        if let FilterResult::NotContains = self.index.check_filters_in_memory(key) {
             false
         } else {
             true
         }
     }
 
-    pub(crate) async fn check_filters_non_blocking(&self, key: &[u8]) -> bool {
-        self.check_filters(key)
+    pub(crate) fn is_filter_offloaded(&self) -> bool {
+        self.index.is_filter_offloaded()
     }
 
     pub(crate) fn index_memory(&self) -> usize {
         self.index.memory_used()
+    }
+
+    pub(crate) fn filter_memory_allocated(&self) -> usize {
+        self.index.bloom_memory_allocated()
     }
 }
 

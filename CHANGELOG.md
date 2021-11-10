@@ -4,7 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Add method to offload bloom filters (#121)
 
 #### Changed
 - Dump blob indices in separate thread on active blob close (#136) [https://github.com/qoollo/pearl/pull/137]

@@ -1,4 +1,5 @@
 use super::prelude::*;
+use crate::filter::BloomDataProvider;
 use std::mem::size_of;
 
 pub(crate) type Index = IndexStruct<BPTreeFileIndex>;
@@ -93,14 +94,50 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         self.range_filter.clear();
     }
 
-    pub(crate) fn check_filters_key(&self, key: &[u8]) -> FilterResult {
-        if !self.range_filter.contains(key) {
-            FilterResult::NotContains
-        } else if self.params.bloom_is_on && !self.bloom_filter.contains(key) {
+    pub fn offload_filter(&mut self) {
+        if self.on_disk() {
+            self.bloom_filter.offload_from_memory();
+        }
+    }
+
+    pub(crate) async fn check_filters_key(&self, key: &[u8]) -> Result<FilterResult> {
+        if !self.range_filter.contains(key)
+            || (self.params.bloom_is_on && matches!(self.check_bloom_key(key).await?, Some(false)))
+        {
+            Ok(FilterResult::NotContains)
+        } else {
+            Ok(FilterResult::NeedAdditionalCheck)
+        }
+    }
+
+    pub(crate) fn check_filters_in_memory(&self, key: &[u8]) -> FilterResult {
+        if !self.range_filter.contains(key)
+            || (self.params.bloom_is_on && self.bloom_filter.contains_in_memory(key) == Some(false))
+        {
             FilterResult::NotContains
         } else {
             FilterResult::NeedAdditionalCheck
         }
+    }
+
+    pub async fn check_bloom_key(&self, key: &[u8]) -> Result<Option<bool>> {
+        if self.params.bloom_is_on {
+            if let Some(result) = self.bloom_filter.contains_in_memory(key) {
+                Ok(Some(result))
+            } else {
+                Ok(Some(self.bloom_filter.contains_in_file(self, key).await?))
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn is_filter_offloaded(&self) -> bool {
+        self.bloom_filter.is_offloaded()
+    }
+
+    pub fn bloom_memory_allocated(&self) -> usize {
+        self.bloom_filter.memory_allocated()
     }
 
     pub(crate) fn name(&self) -> &FileName {
@@ -140,7 +177,8 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
                 return Ok(0);
             }
             debug!("blob index simple in memory headers {}", headers.len());
-            let meta_buf = self.serialize_filters()?;
+            let (meta_buf, bloom_offset) = self.serialize_filters()?;
+            self.bloom_filter.set_offset_in_file(bloom_offset as u64);
             let findex = FileIndex::from_records(
                 &self.name.to_path(),
                 self.ioring.clone(),
@@ -158,22 +196,23 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         }
     }
 
-    fn serialize_filters(&self) -> Result<Vec<u8>> {
+    fn serialize_filters(&self) -> Result<(Vec<u8>, usize)> {
         let range_buf = self.range_filter.to_raw()?;
         let range_buf_size = range_buf.len() as u64;
         let bloom_buf = self.bloom_filter.to_raw()?;
         let mut buf = Vec::with_capacity(size_of::<u64>() + range_buf.len() + bloom_buf.len());
+        let bloom_offset = size_of::<u64>() + range_buf.len();
         buf.extend_from_slice(&serialize(&range_buf_size)?);
         buf.extend_from_slice(&range_buf);
         buf.extend_from_slice(&bloom_buf);
-        Ok(buf)
+        Ok((buf, bloom_offset))
     }
 
     fn deserialize_filters(buf: &[u8]) -> Result<(Bloom, RangeFilter)> {
         let (range_size_buf, rest_buf) = buf.split_at(size_of::<u64>());
         let range_size = deserialize(&range_size_buf)?;
         let (range_buf, bloom_buf) = rest_buf.split_at(range_size);
-        let bloom = Bloom::from_raw(bloom_buf)?;
+        let bloom = Bloom::from_raw(bloom_buf, Some((range_size + size_of::<u64>()) as u64))?;
         let range = RangeFilter::from_raw(range_buf)?;
         Ok((bloom, range))
     }
@@ -209,7 +248,10 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
 }
 
 #[async_trait::async_trait]
-impl<FileIndex: FileIndexTrait + Sync + Send + Clone> IndexTrait for IndexStruct<FileIndex> {
+impl<FileIndex> IndexTrait for IndexStruct<FileIndex>
+where
+    FileIndex: FileIndexTrait + Clone,
+{
     async fn contains_key(&self, key: &[u8]) -> Result<bool> {
         self.get_any(key).await.map(|h| h.is_some())
     }
@@ -219,7 +261,7 @@ impl<FileIndex: FileIndexTrait + Sync + Send + Clone> IndexTrait for IndexStruct
         match &mut self.inner {
             State::InMemory(headers) => {
                 debug!("blob index simple push bloom filter add");
-                self.bloom_filter.add(h.key());
+                let _ = self.bloom_filter.add(h.key());
                 self.range_filter.add(h.key());
                 debug!("blob index simple push key: {:?}", h.key());
                 let mem = self
@@ -300,7 +342,7 @@ impl<FileIndex: FileIndexTrait + Sync + Send + Clone> IndexTrait for IndexStruct
 }
 
 #[async_trait::async_trait]
-pub(crate) trait FileIndexTrait: Sized {
+pub(crate) trait FileIndexTrait: Sized + Send + Sync {
     async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self>;
     async fn from_records(
         path: &Path,
@@ -312,8 +354,19 @@ pub(crate) trait FileIndexTrait: Sized {
     fn file_size(&self) -> u64;
     fn records_count(&self) -> usize;
     async fn read_meta(&self) -> Result<Vec<u8>>;
+    async fn read_meta_at(&self, i: u64) -> Result<u8>;
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)>;
     async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>>;
     fn validate(&self) -> Result<()>;
+}
+
+#[async_trait::async_trait]
+impl<FileIndex: FileIndexTrait> BloomDataProvider for IndexStruct<FileIndex> {
+    async fn read_byte(&self, index: u64) -> Result<u8> {
+        match &self.inner {
+            State::OnDisk(findex) => findex.read_meta_at(index).await,
+            _ => Err(anyhow::anyhow!("Can't read from in-memory index")),
+        }
+    }
 }

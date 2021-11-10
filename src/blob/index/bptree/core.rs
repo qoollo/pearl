@@ -85,6 +85,18 @@ impl FileIndexTrait for BPTreeFileIndex {
         Ok(buf)
     }
 
+    async fn read_meta_at(&self, i: u64) -> Result<u8> {
+        trace!("load byte from meta");
+        if i >= self.header.meta_size as u64 {
+            return Err(anyhow::anyhow!("read meta out of range"));
+        }
+        let mut buf = [0; 1];
+        self.file
+            .read_at(&mut buf, self.header.serialized_size()? + i)
+            .await?;
+        Ok(buf[0])
+    }
+
     async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
         let root_offset = self.metadata.tree_offset;
         let mut buf = [0u8; BLOCK_SIZE];

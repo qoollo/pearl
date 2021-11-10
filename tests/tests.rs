@@ -559,6 +559,30 @@ async fn test_check_bloom_filter_multiple() {
 }
 
 #[tokio::test]
+async fn test_check_bloom_filter_multiple_offloaded() {
+    let now = Instant::now();
+    let path = common::init("check_bloom_filter_multiple_offloaded");
+    let storage = common::create_test_storage(&path, 20000).await.unwrap();
+    let data =
+        b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
+    for i in 1..800 {
+        let key = KeyTest::new(i);
+        storage.write(&key, data.to_vec()).await.unwrap();
+        sleep(Duration::from_millis(6)).await;
+        trace!("blobs count: {}", storage.blobs_count().await);
+    }
+    storage.offload_bloom().await;
+    for i in 1..800 {
+        assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(true));
+    }
+    for i in 800..1600 {
+        assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(false));
+    }
+    common::clean(storage, path).await.expect("clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
 async fn test_check_bloom_filter_init_from_existing() {
     let now = Instant::now();
     let path = common::init("check_bloom_filter_init_from_existing");

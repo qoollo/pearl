@@ -1,11 +1,26 @@
 use super::prelude::*;
+use bitvec::order::Lsb0;
 
 // All usizes in structures are serialized as u64 in binary
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct Bloom {
-    inner: BitVec,
+    inner: Option<BitVec<Lsb0, u64>>,
+    offset_in_file: Option<u64>,
+    bits_count: usize,
     hashers: Vec<AHasher>,
     config: Config,
+}
+
+impl Default for Bloom {
+    fn default() -> Self {
+        Self {
+            inner: Some(Default::default()),
+            bits_count: 0,
+            hashers: vec![],
+            config: Default::default(),
+            offset_in_file: None,
+        }
+    }
 }
 
 /// Bloom filter configuration parameters.
@@ -30,7 +45,7 @@ pub struct Config {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Save {
     config: Config,
-    buf: Vec<usize>,
+    buf: Vec<u64>,
     bits_count: usize,
 }
 
@@ -92,14 +107,30 @@ impl Bloom {
     pub fn new(config: Config) -> Self {
         let bits_count = bits_count_from_formula(&config);
         Self {
-            inner: bitvec![0; bits_count],
+            inner: Some(bitvec![Lsb0, u64; 0; bits_count]),
             hashers: Self::hashers(config.hashers_count),
             config,
+            bits_count,
+            offset_in_file: None,
         }
     }
 
     pub fn clear(&mut self) {
-        self.inner = bitvec![0; self.inner.len()];
+        self.inner = Some(bitvec![Lsb0, u64; 0; self.bits_count]);
+        self.offset_in_file = None;
+    }
+
+    pub fn is_offloaded(&self) -> bool {
+        self.inner.is_none()
+    }
+
+    pub fn offload_from_memory(&mut self) {
+        self.inner = None;
+    }
+
+    pub fn set_offset_in_file(&mut self, offset: u64) {
+        self.offset_in_file =
+            Some(offset + self.buffer_start_position().expect("Should not fail") as u64);
     }
 
     pub fn hashers(k: usize) -> Vec<AHasher> {
@@ -109,62 +140,127 @@ impl Bloom {
             .collect()
     }
 
-    fn save(&self) -> Save {
-        Save {
-            config: self.config.clone(),
-            buf: self.inner.as_raw_slice().to_vec(),
-            bits_count: self.inner.len(),
+    fn save(&self) -> Option<Save> {
+        if let Some(inner) = &self.inner {
+            Some(Save {
+                config: self.config.clone(),
+                buf: inner.as_raw_slice().to_vec(),
+                bits_count: inner.len(),
+            })
+        } else {
+            None
         }
     }
 
-    fn from(save: Save) -> Self {
+    fn from(save: Save, offset_in_file: Option<u64>) -> Self {
         let mut inner = BitVec::from_vec(save.buf);
         inner.truncate(save.bits_count);
         Self {
             hashers: Self::hashers(save.config.hashers_count),
             config: save.config,
-            inner,
+            inner: Some(inner),
+            bits_count: save.bits_count,
+            offset_in_file,
         }
     }
 
     pub fn to_raw(&self) -> Result<Vec<u8>> {
-        let save = self.save();
+        let save = self
+            .save()
+            .ok_or_else(|| anyhow::anyhow!("Filter buffer offloaded, can't serialize"))?;
         bincode::serialize(&save).map_err(Into::into)
     }
 
-    pub fn from_raw(buf: &[u8]) -> Result<Self> {
+    pub fn from_raw(buf: &[u8], offset_in_file: Option<u64>) -> Result<Self> {
         let save: Save = bincode::deserialize(buf)?;
-        Ok(Self::from(save))
+        Ok(Self::from(save, offset_in_file))
     }
 
-    pub fn add(&mut self, item: impl AsRef<[u8]>) {
-        let mut hashers = self.hashers.clone();
-        let len = self.inner.len() as u64;
-        for h in hashers.iter_mut().map(|hasher| {
+    pub fn add(&mut self, item: impl AsRef<[u8]>) -> Result<()> {
+        if let Some(inner) = &mut self.inner {
+            let len = inner.len() as u64;
+            for h in Self::iter_indices_for_key(&self.hashers, len, item.as_ref()) {
+                *inner
+                    .get_mut(h as usize)
+                    .expect("impossible due to mod by len") = true;
+            }
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("Can't add to in-file filter"))
+        }
+    }
+
+    pub fn contains_in_memory(&self, item: impl AsRef<[u8]>) -> Option<bool> {
+        if let Some(inner) = &self.inner {
+            let len = inner.len() as u64;
+            // Check because .all on empty iterator returns true
+            if len == 0 {
+                return Some(false);
+            }
+            Some(
+                Self::iter_indices_for_key(&self.hashers, len, item.as_ref())
+                    .all(|i| *inner.get(i as usize).expect("unreachable")),
+            )
+        } else {
+            None
+        }
+    }
+
+    // Returns empty iterator on len == 0
+    fn iter_indices_for_key<'a>(
+        hashers: &'a Vec<AHasher>,
+        len: u64,
+        item: &'a [u8],
+    ) -> impl Iterator<Item = u64> + 'a {
+        hashers.iter().cloned().filter_map(move |mut hasher| {
             hasher.write(item.as_ref());
-            hasher.finish() % len
-        }) {
-            *self
-                .inner
-                .get_mut(h as usize)
-                .expect("impossible due to mod by len") = true;
-        }
+            hasher.finish().checked_rem(len)
+        })
     }
 
-    pub fn contains(&self, item: impl AsRef<[u8]>) -> bool {
-        let mut hashers = self.hashers.clone();
-        let len = self.inner.len() as u64;
-        if len == 0 {
-            return false;
+    pub async fn contains_in_file<P: BloomDataProvider>(
+        &self,
+        provider: &P,
+        item: impl AsRef<[u8]>,
+    ) -> Result<bool> {
+        if self.bits_count == 0 {
+            return Ok(false);
         }
-        hashers
-            .iter_mut()
-            .map(|hasher| {
-                hasher.write(item.as_ref());
-                hasher.finish() % len
-            })
-            .all(|i| *self.inner.get(i as usize).expect("unreachable"))
+        let mut hashers = self.hashers.clone();
+        let start_pos = self
+            .offset_in_file
+            .ok_or_else(|| anyhow::anyhow!("Offset should be set for in-file operations"))?;
+        for index in hashers.iter_mut().map(|hasher| {
+            hasher.write(item.as_ref());
+            hasher.finish() % self.bits_count as u64
+        }) {
+            let pos = start_pos + (index / 8);
+            let byte = provider.read_byte(pos).await?;
+
+            if !byte
+                .view_bits::<Lsb0>()
+                .get(index as usize % 8)
+                .expect("unreachable")
+            {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
+
+    // bincode write len as u64 before Vec elements. sizeof(config) + sizeof(u64)
+    fn buffer_start_position(&self) -> Result<u64> {
+        Ok(bincode::serialized_size(&self.config)? + std::mem::size_of::<u64>() as u64)
+    }
+
+    pub fn memory_allocated(&self) -> usize {
+        self.inner.as_ref().map_or(0, |buf| buf.capacity() / 8)
+    }
+}
+
+#[async_trait::async_trait]
+pub(crate) trait BloomDataProvider {
+    async fn read_byte(&self, index: u64) -> Result<u8>;
 }
 
 mod tests {
