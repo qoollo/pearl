@@ -51,7 +51,6 @@ pub(crate) struct Inner {
 pub(crate) struct Safe {
     pub(crate) active_blob: Option<Box<Blob>>,
     pub(crate) blobs: Arc<RwLock<Vec<Blob>>>,
-    lock_file: Option<StdFile>,
 }
 
 impl<K: Key> Clone for Storage<K> {
@@ -992,7 +991,6 @@ impl Safe {
         Self {
             active_blob: None,
             blobs: Arc::new(RwLock::new(Vec::new())),
-            lock_file: None,
         }
     }
 
