@@ -4,7 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-- Add method to offload bloom filters (#121)
+- Add key trait (#123)
 
 #### Changed
 
@@ -13,6 +13,16 @@ Pearl changelog
 
 
 #### Updated
+
+
+## [0.8.0] - 2021-11-09
+#### Added
+- Add method to offload bloom filters (#121)
+
+#### Changed
+- Dump blob indices in separate thread on active blob close (#136)
+- Remove second file descriptor from File (#124)
+- Acquire advisory write lock on files (#124)
 
 
 ## [0.7.1] - 2021-10-18

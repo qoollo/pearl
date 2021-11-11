@@ -100,23 +100,19 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         }
     }
 
-    pub(crate) async fn check_filters_key(&self, key: &[u8]) -> FilterResult {
-        if !self.range_filter.contains(key) {
-            FilterResult::NotContains
-        } else if self.params.bloom_is_on
-            && matches!(self.check_bloom_key(key).await, Ok(Some(false)))
+    pub(crate) async fn check_filters_key(&self, key: &[u8]) -> Result<FilterResult> {
+        if !self.range_filter.contains(key)
+            || (self.params.bloom_is_on && matches!(self.check_bloom_key(key).await?, Some(false)))
         {
-            FilterResult::NotContains
+            Ok(FilterResult::NotContains)
         } else {
-            FilterResult::NeedAdditionalCheck
+            Ok(FilterResult::NeedAdditionalCheck)
         }
     }
 
     pub(crate) fn check_filters_in_memory(&self, key: &[u8]) -> FilterResult {
-        if !self.range_filter.contains(key) {
-            FilterResult::NotContains
-        } else if self.params.bloom_is_on
-            && self.bloom_filter.contains_in_memory(key) == Some(false)
+        if !self.range_filter.contains(key)
+            || (self.params.bloom_is_on && self.bloom_filter.contains_in_memory(key) == Some(false))
         {
             FilterResult::NotContains
         } else {

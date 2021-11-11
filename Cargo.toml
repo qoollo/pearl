@@ -1,6 +1,6 @@
 [package]
 name = "pearl"
-version = "0.7.1"
+version = "0.8.0"
 description = "Pearl is a low level blob-based I/O library"
 repository = "https://github.com/qoollo/pearl"
 homepage = "https://github.com/qoollo/pearl"
@@ -38,6 +38,8 @@ serde = "1.0"
 serde_derive = "1.0"
 thiserror = "1.0"
 tokio-stream = "0.1"
+nix = "0.23.0"
+libc = "0.2"
 
 [dependencies.tokio]
 version = "1.10"

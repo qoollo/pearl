@@ -43,7 +43,7 @@ impl FileIndexTrait for SimpleFileIndex {
         if i >= self.header.meta_size as u64 {
             return Err(anyhow::anyhow!("read meta out of range"));
         }
-        let mut buf = vec![0; 1];
+        let mut buf = [0; 1];
         self.file
             .read_at(&mut buf, self.header.serialized_size()? + i)
             .await?;

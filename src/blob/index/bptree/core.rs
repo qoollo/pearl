@@ -57,7 +57,7 @@ impl FileIndexTrait for BPTreeFileIndex {
         header.set_written(true);
         let serialized_header = serialize(&header)?;
         file.write_at(0, &serialized_header).await?;
-        file.flush().await?;
+        file.fsyncdata().await?;
         let root_node = Self::read_root(&file, metadata.tree_offset).await?;
         Ok(Self {
             file,
@@ -90,7 +90,7 @@ impl FileIndexTrait for BPTreeFileIndex {
         if i >= self.header.meta_size as u64 {
             return Err(anyhow::anyhow!("read meta out of range"));
         }
-        let mut buf = vec![0; 1];
+        let mut buf = [0; 1];
         self.file
             .read_at(&mut buf, self.header.serialized_size()? + i)
             .await?;
