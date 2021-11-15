@@ -267,8 +267,7 @@ impl<K: Key + Send + Sync> Storage<K> {
         let blobs = safe.blobs.read().await;
         let entries_closed_blobs = blobs
             .iter()
-            .cloned()
-            .map(|b| async move { b.data().read().await.read_all_entries(key).await })
+            .map(|b| b.1.data.read_all_entries(key))
             .collect::<FuturesUnordered<_>>();
         entries_closed_blobs
             .try_filter_map(future::ok)
@@ -312,8 +311,7 @@ impl<K: Key + Send + Sync> Storage<K> {
         }
         let stream: FuturesUnordered<_> = blobs
             .iter()
-            .cloned()
-            .map(|blob| async move { blob.data().read().await.read_any(key, meta).await })
+            .map(|blob| blob.1.data.read_any(key, meta))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
@@ -473,7 +471,6 @@ impl<K: Key + Send + Sync> Storage<K> {
         for blob in blobs {
             closed_blobs.push(blob).await;
         }
-        error!("Readed {:?}", closed_blobs);
         drop(closed_blobs);
         self.inner
             .next_blob_id
@@ -549,7 +546,7 @@ impl<K: Key + Send + Sync> Storage<K> {
         }
         let blobs = inner.blobs.read().await;
         for blob in blobs.iter() {
-            if blob.data().read().await.contains(key, meta).await? {
+            if blob.1.data.contains(key, meta).await? {
                 return Ok(true);
             }
         }
@@ -681,11 +678,7 @@ impl Safe {
 
     async fn max_id(&self) -> Option<usize> {
         let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
-        let blobs_max_id = if let Some(last) = self.blobs.read().await.last() {
-            Some(last.data().read().await.id())
-        } else {
-            None
-        };
+        let blobs_max_id = Some(self.blobs.read().await.next_id() as usize);
         active_blob_id.max(blobs_max_id)
     }
 
@@ -698,7 +691,7 @@ impl Safe {
         let mut results = Vec::new();
         let blobs = self.blobs.read().await;
         for blob in blobs.iter() {
-            let blob = blob.data().read().await;
+            let blob = &blob.1.data;
             let count = blob.records_count();
             let value = (blob.id(), count);
             debug!("push: {:?}", value);
@@ -732,10 +725,10 @@ impl Safe {
         let blobs = self.blobs.clone();
         tokio::spawn(async move {
             trace!("acquire blobs write to dump old blobs");
-            let write_blobs = blobs.write().await;
+            let mut write_blobs = blobs.write().await;
             trace!("dump old blobs");
-            for blob in write_blobs.iter() {
-                let mut blob = blob.data().write().await;
+            for blob in write_blobs.iter_mut() {
+                let blob = &mut blob.1.data;
                 trace!("dumping old blob");
                 let _ = sem.acquire().await;
                 trace!("acquired sem for dumping old blobs");
