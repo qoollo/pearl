@@ -5,11 +5,11 @@ use std::{
 
 use super::*;
 
-#[derive(Hash, Clone, Copy, Default, Debug, PartialEq, Eq)]
+#[derive(Hash, Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
 /// Represents id of inner in collection
 pub struct InnerId(u64);
 
-#[derive(Hash, Clone, Copy, Default, Debug, PartialEq, Eq)]
+#[derive(Hash, Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
 /// Represents id of child in collection
 pub struct ChildId(u64);
 
@@ -32,8 +32,8 @@ impl InnerId {
 #[derive(Debug)]
 /// Container for types which is support bloom filtering
 pub struct HierarchicalBloom<Child> {
-    inner: HashMap<InnerId, HierarchicalBloomInner>,
-    children: HashMap<ChildId, Leaf<Child>>,
+    inner: BTreeMap<InnerId, HierarchicalBloomInner>,
+    children: BTreeMap<ChildId, Leaf<Child>>,
     root: InnerId,
     inner_id: InnerId,
     children_id: ChildId,
@@ -79,7 +79,7 @@ where
     fn default() -> Self {
         let mut inner_id = InnerId::default();
         let root = inner_id.get_inc();
-        let mut inner = HashMap::<_, _>::default();
+        let mut inner = BTreeMap::<_, _>::default();
         inner.insert(root, Default::default());
         Self {
             inner,
@@ -340,12 +340,12 @@ where
     }
 
     /// Returns a iterator over the childs
-    pub fn iter(&self) -> impl Iterator<Item = (&ChildId, &Leaf<Child>)> {
+    pub fn iter(&self) -> std::collections::btree_map::Iter<'_, ChildId, Leaf<Child>> {
         self.children.iter()
     }
 
     /// Returns a iterator over the childs
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&ChildId, &mut Leaf<Child>)> {
+    pub fn iter_mut(&mut self) -> std::collections::btree_map::IterMut<'_, ChildId, Leaf<Child>> {
         self.children.iter_mut()
     }
 
@@ -354,8 +354,18 @@ where
         self.children_id.0
     }
 
+    /// Get child by id
+    pub fn get_child(&self, id: ChildId) -> Option<&Leaf<Child>> {
+        self.children.get(&id)
+    }
+
+    /// Get mutable child by id
+    pub fn get_child_mut(&mut self, id: ChildId) -> Option<&mut Leaf<Child>> {
+        self.children.get_mut(&id)
+    }
+
     /// Add child to collection
-    pub async fn push(&mut self, item: Child) {
+    pub async fn push(&mut self, item: Child) -> ChildId {
         let item_filter = item.get_filter().await;
         let root_len = self
             .inner
@@ -366,8 +376,14 @@ where
             *self.get_mut(self.root).1 = item_filter.clone();
             self.push_inner_container()
         } else {
-            self.last_inner_container().expect("should exist")
+            let mut id = self.last_inner_container().expect("should exist");
+            if self.get(id).0.len() >= self.group_size {
+                id = self.push_inner_container();
+            }
+            HierarchicalBloomInner::merge_filters(self.get_mut(self.root).1, &item_filter);
+            id
         };
+
         let child_id = self.children_id.get_inc();
         let child = Leaf {
             data: item,
@@ -383,6 +399,7 @@ where
             },
         );
         self.add_child(last_container, inner_id, &item_filter);
+        child_id
     }
 
     fn add_child(&mut self, id: InnerId, child_id: InnerId, child_filter: &Option<Bloom>) {
@@ -444,7 +461,7 @@ where
     }
 
     /// Returns reference to inner container.
-    pub fn children(&mut self) -> impl Iterator<Item = (&ChildId, &Leaf<Child>)> {
+    pub fn children(&self) -> impl Iterator<Item = (&ChildId, &Leaf<Child>)> {
         self.children.iter()
     }
 
@@ -467,7 +484,7 @@ where
 {
     type Item = (ChildId, Leaf<Child>);
 
-    type IntoIter = std::collections::hash_map::IntoIter<ChildId, Leaf<Child>>;
+    type IntoIter = std::collections::btree_map::IntoIter<ChildId, Leaf<Child>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.children.into_iter()
