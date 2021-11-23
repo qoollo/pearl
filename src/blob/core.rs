@@ -15,7 +15,7 @@ pub(crate) const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 #[derive(Debug)]
 pub struct Blob<K> {
     header: Header,
-    index: Index,
+    index: Index<K>,
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
@@ -64,7 +64,11 @@ impl<K: Key> Blob<K> {
     }
 
     #[inline]
-    fn create_index(mut name: FileName, ioring: Option<Rio>, index_config: IndexConfig) -> Index {
+    fn create_index(
+        mut name: FileName,
+        ioring: Option<Rio>,
+        index_config: IndexConfig,
+    ) -> Index<K> {
         name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         Index::new(name, ioring, index_config)
     }

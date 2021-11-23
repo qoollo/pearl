@@ -34,6 +34,30 @@ impl Key for KeyTest {
     const LEN: u16 = 4;
 }
 
+impl Default for KeyTest {
+    fn default() -> Self {
+        Self(vec![0; 4])
+    }
+}
+
+impl From<Vec<u8>> for KeyTest {
+    fn from(v: Vec<u8>) -> Self {
+        Self(v)
+    }
+}
+
+impl PartialEq for KeyTest {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl PartialOrd for KeyTest {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
 impl KeyTest {
     pub fn new(inner: u32) -> Self {
         Self(inner.to_be_bytes().to_vec())

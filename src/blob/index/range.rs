@@ -1,14 +1,14 @@
 use super::prelude::*;
 
 /// NOTE: le and lt operations are written for big-endian format of keys
-#[derive(Debug, Serialize, Deserialize, Default)]
-pub(crate) struct RangeFilter {
-    min: Vec<u8>,
-    max: Vec<u8>,
+#[derive(Debug, Default)]
+pub(crate) struct RangeFilter<K> {
+    min: K,
+    max: K,
     initialized: bool,
 }
 
-impl RangeFilter {
+impl<K: Key> RangeFilter<K> {
     pub(crate) fn new() -> Self {
         Self {
             initialized: false,
@@ -16,34 +16,20 @@ impl RangeFilter {
         }
     }
 
-    pub(crate) fn add(&mut self, key: impl AsRef<[u8]>) {
-        let key_slice = key.as_ref();
+    pub(crate) fn add(&mut self, key: &K) {
         if !self.initialized {
-            self.min = key_slice.to_vec();
-            self.max = key_slice.to_vec();
+            self.min = key.clone();
+            self.max = key.clone();
             self.initialized = true;
-        } else if Self::lt(key_slice, &self.min) {
-            self.min = key_slice.to_vec()
-        } else if Self::lt(&self.max, key_slice) {
-            self.max = key_slice.to_vec()
+        } else if key < &self.min {
+            self.min = key.clone();
+        } else if key > &self.max {
+            self.max = key.clone()
         }
     }
 
-    pub(crate) fn lt(lv: &[u8], rv: &[u8]) -> bool {
-        // NOTE: if it's keys are serialized in little-endian format you should use other
-        // comparison method: Iterator::cmp(lv.iter().rev(), rv.iter().rev())
-        lv < rv
-    }
-
-    pub(crate) fn le(lv: &[u8], rv: &[u8]) -> bool {
-        // NOTE: if it's keys are serialized in little-endian format you should use other
-        // comparison method: Iterator::cmp(lv.iter().rev(), rv.iter().rev())
-        lv <= rv
-    }
-
-    pub(crate) fn contains(&self, key: impl AsRef<[u8]>) -> bool {
-        let key_slice = key.as_ref();
-        self.initialized && Self::le(&self.min, key_slice) && Self::le(key_slice, &self.max)
+    pub(crate) fn contains(&self, key: &K) -> bool {
+        self.initialized && &self.min <= key && key <= &self.max
     }
 
     pub(crate) fn clear(&mut self) {
@@ -56,5 +42,70 @@ impl RangeFilter {
 
     pub(crate) fn to_raw(&self) -> Result<Vec<u8>> {
         bincode::serialize(&self).map_err(|e| e.into())
+    }
+}
+
+const STRUCT_NAME: &str = "RangeFilter";
+const MIN_FIELD_NAME: &str = "min";
+const MAX_FIELD_NAME: &str = "max";
+const INIT_FIELD_NAME: &str = "initialized";
+
+impl<K: Key> serde::Serialize for RangeFilter<K> {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct(STRUCT_NAME, 3)?;
+        state.serialize_field(MIN_FIELD_NAME, &self.min.to_vec())?;
+        state.serialize_field(MAX_FIELD_NAME, &self.max.to_vec())?;
+        state.serialize_field(INIT_FIELD_NAME, &self.initialized)?;
+        state.end()
+    }
+}
+
+impl<'de, K: Key> serde::Deserialize<'de> for RangeFilter<K> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct RangeFilterVisitor<K>(PhantomData<K>);
+
+        impl<'de, K: Key> serde::de::Visitor<'de> for RangeFilterVisitor<K> {
+            type Value = RangeFilter<K>;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("range filter struct")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::MapAccess<'de>,
+            {
+                let mut min: Option<K> = None;
+                let mut max: Option<K> = None;
+                let mut initialized: Option<bool> = None;
+                while let Some(key) = map.next_key::<&str>()? {
+                    match key {
+                        MIN_FIELD_NAME => {
+                            min = Some(map.next_value::<Vec<u8>>()?.into());
+                        }
+                        MAX_FIELD_NAME => {
+                            max = Some(map.next_value::<Vec<u8>>()?.into());
+                        }
+                        INIT_FIELD_NAME => initialized = Some(map.next_value::<bool>()?),
+                        k => panic!("received wrong field name: {}", k),
+                    }
+                }
+                Ok(RangeFilter::<K> {
+                    min: min.expect("min not found"),
+                    max: max.expect("max not found"),
+                    initialized: initialized.expect("initialized not found"),
+                })
+            }
+        }
+
+        const FIELDS: &'static [&'static str] = &[MIN_FIELD_NAME, MAX_FIELD_NAME, INIT_FIELD_NAME];
+        deserializer.deserialize_struct(STRUCT_NAME, FIELDS, RangeFilterVisitor(PhantomData))
     }
 }

@@ -2,7 +2,7 @@ use super::prelude::*;
 use crate::filter::BloomDataProvider;
 use std::mem::size_of;
 
-pub(crate) type Index = IndexStruct<BPTreeFileIndex>;
+pub(crate) type Index<K> = IndexStruct<BPTreeFileIndex, K>;
 
 pub(crate) const HEADER_VERSION: u8 = 3;
 
@@ -42,9 +42,9 @@ impl Default for IndexConfig {
 }
 
 #[derive(Debug)]
-pub(crate) struct IndexStruct<FileIndex: FileIndexTrait> {
+pub(crate) struct IndexStruct<FileIndex, K> {
     mem: Option<MemoryAttrs>,
-    range_filter: RangeFilter,
+    range_filter: RangeFilter<K>,
     bloom_filter: Bloom,
     params: IndexParams,
     inner: State<FileIndex>,
@@ -66,12 +66,12 @@ pub(crate) struct MemoryAttrs {
 pub type InMemoryIndex = BTreeMap<Vec<u8>, Vec<RecordHeader>>;
 
 #[derive(Debug, Clone)]
-pub(crate) enum State<FileIndex: FileIndexTrait> {
+pub(crate) enum State<FileIndex> {
     InMemory(InMemoryIndex),
     OnDisk(FileIndex),
 }
 
-impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
+impl<FileIndex: FileIndexTrait, K: Key> IndexStruct<FileIndex, K> {
     pub(crate) fn new(name: FileName, ioring: Option<Rio>, config: IndexConfig) -> Self {
         let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
         let filter = config.bloom_config.map(Bloom::new).unwrap_or_default();
@@ -101,7 +101,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
     }
 
     pub(crate) async fn check_filters_key(&self, key: &[u8]) -> Result<FilterResult> {
-        if !self.range_filter.contains(key)
+        if !self.range_filter.contains(&key.to_vec().into())
             || (self.params.bloom_is_on && matches!(self.check_bloom_key(key).await?, Some(false)))
         {
             Ok(FilterResult::NotContains)
@@ -111,7 +111,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
     }
 
     pub(crate) fn check_filters_in_memory(&self, key: &[u8]) -> FilterResult {
-        if !self.range_filter.contains(key)
+        if !self.range_filter.contains(&key.to_vec().into())
             || (self.params.bloom_is_on && self.bloom_filter.contains_in_memory(key) == Some(false))
         {
             FilterResult::NotContains
@@ -208,12 +208,12 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         Ok((buf, bloom_offset))
     }
 
-    fn deserialize_filters(buf: &[u8]) -> Result<(Bloom, RangeFilter)> {
+    fn deserialize_filters(buf: &[u8]) -> Result<(Bloom, RangeFilter<K>)> {
         let (range_size_buf, rest_buf) = buf.split_at(size_of::<u64>());
         let range_size = deserialize(&range_size_buf)?;
         let (range_buf, bloom_buf) = rest_buf.split_at(range_size);
         let bloom = Bloom::from_raw(bloom_buf, Some((range_size + size_of::<u64>()) as u64))?;
-        let range = RangeFilter::from_raw(range_buf)?;
+        let range = RangeFilter::<K>::from_raw(range_buf)?;
         Ok((bloom, range))
     }
 
@@ -248,9 +248,10 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
 }
 
 #[async_trait::async_trait]
-impl<FileIndex> IndexTrait for IndexStruct<FileIndex>
+impl<FileIndex, K> IndexTrait for IndexStruct<FileIndex, K>
 where
     FileIndex: FileIndexTrait + Clone,
+    K: Key,
 {
     async fn contains_key(&self, key: &[u8]) -> Result<bool> {
         self.get_any(key).await.map(|h| h.is_some())
@@ -262,7 +263,8 @@ where
             State::InMemory(headers) => {
                 debug!("blob index simple push bloom filter add");
                 let _ = self.bloom_filter.add(h.key());
-                self.range_filter.add(h.key());
+                let key = h.key().to_vec().into();
+                self.range_filter.add(&key);
                 debug!("blob index simple push key: {:?}", h.key());
                 let mem = self
                     .mem
@@ -362,7 +364,7 @@ pub(crate) trait FileIndexTrait: Sized + Send + Sync {
 }
 
 #[async_trait::async_trait]
-impl<FileIndex: FileIndexTrait> BloomDataProvider for IndexStruct<FileIndex> {
+impl<FileIndex: FileIndexTrait, K: Key> BloomDataProvider for IndexStruct<FileIndex, K> {
     async fn read_byte(&self, index: u64) -> Result<u8> {
         match &self.inner {
             State::OnDisk(findex) => findex.read_meta_at(index).await,
