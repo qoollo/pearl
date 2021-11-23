@@ -19,7 +19,7 @@ pub struct Blob<K> {
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
-    key_type: PhantomData<K>,
+    key_type_marker: PhantomData<K>,
 }
 
 impl<K: Key> Blob<K> {
@@ -45,7 +45,7 @@ impl<K: Key> Blob<K> {
             name,
             file,
             current_offset,
-            key_type: PhantomData,
+            key_type_marker: PhantomData,
         };
         blob.write_header().await?;
         Ok(blob)
@@ -148,7 +148,7 @@ impl<K: Key> Blob<K> {
             name,
             index,
             current_offset: Arc::new(Mutex::new(size)),
-            key_type: PhantomData,
+            key_type_marker: PhantomData,
         };
         trace!("call update index");
         if is_index_corrupted || size as u64 > header_size {
