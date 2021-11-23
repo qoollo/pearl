@@ -78,6 +78,20 @@ impl<'de, K: Key> serde::Deserialize<'de> for RangeFilter<K> {
                 formatter.write_str("range filter struct")
             }
 
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let min = seq.next_element::<Vec<u8>>()?.map(|v| v.into());
+                let max = seq.next_element::<Vec<u8>>()?.map(|v| v.into());
+                let init = seq.next_element::<bool>()?;
+                Ok(RangeFilter::<K> {
+                    min: min.expect("min not found"),
+                    max: max.expect("max not found"),
+                    initialized: init.expect("initialized not found"),
+                })
+            }
+
             fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
             where
                 A: serde::de::MapAccess<'de>,
