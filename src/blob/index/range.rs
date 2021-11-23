@@ -123,3 +123,93 @@ impl<'de, K: Key> serde::Deserialize<'de> for RangeFilter<K> {
         deserializer.deserialize_struct(STRUCT_NAME, FIELDS, RangeFilterVisitor(PhantomData))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::Key;
+
+    use super::RangeFilter;
+
+    const LEN: u16 = 8;
+
+    #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+    struct ProperKey(Vec<u8>);
+
+    impl AsRef<[u8]> for ProperKey {
+        fn as_ref(&self) -> &[u8] {
+            self.0.as_ref()
+        }
+    }
+
+    impl From<Vec<u8>> for ProperKey {
+        fn from(v: Vec<u8>) -> Self {
+            Self(v)
+        }
+    }
+
+    impl Key for ProperKey {
+        const LEN: u16 = LEN;
+    }
+
+    #[derive(Debug, Clone, Default, PartialEq, Eq)]
+    struct WrongKey(Vec<u8>);
+
+    impl AsRef<[u8]> for WrongKey {
+        fn as_ref(&self) -> &[u8] {
+            self.0.as_ref()
+        }
+    }
+
+    impl From<Vec<u8>> for WrongKey {
+        fn from(v: Vec<u8>) -> Self {
+            Self(v)
+        }
+    }
+
+    impl PartialOrd for WrongKey {
+        fn partial_cmp(&self, _other: &Self) -> Option<std::cmp::Ordering> {
+            Some(std::cmp::Ordering::Equal)
+        }
+    }
+
+    impl Key for WrongKey {
+        const LEN: u16 = LEN;
+    }
+
+    fn to_key<K: From<Vec<u8>>>(i: usize) -> K {
+        let mut vec = i.to_le_bytes().to_vec();
+        vec.resize(LEN as usize, 0);
+        vec.into()
+    }
+
+    #[test]
+    fn test_range_index_key_cmp_proper_key() {
+        let mut filter: RangeFilter<ProperKey> = RangeFilter::new();
+        for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
+            filter.add(&key);
+        }
+        let less_key = to_key(25);
+        let in_key = to_key(75);
+        let greater_key = to_key(175);
+        assert!(!filter.contains(&less_key));
+        assert!(!filter.contains(&greater_key));
+        assert!(filter.contains(&in_key));
+    }
+
+    #[test]
+    fn test_range_index_key_cmp_wrong_key() {
+        let mut filter: RangeFilter<ProperKey> = RangeFilter::new();
+        for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
+            filter.add(&key);
+        }
+        let buf = bincode::serialize(&filter).unwrap();
+        let wrong_key_filter: RangeFilter<WrongKey> = RangeFilter::from_raw(&buf).unwrap();
+
+        let less_key = to_key(25);
+        let in_key = to_key(75);
+        let greater_key = to_key(175);
+        assert!(wrong_key_filter.contains(&less_key));
+        assert!(wrong_key_filter.contains(&greater_key));
+        assert!(wrong_key_filter.contains(&in_key));
+    }
+}
