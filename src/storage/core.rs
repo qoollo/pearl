@@ -1041,9 +1041,7 @@ impl<K: Key + 'static> Safe<K> {
 }
 
 /// Trait `Key`
-pub trait Key:
-    AsRef<[u8]> + Debug + Clone + Send + Sync + PartialOrd + From<Vec<u8>> + Default
-{
+pub trait Key: AsRef<[u8]> + Debug + Clone + Send + Sync + Ord + From<Vec<u8>> + Default {
     /// Key must have fixed length
     const LEN: u16;
 

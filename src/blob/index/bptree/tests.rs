@@ -11,7 +11,8 @@ impl Key for KeyType {
 }
 
 impl From<Vec<u8>> for KeyType {
-    fn from(v: Vec<u8>) -> Self {
+    fn from(mut v: Vec<u8>) -> Self {
+        v.resize(KeyType::LEN as usize, 0);
         Self(v)
     }
 }
@@ -24,19 +25,31 @@ impl AsRef<[u8]> for KeyType {
 
 impl Default for KeyType {
     fn default() -> Self {
-        Self(vec![0_u8, 8])
+        Self(vec![0_u8; Self::LEN as usize])
+    }
+}
+
+impl From<usize> for KeyType {
+    fn from(i: usize) -> Self {
+        let mut v = serialize(&i).unwrap();
+        v.resize(KeyType::LEN as usize, 0);
+        Self(v)
+    }
+}
+
+impl Into<usize> for KeyType {
+    fn into(self) -> usize {
+        deserialize(&self.0).unwrap()
     }
 }
 
 #[tokio::test]
 async fn serialize_deserialize_file() {
     let mut inmem = InMemoryIndex::new();
-    (0..10000u32)
-        .map(|i| serialize(&i).expect("can't serialize"))
-        .for_each(|key| {
-            let rh = RecordHeader::new(key.clone(), 1, 1, 1);
-            inmem.insert(key, vec![rh]);
-        });
+    (0..10000).map(|i| i.into()).for_each(|key: KeyType| {
+        let rh = RecordHeader::new(key.clone().to_vec(), 1, 1, 1);
+        inmem.insert(key.to_vec(), vec![rh]);
+    });
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/bptree_index.b"),
@@ -56,15 +69,15 @@ async fn serialize_deserialize_file() {
 
 #[tokio::test]
 async fn check_get_any() {
-    const RANGE_FROM: u32 = 100;
-    const RANGE_TO: u32 = 9000;
+    const RANGE_FROM: usize = 100;
+    const RANGE_TO: usize = 9000;
 
     let mut inmem = InMemoryIndex::new();
     (RANGE_FROM..RANGE_TO)
-        .map(|i| serialize(&i).expect("can't serialize"))
-        .for_each(|key| {
-            let rh = RecordHeader::new(key.clone(), 1, 1, 1);
-            inmem.insert(key, vec![rh]);
+        .map(|i| i.into())
+        .for_each(|key: KeyType| {
+            let rh = RecordHeader::new(key.clone().to_vec(), 1, 1, 1);
+            inmem.insert(key.to_vec(), vec![rh]);
         });
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
@@ -77,12 +90,13 @@ async fn check_get_any() {
     .await
     .expect("Can't create file index");
     let presented_keys = RANGE_FROM..RANGE_TO;
-    for key in presented_keys.map(|k| serialize(&k).unwrap()) {
-        if let Ok(inner_res) = findex.get_any(&key.clone().into()).await {
+    for key in presented_keys.map(|k| k.into()) {
+        if let Ok(inner_res) = findex.get_any(&key).await {
             if let Some(actual_header) = inner_res {
-                let key_deserialized: u32 = deserialize(&key).unwrap();
+                let key_deserialized: usize = key.clone().into();
                 assert_eq!(
-                    inmem[&key][0], actual_header,
+                    inmem[&key.to_vec()][0],
+                    actual_header,
                     "Key doesn't exists: {}",
                     key_deserialized
                 );
@@ -103,17 +117,17 @@ async fn check_get_any() {
 
 #[tokio::test]
 async fn check_get() {
-    const MAX_AMOUNT: u32 = 3;
-    const RANGE_FROM: u32 = 100;
-    const RANGE_TO: u32 = 9000;
+    const MAX_AMOUNT: usize = 3;
+    const RANGE_FROM: usize = 100;
+    const RANGE_TO: usize = 9000;
 
     let mut inmem = InMemoryIndex::new();
     (RANGE_FROM..RANGE_TO)
-        .map(|i| (i % MAX_AMOUNT + 1, serialize(&i).expect("can't serialize")))
-        .for_each(|(times, key)| {
-            let rh = RecordHeader::new(key.clone(), 1, 1, 1);
+        .map(|i| (i % MAX_AMOUNT + 1, i.into()))
+        .for_each(|(times, key): (_, KeyType)| {
+            let rh = RecordHeader::new(key.clone().to_vec(), 1, 1, 1);
             let recs = (0..times).map(|_| rh.clone()).collect();
-            inmem.insert(key, recs);
+            inmem.insert(key.to_vec(), recs);
         });
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
@@ -126,12 +140,13 @@ async fn check_get() {
     .await
     .expect("Can't create file index");
     let presented_keys = RANGE_FROM..RANGE_TO;
-    for key in presented_keys.map(|k| serialize(&k).unwrap()) {
-        if let Ok(inner_res) = findex.get_any(&key.clone().into()).await {
+    for key in presented_keys.map(|k| k.into()) {
+        if let Ok(inner_res) = findex.get_any(&key).await {
             if let Some(actual_header) = inner_res {
-                let key_deserialized: u32 = deserialize(&key).unwrap();
+                let key_deserialized: usize = key.clone().into();
                 assert_eq!(
-                    inmem[&key][0], actual_header,
+                    inmem[&key.to_vec()][0],
+                    actual_header,
                     "Key doesn't exists: {}",
                     key_deserialized
                 );
@@ -144,8 +159,8 @@ async fn check_get() {
     }
     let not_presented_ranges = [0..RANGE_FROM, RANGE_TO..(RANGE_TO + 100)];
     for not_presented_keys in not_presented_ranges.iter() {
-        for key in not_presented_keys.clone().map(|k| serialize(&k).unwrap()) {
-            assert_eq!(None, findex.find_by_key(&key.into()).await.unwrap());
+        for key in not_presented_keys.clone().map(|k| k.into()) {
+            assert_eq!(None, findex.find_by_key(&key).await.unwrap());
         }
     }
 }

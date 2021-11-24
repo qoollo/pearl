@@ -15,7 +15,7 @@ use std::{
 
 use pearl::{Builder, Key, Storage};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyTest(Vec<u8>);
 
 impl AsRef<[u8]> for KeyTest {
@@ -43,18 +43,6 @@ impl Default for KeyTest {
 impl From<Vec<u8>> for KeyTest {
     fn from(v: Vec<u8>) -> Self {
         Self(v)
-    }
-}
-
-impl PartialEq for KeyTest {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl PartialOrd for KeyTest {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.partial_cmp(&other.0)
     }
 }
 

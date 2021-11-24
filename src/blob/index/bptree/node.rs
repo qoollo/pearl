@@ -38,13 +38,15 @@ impl Node {
         Ok(meta_size + (keys_buf_size + offsets_buf_size) as u64)
     }
 
-    pub(super) fn binary_search_serialized(key: &[u8], buf: &[u8]) -> Result<usize, usize> {
+    pub(super) fn binary_search_serialized<K: Key>(key: &K, buf: &[u8]) -> Result<usize, usize> {
+        let key_size = K::LEN as usize;
         let mut l = 0i32;
-        let mut r: i32 = (buf.len() / key.len() - 1) as i32;
+        let mut r: i32 = (buf.len() / key_size - 1) as i32;
         while l <= r {
             let m = (l + r) / 2;
-            let offset = m as usize * key.len();
-            match key.cmp(&buf[offset..(offset + key.len())]) {
+            let offset = m as usize * key_size;
+            let k = buf[offset..(offset + key_size)].to_vec().into(); // TODO Allow keys to be based on slices
+            match key.cmp(&k) {
                 CmpOrdering::Less => r = m - 1,
                 CmpOrdering::Greater => l = m + 1,
                 CmpOrdering::Equal => return Ok(m as usize),
@@ -53,10 +55,10 @@ impl Node {
         Err(l as usize)
     }
 
-    pub(super) fn key_offset_serialized(buf: &[u8], key: &[u8]) -> Result<u64> {
+    pub(super) fn key_offset_serialized<K: Key>(buf: &[u8], key: &K) -> Result<u64> {
         let meta_size = NodeMeta::serialized_size_default()? as usize;
         let node_size = deserialize::<NodeMeta>(&buf[..meta_size])?.size as usize;
-        let offsets_offset = meta_size + node_size * key.len();
+        let offsets_offset = meta_size + node_size * (K::LEN as usize);
         let ind = match Self::binary_search_serialized(key, &buf[meta_size..offsets_offset]) {
             Ok(pos) => pos + 1,
             Err(pos) => pos,
@@ -86,7 +88,8 @@ impl Node {
     }
 
     #[allow(dead_code)]
-    pub(super) fn deserialize(buf: &[u8], key_size: u64) -> Result<Self> {
+    pub(super) fn deserialize<K: Key>(buf: &[u8]) -> Result<Self> {
+        let key_size = K::LEN as u64;
         let meta_size = NodeMeta::serialized_size_default()?;
         let (meta_buf, data_buf) = buf.split_at(meta_size as usize);
         let meta: NodeMeta = deserialize(&meta_buf)?;
@@ -111,10 +114,39 @@ mod tests {
     use super::*;
     use std::ops::Range;
 
-    type KeyType = usize;
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+    struct KeyType(Vec<u8>);
+
+    impl Key for KeyType {
+        const LEN: u16 = 4;
+    }
+
+    impl From<Vec<u8>> for KeyType {
+        fn from(v: Vec<u8>) -> Self {
+            Self(v)
+        }
+    }
+
+    impl AsRef<[u8]> for KeyType {
+        fn as_ref(&self) -> &[u8] {
+            self.0.as_ref()
+        }
+    }
+
+    impl Default for KeyType {
+        fn default() -> Self {
+            Self(vec![0_u8; Self::LEN as usize])
+        }
+    }
+
+    fn to_key(i: usize) -> KeyType {
+        let mut v = serialize(&i).unwrap();
+        v.resize(KeyType::LEN as usize, 0);
+        KeyType(v)
+    }
 
     fn create_node(amount: usize, kf: impl Fn(usize) -> KeyType, of: impl Fn(u64) -> u64) -> Node {
-        let keys = (0..amount).map(|e| serialize(&kf(e)).unwrap()).collect();
+        let keys = (0..amount).map(|e| kf(e).to_vec()).collect();
         let offsets = (0u64..(amount as u64 + 1)).map(of).collect();
         Node::new(keys, offsets)
     }
@@ -123,10 +155,9 @@ mod tests {
     fn serialize_deserialize_node() {
         const KEYS_AMOUNTS: [usize; 3] = [1, 2, 100];
         for &keys_amount in KEYS_AMOUNTS.iter() {
-            let node = create_node(keys_amount, |e| e as KeyType, |o| o * 2);
+            let node = create_node(keys_amount, |e| to_key(e), |o| o * 2);
             let buf = node.serialize().unwrap();
-            let node_deserialized =
-                Node::deserialize(&buf, std::mem::size_of::<KeyType>() as u64).unwrap();
+            let node_deserialized = Node::deserialize::<KeyType>(&buf).unwrap();
             assert_eq!(node, node_deserialized);
         }
     }
@@ -148,7 +179,7 @@ mod tests {
         const KEYS_AMOUNTS: [usize; 8] = [1, 2, 13, 13, 14, 14, 1, 2];
 
         for (i, &keys_amount) in KEYS_AMOUNTS.iter().enumerate() {
-            let node = create_node(keys_amount, |e| (e * i) as KeyType, |o| o * SCALE);
+            let node = create_node(keys_amount, |e| to_key(e * i), |o| o * SCALE);
             for k in REQUESTS.map(|v| serialize(&v).unwrap()) {
                 let offset = node.key_offset(&k);
                 check_offset(&node.keys, &k, offset, |o| o / SCALE);

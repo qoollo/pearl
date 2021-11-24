@@ -172,6 +172,12 @@ mod tests {
         }
     }
 
+    impl Ord for WrongKey {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            self.partial_cmp(other).unwrap()
+        }
+    }
+
     impl Key for WrongKey {
         const LEN: u16 = LEN;
     }
