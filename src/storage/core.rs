@@ -232,8 +232,7 @@ impl<K: Key + 'static> Storage<K> {
     ///
     /// [`write_with`]: Storage::write_with
     pub async fn write(&self, key: impl AsRef<K>, value: Vec<u8>) -> Result<()> {
-        self.write_with_optional_meta(key.as_ref(), value, None)
-            .await
+        self.write_with_optional_meta(key, value, None).await
     }
 
     /// Similar to [`write`] but with metadata
@@ -250,25 +249,27 @@ impl<K: Key + 'static> Storage<K> {
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
     pub async fn write_with(&self, key: impl AsRef<K>, value: Vec<u8>, meta: Meta) -> Result<()> {
-        self.write_with_optional_meta(key.as_ref(), value, Some(meta))
-            .await
+        self.write_with_optional_meta(key, value, Some(meta)).await
     }
 
     async fn write_with_optional_meta(
         &self,
-        key: &K,
+        key: impl AsRef<K>,
         value: Vec<u8>,
         meta: Option<Meta>,
     ) -> Result<()> {
+        let key = key.as_ref();
         debug!("storage write with {:?}, {}b, {:?}", key, value.len(), meta);
         // if active blob is set, this function will only check this fact and return false
         if self.try_create_active_blob().await.is_ok() {
             info!("Active blob was set during write operation");
         }
-        if !self.inner.config.allow_duplicates()
-            && self.contains_with(key.as_ref(), meta.as_ref()).await?
-        {
-            warn!("record with key {:?} and meta {:?} exists", key, meta);
+        if !self.inner.config.allow_duplicates() && self.contains_with(key, meta.as_ref()).await? {
+            warn!(
+                "record with key {:?} and meta {:?} exists",
+                key.as_ref(),
+                meta
+            );
             return Ok(());
         }
         let record = Record::create(key, value, meta.unwrap_or_default())
@@ -307,8 +308,9 @@ impl<K: Key + 'static> Storage<K> {
     /// [`read_with`]: Storage::read_with
     #[inline]
     pub async fn read(&self, key: impl AsRef<K>) -> Result<Vec<u8>> {
-        debug!("storage read {:?}", key.as_ref());
-        self.read_with_optional_meta(key.as_ref(), None).await
+        let key = key.as_ref();
+        debug!("storage read {:?}", key);
+        self.read_with_optional_meta(key, None).await
     }
     /// Reads data matching given key and metadata
     /// # Examples
@@ -337,7 +339,7 @@ impl<K: Key + 'static> Storage<K> {
     /// # Errors
     /// Fails after any disk IO errors.
     pub async fn read_all(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
-        let key = key.as_ref().as_ref();
+        let key = key.as_ref();
         let mut all_entries = Vec::new();
         let safe = self.inner.safe.read().await;
         let active_blob = safe
@@ -371,7 +373,6 @@ impl<K: Key + 'static> Storage<K> {
     async fn read_with_optional_meta(&self, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
-        let key = key.as_ref();
         if let Some(ablob) = safe.active_blob.as_ref() {
             match ablob.read_any(key, meta, true).await {
                 Ok(data) => {
@@ -384,7 +385,7 @@ impl<K: Key + 'static> Storage<K> {
         Self::get_any_data(&safe, key, meta).await
     }
 
-    async fn get_data_last(safe: &Safe<K>, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_last(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         let blobs = safe.blobs.read().await;
         let blobs_stream: FuturesOrdered<_> = blobs
             .iter()
@@ -422,7 +423,7 @@ impl<K: Key + 'static> Storage<K> {
     }
 
     #[allow(dead_code)]
-    async fn get_data_any(safe: &Safe<K>, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_any(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         let blobs = safe.blobs.read().await;
         let stream: FuturesUnordered<_> = blobs
             .iter()
@@ -436,7 +437,7 @@ impl<K: Key + 'static> Storage<K> {
             .with_context(|| "no results in closed blobs")
     }
 
-    async fn get_any_data(safe: &Safe<K>, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_any_data(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         Self::get_data_last(safe, key, meta).await
     }
 
@@ -715,12 +716,11 @@ impl<K: Key + 'static> Storage<K> {
     /// `contains` returns either "definitely in storage" or "definitely not".
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn contains(&self, key: K) -> Result<bool> {
-        let key = key.as_ref();
-        self.contains_with(key, None).await
+    pub async fn contains(&self, key: impl AsRef<K>) -> Result<bool> {
+        self.contains_with(key.as_ref(), None).await
     }
 
-    async fn contains_with(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
+    async fn contains_with(&self, key: &K, meta: Option<&Meta>) -> Result<bool> {
         let inner = self.inner.safe.read().await;
         if let Some(active_blob) = &inner.active_blob {
             if active_blob.contains(key, meta).await? {
@@ -744,11 +744,11 @@ impl<K: Key + 'static> Storage<K> {
     /// In other words, `check_filters` returns either "possibly in storage" or "definitely not".
     pub async fn check_filters(&self, key: impl AsRef<K>) -> Option<bool> {
         let key = key.as_ref();
-        trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
+        trace!("[{:?}] check in blobs bloom filter", key);
         let inner = self.inner.safe.read().await;
         let in_active = if let Some(active_blob) = inner.active_blob.as_ref() {
             active_blob
-                .check_filters(key.as_ref())
+                .check_filters(key)
                 .await
                 .map_err(|e| {
                     error!(
@@ -771,14 +771,14 @@ impl<K: Key + 'static> Storage<K> {
 
         let in_closed = in_memory
             .iter()
-            .any(|blob| blob.check_filters_in_memory(key.as_ref()));
+            .any(|blob| blob.check_filters_in_memory(key));
         if in_closed {
             return Some(true);
         }
 
         let in_closed_offloaded = offloaded
             .iter()
-            .map(|blob| blob.check_filters(key.as_ref()))
+            .map(|blob| blob.check_filters(key))
             .collect::<FuturesUnordered<_>>()
             .any(|value| value.unwrap_or(false))
             .await;

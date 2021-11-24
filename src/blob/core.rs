@@ -233,7 +233,7 @@ impl<K: Key> Blob<K> {
 
     pub(crate) async fn read_any(
         &self,
-        key: &[u8],
+        key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
     ) -> Result<Vec<u8>> {
@@ -253,7 +253,7 @@ impl<K: Key> Blob<K> {
     }
 
     #[inline]
-    pub(crate) async fn read_all_entries(&self, key: &[u8]) -> Result<Option<Vec<Entry>>> {
+    pub(crate) async fn read_all_entries(&self, key: &K) -> Result<Option<Vec<Entry>>> {
         let headers = self.index.get_all(key).await?;
         Ok(headers.map(|h| {
             debug!("blob core read all {} headers", h.len());
@@ -270,7 +270,7 @@ impl<K: Key> Blob<K> {
 
     async fn get_entry(
         &self,
-        key: &[u8],
+        key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
     ) -> Result<Option<Entry>> {
@@ -298,7 +298,7 @@ impl<K: Key> Blob<K> {
         }
     }
 
-    async fn get_entry_with_meta(&self, key: &[u8], meta: &Meta) -> Result<Option<Entry>> {
+    async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<Option<Entry>> {
         let headers = self.index.get_all(key).await?;
         if let Some(headers) = headers {
             let entries = Self::headers_to_entries(headers, &self.file);
@@ -317,7 +317,7 @@ impl<K: Key> Blob<K> {
         Ok(None)
     }
 
-    pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
+    pub(crate) async fn contains(&self, key: &K, meta: Option<&Meta>) -> Result<bool> {
         debug!("blob contains");
         let contains = self.get_entry(key, meta, true).await?.is_some();
         debug!("blob contains any: {}", contains);
@@ -346,7 +346,7 @@ impl<K: Key> Blob<K> {
         self.index.offload_filter()
     }
 
-    pub(crate) async fn check_filters(&self, key: &[u8]) -> Result<bool> {
+    pub(crate) async fn check_filters(&self, key: &K) -> Result<bool> {
         trace!("check filters (range and bloom)");
         if let FilterResult::NotContains = self.index.check_filters_key(key).await? {
             Ok(false)
@@ -355,7 +355,7 @@ impl<K: Key> Blob<K> {
         }
     }
 
-    pub(crate) fn check_filters_in_memory(&self, key: &[u8]) -> bool {
+    pub(crate) fn check_filters_in_memory(&self, key: &K) -> bool {
         trace!("check filters (range and bloom)");
         if let FilterResult::NotContains = self.index.check_filters_in_memory(key) {
             false

@@ -14,15 +14,16 @@ use super::prelude::*;
 pub(super) const BLOCK_SIZE: usize = 4096;
 
 #[derive(Debug, Clone)]
-pub(crate) struct BPTreeFileIndex {
+pub(crate) struct BPTreeFileIndex<K> {
     file: File,
     header: IndexHeader,
     metadata: TreeMeta,
     root_node: [u8; BLOCK_SIZE],
+    key_type_marker: PhantomData<K>,
 }
 
 #[async_trait::async_trait]
-impl FileIndexTrait for BPTreeFileIndex {
+impl<K: Key> FileIndexTrait<K> for BPTreeFileIndex<K> {
     async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self> {
         trace!("open index file");
         let file = File::open(name.to_path(), ioring)
@@ -37,6 +38,7 @@ impl FileIndexTrait for BPTreeFileIndex {
             header,
             metadata,
             root_node,
+            key_type_marker: PhantomData,
         })
     }
 
@@ -64,6 +66,7 @@ impl FileIndexTrait for BPTreeFileIndex {
             metadata,
             header,
             root_node,
+            key_type_marker: PhantomData,
         })
     }
 
@@ -97,18 +100,21 @@ impl FileIndexTrait for BPTreeFileIndex {
         Ok(buf[0])
     }
 
-    async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
+    async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
         let root_offset = self.metadata.tree_offset;
         let mut buf = [0u8; BLOCK_SIZE];
-        let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
-        self.read_headers(leaf_offset, key, &mut buf).await
+        let leaf_offset = self
+            .find_leaf_node(&key.to_vec(), root_offset, &mut buf)
+            .await?;
+        self.read_headers(leaf_offset, &key.to_vec(), &mut buf)
+            .await
     }
 
     async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)> {
         let mut buf = self.file.read_all().await?;
         self.validate_header(&mut buf).await?;
         let offset = self.metadata.leaves_offset as usize;
-        let records_end = self.file_size() as usize;
+        let records_end = FileIndexTrait::<K>::file_size(self) as usize;
         let records_buf = &buf[offset..records_end];
         (0..self.header.records_count)
             .try_fold(InMemoryIndex::new(), |mut headers, i| {
@@ -127,11 +133,13 @@ impl FileIndexTrait for BPTreeFileIndex {
             .map(|headers| (headers, self.header.records_count))
     }
 
-    async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
+    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
         let root_offset = self.metadata.tree_offset;
         let mut buf = [0u8; BLOCK_SIZE];
-        let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
-        self.read_header(leaf_offset, key, &mut buf).await
+        let leaf_offset = self
+            .find_leaf_node(&key.to_vec(), root_offset, &mut buf)
+            .await?;
+        self.read_header(leaf_offset, &key.to_vec(), &mut buf).await
     }
 
     fn validate(&self) -> Result<()> {
@@ -148,7 +156,7 @@ impl FileIndexTrait for BPTreeFileIndex {
     }
 }
 
-impl BPTreeFileIndex {
+impl<K: Key> BPTreeFileIndex<K> {
     async fn find_leaf_node(&self, key: &[u8], mut offset: u64, buf: &mut [u8]) -> Result<u64> {
         while offset < self.metadata.leaves_offset {
             offset = if offset == self.metadata.tree_offset {
@@ -211,7 +219,7 @@ impl BPTreeFileIndex {
 
     fn leaf_node_buf_size(&self, leaf_offset: u64) -> usize {
         // if we read last leaf, it may be shorter
-        ((self.file_size() - leaf_offset) as usize).min(BLOCK_SIZE)
+        ((FileIndexTrait::<K>::file_size(self) - leaf_offset) as usize).min(BLOCK_SIZE)
     }
 
     fn read_header_buf(

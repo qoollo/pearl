@@ -3,7 +3,32 @@ use rand::prelude::SliceRandom;
 use super::prelude::*;
 use std::time::Instant;
 
-type FileIndexStruct = BPTreeFileIndex;
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct KeyType(Vec<u8>);
+
+impl Key for KeyType {
+    const LEN: u16 = 8;
+}
+
+impl From<Vec<u8>> for KeyType {
+    fn from(v: Vec<u8>) -> Self {
+        Self(v)
+    }
+}
+
+impl AsRef<[u8]> for KeyType {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl Default for KeyType {
+    fn default() -> Self {
+        Self(vec![0_u8, 8])
+    }
+}
+
+type FileIndexStruct = BPTreeFileIndex<KeyType>;
 //type FileIndexStruct = SimpleFileIndex;
 
 fn generate_headers(records_amount: usize, key_mapper: fn(u32) -> u32) -> InMemoryIndex {
@@ -164,7 +189,7 @@ async fn benchmark_get_any() {
         if (i as u32 + 1) % PRINT_EVERY == 0 {
             println!("Iteration: {}...", i + 1);
         }
-        let _ = findex.get_any(&q).await.unwrap();
+        let _ = findex.get_any(&q.into()).await.unwrap();
     }
     println!(
         "get_any avg time: {}\n",
@@ -217,7 +242,7 @@ async fn benchmark_get_all() {
         if (i as u32 + 1) % PRINT_EVERY == 0 {
             println!("Iteration: {}...", i + 1);
         }
-        let _ = findex.find_by_key(&q).await.unwrap();
+        let _ = findex.find_by_key(&q.into()).await.unwrap();
     }
     println!(
         "get_all avg time: {}\n",

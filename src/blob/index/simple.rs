@@ -9,7 +9,7 @@ pub(crate) struct SimpleFileIndex {
 }
 
 #[async_trait::async_trait]
-impl FileIndexTrait for SimpleFileIndex {
+impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
     async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self> {
         trace!("open index file");
         let file = File::open(name.to_path(), ioring)
@@ -50,8 +50,8 @@ impl FileIndexTrait for SimpleFileIndex {
         Ok(buf[0])
     }
 
-    async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
-        Self::search_all(&self.file, key, &self.header).await
+    async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
+        Self::search_all(&self.file, &key.to_vec(), &self.header).await
     }
 
     async fn from_records(
@@ -81,7 +81,7 @@ impl FileIndexTrait for SimpleFileIndex {
 
     async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)> {
         let mut buf = self.file.read_all().await?;
-        self.validate_header(&mut buf).await?;
+        self.validate_header::<K>(&mut buf).await?;
         let offset = self.header.meta_size + self.header.serialized_size()? as usize;
         let records_buf = &buf[offset..];
         (0..self.header.records_count)
@@ -101,8 +101,8 @@ impl FileIndexTrait for SimpleFileIndex {
             .map(|headers| (headers, self.header.records_count))
     }
 
-    async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
-        Self::binary_search(&self.file, key, &self.header)
+    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
+        Self::binary_search(&self.file, &key.to_vec(), &self.header)
             .await
             .map(|res| res.map(|h| h.0))
     }
@@ -255,8 +255,8 @@ impl SimpleFileIndex {
         Ok(None)
     }
 
-    async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
-        self.validate()?;
+    async fn validate_header<K: Key>(&self, buf: &mut Vec<u8>) -> Result<()> {
+        FileIndexTrait::<K>::validate(self)?;
         if !Self::hash_valid(&self.header, buf)? {
             let param = ValidationErrorKind::IndexChecksum;
             return Err(Error::validation(param, "header hash mismatch").into());
