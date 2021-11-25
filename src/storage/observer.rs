@@ -45,7 +45,7 @@ impl Msg {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Observer<K> {
+pub(crate) struct Observer<K: Key> {
     inner: Option<Inner<K>>,
     pub sender: Option<Sender<Msg>>,
     dump_sem: Arc<Semaphore>,

@@ -13,7 +13,7 @@ pub(crate) const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 ///
 /// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
-pub struct Blob<K> {
+pub struct Blob<K: Key> {
     header: Header,
     index: Index<K>,
     name: FileName,

@@ -39,7 +39,7 @@ pub struct Storage<K: Key> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Inner<K> {
+pub(crate) struct Inner<K: Key> {
     pub(crate) config: Config,
     pub(crate) safe: Arc<RwLock<Safe<K>>>,
     next_blob_id: Arc<AtomicUsize>,
@@ -47,7 +47,7 @@ pub(crate) struct Inner<K> {
 }
 
 #[derive(Debug)]
-pub(crate) struct Safe<K> {
+pub(crate) struct Safe<K: Key> {
     pub(crate) active_blob: Option<Box<Blob<K>>>,
     pub(crate) blobs: Arc<RwLock<Vec<Blob<K>>>>,
 }

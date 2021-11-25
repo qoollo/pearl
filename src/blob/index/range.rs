@@ -1,9 +1,11 @@
 use super::prelude::*;
 
 /// NOTE: le and lt operations are written for big-endian format of keys
-#[derive(Debug, Default)]
-pub(crate) struct RangeFilter<K> {
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub(crate) struct RangeFilter<K: Key> {
+    #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
     min: K,
+    #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
     max: K,
     initialized: bool,
 }
@@ -45,85 +47,31 @@ impl<K: Key> RangeFilter<K> {
     }
 }
 
-const STRUCT_NAME: &str = "RangeFilter";
-const MIN_FIELD_NAME: &str = "min";
-const MAX_FIELD_NAME: &str = "max";
-const INIT_FIELD_NAME: &str = "initialized";
-
-impl<K: Key> serde::Serialize for RangeFilter<K> {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-        let mut state = serializer.serialize_struct(STRUCT_NAME, 3)?;
-        state.serialize_field(MIN_FIELD_NAME, &self.min.to_vec())?;
-        state.serialize_field(MAX_FIELD_NAME, &self.max.to_vec())?;
-        state.serialize_field(INIT_FIELD_NAME, &self.initialized)?;
-        state.end()
-    }
+fn serialize_key<K: Key, S: serde::Serializer>(key: &K, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_bytes(key.as_ref())
 }
 
-impl<'de, K: Key> serde::Deserialize<'de> for RangeFilter<K> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        struct RangeFilterVisitor<K>(PhantomData<K>);
+fn deserialize_key<'de, K: Key, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<K, D::Error> {
+    struct KeyVisitor<K>(PhantomData<K>);
+    impl<'de, K: Key> serde::de::Visitor<'de> for KeyVisitor<K> {
+        type Value = K;
 
-        impl<'de, K: Key> serde::de::Visitor<'de> for RangeFilterVisitor<K> {
-            type Value = RangeFilter<K>;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("range filter struct")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                let min = seq.next_element::<Vec<u8>>()?.map(|v| v.into());
-                let max = seq.next_element::<Vec<u8>>()?.map(|v| v.into());
-                let init = seq.next_element::<bool>()?;
-                Ok(RangeFilter::<K> {
-                    min: min.expect("min not found"),
-                    max: max.expect("max not found"),
-                    initialized: init.expect("initialized not found"),
-                })
-            }
-
-            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-            where
-                A: serde::de::MapAccess<'de>,
-            {
-                let mut min: Option<K> = None;
-                let mut max: Option<K> = None;
-                let mut initialized: Option<bool> = None;
-                while let Some(key) = map.next_key::<&str>()? {
-                    match key {
-                        MIN_FIELD_NAME => {
-                            min = Some(map.next_value::<Vec<u8>>()?.into());
-                        }
-                        MAX_FIELD_NAME => {
-                            max = Some(map.next_value::<Vec<u8>>()?.into());
-                        }
-                        INIT_FIELD_NAME => initialized = Some(map.next_value::<bool>()?),
-                        k => panic!("received wrong field name: {}", k),
-                    }
-                }
-                Ok(RangeFilter::<K> {
-                    min: min.expect("min not found"),
-                    max: max.expect("max not found"),
-                    initialized: initialized.expect("initialized not found"),
-                })
-            }
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("bytes")
         }
 
-        const FIELDS: &'static [&'static str] = &[MIN_FIELD_NAME, MAX_FIELD_NAME, INIT_FIELD_NAME];
-        deserializer.deserialize_struct(STRUCT_NAME, FIELDS, RangeFilterVisitor(PhantomData))
+        fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(v.into())
+        }
     }
-}
 
+    deserializer.deserialize_byte_buf(KeyVisitor(PhantomData))
+}
 #[cfg(test)]
 mod tests {
     use crate::Key;

@@ -1,7 +1,7 @@
 use super::prelude::*;
 use tokio::{sync::mpsc::Receiver, sync::Semaphore, time::timeout};
 
-pub(crate) struct ObserverWorker<K> {
+pub(crate) struct ObserverWorker<K: Key> {
     inner: Inner<K>,
     receiver: Receiver<Msg>,
     dump_sem: Arc<Semaphore>,

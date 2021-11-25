@@ -42,7 +42,7 @@ impl Default for IndexConfig {
 }
 
 #[derive(Debug)]
-pub(crate) struct IndexStruct<FileIndex, K> {
+pub(crate) struct IndexStruct<FileIndex, K: Key> {
     mem: Option<MemoryAttrs>,
     range_filter: RangeFilter<K>,
     bloom_filter: Bloom,
