@@ -72,6 +72,7 @@ fn deserialize_key<'de, K: Key, D: serde::Deserializer<'de>>(
 
     deserializer.deserialize_byte_buf(KeyVisitor(PhantomData))
 }
+
 #[cfg(test)]
 mod tests {
     use crate::Key;
