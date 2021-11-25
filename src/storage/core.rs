@@ -788,6 +788,10 @@ where
         Some(filter)
     }
 
+    fn get_filter_fast(&self) -> Option<&Bloom> {
+        None
+    }
+
     async fn filter_memory_allocated(&self) -> usize {
         let safe = self.inner.safe.read().await;
         let closed = safe.blobs.read().await.filter_memory_allocated().await;

@@ -294,6 +294,10 @@ where
     async fn filter_memory_allocated(&self) -> usize {
         self.filter.memory_allocated()
     }
+
+    fn get_filter_fast(&self) -> Option<&Bloom> {
+        Some(&self.filter)
+    }
 }
 
 #[async_trait::async_trait]

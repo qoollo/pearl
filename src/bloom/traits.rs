@@ -20,6 +20,8 @@ pub trait BloomProvider {
     async fn offload_buffer(&mut self, needed_memory: usize) -> usize;
     /// Returns overall filter
     async fn get_filter(&self) -> Option<Bloom>;
+    /// Returns overall filter
+    fn get_filter_fast(&self) -> Option<&Bloom>;
     /// Returns allocated memory
     async fn filter_memory_allocated(&self) -> usize;
 }

@@ -336,6 +336,10 @@ impl BloomProvider for Blob {
         self.index.get_filter().await
     }
 
+    fn get_filter_fast(&self) -> Option<&Bloom> {
+        self.index.get_filter_fast()
+    }
+
     async fn filter_memory_allocated(&self) -> usize {
         self.index.filter_memory_allocated().await
     }

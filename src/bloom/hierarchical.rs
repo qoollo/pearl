@@ -1,7 +1,6 @@
-use std::{
-    ops::{Deref, DerefMut},
-    sync::Weak,
-};
+use std::borrow::Cow;
+
+use tokio::time::Instant;
 
 use super::*;
 
@@ -100,7 +99,7 @@ impl HierarchicalBloomInner {
         }
     }
 
-    fn add_node(&mut self, node_filter: &Option<Bloom>, id: InnerId) {
+    fn add_node(&mut self, node_filter: Option<&Bloom>, id: InnerId) {
         match self {
             HierarchicalBloomInner::Node {
                 filter, children, ..
@@ -137,7 +136,7 @@ impl HierarchicalBloomInner {
         }
     }
 
-    fn merge_filters(dest: &mut Option<Bloom>, source: &Option<Bloom>) {
+    fn merge_filters(dest: &mut Option<Bloom>, source: Option<&Bloom>) {
         match source {
             Some(source_filter) => {
                 let res = match dest {
@@ -179,6 +178,13 @@ where
 
     async fn filter_memory_allocated(&self) -> usize {
         self.filter_memory_allocated_in(self.root).await
+    }
+
+    fn get_filter_fast(&self) -> Option<&Bloom> {
+        match &self.inner.get(&self.root) {
+            Some(HierarchicalBloomInner::Node { filter, .. }) => filter.as_ref(),
+            _ => None,
+        }
     }
 }
 
@@ -364,33 +370,50 @@ where
         self.children.get_mut(&id)
     }
 
+    fn add_filter_from_item(dest: &mut Option<Bloom>, item: &Option<Cow<'_, Bloom>>) {
+        HierarchicalBloomInner::merge_filters(dest, item.as_ref().map(|x| x.as_ref()));
+    }
+
+    fn init_filter_from_cow(dest: &mut Option<Bloom>, item: &Option<Cow<'_, Bloom>>) {
+        if let Some(filter) = item {
+            *dest = Some(filter.clone().into_owned());
+        } else {
+            *dest = None;
+        }
+    }
+
+    async fn get_filter_from_child(item: &Child) -> Option<Cow<'_, Bloom>> {
+        if let Some(filter) = item.get_filter_fast() {
+            Some(Cow::Borrowed(filter))
+        } else {
+            let filter = item.get_filter().await;
+            filter.map(|x| Cow::Owned(x))
+        }
+    }
+
     /// Add child to collection
     pub async fn push(&mut self, item: Child) -> ChildId {
-        let item_filter = item.get_filter().await;
+        let item_filter = Self::get_filter_from_child(&item).await;
+        let start = Instant::now();
         let root_len = self
             .inner
             .get(&self.root)
             .expect("should be presented")
             .len();
         let last_container = if root_len == 0 {
-            *self.get_mut(self.root).1 = item_filter.clone();
+            Self::init_filter_from_cow(self.get_mut(self.root).1, &item_filter);
             self.push_inner_container()
         } else {
             let mut id = self.last_inner_container().expect("should exist");
             if self.get(id).0.len() >= self.group_size {
                 id = self.push_inner_container();
             }
-            HierarchicalBloomInner::merge_filters(self.get_mut(self.root).1, &item_filter);
+            Self::add_filter_from_item(self.get_mut(self.root).1, &item_filter);
             id
         };
 
-        let child_id = self.children_id.get_inc();
-        let child = Leaf {
-            data: item,
-            parent: last_container,
-        };
-        self.children.insert(child_id, child);
         let inner_id = self.inner_id.get_inc();
+        let child_id = self.children_id.get_inc();
         self.inner.insert(
             inner_id,
             HierarchicalBloomInner::Leaf {
@@ -399,15 +422,20 @@ where
             },
         );
         self.add_child(last_container, inner_id, &item_filter);
+        let child = Leaf {
+            data: item,
+            parent: last_container,
+        };
+        self.children.insert(child_id, child);
         child_id
     }
 
-    fn add_child(&mut self, id: InnerId, child_id: InnerId, child_filter: &Option<Bloom>) {
+    fn add_child(&mut self, id: InnerId, child_id: InnerId, child: &Option<Cow<'_, Bloom>>) {
         let (children, filter) = self.get_mut(id);
         if children.is_empty() {
-            *filter = child_filter.clone();
+            Self::init_filter_from_cow(filter, child);
         } else {
-            HierarchicalBloomInner::merge_filters(filter, &child_filter);
+            Self::add_filter_from_item(filter, child);
         }
         children.push(child_id);
     }
