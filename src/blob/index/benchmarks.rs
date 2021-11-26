@@ -11,7 +11,8 @@ impl Key for KeyType {
 }
 
 impl From<Vec<u8>> for KeyType {
-    fn from(v: Vec<u8>) -> Self {
+    fn from(mut v: Vec<u8>) -> Self {
+        v.resize(KeyType::LEN as usize, 0);
         Self(v)
     }
 }
@@ -24,7 +25,7 @@ impl AsRef<[u8]> for KeyType {
 
 impl Default for KeyType {
     fn default() -> Self {
-        Self(vec![0_u8, 8])
+        Self(vec![0_u8, KeyType::LEN as u8])
     }
 }
 
