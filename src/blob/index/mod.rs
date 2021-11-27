@@ -1,7 +1,5 @@
 use crate::prelude::*;
 
-/// bloom filter for faster check record contains in blob
-pub mod bloom;
 mod bptree;
 mod core;
 mod header;
@@ -16,17 +14,13 @@ use bptree::BPTreeFileIndex;
 use header::IndexHeader;
 
 pub(crate) use self::core::{
-    FileIndexTrait, FilterResult, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,
+    FileIndexTrait, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,
 };
 pub(crate) use super::prelude::*;
-pub(crate) use bloom::{Bloom, Config as BloomConfig};
 pub(crate) use range::RangeFilter;
 
 mod prelude {
     pub(crate) use super::*;
-    pub(crate) use ahash::AHasher;
-    pub(crate) use bitvec::prelude::*;
-    pub(crate) use std::hash::Hasher;
     pub(crate) use tools::*;
 }
 

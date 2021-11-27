@@ -1,14 +1,73 @@
+/// Hierarchical
+pub mod hierarchical;
+/// Traits
+pub mod traits;
+pub use hierarchical::*;
+pub use traits::*;
+
 use super::prelude::*;
+use ahash::AHasher;
 use bitvec::order::Lsb0;
+use bitvec::prelude::*;
+use std::hash::Hasher;
+use std::ops::Add;
+
+#[derive(PartialEq, Eq, Debug)]
+/// Filter result
+pub enum FilterResult {
+    /// Need additional check
+    NeedAdditionalCheck,
+    /// Not contains
+    NotContains,
+}
+
+impl Default for FilterResult {
+    fn default() -> Self {
+        Self::NeedAdditionalCheck
+    }
+}
+
+impl Add for FilterResult {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (FilterResult::NotContains, FilterResult::NotContains) => FilterResult::NotContains,
+            _ => FilterResult::NeedAdditionalCheck,
+        }
+    }
+}
 
 // All usizes in structures are serialized as u64 in binary
-#[derive(Debug, Clone)]
-pub(crate) struct Bloom {
+#[derive(Clone)]
+/// Bloom filter
+pub struct Bloom {
     inner: Option<BitVec<Lsb0, u64>>,
     offset_in_file: Option<u64>,
     bits_count: usize,
     hashers: Vec<AHasher>,
     config: Config,
+}
+
+impl Debug for Bloom {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        struct InnerDebug(usize, usize);
+        impl Debug for InnerDebug {
+            fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+                f.write_fmt(format_args!("{} ones from {}", self.0, self.1))
+            }
+        }
+        f.debug_struct("Bloom")
+            .field(
+                "inner",
+                &self
+                    .inner
+                    .as_ref()
+                    .map(|x| InnerDebug(x.count_ones(), x.len())),
+            )
+            .field("offset_in_file", &self.offset_in_file)
+            .field("bits_count", &self.bits_count)
+            .finish()
+    }
 }
 
 impl Default for Bloom {
@@ -104,6 +163,7 @@ fn bits_count_via_iterations(config: &Config) -> usize {
 }
 
 impl Bloom {
+    /// Create new bloom filter
     pub fn new(config: Config) -> Self {
         let bits_count = bits_count_from_formula(&config);
         Self {
@@ -115,25 +175,46 @@ impl Bloom {
         }
     }
 
+    /// Merge filters
+    pub fn checked_add_assign(&mut self, other: &Bloom) -> Option<()> {
+        match (&mut self.inner, &other.inner) {
+            (Some(inner), Some(other_inner)) if inner.len() == other_inner.len() => {
+                inner
+                    .as_mut_raw_slice()
+                    .iter_mut()
+                    .zip(other_inner.as_raw_slice())
+                    .for_each(|(a, b)| *a |= *b);
+                Some(())
+            }
+            _ => None,
+        }
+    }
+
+    /// Set in-memory filter buffer to zeroed array
     pub fn clear(&mut self) {
         self.inner = Some(bitvec![Lsb0, u64; 0; self.bits_count]);
         self.offset_in_file = None;
     }
 
+    /// Check if filter offloaded
     pub fn is_offloaded(&self) -> bool {
         self.inner.is_none()
     }
 
-    pub fn offload_from_memory(&mut self) {
+    /// Clear in-memory filter buffer
+    pub fn offload_from_memory(&mut self) -> usize {
+        let freed = self.inner.as_ref().map(|x| x.capacity() / 8).unwrap_or(0);
         self.inner = None;
+        freed
     }
 
+    /// Set filter offset in file
     pub fn set_offset_in_file(&mut self, offset: u64) {
         self.offset_in_file =
             Some(offset + self.buffer_start_position().expect("Should not fail") as u64);
     }
 
-    pub fn hashers(k: usize) -> Vec<AHasher> {
+    fn hashers(k: usize) -> Vec<AHasher> {
         trace!("@TODO create configurable hashers???");
         (0..k)
             .map(|i| AHasher::new_with_keys((i + 1) as u128, (i + 2) as u128))
@@ -164,6 +245,7 @@ impl Bloom {
         }
     }
 
+    /// Serialize filter to bytes
     pub fn to_raw(&self) -> Result<Vec<u8>> {
         let save = self
             .save()
@@ -171,11 +253,13 @@ impl Bloom {
         bincode::serialize(&save).map_err(Into::into)
     }
 
+    /// Deserialize filter from bytes
     pub fn from_raw(buf: &[u8], offset_in_file: Option<u64>) -> Result<Self> {
         let save: Save = bincode::deserialize(buf)?;
         Ok(Self::from(save, offset_in_file))
     }
 
+    /// Add value to filter
     pub fn add(&mut self, item: impl AsRef<[u8]>) -> Result<()> {
         if let Some(inner) = &mut self.inner {
             let len = inner.len() as u64;
@@ -190,17 +274,21 @@ impl Bloom {
         }
     }
 
-    pub fn contains_in_memory(&self, item: impl AsRef<[u8]>) -> Option<bool> {
+    /// Check filter in-memory (if not offloaded)
+    pub fn contains_in_memory(&self, item: impl AsRef<[u8]>) -> Option<FilterResult> {
         if let Some(inner) = &self.inner {
             let len = inner.len() as u64;
             // Check because .all on empty iterator returns true
             if len == 0 {
-                return Some(false);
+                return None;
             }
-            Some(
-                Self::iter_indices_for_key(&self.hashers, len, item.as_ref())
-                    .all(|i| *inner.get(i as usize).expect("unreachable")),
-            )
+            if Self::iter_indices_for_key(&self.hashers, len, item.as_ref())
+                .all(|i| *inner.get(i as usize).expect("unreachable"))
+            {
+                Some(FilterResult::NeedAdditionalCheck)
+            } else {
+                Some(FilterResult::NotContains)
+            }
         } else {
             None
         }
@@ -218,13 +306,14 @@ impl Bloom {
         })
     }
 
+    /// Check filter by reading bits from file
     pub async fn contains_in_file<P: BloomDataProvider>(
         &self,
         provider: &P,
         item: impl AsRef<[u8]>,
-    ) -> Result<bool> {
+    ) -> Result<FilterResult> {
         if self.bits_count == 0 {
-            return Ok(false);
+            return Ok(FilterResult::NeedAdditionalCheck);
         }
         let mut hashers = self.hashers.clone();
         let start_pos = self
@@ -242,10 +331,10 @@ impl Bloom {
                 .get(index as usize % 8)
                 .expect("unreachable")
             {
-                return Ok(false);
+                return Ok(FilterResult::NotContains);
             }
         }
-        Ok(true)
+        Ok(FilterResult::NeedAdditionalCheck)
     }
 
     // bincode write len as u64 before Vec elements. sizeof(config) + sizeof(u64)
@@ -253,14 +342,10 @@ impl Bloom {
         Ok(bincode::serialized_size(&self.config)? + std::mem::size_of::<u64>() as u64)
     }
 
+    /// Get amount of memory allocated for filter
     pub fn memory_allocated(&self) -> usize {
         self.inner.as_ref().map_or(0, |buf| buf.capacity() / 8)
     }
-}
-
-#[async_trait::async_trait]
-pub(crate) trait BloomDataProvider {
-    async fn read_byte(&self, index: u64) -> Result<u8>;
 }
 
 mod tests {

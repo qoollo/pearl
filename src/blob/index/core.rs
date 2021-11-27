@@ -1,15 +1,10 @@
 use super::prelude::*;
-use crate::filter::BloomDataProvider;
+use crate::bloom::BloomDataProvider;
 use std::mem::size_of;
 
 pub(crate) type Index = IndexStruct<BPTreeFileIndex>;
 
 pub(crate) const HEADER_VERSION: u8 = 3;
-
-pub(crate) enum FilterResult {
-    NeedAdditionalCheck,
-    NotContains,
-}
 
 #[derive(Debug)]
 struct IndexParams {
@@ -94,15 +89,18 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         self.range_filter.clear();
     }
 
-    pub fn offload_filter(&mut self) {
+    pub fn offload_filter(&mut self) -> usize {
         if self.on_disk() {
-            self.bloom_filter.offload_from_memory();
+            self.bloom_filter.offload_from_memory()
+        } else {
+            0
         }
     }
 
     pub(crate) async fn check_filters_key(&self, key: &[u8]) -> Result<FilterResult> {
         if !self.range_filter.contains(key)
-            || (self.params.bloom_is_on && matches!(self.check_bloom_key(key).await?, Some(false)))
+            || (self.params.bloom_is_on
+                && matches!(self.check_bloom_key(key).await?, FilterResult::NotContains))
         {
             Ok(FilterResult::NotContains)
         } else {
@@ -112,7 +110,7 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
 
     pub(crate) fn check_filters_in_memory(&self, key: &[u8]) -> FilterResult {
         if !self.range_filter.contains(key)
-            || (self.params.bloom_is_on && self.bloom_filter.contains_in_memory(key) == Some(false))
+            || self.check_bloom_key_in_memory(key) == FilterResult::NotContains
         {
             FilterResult::NotContains
         } else {
@@ -120,15 +118,29 @@ impl<FileIndex: FileIndexTrait> IndexStruct<FileIndex> {
         }
     }
 
-    pub async fn check_bloom_key(&self, key: &[u8]) -> Result<Option<bool>> {
+    pub fn check_bloom_key_in_memory(&self, key: &[u8]) -> FilterResult {
+        if self.params.bloom_is_on {
+            self.bloom_filter
+                .contains_in_memory(key)
+                .unwrap_or_default()
+        } else {
+            FilterResult::NeedAdditionalCheck
+        }
+    }
+
+    pub fn get_bloom_filter(&self) -> &Bloom {
+        &self.bloom_filter
+    }
+
+    pub async fn check_bloom_key(&self, key: &[u8]) -> Result<FilterResult> {
         if self.params.bloom_is_on {
             if let Some(result) = self.bloom_filter.contains_in_memory(key) {
-                Ok(Some(result))
+                Ok(result)
             } else {
-                Ok(Some(self.bloom_filter.contains_in_file(self, key).await?))
+                Ok(self.bloom_filter.contains_in_file(self, key).await?)
             }
         } else {
-            Ok(None)
+            Ok(FilterResult::NeedAdditionalCheck)
         }
     }
 

@@ -336,10 +336,6 @@ impl Blob {
         self.name.id
     }
 
-    pub(crate) fn offload_filter(&mut self) {
-        self.index.offload_filter()
-    }
-
     pub(crate) async fn check_filters(&self, key: &[u8]) -> Result<bool> {
         trace!("check filters (range and bloom)");
         if let FilterResult::NotContains = self.index.check_filters_key(key).await? {
@@ -512,5 +508,33 @@ impl RawRecords {
         self.current_offset += header.meta_size();
         self.current_offset += header.data_size();
         Ok(header)
+    }
+}
+
+#[async_trait::async_trait]
+impl BloomProvider for Blob {
+    type Key = [u8];
+    async fn check_filter(&self, item: &Self::Key) -> FilterResult {
+        self.index.check_bloom_key(item).await.unwrap_or_default()
+    }
+
+    fn check_filter_fast(&self, item: &Self::Key) -> FilterResult {
+        self.index.check_bloom_key_in_memory(item)
+    }
+
+    async fn offload_buffer(&mut self, _: usize, _: usize) -> usize {
+        self.index.offload_filter()
+    }
+
+    async fn get_filter(&self) -> Option<Bloom> {
+        Some(self.index.get_bloom_filter().clone())
+    }
+
+    fn get_filter_fast(&self) -> Option<&Bloom> {
+        Some(self.index.get_bloom_filter())
+    }
+
+    async fn filter_memory_allocated(&self) -> usize {
+        self.index.get_bloom_filter().memory_allocated()
     }
 }

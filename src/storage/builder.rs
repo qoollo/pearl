@@ -180,4 +180,10 @@ impl Builder {
         self.config.set_dump_sem(dump_sem);
         self
     }
+
+    /// Sets bloom filter group size
+    pub fn set_bloom_filter_group_size(mut self, size: usize) -> Self {
+        self.config.set_bloom_filter_group_size(size);
+        self
+    }
 }
