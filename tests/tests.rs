@@ -7,7 +7,7 @@ use futures::{
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
-use pearl::{Builder, Meta, Storage};
+use pearl::{BloomProvider, Builder, Meta, Storage};
 use rand::{seq::SliceRandom, Rng};
 use std::{
     fs,
@@ -562,7 +562,7 @@ async fn test_check_bloom_filter_multiple() {
 async fn test_check_bloom_filter_multiple_offloaded() {
     let now = Instant::now();
     let path = common::init("check_bloom_filter_multiple_offloaded");
-    let storage = common::create_test_storage(&path, 20000).await.unwrap();
+    let mut storage = common::create_test_storage(&path, 20000).await.unwrap();
     let data =
         b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
     for i in 1..800 {
@@ -571,7 +571,7 @@ async fn test_check_bloom_filter_multiple_offloaded() {
         sleep(Duration::from_millis(6)).await;
         trace!("blobs count: {}", storage.blobs_count().await);
     }
-    storage.offload_bloom().await;
+    storage.offload_buffer(usize::MAX, 100).await;
     for i in 1..800 {
         assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(true));
     }
