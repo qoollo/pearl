@@ -4,6 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Add hierarchical filters support (#126)
 
 #### Changed
 
