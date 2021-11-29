@@ -51,7 +51,7 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
     }
 
     async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
-        Self::search_all(&self.file, &key.to_vec(), &self.header).await
+        Self::search_all(&self.file, key, &self.header).await
     }
 
     async fn from_records(
@@ -102,7 +102,7 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
     }
 
     async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
-        Self::binary_search(&self.file, &key.to_vec(), &self.header)
+        Self::binary_search(&self.file, key, &self.header)
             .await
             .map(|res| res.map(|h| h.0))
     }
@@ -140,9 +140,9 @@ impl SimpleFileIndex {
         IndexHeader::from_raw(&buf).map_err(Into::into)
     }
 
-    async fn search_all(
+    async fn search_all<K: Key>(
         file: &File,
-        key: &[u8],
+        key: &K,
         index_header: &IndexHeader,
     ) -> Result<Option<Vec<RecordHeader>>> {
         if let Some(header_pos) = Self::binary_search(file, key, index_header)
@@ -172,7 +172,7 @@ impl SimpleFileIndex {
                 let rh = Self::read_at(file, pos, &index_header)
                     .await
                     .with_context(|| "blob, index simple, search all, read at failed")?;
-                if rh.key() == key {
+                if rh.key() == key.as_ref() {
                     headers.push(rh);
                 } else {
                     break;
@@ -194,7 +194,7 @@ impl SimpleFileIndex {
                 let rh = Self::read_at(file, pos, &index_header)
                     .await
                     .with_context(|| "blob, index simple, search all, read at failed")?;
-                if rh.key() == key {
+                if rh.key() == key.as_ref() {
                     headers.push(rh);
                     pos += 1;
                 } else {
@@ -213,16 +213,12 @@ impl SimpleFileIndex {
         }
     }
 
-    async fn binary_search(
+    async fn binary_search<K: Key>(
         file: &File,
-        key: &[u8],
+        key: &K,
         header: &IndexHeader,
     ) -> Result<Option<(RecordHeader, usize)>> {
         debug!("blob index simple binary search header {:?}", header);
-
-        if key.is_empty() {
-            error!("empty key was provided");
-        }
 
         let mut start = 0;
         let mut end = header.records_count - 1;
@@ -235,7 +231,7 @@ impl SimpleFileIndex {
                 "blob index simple binary search mid header: {:?}",
                 mid_record_header
             );
-            let cmp = mid_record_header.key().cmp(&key);
+            let cmp = K::from(mid_record_header.key().to_vec()).cmp(&key);
             debug!("mid read: {:?}, key: {:?}", mid_record_header.key(), key);
             debug!("before mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
             match cmp {
