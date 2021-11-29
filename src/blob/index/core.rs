@@ -4,7 +4,7 @@ use std::mem::size_of;
 
 pub(crate) type Index<K> = IndexStruct<BPTreeFileIndex<K>, K>;
 
-pub(crate) const HEADER_VERSION: u8 = 3;
+pub(crate) const HEADER_VERSION: u8 = 4;
 
 pub(crate) enum FilterResult {
     NeedAdditionalCheck,
