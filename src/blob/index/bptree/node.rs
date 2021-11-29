@@ -68,8 +68,11 @@ impl Node {
     }
 
     #[allow(dead_code)]
-    pub(super) fn key_offset(&self, key: &[u8]) -> u64 {
-        match self.keys.binary_search_by(|elem| elem.as_slice().cmp(key)) {
+    pub(super) fn key_offset<K: Key>(&self, key: &K) -> u64 {
+        match self
+            .keys
+            .binary_search_by(|elem| K::from(elem.clone()).cmp(key))
+        {
             Ok(pos) => self.offsets[pos + 1],
             Err(pos) => self.offsets[pos],
         }
@@ -163,13 +166,18 @@ mod tests {
         }
     }
 
-    fn check_offset(keys: &[Vec<u8>], key: &[u8], offset: u64, off_to_index: impl Fn(u64) -> u64) {
+    fn check_offset(
+        keys: &[Vec<u8>],
+        key: &KeyType,
+        offset: u64,
+        off_to_index: impl Fn(u64) -> u64,
+    ) {
         let offset_index = off_to_index(offset) as usize;
         if offset_index != 0 {
-            assert!(key.cmp(&keys[offset_index - 1]).is_ge());
+            assert!(key.cmp(&keys[offset_index - 1].to_vec().into()).is_ge());
         }
         if offset_index != keys.len() {
-            assert!(key.cmp(keys[offset_index].as_ref()).is_lt())
+            assert!(key.cmp(&keys[offset_index].to_vec().into()).is_lt())
         }
     }
 
@@ -181,7 +189,7 @@ mod tests {
 
         for (i, &keys_amount) in KEYS_AMOUNTS.iter().enumerate() {
             let node = create_node(keys_amount, |e| to_key(e * i), |o| o * SCALE);
-            for k in REQUESTS.map(|v| serialize(&v).unwrap()) {
+            for k in REQUESTS.map(|v| to_key(v)) {
                 let offset = node.key_offset(&k);
                 check_offset(&node.keys, &k, offset, |o| o / SCALE);
             }

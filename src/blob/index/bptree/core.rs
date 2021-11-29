@@ -104,8 +104,7 @@ impl<K: Key> FileIndexTrait<K> for BPTreeFileIndex<K> {
         let root_offset = self.metadata.tree_offset;
         let mut buf = [0u8; BLOCK_SIZE];
         let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
-        self.read_headers(leaf_offset, &key.to_vec(), &mut buf)
-            .await
+        self.read_headers(leaf_offset, key, &mut buf).await
     }
 
     async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)> {
@@ -135,7 +134,7 @@ impl<K: Key> FileIndexTrait<K> for BPTreeFileIndex<K> {
         let root_offset = self.metadata.tree_offset;
         let mut buf = [0u8; BLOCK_SIZE];
         let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
-        self.read_header(leaf_offset, &key.to_vec(), &mut buf).await
+        self.read_header(leaf_offset, key, &mut buf).await
     }
 
     fn validate(&self) -> Result<()> {
@@ -168,7 +167,7 @@ impl<K: Key> BPTreeFileIndex<K> {
     async fn read_header(
         &self,
         leaf_offset: u64,
-        key: &[u8],
+        key: &K,
         buf: &mut [u8],
     ) -> Result<Option<RecordHeader>> {
         let buf_size = self.leaf_node_buf_size(leaf_offset);
@@ -196,7 +195,7 @@ impl<K: Key> BPTreeFileIndex<K> {
     fn get_leftmost(
         &self,
         raw_headers_buf: &[u8],
-        key: &[u8],
+        key: &K,
         mut offset: usize,
         mut prev_header: RecordHeader, // it's expected, that this header is from raw_headers_buf[offset..]
         record_header_size: usize,
@@ -205,7 +204,7 @@ impl<K: Key> BPTreeFileIndex<K> {
             offset = offset.saturating_sub(record_header_size);
             let record_end = offset + record_header_size;
             let current_header: RecordHeader = deserialize(&raw_headers_buf[offset..record_end])?;
-            if !current_header.key().eq(key) {
+            if !current_header.key().eq(key.as_ref()) {
                 return Ok(prev_header);
             }
             prev_header = current_header;
@@ -221,7 +220,7 @@ impl<K: Key> BPTreeFileIndex<K> {
     fn read_header_buf(
         &self,
         raw_headers_buf: &[u8],
-        key: &[u8],
+        key: &K,
         record_header_size: usize,
     ) -> Result<Option<(RecordHeader, usize)>> {
         let mut l = 0i32;
@@ -231,7 +230,8 @@ impl<K: Key> BPTreeFileIndex<K> {
             let m_off = record_header_size * m as usize;
             let record_end = m_off + record_header_size;
             let record_header: RecordHeader = deserialize(&raw_headers_buf[m_off..record_end])?;
-            match key.cmp(record_header.key()) {
+            let read_key = record_header.key().to_vec().into();
+            match key.cmp(&read_key) {
                 CmpOrdering::Less => r = m - 1,
                 CmpOrdering::Greater => l = m + 1,
                 CmpOrdering::Equal => return Ok(Some((record_header, m_off))),
@@ -243,7 +243,7 @@ impl<K: Key> BPTreeFileIndex<K> {
     async fn read_headers(
         &self,
         leaf_offset: u64,
-        key: &[u8],
+        key: &K,
         buf: &mut [u8],
     ) -> Result<Option<Vec<RecordHeader>>> {
         let buf_size = self.leaf_node_buf_size(leaf_offset);
