@@ -37,7 +37,8 @@ fn generate_headers(records_amount: usize, key_mapper: fn(u32) -> u32) -> InMemo
     (0..records_amount as u32)
         .map(key_mapper)
         .map(|i| serialize(&i).expect("can't serialize"))
-        .for_each(|key| {
+        .for_each(|mut key| {
+            key.resize(KeyType::LEN as usize, 0);
             let rh = RecordHeader::new(key.clone(), 1, 1, 1);
             if let Some(v) = inmem.get_mut(&key) {
                 v.push(rh);
@@ -199,7 +200,6 @@ async fn benchmark_get_any() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn benchmark_get_all() {
     const RECORDS_AMOUNT: usize = 10_000_000;
     const META_SIZE: usize = 1_000;
