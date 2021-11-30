@@ -57,7 +57,7 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
     async fn from_records(
         path: &Path,
         ioring: Option<Rio>,
-        headers: &InMemoryIndex,
+        headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,
     ) -> Result<Self> {
@@ -79,7 +79,7 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
         Ok(Self { file, header })
     }
 
-    async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)> {
+    async fn get_records_headers(&self) -> Result<(InMemoryIndex<K>, usize)> {
         let mut buf = self.file.read_all().await?;
         self.validate_header::<K>(&mut buf).await?;
         let offset = self.header.meta_size + self.header.serialized_size()? as usize;
@@ -88,13 +88,14 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
             .try_fold(InMemoryIndex::new(), |mut headers, i| {
                 let offset = i * self.header.record_header_size;
                 let header: RecordHeader = deserialize(&records_buf[offset..])?;
+                let key = header.key().to_vec().into();
                 // We used get mut instead of entry(..).or_insert(..) because in second case we
                 // need to clone key everytime. Whereas in first case - only if we insert new
                 // entry.
-                if let Some(v) = headers.get_mut(header.key()) {
+                if let Some(v) = headers.get_mut(&key) {
                     v.push(header)
                 } else {
-                    headers.insert(header.key().to_vec(), vec![header]);
+                    headers.insert(key, vec![header]);
                 }
                 Ok(headers)
             })
@@ -231,7 +232,7 @@ impl SimpleFileIndex {
                 "blob index simple binary search mid header: {:?}",
                 mid_record_header
             );
-            let cmp = K::from(mid_record_header.key().to_vec()).cmp(&key);
+            let cmp = key.cmp(&mid_record_header.key().to_vec().into());
             debug!("mid read: {:?}, key: {:?}", mid_record_header.key(), key);
             debug!("before mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
             match cmp {
@@ -260,7 +261,10 @@ impl SimpleFileIndex {
         Ok(())
     }
 
-    fn serialize(headers: &InMemoryIndex, meta: Vec<u8>) -> Result<Option<(IndexHeader, Vec<u8>)>> {
+    fn serialize<K: Key>(
+        headers: &InMemoryIndex<K>,
+        meta: Vec<u8>,
+    ) -> Result<Option<(IndexHeader, Vec<u8>)>> {
         debug!("blob index simple serialize headers");
         if let Some(record_header) = headers.values().next().and_then(|v| v.first()) {
             debug!("index simple serialize headers first: {:?}", record_header);

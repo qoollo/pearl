@@ -104,7 +104,7 @@ impl<K: Key + 'static> ObserverWorker<K> {
     }
 }
 
-async fn active_blob_check<K: Key>(inner: Inner<K>) -> Result<Option<Inner<K>>> {
+async fn active_blob_check<K: Key + 'static>(inner: Inner<K>) -> Result<Option<Inner<K>>> {
     let (active_size, active_count) = {
         trace!("await for lock");
         let safe_locked = inner.safe.read().await;

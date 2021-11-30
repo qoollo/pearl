@@ -22,7 +22,7 @@ pub struct Blob<K: Key> {
     key_type_marker: PhantomData<K>,
 }
 
-impl<K: Key> Blob<K> {
+impl<K: Key + 'static> Blob<K> {
     /// # Description
     /// Creates new blob file with given [`FileName`].
     /// And creates index from existing `.index` file or scans corresponding blob.

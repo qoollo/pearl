@@ -32,14 +32,14 @@ impl Default for KeyType {
 type FileIndexStruct = BPTreeFileIndex<KeyType>;
 //type FileIndexStruct = SimpleFileIndex;
 
-fn generate_headers(records_amount: usize, key_mapper: fn(u32) -> u32) -> InMemoryIndex {
-    let mut inmem = InMemoryIndex::new();
+fn generate_headers(records_amount: usize, key_mapper: fn(u32) -> u32) -> InMemoryIndex<KeyType> {
+    let mut inmem = InMemoryIndex::<KeyType>::new();
     (0..records_amount as u32)
         .map(key_mapper)
         .map(|i| serialize(&i).expect("can't serialize"))
-        .for_each(|mut key| {
-            key.resize(KeyType::LEN as usize, 0);
-            let rh = RecordHeader::new(key.clone(), 1, 1, 1);
+        .for_each(|key| {
+            let key: KeyType = key.into();
+            let rh = RecordHeader::new(key.clone().to_vec(), 1, 1, 1);
             if let Some(v) = inmem.get_mut(&key) {
                 v.push(rh);
             } else {
@@ -200,6 +200,7 @@ async fn benchmark_get_any() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn benchmark_get_all() {
     const RECORDS_AMOUNT: usize = 10_000_000;
     const META_SIZE: usize = 1_000;

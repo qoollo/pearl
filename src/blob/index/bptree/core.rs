@@ -23,7 +23,7 @@ pub(crate) struct BPTreeFileIndex<K> {
 }
 
 #[async_trait::async_trait]
-impl<K: Key> FileIndexTrait<K> for BPTreeFileIndex<K> {
+impl<K: Key + 'static> FileIndexTrait<K> for BPTreeFileIndex<K> {
     async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self> {
         trace!("open index file");
         let file = File::open(name.to_path(), ioring)
@@ -45,7 +45,7 @@ impl<K: Key> FileIndexTrait<K> for BPTreeFileIndex<K> {
     async fn from_records(
         path: &Path,
         ioring: Option<Rio>,
-        headers: &InMemoryIndex,
+        headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,
     ) -> Result<Self> {
@@ -107,7 +107,7 @@ impl<K: Key> FileIndexTrait<K> for BPTreeFileIndex<K> {
         self.read_headers(leaf_offset, key, &mut buf).await
     }
 
-    async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)> {
+    async fn get_records_headers(&self) -> Result<(InMemoryIndex<K>, usize)> {
         let mut buf = self.file.read_all().await?;
         self.validate_header(&mut buf).await?;
         let offset = self.metadata.leaves_offset as usize;
@@ -120,10 +120,11 @@ impl<K: Key> FileIndexTrait<K> for BPTreeFileIndex<K> {
                 // We used get mut instead of entry(..).or_insert(..) because in second case we
                 // need to clone key everytime. Whereas in first case - only if we insert new
                 // entry.
-                if let Some(v) = headers.get_mut(header.key()) {
+                let key = header.key().to_vec().into();
+                if let Some(v) = headers.get_mut(&key) {
                     v.push(header)
                 } else {
-                    headers.insert(header.key().to_vec(), vec![header]);
+                    headers.insert(key, vec![header]);
                 }
                 Ok(headers)
             })
@@ -151,7 +152,7 @@ impl<K: Key> FileIndexTrait<K> for BPTreeFileIndex<K> {
     }
 }
 
-impl<K: Key> BPTreeFileIndex<K> {
+impl<K: Key + 'static> BPTreeFileIndex<K> {
     async fn find_leaf_node(&self, key: &K, mut offset: u64, buf: &mut [u8]) -> Result<u64> {
         while offset < self.metadata.leaves_offset {
             offset = if offset == self.metadata.tree_offset {
@@ -378,7 +379,7 @@ impl<K: Key> BPTreeFileIndex<K> {
     }
 
     fn serialize(
-        headers_btree: &InMemoryIndex,
+        headers_btree: &InMemoryIndex<K>,
         meta: Vec<u8>,
     ) -> Result<(IndexHeader, TreeMeta, Vec<u8>)> {
         Serializer::new(headers_btree)

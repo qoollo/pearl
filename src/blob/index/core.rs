@@ -47,7 +47,7 @@ pub(crate) struct IndexStruct<FileIndex, K: Key> {
     range_filter: RangeFilter<K>,
     bloom_filter: Bloom,
     params: IndexParams,
-    inner: State<FileIndex>,
+    inner: State<FileIndex, K>,
     name: FileName,
     ioring: Option<Rio>,
 }
@@ -63,11 +63,11 @@ pub(crate) struct MemoryAttrs {
     pub(crate) records_count: usize,
 }
 
-pub type InMemoryIndex = BTreeMap<Vec<u8>, Vec<RecordHeader>>;
+pub type InMemoryIndex<K> = BTreeMap<K, Vec<RecordHeader>>;
 
 #[derive(Debug, Clone)]
-pub(crate) enum State<FileIndex> {
-    InMemory(InMemoryIndex),
+pub(crate) enum State<FileIndex, K> {
+    InMemory(InMemoryIndex<K>),
     OnDisk(FileIndex),
 }
 
@@ -270,20 +270,19 @@ where
                     .mem
                     .as_mut()
                     .expect("No memory info in `InMemory` State");
-                // Same reason to use get_mut as in deserialize_record_headers.
-                if let Some(v) = headers.get_mut(h.key()) {
+                let key = h.key().to_vec().into();
+                if let Some(v) = headers.get_mut(&key) {
                     let old_capacity = v.capacity();
                     v.push(h);
                     trace!("capacity growth: {}", v.capacity() - old_capacity);
                     mem.records_allocated += v.capacity() - old_capacity;
                 } else {
                     if mem.records_count == 0 {
-                        set_key_related_fields(mem, h.key().len());
+                        set_key_related_fields::<K>(mem);
                     }
-                    let k = h.key().to_vec();
                     let v = vec![h];
                     mem.records_allocated += v.capacity(); // capacity == 1
-                    headers.insert(k, v);
+                    headers.insert(key, v);
                 }
                 mem.records_count += 1;
                 Ok(())
@@ -297,7 +296,7 @@ where
 
     async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
         match &self.inner {
-            State::InMemory(headers) => Ok(headers.get(key.as_ref()).cloned()),
+            State::InMemory(headers) => Ok(headers.get(key).cloned()),
             State::OnDisk(findex) => findex.find_by_key(key).await,
         }
     }
@@ -307,7 +306,7 @@ where
         match &self.inner {
             State::InMemory(headers) => {
                 debug!("index get any in memory headers: {}", headers.len());
-                Ok(headers.get(key.as_ref()).and_then(|h| h.first()).cloned())
+                Ok(headers.get(key).and_then(|h| h.first()).cloned())
             }
             State::OnDisk(findex) => {
                 debug!("index get any on disk");
@@ -349,7 +348,7 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
     async fn from_records(
         path: &Path,
         rio: Option<Rio>,
-        headers: &InMemoryIndex,
+        headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,
     ) -> Result<Self>;
@@ -358,7 +357,7 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
     async fn read_meta(&self) -> Result<Vec<u8>>;
     async fn read_meta_at(&self, i: u64) -> Result<u8>;
     async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
-    async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)>;
+    async fn get_records_headers(&self) -> Result<(InMemoryIndex<K>, usize)>;
     async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>>;
     fn validate(&self) -> Result<()>;
 }

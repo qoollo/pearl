@@ -41,7 +41,8 @@ impl Default for KeyTest {
 }
 
 impl From<Vec<u8>> for KeyTest {
-    fn from(v: Vec<u8>) -> Self {
+    fn from(mut v: Vec<u8>) -> Self {
+        v.resize(KeyTest::LEN as usize, 0);
         Self(v)
     }
 }

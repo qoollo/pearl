@@ -3,14 +3,14 @@ use super::prelude::*;
 type MinKeyWithOffset = (Vec<u8>, u64);
 type NodesWithLayerSize = (Vec<MinKeyWithOffset>, u64);
 
-pub(super) struct HeaderStage<'a> {
-    headers_btree: &'a InMemoryIndex,
+pub(super) struct HeaderStage<'a, K: Key> {
+    headers_btree: &'a InMemoryIndex<K>,
     header: IndexHeader,
     meta: Vec<u8>,
 }
 
-pub(super) struct TreeStage<'a> {
-    headers_btree: &'a InMemoryIndex,
+pub(super) struct TreeStage<'a, K: Key> {
+    headers_btree: &'a InMemoryIndex<K>,
     metadata: TreeMeta,
     header: IndexHeader,
     meta_buf: Vec<u8>,
@@ -19,15 +19,15 @@ pub(super) struct TreeStage<'a> {
     meta: Vec<u8>,
 }
 
-pub(super) struct Serializer<'a> {
-    headers_btree: &'a InMemoryIndex,
+pub(super) struct Serializer<'a, K: Key> {
+    headers_btree: &'a InMemoryIndex<K>,
 }
 
-impl<'a> Serializer<'a> {
-    pub(super) fn new(headers_btree: &'a InMemoryIndex) -> Self {
+impl<'a, K: Key> Serializer<'a, K> {
+    pub(super) fn new(headers_btree: &'a InMemoryIndex<K>) -> Self {
         Self { headers_btree }
     }
-    pub(super) fn header_stage(self, meta: Vec<u8>) -> Result<HeaderStage<'a>> {
+    pub(super) fn header_stage(self, meta: Vec<u8>) -> Result<HeaderStage<'a, K>> {
         if let Some(record_header) = self.headers_btree.values().next().and_then(|v| v.first()) {
             let record_header_size = record_header.serialized_size().try_into()?;
             let headers_len = self
@@ -46,8 +46,8 @@ impl<'a> Serializer<'a> {
     }
 }
 
-impl<'a> HeaderStage<'a> {
-    pub(super) fn tree_stage(self) -> Result<TreeStage<'a>> {
+impl<'a, K: Key + 'static> HeaderStage<'a, K> {
+    pub(super) fn tree_stage(self) -> Result<TreeStage<'a, K>> {
         let hs = self.header.serialized_size()? as usize;
         let external_buf_size = self.header.meta_size;
         let meta_and_buf_end = (hs + external_buf_size) as u64;
@@ -73,7 +73,7 @@ impl<'a> HeaderStage<'a> {
     }
 
     fn serialize_bptree(
-        btree: &InMemoryIndex,
+        btree: &InMemoryIndex<K>,
         tree_offset: u64,
         record_header_size: u64,
     ) -> Result<Vec<u8>> {
@@ -84,7 +84,7 @@ impl<'a> HeaderStage<'a> {
         let mut min_o = offset;
         for (k, v) in btree.iter() {
             if remainder < record_header_size {
-                leaf_nodes_compressed.push((min_k, min_o));
+                leaf_nodes_compressed.push((min_k.clone().to_vec(), min_o));
                 min_k = k.clone();
                 min_o = offset;
                 remainder = BLOCK_SIZE as u64;
@@ -93,7 +93,7 @@ impl<'a> HeaderStage<'a> {
             offset += delta_size;
             remainder = remainder.saturating_sub(delta_size);
         }
-        leaf_nodes_compressed.push((min_k, min_o));
+        leaf_nodes_compressed.push((min_k.clone().to_vec(), min_o));
         let mut buf = Vec::new();
         Self::build_tree(leaf_nodes_compressed, tree_offset, &mut buf)?;
         Ok(buf)
@@ -192,7 +192,7 @@ impl<'a> HeaderStage<'a> {
     }
 }
 
-impl<'a> TreeStage<'a> {
+impl<'a, K: Key> TreeStage<'a, K> {
     pub(super) fn build(self) -> Result<(IndexHeader, TreeMeta, Vec<u8>)> {
         let hs = self.header.serialized_size()? as usize;
         let fsize = self.header.meta_size;
@@ -215,7 +215,7 @@ impl<'a> TreeStage<'a> {
         Ok((header, self.metadata, buf))
     }
 
-    fn append_headers(headers_btree: &InMemoryIndex, buf: &mut Vec<u8>) -> Result<()> {
+    fn append_headers(headers_btree: &InMemoryIndex<K>, buf: &mut Vec<u8>) -> Result<()> {
         // headers are pushed in reversed order because it helps to perform something like update
         // operation: the latest written (the first after reverse) record will be retrieved from file
         headers_btree
