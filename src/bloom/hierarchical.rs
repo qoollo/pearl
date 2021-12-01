@@ -3,7 +3,8 @@ use std::{borrow::Cow, collections::BTreeSet};
 use super::*;
 
 type InnerId = usize;
-type ChildId = usize;
+/// Child id
+pub type ChildId = usize;
 
 /// Container for types which is support bloom filtering
 pub struct HierarchicalBloom<Child> {
@@ -445,23 +446,21 @@ impl<Child> HierarchicalBloom<Child> {
     }
 
     /// Returns a iterator over the childs
-    pub fn iter(&self) -> impl Iterator<Item = &Leaf<Child>> {
-        self.children.iter().map(|x| x.as_ref()).flatten()
+    pub fn iter(&self) -> impl Iterator<Item = &Child> {
+        self.children
+            .iter()
+            .map(|x| x.as_ref())
+            .flatten()
+            .map(|x| &x.data)
     }
 
     /// Returns a iterator over the childs
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Leaf<Child>> {
-        self.children.iter_mut().map(|x| x.as_mut()).flatten()
-    }
-
-    /// Returns iterator over childs data
-    pub fn iter_mut_data(&mut self) -> impl Iterator<Item = &mut Child> {
-        self.iter_mut().map(|x| &mut x.data)
-    }
-
-    /// Returns iterator over childs data
-    pub fn iter_data(&self) -> impl Iterator<Item = &Child> {
-        self.iter().map(|x| &x.data)
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Child> {
+        self.children
+            .iter_mut()
+            .map(|x| x.as_mut())
+            .flatten()
+            .map(|x| &mut x.data)
     }
 
     /// Add key to all parents in collection

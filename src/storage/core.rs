@@ -758,9 +758,8 @@ impl<K: Key> Storage<K> {
         }
 
         let blobs = inner.blobs.read().await;
-        let (offloaded, in_memory): (Vec<&Blob>, Vec<&Blob>) = blobs
-            .iter_data()
-            .partition(|blob| blob.is_filter_offloaded());
+        let (offloaded, in_memory): (Vec<&Blob>, Vec<&Blob>) =
+            blobs.iter().partition(|blob| blob.is_filter_offloaded());
 
         let in_closed = in_memory
             .iter()
@@ -973,7 +972,7 @@ impl Safe {
     async fn records_count_detailed(&self) -> Vec<(usize, usize)> {
         let mut results = Vec::new();
         let blobs = self.blobs.read().await;
-        for blob in blobs.iter_data() {
+        for blob in blobs.iter() {
             let count = blob.records_count();
             let value = (blob.id(), count);
             debug!("push: {:?}", value);
@@ -1008,7 +1007,7 @@ impl Safe {
             trace!("acquire blobs write to dump old blobs");
             let mut write_blobs = blobs.write().await;
             trace!("dump old blobs");
-            for blob in write_blobs.iter_mut_data() {
+            for blob in write_blobs.iter_mut() {
                 trace!("dumping old blob");
                 let _ = sem.acquire().await;
                 trace!("acquired sem for dumping old blobs");
