@@ -961,7 +961,7 @@ impl Safe {
 
     async fn max_id(&self) -> Option<usize> {
         let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
-        let blobs_max_id = Some(self.blobs.read().await.next_id() as usize);
+        let blobs_max_id = self.blobs.read().await.last().map(|x| x.id());
         active_blob_id.max(blobs_max_id)
     }
 
