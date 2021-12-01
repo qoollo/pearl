@@ -84,7 +84,7 @@ impl<'a, K: Key + 'static> HeaderStage<'a, K> {
         let mut min_o = offset;
         for (k, v) in btree.iter() {
             if remainder < record_header_size {
-                leaf_nodes_compressed.push((min_k.clone().to_vec(), min_o));
+                leaf_nodes_compressed.push((min_k.to_vec(), min_o));
                 min_k = k.clone();
                 min_o = offset;
                 remainder = BLOCK_SIZE as u64;
@@ -93,7 +93,7 @@ impl<'a, K: Key + 'static> HeaderStage<'a, K> {
             offset += delta_size;
             remainder = remainder.saturating_sub(delta_size);
         }
-        leaf_nodes_compressed.push((min_k.clone().to_vec(), min_o));
+        leaf_nodes_compressed.push((min_k.to_vec(), min_o));
         let mut buf = Vec::new();
         Self::build_tree(leaf_nodes_compressed, tree_offset, &mut buf)?;
         Ok(buf)

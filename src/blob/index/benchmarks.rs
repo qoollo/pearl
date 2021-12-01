@@ -39,7 +39,7 @@ fn generate_headers(records_amount: usize, key_mapper: fn(u32) -> u32) -> InMemo
         .map(|i| serialize(&i).expect("can't serialize"))
         .for_each(|key| {
             let key: KeyType = key.into();
-            let rh = RecordHeader::new(key.clone().to_vec(), 1, 1, 1);
+            let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
             if let Some(v) = inmem.get_mut(&key) {
                 v.push(rh);
             } else {

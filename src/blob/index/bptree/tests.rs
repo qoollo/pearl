@@ -47,7 +47,7 @@ impl Into<usize> for KeyType {
 async fn serialize_deserialize_file() {
     let mut inmem = InMemoryIndex::<KeyType>::new();
     (0..10000).map(|i| i.into()).for_each(|key: KeyType| {
-        let rh = RecordHeader::new(key.clone().to_vec(), 1, 1, 1);
+        let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
         inmem.insert(key, vec![rh]);
     });
     let meta = vec![META_VALUE; META_SIZE];
@@ -76,7 +76,7 @@ async fn check_get_any() {
     (RANGE_FROM..RANGE_TO)
         .map(|i| i.into())
         .for_each(|key: KeyType| {
-            let rh = RecordHeader::new(key.clone().to_vec(), 1, 1, 1);
+            let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
             inmem.insert(key, vec![rh]);
         });
     let meta = vec![META_VALUE; META_SIZE];
@@ -124,7 +124,7 @@ async fn check_get() {
     (RANGE_FROM..RANGE_TO)
         .map(|i| (i % MAX_AMOUNT + 1, i.into()))
         .for_each(|(times, key): (_, KeyType)| {
-            let rh = RecordHeader::new(key.clone().to_vec(), 1, 1, 1);
+            let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
             let recs = (0..times).map(|_| rh.clone()).collect();
             inmem.insert(key, recs);
         });
