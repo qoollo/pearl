@@ -89,9 +89,8 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
                 let offset = i * self.header.record_header_size;
                 let header: RecordHeader = deserialize(&records_buf[offset..])?;
                 let key = header.key().to_vec().into();
-                // We used get mut instead of entry(..).or_insert(..) because in second case we
-                // need to clone key everytime. Whereas in first case - only if we insert new
-                // entry.
+                // We use get mut instead of entry(..).or_insert(..) because in second case we
+                // need to clone header.
                 if let Some(v) = headers.get_mut(&key) {
                     v.push(header)
                 } else {

@@ -117,9 +117,8 @@ impl<K: Key + 'static> FileIndexTrait<K> for BPTreeFileIndex<K> {
             .try_fold(InMemoryIndex::new(), |mut headers, i| {
                 let offset = i * self.header.record_header_size;
                 let header: RecordHeader = deserialize(&records_buf[offset..])?;
-                // We used get mut instead of entry(..).or_insert(..) because in second case we
-                // need to clone key everytime. Whereas in first case - only if we insert new
-                // entry.
+                // We use get mut instead of entry(..).or_insert(..) because in second case we
+                // need to clone header.
                 let key = header.key().to_vec().into();
                 if let Some(v) = headers.get_mut(&key) {
                     v.push(header)
