@@ -31,11 +31,11 @@ mod prelude {
 }
 
 #[async_trait::async_trait]
-pub(crate) trait IndexTrait: Send + Sync {
-    async fn get_all(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>>;
-    async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>>;
+pub(crate) trait IndexTrait<K>: Send + Sync {
+    async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
+    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>>;
     fn push(&mut self, h: RecordHeader) -> Result<()>;
-    async fn contains_key(&self, key: &[u8]) -> Result<bool>;
+    async fn contains_key(&self, key: &K) -> Result<bool>;
     fn count(&self) -> usize;
     async fn dump(&mut self) -> Result<usize>;
     async fn load(&mut self) -> Result<()>;

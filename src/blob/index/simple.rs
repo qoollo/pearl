@@ -9,7 +9,7 @@ pub(crate) struct SimpleFileIndex {
 }
 
 #[async_trait::async_trait]
-impl FileIndexTrait for SimpleFileIndex {
+impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
     async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self> {
         trace!("open index file");
         let file = File::open(name.to_path(), ioring)
@@ -50,14 +50,14 @@ impl FileIndexTrait for SimpleFileIndex {
         Ok(buf[0])
     }
 
-    async fn find_by_key(&self, key: &[u8]) -> Result<Option<Vec<RecordHeader>>> {
+    async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
         Self::search_all(&self.file, key, &self.header).await
     }
 
     async fn from_records(
         path: &Path,
         ioring: Option<Rio>,
-        headers: &InMemoryIndex,
+        headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,
     ) -> Result<Self> {
@@ -79,29 +79,29 @@ impl FileIndexTrait for SimpleFileIndex {
         Ok(Self { file, header })
     }
 
-    async fn get_records_headers(&self) -> Result<(InMemoryIndex, usize)> {
+    async fn get_records_headers(&self) -> Result<(InMemoryIndex<K>, usize)> {
         let mut buf = self.file.read_all().await?;
-        self.validate_header(&mut buf).await?;
+        self.validate_header::<K>(&mut buf).await?;
         let offset = self.header.meta_size + self.header.serialized_size()? as usize;
         let records_buf = &buf[offset..];
         (0..self.header.records_count)
             .try_fold(InMemoryIndex::new(), |mut headers, i| {
                 let offset = i * self.header.record_header_size;
                 let header: RecordHeader = deserialize(&records_buf[offset..])?;
-                // We used get mut instead of entry(..).or_insert(..) because in second case we
-                // need to clone key everytime. Whereas in first case - only if we insert new
-                // entry.
-                if let Some(v) = headers.get_mut(header.key()) {
+                let key = header.key().to_vec().into();
+                // We use get mut instead of entry(..).or_insert(..) because in second case we
+                // need to clone header.
+                if let Some(v) = headers.get_mut(&key) {
                     v.push(header)
                 } else {
-                    headers.insert(header.key().to_vec(), vec![header]);
+                    headers.insert(key, vec![header]);
                 }
                 Ok(headers)
             })
             .map(|headers| (headers, self.header.records_count))
     }
 
-    async fn get_any(&self, key: &[u8]) -> Result<Option<RecordHeader>> {
+    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
         Self::binary_search(&self.file, key, &self.header)
             .await
             .map(|res| res.map(|h| h.0))
@@ -140,9 +140,9 @@ impl SimpleFileIndex {
         IndexHeader::from_raw(&buf).map_err(Into::into)
     }
 
-    async fn search_all(
+    async fn search_all<K: Key>(
         file: &File,
-        key: &[u8],
+        key: &K,
         index_header: &IndexHeader,
     ) -> Result<Option<Vec<RecordHeader>>> {
         if let Some(header_pos) = Self::binary_search(file, key, index_header)
@@ -172,7 +172,7 @@ impl SimpleFileIndex {
                 let rh = Self::read_at(file, pos, &index_header)
                     .await
                     .with_context(|| "blob, index simple, search all, read at failed")?;
-                if rh.key() == key {
+                if rh.key() == key.as_ref() {
                     headers.push(rh);
                 } else {
                     break;
@@ -194,7 +194,7 @@ impl SimpleFileIndex {
                 let rh = Self::read_at(file, pos, &index_header)
                     .await
                     .with_context(|| "blob, index simple, search all, read at failed")?;
-                if rh.key() == key {
+                if rh.key() == key.as_ref() {
                     headers.push(rh);
                     pos += 1;
                 } else {
@@ -213,16 +213,12 @@ impl SimpleFileIndex {
         }
     }
 
-    async fn binary_search(
+    async fn binary_search<K: Key>(
         file: &File,
-        key: &[u8],
+        key: &K,
         header: &IndexHeader,
     ) -> Result<Option<(RecordHeader, usize)>> {
         debug!("blob index simple binary search header {:?}", header);
-
-        if key.is_empty() {
-            error!("empty key was provided");
-        }
 
         let mut start = 0;
         let mut end = header.records_count - 1;
@@ -235,7 +231,7 @@ impl SimpleFileIndex {
                 "blob index simple binary search mid header: {:?}",
                 mid_record_header
             );
-            let cmp = mid_record_header.key().cmp(&key);
+            let cmp = key.cmp(&mid_record_header.key().to_vec().into());
             debug!("mid read: {:?}, key: {:?}", mid_record_header.key(), key);
             debug!("before mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
             match cmp {
@@ -255,8 +251,8 @@ impl SimpleFileIndex {
         Ok(None)
     }
 
-    async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
-        self.validate()?;
+    async fn validate_header<K: Key>(&self, buf: &mut Vec<u8>) -> Result<()> {
+        FileIndexTrait::<K>::validate(self)?;
         if !Self::hash_valid(&self.header, buf)? {
             let param = ValidationErrorKind::IndexChecksum;
             return Err(Error::validation(param, "header hash mismatch").into());
@@ -264,7 +260,10 @@ impl SimpleFileIndex {
         Ok(())
     }
 
-    fn serialize(headers: &InMemoryIndex, meta: Vec<u8>) -> Result<Option<(IndexHeader, Vec<u8>)>> {
+    fn serialize<K: Key>(
+        headers: &InMemoryIndex<K>,
+        meta: Vec<u8>,
+    ) -> Result<Option<(IndexHeader, Vec<u8>)>> {
         debug!("blob index simple serialize headers");
         if let Some(record_header) = headers.values().next().and_then(|v| v.first()) {
             debug!("index simple serialize headers first: {:?}", record_header);

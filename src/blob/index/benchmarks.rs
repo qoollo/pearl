@@ -3,16 +3,43 @@ use rand::prelude::SliceRandom;
 use super::prelude::*;
 use std::time::Instant;
 
-type FileIndexStruct = BPTreeFileIndex;
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct KeyType(Vec<u8>);
+
+impl Key for KeyType {
+    const LEN: u16 = 8;
+}
+
+impl From<Vec<u8>> for KeyType {
+    fn from(mut v: Vec<u8>) -> Self {
+        v.resize(KeyType::LEN as usize, 0);
+        Self(v)
+    }
+}
+
+impl AsRef<[u8]> for KeyType {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl Default for KeyType {
+    fn default() -> Self {
+        Self(vec![0_u8, KeyType::LEN as u8])
+    }
+}
+
+type FileIndexStruct = BPTreeFileIndex<KeyType>;
 //type FileIndexStruct = SimpleFileIndex;
 
-fn generate_headers(records_amount: usize, key_mapper: fn(u32) -> u32) -> InMemoryIndex {
-    let mut inmem = InMemoryIndex::new();
+fn generate_headers(records_amount: usize, key_mapper: fn(u32) -> u32) -> InMemoryIndex<KeyType> {
+    let mut inmem = InMemoryIndex::<KeyType>::new();
     (0..records_amount as u32)
         .map(key_mapper)
         .map(|i| serialize(&i).expect("can't serialize"))
         .for_each(|key| {
-            let rh = RecordHeader::new(key.clone(), 1, 1, 1);
+            let key: KeyType = key.into();
+            let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
             if let Some(v) = inmem.get_mut(&key) {
                 v.push(rh);
             } else {
@@ -164,7 +191,7 @@ async fn benchmark_get_any() {
         if (i as u32 + 1) % PRINT_EVERY == 0 {
             println!("Iteration: {}...", i + 1);
         }
-        let _ = findex.get_any(&q).await.unwrap();
+        let _ = findex.get_any(&q.into()).await.unwrap();
     }
     println!(
         "get_any avg time: {}\n",
@@ -217,7 +244,7 @@ async fn benchmark_get_all() {
         if (i as u32 + 1) % PRINT_EVERY == 0 {
             println!("Iteration: {}...", i + 1);
         }
-        let _ = findex.find_by_key(&q).await.unwrap();
+        let _ = findex.find_by_key(&q.into()).await.unwrap();
     }
     println!(
         "get_all avg time: {}\n",

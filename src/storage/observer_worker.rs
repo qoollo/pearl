@@ -1,18 +1,18 @@
 use super::prelude::*;
 use tokio::{sync::mpsc::Receiver, sync::Semaphore, time::timeout};
 
-pub(crate) struct ObserverWorker {
-    inner: Inner,
+pub(crate) struct ObserverWorker<K: Key> {
+    inner: Inner<K>,
     receiver: Receiver<Msg>,
     dump_sem: Arc<Semaphore>,
     update_interval: Duration,
     async_oplock: Arc<Mutex<()>>,
 }
 
-impl ObserverWorker {
+impl<K: Key + 'static> ObserverWorker<K> {
     pub(crate) fn new(
         receiver: Receiver<Msg>,
-        inner: Inner,
+        inner: Inner<K>,
         dump_sem: Arc<Semaphore>,
         async_oplock: Arc<Mutex<()>>,
     ) -> Self {
@@ -104,7 +104,7 @@ impl ObserverWorker {
     }
 }
 
-async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
+async fn active_blob_check<K: Key + 'static>(inner: Inner<K>) -> Result<Option<Inner<K>>> {
     let (active_size, active_count) = {
         trace!("await for lock");
         let safe_locked = inner.safe.read().await;
@@ -132,7 +132,7 @@ async fn active_blob_check(inner: Inner) -> Result<Option<Inner>> {
     }
 }
 
-async fn update_active_blob(inner: Inner) -> Result<()> {
+async fn update_active_blob<K: Key + 'static>(inner: Inner<K>) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
     trace!("obtaining new active blob");

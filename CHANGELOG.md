@@ -4,6 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Add key trait (#123)
 
 #### Changed
 
