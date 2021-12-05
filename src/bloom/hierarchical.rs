@@ -7,21 +7,24 @@ type InnerId = usize;
 pub type ChildId = usize;
 
 /// Container for types which is support bloom filtering
-pub struct HierarchicalBloom<Child> {
-    inner: Vec<Option<HierarchicalBloomInner>>,
+pub struct HierarchicalFilters<Key, Filter, Child> {
+    inner: Vec<Option<Inner<Key, Filter>>>,
     children: Vec<Option<Leaf<Child>>>,
     root: usize,
     group_size: usize,
     level: usize,
 }
 
-impl<T> Debug for HierarchicalBloom<T> {
+impl<K, F, T> Debug for HierarchicalFilters<K, F, T>
+where
+    F: Debug,
+{
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        struct Inner<'a, T>(&'a HierarchicalBloom<T>, InnerId);
-        impl<'a, T> Debug for Inner<'a, T> {
+        struct DebugInner<'a, K, F, T>(&'a HierarchicalFilters<K, F, T>, InnerId);
+        impl<'a, K, F: Debug, T> Debug for DebugInner<'a, K, F, T> {
             fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
                 match self.0.get_inner(self.1) {
-                    Some(HierarchicalBloomInner::Node(node)) => f
+                    Some(Inner::Node(node)) => f
                         .debug_struct("Node")
                         .field("filter", &node.filter)
                         .field(
@@ -29,11 +32,11 @@ impl<T> Debug for HierarchicalBloom<T> {
                             &node
                                 .children
                                 .iter()
-                                .map(|x| Inner(self.0, *x))
+                                .map(|x| DebugInner(self.0, *x))
                                 .collect::<Vec<_>>(),
                         )
                         .finish(),
-                    Some(HierarchicalBloomInner::Leaf(leaf)) => {
+                    Some(Inner::Leaf(leaf)) => {
                         f.debug_struct("Leaf").field("leaf", &leaf.leaf).finish()
                     }
                     None => f.debug_struct("Empty").finish(),
@@ -41,7 +44,7 @@ impl<T> Debug for HierarchicalBloom<T> {
             }
         }
         f.debug_struct("HierarchicalBloom")
-            .field("inner", &Inner(self, self.root))
+            .field("inner", &DebugInner(self, self.root))
             .field("group_size", &self.group_size)
             .field("level", &self.level)
             .finish()
@@ -58,10 +61,22 @@ pub struct Leaf<T> {
 }
 
 #[derive(Debug, Clone)]
-struct InnerNode {
-    filter: Option<Bloom>,
+struct InnerNode<Key, Filter> {
+    filter: Option<Filter>,
     children: Vec<InnerId>,
     parent: Option<InnerId>,
+    _marker: PhantomData<Key>,
+}
+
+impl<Key, Filter> Default for InnerNode<Key, Filter> {
+    fn default() -> Self {
+        InnerNode {
+            filter: None,
+            children: vec![],
+            parent: Default::default(),
+            _marker: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -71,23 +86,32 @@ struct InnerLeaf {
 }
 
 #[derive(Debug, Clone)]
-enum HierarchicalBloomInner {
-    Node(InnerNode),
+enum Inner<Key, Filter> {
+    Node(InnerNode<Key, Filter>),
     Leaf(InnerLeaf),
 }
 
-impl Default for HierarchicalBloomInner {
+impl<Key, Filter> Default for Inner<Key, Filter> {
     fn default() -> Self {
-        Self::Node(InnerNode {
-            filter: None,
-            children: vec![],
-            parent: Default::default(),
-        })
+        Self::Node(Default::default())
     }
 }
 
-impl HierarchicalBloomInner {
-    fn add_to_filter(&mut self, item: &[u8]) {
+impl<Key, Filter> Inner<Key, Filter> {
+    fn parent_id(&self) -> Option<InnerId> {
+        match &self {
+            Self::Node(node) => node.parent.clone(),
+            Self::Leaf(leaf) => Some(leaf.parent.clone()),
+        }
+    }
+}
+
+impl<Key, Filter> Inner<Key, Filter>
+where
+    Key: Sync + Send,
+    Filter: FilterTrait<Key>,
+{
+    fn add_to_filter(&mut self, item: &Key) {
         match self {
             Self::Node(node) => {
                 if let Some(filter) = &mut node.filter {
@@ -98,14 +122,7 @@ impl HierarchicalBloomInner {
         }
     }
 
-    fn parent_id(&self) -> Option<InnerId> {
-        match &self {
-            Self::Node(node) => node.parent.clone(),
-            Self::Leaf(leaf) => Some(leaf.parent.clone()),
-        }
-    }
-
-    fn merge_filters(dest: &mut Option<Bloom>, source: Option<&Bloom>) {
+    fn merge_filters(dest: &mut Option<Filter>, source: Option<&Filter>) {
         match source {
             Some(source_filter) => {
                 let res = match dest {
@@ -122,16 +139,16 @@ impl HierarchicalBloomInner {
 }
 
 #[async_trait::async_trait]
-impl<Child, Key> BloomProvider for HierarchicalBloom<Child>
+impl<Key, Filter, Child> BloomProvider<Key> for HierarchicalFilters<Key, Filter, Child>
 where
-    Child: BloomProvider<Key = Key> + Send + Sync + 'static,
-    Key: Send + Sync + AsRef<[u8]> + ?Sized,
+    Key: Sync + Send,
+    Child: BloomProvider<Key>,
+    Filter: FilterTrait<Key>,
 {
-    type Key = Key;
-
-    async fn check_filter(&self, item: &Self::Key) -> FilterResult {
+    type Filter = Filter;
+    async fn check_filter(&self, item: &Key) -> FilterResult {
         let res = self
-            .iter_possible_childs(item.as_ref())
+            .iter_possible_childs(item)
             .map(|(_, leaf)| leaf.data.check_filter(item))
             .collect::<FuturesUnordered<_>>()
             .fold(FilterResult::NotContains, |acc, x| acc + x)
@@ -139,8 +156,8 @@ where
         res
     }
 
-    fn check_filter_fast(&self, item: &Self::Key) -> FilterResult {
-        if self.iter_possible_childs(item.as_ref()).next().is_some() {
+    fn check_filter_fast(&self, item: &Key) -> FilterResult {
+        if self.iter_possible_childs(item).next().is_some() {
             FilterResult::NeedAdditionalCheck
         } else {
             FilterResult::NotContains
@@ -170,11 +187,11 @@ where
                             return freed;
                         }
                         match self.get_inner_mut(parent) {
-                            Some(HierarchicalBloomInner::Node(node)) => {
+                            Some(Inner::Node(node)) => {
                                 freed += node
                                     .filter
                                     .as_mut()
-                                    .map(|x| x.offload_from_memory())
+                                    .map(|x| x.offload_filter())
                                     .unwrap_or_default();
                                 if let Some(parent) = &node.parent {
                                     new_parents.insert(*parent);
@@ -190,9 +207,9 @@ where
         }
     }
 
-    async fn get_filter(&self) -> Option<Bloom> {
+    async fn get_filter(&self) -> Option<Filter> {
         match &self.get_inner(self.root) {
-            Some(HierarchicalBloomInner::Node(node)) => node.filter.clone(),
+            Some(Inner::Node(node)) => node.filter.clone(),
             _ => None,
         }
     }
@@ -200,7 +217,7 @@ where
     async fn filter_memory_allocated(&self) -> usize {
         let mut allocated = 0;
         for value in self.inner.iter().flatten() {
-            if let HierarchicalBloomInner::Node(InnerNode {
+            if let Inner::Node(InnerNode {
                 filter: Some(filter),
                 ..
             }) = value
@@ -214,18 +231,19 @@ where
         allocated
     }
 
-    fn get_filter_fast(&self) -> Option<&Bloom> {
+    fn get_filter_fast(&self) -> Option<&Filter> {
         match &self.get_inner(self.root) {
-            Some(HierarchicalBloomInner::Node(node)) => node.filter.as_ref(),
+            Some(Inner::Node(node)) => node.filter.as_ref(),
             _ => None,
         }
     }
 }
 
-impl<Child> HierarchicalBloom<Child>
+impl<Key, Filter, Child> HierarchicalFilters<Key, Filter, Child>
 where
-    Child: BloomProvider + Send + Sync,
-    <Child as BloomProvider>::Key: AsRef<[u8]>,
+    Key: Sync + Send,
+    Child: BloomProvider<Key, Filter = Filter>,
+    Filter: FilterTrait<Key>,
 {
     /// Create collection from vec
     pub async fn from_vec(group_size: usize, level: usize, childs: Vec<Child>) -> Self {
@@ -236,7 +254,10 @@ where
         ret
     }
 
-    async fn get_filter_from_child(item: &Child) -> Option<Cow<'_, Bloom>> {
+    async fn get_filter_from_child<'a>(item: &'a Child) -> Option<Cow<'a, Filter>>
+    where
+        Filter: 'a,
+    {
         if let Some(filter) = item.get_filter_fast() {
             Some(Cow::Borrowed(filter))
         } else {
@@ -262,10 +283,10 @@ where
                     root.parent = Some(new_root_id);
                     root.filter.clone()
                 };
-                let new_root = HierarchicalBloomInner::Node(InnerNode {
+                let new_root = Inner::Node(InnerNode {
                     filter,
                     children: vec![self.root],
-                    parent: None,
+                    ..Default::default()
                 });
                 self.root = new_root_id;
                 self.inner.push(Some(new_root));
@@ -284,11 +305,10 @@ where
         let item_filter = Self::get_filter_from_child(&child).await;
         let inner_id = self.inner.len();
         let child_id = self.children.len();
-        self.inner
-            .push(Some(HierarchicalBloomInner::Leaf(InnerLeaf {
-                parent: container,
-                leaf: child_id,
-            })));
+        self.inner.push(Some(Inner::Leaf(InnerLeaf {
+            parent: container,
+            leaf: child_id,
+        })));
 
         let mut parent = {
             let node = self.get_mut(container);
@@ -328,49 +348,99 @@ where
     }
 }
 
-impl<Child> HierarchicalBloom<Child> {
+impl<Key, Filter, Child> HierarchicalFilters<Key, Filter, Child>
+where
+    Key: Sync + Send,
+    Filter: FilterTrait<Key>,
+{
     /// Iter over childs which may contain key
-    pub fn iter_possible_childs<'a>(&'a self, key: &'a [u8]) -> PossibleRevIter<'a, Child> {
+    pub fn iter_possible_childs<'a>(
+        &'a self,
+        key: &'a Key,
+    ) -> PossibleRevIter<'a, Key, Filter, Child> {
         PossibleRevIter::new(self, key, false)
     }
 
     /// Iter over childs which may contain key in reverse order
-    pub fn iter_possible_childs_rev<'a>(&'a self, key: &'a [u8]) -> PossibleRevIter<'a, Child> {
+    pub fn iter_possible_childs_rev<'a>(
+        &'a self,
+        key: &'a Key,
+    ) -> PossibleRevIter<'a, Key, Filter, Child> {
         PossibleRevIter::new(self, key, true)
     }
 
+    /// Add key to all parents in collection
+    pub fn add_to_parents(&mut self, child_id: ChildId, item: &Key) {
+        if let Some(child) = self.get_child(child_id) {
+            let mut id = child.parent;
+            loop {
+                let curr = self.get_inner_mut(id);
+                if let Some(curr) = curr {
+                    curr.add_to_filter(item);
+                    if let Some(parent) = curr.parent_id() {
+                        id = parent;
+                    } else {
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            }
+        }
+    }
+    fn add_filter_from_item(dest: &mut Option<Filter>, item: &Option<Cow<'_, Filter>>)
+    where
+        Filter: Clone,
+    {
+        Inner::merge_filters(dest, item.as_ref().map(|x| x.as_ref()));
+    }
+}
+
+impl<Key, Filter, Child> HierarchicalFilters<Key, Filter, Child>
+where
+    Filter: Clone,
+{
+    fn init_filter_from_cow(dest: &mut Option<Filter>, item: &Option<Cow<'_, Filter>>) {
+        if let Some(filter) = item {
+            *dest = Some(filter.clone().into_owned());
+        } else {
+            *dest = None;
+        }
+    }
+}
+
+impl<Key, Filter, Child> HierarchicalFilters<Key, Filter, Child> {
     /// Returns children elements as Vec
     pub fn into_vec(self) -> Vec<Leaf<Child>> {
         self.children.into_iter().flatten().collect()
     }
 
-    fn root(&self) -> &InnerNode {
+    fn root(&self) -> &InnerNode<Key, Filter> {
         self.get(self.root)
     }
 
-    fn root_mut(&mut self) -> &mut InnerNode {
+    fn root_mut(&mut self) -> &mut InnerNode<Key, Filter> {
         self.get_mut(self.root)
     }
 
-    fn get_mut(&mut self, id: InnerId) -> &mut InnerNode {
+    fn get_mut(&mut self, id: InnerId) -> &mut InnerNode<Key, Filter> {
         match self.get_inner_mut(id) {
-            Some(HierarchicalBloomInner::Node(node)) => node,
+            Some(Inner::Node(node)) => node,
             _ => panic!("node not found"),
         }
     }
 
-    fn get(&self, id: InnerId) -> &InnerNode {
+    fn get(&self, id: InnerId) -> &InnerNode<Key, Filter> {
         match self.get_inner(id) {
-            Some(HierarchicalBloomInner::Node(node)) => node,
+            Some(Inner::Node(node)) => node,
             _ => panic!("node not found"),
         }
     }
 
     fn new_inner_container(&mut self) -> InnerId {
-        let container = HierarchicalBloomInner::Node(InnerNode {
+        let container = Inner::Node(InnerNode {
             parent: Some(self.root),
-            children: vec![],
-            filter: None,
+            ..Default::default()
         });
         let container_id = self.inner.len();
         self.root_mut().children.push(container_id);
@@ -425,24 +495,12 @@ impl<Child> HierarchicalBloom<Child> {
         self.children.get_mut(id).map(|x| x.as_mut()).flatten()
     }
 
-    fn get_inner(&self, id: InnerId) -> Option<&HierarchicalBloomInner> {
+    fn get_inner(&self, id: InnerId) -> Option<&Inner<Key, Filter>> {
         self.inner.get(id).map(|x| x.as_ref()).flatten()
     }
 
-    fn get_inner_mut(&mut self, id: InnerId) -> Option<&mut HierarchicalBloomInner> {
+    fn get_inner_mut(&mut self, id: InnerId) -> Option<&mut Inner<Key, Filter>> {
         self.inner.get_mut(id).map(|x| x.as_mut()).flatten()
-    }
-
-    fn add_filter_from_item(dest: &mut Option<Bloom>, item: &Option<Cow<'_, Bloom>>) {
-        HierarchicalBloomInner::merge_filters(dest, item.as_ref().map(|x| x.as_ref()));
-    }
-
-    fn init_filter_from_cow(dest: &mut Option<Bloom>, item: &Option<Cow<'_, Bloom>>) {
-        if let Some(filter) = item {
-            *dest = Some(filter.clone().into_owned());
-        } else {
-            *dest = None;
-        }
     }
 
     /// Returns a iterator over the childs
@@ -461,26 +519,6 @@ impl<Child> HierarchicalBloom<Child> {
             .map(|x| x.as_mut())
             .flatten()
             .map(|x| &mut x.data)
-    }
-
-    /// Add key to all parents in collection
-    pub fn add_to_parents(&mut self, child_id: ChildId, item: &[u8]) {
-        if let Some(child) = self.get_child(child_id) {
-            let mut id = child.parent;
-            loop {
-                let curr = self.get_inner_mut(id);
-                if let Some(curr) = curr {
-                    curr.add_to_filter(item);
-                    if let Some(parent) = curr.parent_id() {
-                        id = parent;
-                    } else {
-                        return;
-                    }
-                } else {
-                    return;
-                }
-            }
-        }
     }
 
     /// Create new container
@@ -516,9 +554,10 @@ impl<Child> HierarchicalBloom<Child> {
     }
 }
 
-impl<Child> IntoIterator for HierarchicalBloom<Child>
+impl<Key, Filter, Child> IntoIterator for HierarchicalFilters<Key, Filter, Child>
 where
-    Child: BloomProvider + Send + Sync,
+    Key: Sync + Send,
+    Child: BloomProvider<Key>,
 {
     type Item = Leaf<Child>;
 
@@ -531,15 +570,19 @@ where
 
 #[derive(Debug)]
 /// PossibleIter
-pub struct PossibleRevIter<'a, Child> {
-    this: &'a HierarchicalBloom<Child>,
-    stack: Vec<(usize, &'a HierarchicalBloomInner)>,
-    key: &'a [u8],
+pub struct PossibleRevIter<'a, Key, Filter, Child> {
+    this: &'a HierarchicalFilters<Key, Filter, Child>,
+    stack: Vec<(usize, &'a Inner<Key, Filter>)>,
+    key: &'a Key,
     rev: bool,
 }
 
-impl<'a, Child> PossibleRevIter<'a, Child> {
-    fn new(this: &'a HierarchicalBloom<Child>, key: &'a [u8], rev: bool) -> Self {
+impl<'a, Key, Filter, Child> PossibleRevIter<'a, Key, Filter, Child>
+where
+    Key: Sync + Send,
+    Filter: FilterTrait<Key>,
+{
+    fn new(this: &'a HierarchicalFilters<Key, Filter, Child>, key: &'a Key, rev: bool) -> Self {
         Self {
             stack: vec![(0, this.get_inner(this.root).expect("should exist"))],
             this,
@@ -549,11 +592,15 @@ impl<'a, Child> PossibleRevIter<'a, Child> {
     }
 }
 
-impl<'a, Child> Iterator for PossibleRevIter<'a, Child> {
+impl<'a, Key, Filter, Child> Iterator for PossibleRevIter<'a, Key, Filter, Child>
+where
+    Key: Sync + Send,
+    Filter: FilterTrait<Key>,
+{
     type Item = (ChildId, &'a Leaf<Child>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some((index, HierarchicalBloomInner::Node(node))) = self.stack.last().copied() {
+        while let Some((index, Inner::Node(node))) = self.stack.last().copied() {
             let len = node.children.len();
             if index >= len {
                 self.stack.pop();
@@ -564,15 +611,10 @@ impl<'a, Child> Iterator for PossibleRevIter<'a, Child> {
                     .get_inner(node.children[if self.rev { len - index - 1 } else { index }])
                 {
                     match inner {
-                        HierarchicalBloomInner::Node(node)
-                            if node
-                                .filter
-                                .as_ref()
-                                .map(|f| f.contains_in_memory(&self.key))
-                                .flatten()
+                        Inner::Node(node)
+                            if node.filter.as_ref().map(|f| f.contains_fast(&self.key))
                                 == Some(FilterResult::NotContains) => {}
-                        HierarchicalBloomInner::Leaf(leaf)
-                            if self.this.get_child(leaf.leaf).is_none() => {}
+                        Inner::Leaf(leaf) if self.this.get_child(leaf.leaf).is_none() => {}
                         _ => {
                             self.stack.push((0, inner));
                         }
@@ -580,7 +622,7 @@ impl<'a, Child> Iterator for PossibleRevIter<'a, Child> {
                 }
             }
         }
-        if let Some((_, HierarchicalBloomInner::Leaf(leaf))) = self.stack.pop() {
+        if let Some((_, Inner::Leaf(leaf))) = self.stack.pop() {
             self.this.get_child(leaf.leaf).map(|x| (leaf.leaf, x))
         } else {
             None

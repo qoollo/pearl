@@ -518,13 +518,16 @@ impl RawRecords {
 }
 
 #[async_trait::async_trait]
-impl<K: Key> BloomProvider for Blob<K> {
-    type Key = K;
-    async fn check_filter(&self, item: &Self::Key) -> FilterResult {
+impl<K> BloomProvider<K> for Blob<K>
+where
+    K: Key + 'static,
+{
+    type Filter = Bloom;
+    async fn check_filter(&self, item: &K) -> FilterResult {
         self.index.check_bloom_key(item).await.unwrap_or_default()
     }
 
-    fn check_filter_fast(&self, item: &Self::Key) -> FilterResult {
+    fn check_filter_fast(&self, item: &K) -> FilterResult {
         self.index.check_bloom_key_in_memory(item)
     }
 
@@ -532,11 +535,11 @@ impl<K: Key> BloomProvider for Blob<K> {
         self.index.offload_filter()
     }
 
-    async fn get_filter(&self) -> Option<Bloom> {
+    async fn get_filter(&self) -> Option<Self::Filter> {
         Some(self.index.get_bloom_filter().clone())
     }
 
-    fn get_filter_fast(&self) -> Option<&Bloom> {
+    fn get_filter_fast(&self) -> Option<&Self::Filter> {
         Some(self.index.get_bloom_filter())
     }
 

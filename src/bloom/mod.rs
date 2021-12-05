@@ -42,7 +42,6 @@ impl Add for FilterResult {
 /// Bloom filter
 pub struct Bloom {
     inner: Option<BitVec<Lsb0, u64>>,
-    offset_in_file: Option<u64>,
     bits_count: usize,
     hashers: Vec<AHasher>,
     config: Config,
@@ -64,7 +63,6 @@ impl Debug for Bloom {
                     .as_ref()
                     .map(|x| InnerDebug(x.count_ones(), x.len())),
             )
-            .field("offset_in_file", &self.offset_in_file)
             .field("bits_count", &self.bits_count)
             .finish()
     }
@@ -77,8 +75,43 @@ impl Default for Bloom {
             bits_count: 0,
             hashers: vec![],
             config: Default::default(),
-            offset_in_file: None,
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl<K> FilterTrait<K> for Bloom
+where
+    K: AsRef<[u8]> + Sync + Send,
+{
+    fn add(&mut self, key: &K) {
+        let _ = self.add(key);
+    }
+
+    fn contains_fast(&self, key: &K) -> FilterResult {
+        self.contains_in_memory(key)
+            .unwrap_or(FilterResult::NeedAdditionalCheck)
+    }
+
+    async fn contains<P: BloomDataProvider>(&self, provider: &P, key: &K) -> FilterResult {
+        if let Some(res) = self.contains_in_memory(key) {
+            res
+        } else {
+            let res = self.contains_in_file(provider, key).await;
+            res.unwrap_or(FilterResult::NeedAdditionalCheck)
+        }
+    }
+
+    fn offload_filter(&mut self) -> usize {
+        self.offload_from_memory()
+    }
+
+    fn checked_add_assign(&mut self, other: &Self) -> Option<()> {
+        self.checked_add_assign(other)
+    }
+
+    fn memory_allocated(&self) -> usize {
+        self.memory_allocated()
     }
 }
 
@@ -171,7 +204,6 @@ impl Bloom {
             hashers: Self::hashers(config.hashers_count),
             config,
             bits_count,
-            offset_in_file: None,
         }
     }
 
@@ -193,7 +225,6 @@ impl Bloom {
     /// Set in-memory filter buffer to zeroed array
     pub fn clear(&mut self) {
         self.inner = Some(bitvec![Lsb0, u64; 0; self.bits_count]);
-        self.offset_in_file = None;
     }
 
     /// Check if filter offloaded
@@ -206,12 +237,6 @@ impl Bloom {
         let freed = self.inner.as_ref().map(|x| x.capacity() / 8).unwrap_or(0);
         self.inner = None;
         freed
-    }
-
-    /// Set filter offset in file
-    pub fn set_offset_in_file(&mut self, offset: u64) {
-        self.offset_in_file =
-            Some(offset + self.buffer_start_position().expect("Should not fail") as u64);
     }
 
     fn hashers(k: usize) -> Vec<AHasher> {
@@ -233,7 +258,7 @@ impl Bloom {
         }
     }
 
-    fn from(save: Save, offset_in_file: Option<u64>) -> Self {
+    fn from(save: Save) -> Self {
         let mut inner = BitVec::from_vec(save.buf);
         inner.truncate(save.bits_count);
         Self {
@@ -241,7 +266,6 @@ impl Bloom {
             config: save.config,
             inner: Some(inner),
             bits_count: save.bits_count,
-            offset_in_file,
         }
     }
 
@@ -254,9 +278,9 @@ impl Bloom {
     }
 
     /// Deserialize filter from bytes
-    pub fn from_raw(buf: &[u8], offset_in_file: Option<u64>) -> Result<Self> {
+    pub fn from_raw(buf: &[u8]) -> Result<Self> {
         let save: Save = bincode::deserialize(buf)?;
-        Ok(Self::from(save, offset_in_file))
+        Ok(Self::from(save))
     }
 
     /// Add value to filter
@@ -316,15 +340,12 @@ impl Bloom {
             return Ok(FilterResult::NeedAdditionalCheck);
         }
         let mut hashers = self.hashers.clone();
-        let start_pos = self
-            .offset_in_file
-            .ok_or_else(|| anyhow::anyhow!("Offset should be set for in-file operations"))?;
+        let start_pos = self.buffer_start_position().unwrap();
         for index in hashers.iter_mut().map(|hasher| {
             hasher.write(item.as_ref());
             hasher.finish() % self.bits_count as u64
         }) {
-            let pos = start_pos + (index / 8);
-            let byte = provider.read_byte(pos).await?;
+            let byte = provider.read_byte(start_pos + index / 8).await?;
 
             if !byte
                 .view_bits::<Lsb0>()

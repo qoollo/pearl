@@ -49,7 +49,7 @@ pub(crate) struct Inner<K: Key> {
 #[derive(Debug)]
 pub(crate) struct Safe<K: Key> {
     pub(crate) active_blob: Option<Box<Blob<K>>>,
-    pub(crate) blobs: Arc<RwLock<HierarchicalBloom<Blob<K>>>>,
+    pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, Bloom, Blob<K>>>>,
 }
 
 async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
@@ -552,7 +552,7 @@ impl<K: Key + 'static> Storage<K> {
         let mut safe = self.inner.safe.write().await;
         safe.active_blob = active_blob;
         *safe.blobs.write().await =
-            HierarchicalBloom::from_vec(self.inner.config.bloom_filter_group_size(), 1, blobs)
+            HierarchicalFilters::from_vec(self.inner.config.bloom_filter_group_size(), 1, blobs)
                 .await;
         self.inner
             .next_blob_id
@@ -938,7 +938,7 @@ impl<K: Key + 'static> Safe<K> {
     fn new(group_size: usize) -> Self {
         Self {
             active_blob: None,
-            blobs: Arc::new(RwLock::new(HierarchicalBloom::new(group_size, 1))),
+            blobs: Arc::new(RwLock::new(HierarchicalFilters::new(group_size, 1))),
         }
     }
 
@@ -1016,21 +1016,20 @@ pub trait Key: AsRef<[u8]> + Debug + Clone + Send + Sync + Ord + From<Vec<u8>> +
 }
 
 #[async_trait::async_trait]
-impl<K: Key> BloomProvider for Storage<K> {
-    type Key = K;
-
-    async fn check_filter(&self, item: &Self::Key) -> FilterResult {
+impl<K: Key + 'static> BloomProvider<K> for Storage<K> {
+    type Filter = <Blob<K> as BloomProvider<K>>::Filter;
+    async fn check_filter(&self, item: &K) -> FilterResult {
         let inner = self.inner.safe.read().await;
         let active = inner
             .active_blob
             .as_ref()
-            .map(|b| b.check_filter_fast(item.as_ref()))
+            .map(|b| b.check_filter_fast(item))
             .unwrap_or_default();
-        let ret = inner.blobs.read().await.check_filter(item.as_ref()).await;
+        let ret = inner.blobs.read().await.check_filter(item).await;
         ret + active
     }
 
-    fn check_filter_fast(&self, _item: &Self::Key) -> FilterResult {
+    fn check_filter_fast(&self, _item: &K) -> FilterResult {
         FilterResult::NeedAdditionalCheck
     }
 
@@ -1045,7 +1044,7 @@ impl<K: Key> BloomProvider for Storage<K> {
         ret
     }
 
-    async fn get_filter(&self) -> Option<Bloom> {
+    async fn get_filter(&self) -> Option<Self::Filter> {
         let inner = self.inner.safe.read().await;
         let mut ret = inner.blobs.read().await.get_filter_fast().cloned();
         if let Some(filter) = &mut ret {
@@ -1061,7 +1060,7 @@ impl<K: Key> BloomProvider for Storage<K> {
         ret
     }
 
-    fn get_filter_fast(&self) -> Option<&Bloom> {
+    fn get_filter_fast(&self) -> Option<&Self::Filter> {
         None
     }
 
