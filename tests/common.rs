@@ -15,7 +15,7 @@ use std::{
 
 use pearl::{Builder, Key, Storage};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyTest(Vec<u8>);
 
 impl AsRef<[u8]> for KeyTest {
@@ -32,6 +32,19 @@ impl AsRef<KeyTest> for KeyTest {
 
 impl Key for KeyTest {
     const LEN: u16 = 4;
+}
+
+impl Default for KeyTest {
+    fn default() -> Self {
+        Self(vec![0; 4])
+    }
+}
+
+impl From<Vec<u8>> for KeyTest {
+    fn from(mut v: Vec<u8>) -> Self {
+        v.resize(KeyTest::LEN as usize, 0);
+        Self(v)
+    }
 }
 
 impl KeyTest {

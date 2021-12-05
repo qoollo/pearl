@@ -13,15 +13,16 @@ pub(crate) const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 ///
 /// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
-pub struct Blob {
+pub struct Blob<K: Key> {
     header: Header,
-    index: Index,
+    index: Index<K>,
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
+    key_type_marker: PhantomData<K>,
 }
 
-impl Blob {
+impl<K: Key + 'static> Blob<K> {
     /// # Description
     /// Creates new blob file with given [`FileName`].
     /// And creates index from existing `.index` file or scans corresponding blob.
@@ -44,6 +45,7 @@ impl Blob {
             name,
             file,
             current_offset,
+            key_type_marker: PhantomData,
         };
         blob.write_header().await?;
         Ok(blob)
@@ -62,7 +64,11 @@ impl Blob {
     }
 
     #[inline]
-    fn create_index(mut name: FileName, ioring: Option<Rio>, index_config: IndexConfig) -> Index {
+    fn create_index(
+        mut name: FileName,
+        ioring: Option<Rio>,
+        index_config: IndexConfig,
+    ) -> Index<K> {
         name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         Index::new(name, ioring, index_config)
     }
@@ -81,11 +87,11 @@ impl Blob {
         }
     }
 
-    pub(crate) async fn load_index(&mut self, blob_key_size: u16) -> Result<()> {
+    pub(crate) async fn load_index(&mut self) -> Result<()> {
         if let Err(e) = self.index.load().await {
             warn!("error loading index: {}, regenerating", e);
             self.index.clear();
-            self.try_regenerate_index(blob_key_size as usize).await?;
+            self.try_regenerate_index().await?;
         }
         Ok(())
     }
@@ -98,7 +104,6 @@ impl Blob {
         path: PathBuf,
         ioring: Option<Rio>,
         index_config: IndexConfig,
-        blob_key_size: u16,
     ) -> Result<Self> {
         let now = Instant::now();
         let file = File::open(&path, ioring.clone()).await?;
@@ -143,10 +148,11 @@ impl Blob {
             name,
             index,
             current_offset: Arc::new(Mutex::new(size)),
+            key_type_marker: PhantomData,
         };
         trace!("call update index");
         if is_index_corrupted || size as u64 > header_size {
-            blob.try_regenerate_index(blob_key_size as usize)
+            blob.try_regenerate_index()
                 .await
                 .context("failed to regenerate index")?;
         } else {
@@ -162,17 +168,17 @@ impl Blob {
         Ok(blob)
     }
 
-    async fn raw_records(&self, key_size: usize) -> Result<RawRecords> {
+    async fn raw_records(&self) -> Result<RawRecords> {
         RawRecords::start(
             self.file.clone(),
             bincode::serialized_size(&self.header)?,
-            key_size,
+            K::LEN as usize,
         )
         .await
         .context("failed to create iterator for raw records")
     }
 
-    pub(crate) async fn try_regenerate_index(&mut self, key_size: usize) -> Result<()> {
+    pub(crate) async fn try_regenerate_index(&mut self) -> Result<()> {
         info!("try regenerate index for blob: {}", self.name);
         if self.index.on_disk() {
             debug!("index already updated");
@@ -180,7 +186,7 @@ impl Blob {
         }
         debug!("index file missed");
         let raw_r = self
-            .raw_records(key_size)
+            .raw_records()
             .await
             .context("failed to read raw records")?;
         debug!("raw records loaded");
@@ -198,7 +204,7 @@ impl Blob {
         Ok(())
     }
 
-    pub(crate) const fn check_data_consistency() {
+    pub(crate) fn check_data_consistency() {
         // @TODO implement
     }
 
@@ -227,7 +233,7 @@ impl Blob {
 
     pub(crate) async fn read_any(
         &self,
-        key: &[u8],
+        key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
     ) -> Result<Vec<u8>> {
@@ -247,7 +253,7 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) async fn read_all_entries(&self, key: &[u8]) -> Result<Option<Vec<Entry>>> {
+    pub(crate) async fn read_all_entries(&self, key: &K) -> Result<Option<Vec<Entry>>> {
         let headers = self.index.get_all(key).await?;
         Ok(headers.map(|h| {
             debug!("blob core read all {} headers", h.len());
@@ -264,7 +270,7 @@ impl Blob {
 
     async fn get_entry(
         &self,
-        key: &[u8],
+        key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
     ) -> Result<Option<Entry>> {
@@ -292,7 +298,7 @@ impl Blob {
         }
     }
 
-    async fn get_entry_with_meta(&self, key: &[u8], meta: &Meta) -> Result<Option<Entry>> {
+    async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<Option<Entry>> {
         let headers = self.index.get_all(key).await?;
         if let Some(headers) = headers {
             let entries = Self::headers_to_entries(headers, &self.file);
@@ -311,7 +317,7 @@ impl Blob {
         Ok(None)
     }
 
-    pub(crate) async fn contains(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
+    pub(crate) async fn contains(&self, key: &K, meta: Option<&Meta>) -> Result<bool> {
         debug!("blob contains");
         let contains = self.get_entry(key, meta, true).await?.is_some();
         debug!("blob contains any: {}", contains);
@@ -332,11 +338,11 @@ impl Blob {
     }
 
     #[inline]
-    pub(crate) const fn id(&self) -> usize {
+    pub(crate) fn id(&self) -> usize {
         self.name.id
     }
 
-    pub(crate) async fn check_filters(&self, key: &[u8]) -> Result<bool> {
+    pub(crate) async fn check_filters(&self, key: &K) -> Result<bool> {
         trace!("check filters (range and bloom)");
         if let FilterResult::NotContains = self.index.check_filters_key(key).await? {
             Ok(false)
@@ -345,7 +351,7 @@ impl Blob {
         }
     }
 
-    pub(crate) fn check_filters_in_memory(&self, key: &[u8]) -> bool {
+    pub(crate) fn check_filters_in_memory(&self, key: &K) -> bool {
         trace!("check filters (range and bloom)");
         if let FilterResult::NotContains = self.index.check_filters_in_memory(key) {
             false
@@ -512,8 +518,8 @@ impl RawRecords {
 }
 
 #[async_trait::async_trait]
-impl BloomProvider for Blob {
-    type Key = [u8];
+impl<K: Key> BloomProvider for Blob<K> {
+    type Key = K;
     async fn check_filter(&self, item: &Self::Key) -> FilterResult {
         self.index.check_bloom_key(item).await.unwrap_or_default()
     }

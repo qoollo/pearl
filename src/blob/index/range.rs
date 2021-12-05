@@ -1,14 +1,16 @@
 use super::prelude::*;
 
 /// NOTE: le and lt operations are written for big-endian format of keys
-#[derive(Debug, Serialize, Deserialize, Default)]
-pub(crate) struct RangeFilter {
-    min: Vec<u8>,
-    max: Vec<u8>,
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub(crate) struct RangeFilter<K: Key> {
+    #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
+    min: K,
+    #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
+    max: K,
     initialized: bool,
 }
 
-impl RangeFilter {
+impl<K: Key> RangeFilter<K> {
     pub(crate) fn new() -> Self {
         Self {
             initialized: false,
@@ -16,34 +18,20 @@ impl RangeFilter {
         }
     }
 
-    pub(crate) fn add(&mut self, key: impl AsRef<[u8]>) {
-        let key_slice = key.as_ref();
+    pub(crate) fn add(&mut self, key: &K) {
         if !self.initialized {
-            self.min = key_slice.to_vec();
-            self.max = key_slice.to_vec();
+            self.min = key.clone();
+            self.max = key.clone();
             self.initialized = true;
-        } else if Self::lt(key_slice, &self.min) {
-            self.min = key_slice.to_vec()
-        } else if Self::lt(&self.max, key_slice) {
-            self.max = key_slice.to_vec()
+        } else if key < &self.min {
+            self.min = key.clone();
+        } else if key > &self.max {
+            self.max = key.clone()
         }
     }
 
-    pub(crate) fn lt(lv: &[u8], rv: &[u8]) -> bool {
-        // NOTE: if it's keys are serialized in little-endian format you should use other
-        // comparison method: Iterator::cmp(lv.iter().rev(), rv.iter().rev())
-        lv < rv
-    }
-
-    pub(crate) fn le(lv: &[u8], rv: &[u8]) -> bool {
-        // NOTE: if it's keys are serialized in little-endian format you should use other
-        // comparison method: Iterator::cmp(lv.iter().rev(), rv.iter().rev())
-        lv <= rv
-    }
-
-    pub(crate) fn contains(&self, key: impl AsRef<[u8]>) -> bool {
-        let key_slice = key.as_ref();
-        self.initialized && Self::le(&self.min, key_slice) && Self::le(key_slice, &self.max)
+    pub(crate) fn contains(&self, key: &K) -> bool {
+        self.initialized && &self.min <= key && key <= &self.max
     }
 
     pub(crate) fn clear(&mut self) {
@@ -56,5 +44,129 @@ impl RangeFilter {
 
     pub(crate) fn to_raw(&self) -> Result<Vec<u8>> {
         bincode::serialize(&self).map_err(|e| e.into())
+    }
+}
+
+fn serialize_key<K: Key, S: serde::Serializer>(key: &K, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_bytes(key.as_ref())
+}
+
+fn deserialize_key<'de, K: Key, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<K, D::Error> {
+    struct KeyVisitor<K>(PhantomData<K>);
+    impl<'de, K: Key> serde::de::Visitor<'de> for KeyVisitor<K> {
+        type Value = K;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("bytes")
+        }
+
+        fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(v.into())
+        }
+    }
+
+    deserializer.deserialize_byte_buf(KeyVisitor(PhantomData))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Key;
+
+    use super::RangeFilter;
+
+    const LEN: u16 = 8;
+
+    #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+    struct ProperKey(Vec<u8>);
+
+    impl AsRef<[u8]> for ProperKey {
+        fn as_ref(&self) -> &[u8] {
+            self.0.as_ref()
+        }
+    }
+
+    impl From<Vec<u8>> for ProperKey {
+        fn from(mut v: Vec<u8>) -> Self {
+            v.resize(ProperKey::LEN as usize, 0);
+            Self(v)
+        }
+    }
+
+    impl Key for ProperKey {
+        const LEN: u16 = LEN;
+    }
+
+    #[derive(Debug, Clone, Default, PartialEq, Eq)]
+    struct WrongKey(Vec<u8>);
+
+    impl AsRef<[u8]> for WrongKey {
+        fn as_ref(&self) -> &[u8] {
+            self.0.as_ref()
+        }
+    }
+
+    impl From<Vec<u8>> for WrongKey {
+        fn from(mut v: Vec<u8>) -> Self {
+            v.resize(WrongKey::LEN as usize, 0);
+            Self(v)
+        }
+    }
+
+    impl PartialOrd for WrongKey {
+        fn partial_cmp(&self, _other: &Self) -> Option<std::cmp::Ordering> {
+            Some(std::cmp::Ordering::Equal)
+        }
+    }
+
+    impl Ord for WrongKey {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            self.partial_cmp(other).unwrap()
+        }
+    }
+
+    impl Key for WrongKey {
+        const LEN: u16 = LEN;
+    }
+
+    fn to_key<K: From<Vec<u8>>>(i: usize) -> K {
+        let mut vec = i.to_le_bytes().to_vec();
+        vec.resize(LEN as usize, 0);
+        vec.into()
+    }
+
+    #[test]
+    fn test_range_index_key_cmp_proper_key() {
+        let mut filter: RangeFilter<ProperKey> = RangeFilter::new();
+        for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
+            filter.add(&key);
+        }
+        let less_key = to_key(25);
+        let in_key = to_key(75);
+        let greater_key = to_key(175);
+        assert!(!filter.contains(&less_key));
+        assert!(!filter.contains(&greater_key));
+        assert!(filter.contains(&in_key));
+    }
+
+    #[test]
+    fn test_range_index_key_cmp_wrong_key() {
+        let mut filter: RangeFilter<ProperKey> = RangeFilter::new();
+        for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
+            filter.add(&key);
+        }
+        let buf = bincode::serialize(&filter).unwrap();
+        let wrong_key_filter: RangeFilter<WrongKey> = RangeFilter::from_raw(&buf).unwrap();
+
+        let less_key = to_key(25);
+        let in_key = to_key(75);
+        let greater_key = to_key(175);
+        assert!(wrong_key_filter.contains(&less_key));
+        assert!(wrong_key_filter.contains(&greater_key));
+        assert!(wrong_key_filter.contains(&in_key));
     }
 }

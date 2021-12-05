@@ -32,36 +32,24 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 /// ```
 ///
 /// [`Key`]: trait.Key.html
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Storage<K: Key> {
-    pub(crate) inner: Inner,
-    observer: Observer,
-    marker: PhantomData<K>,
+    pub(crate) inner: Inner<K>,
+    observer: Observer<K>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Inner {
+pub(crate) struct Inner<K: Key> {
     pub(crate) config: Config,
-    pub(crate) safe: Arc<RwLock<Safe>>,
+    pub(crate) safe: Arc<RwLock<Safe<K>>>,
     next_blob_id: Arc<AtomicUsize>,
     pub(crate) ioring: Option<Rio>,
 }
 
 #[derive(Debug)]
-pub(crate) struct Safe {
-    pub(crate) active_blob: Option<Box<Blob>>,
-    pub(crate) blobs: Arc<RwLock<HierarchicalBloom<Blob>>>,
-}
-
-impl<K: Key> Clone for Storage<K> {
-    #[must_use]
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-            observer: self.observer.clone(),
-            marker: PhantomData,
-        }
-    }
+pub(crate) struct Safe<K: Key> {
+    pub(crate) active_blob: Option<Box<Blob<K>>>,
+    pub(crate) blobs: Arc<RwLock<HierarchicalBloom<Blob<K>>>>,
 }
 
 async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
@@ -87,16 +75,12 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     Ok(content)
 }
 
-impl<K: Key> Storage<K> {
+impl<K: Key + 'static> Storage<K> {
     pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
         let dump_sem = config.dump_sem();
         let inner = Inner::new(config, ioring);
         let observer = Observer::new(inner.clone(), dump_sem);
-        Self {
-            inner,
-            observer,
-            marker: PhantomData,
-        }
+        Self { inner, observer }
     }
 
     /// [`init()`] used to prepare all environment to further work.
@@ -248,8 +232,7 @@ impl<K: Key> Storage<K> {
     ///
     /// [`write_with`]: Storage::write_with
     pub async fn write(&self, key: impl AsRef<K>, value: Vec<u8>) -> Result<()> {
-        self.write_with_optional_meta(key.as_ref(), value, None)
-            .await
+        self.write_with_optional_meta(key, value, None).await
     }
 
     /// Similar to [`write`] but with metadata
@@ -266,25 +249,27 @@ impl<K: Key> Storage<K> {
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
     pub async fn write_with(&self, key: impl AsRef<K>, value: Vec<u8>, meta: Meta) -> Result<()> {
-        self.write_with_optional_meta(key.as_ref(), value, Some(meta))
-            .await
+        self.write_with_optional_meta(key, value, Some(meta)).await
     }
 
     async fn write_with_optional_meta(
         &self,
-        key: &K,
+        key: impl AsRef<K>,
         value: Vec<u8>,
         meta: Option<Meta>,
     ) -> Result<()> {
+        let key = key.as_ref();
         debug!("storage write with {:?}, {}b, {:?}", key, value.len(), meta);
         // if active blob is set, this function will only check this fact and return false
         if self.try_create_active_blob().await.is_ok() {
             info!("Active blob was set during write operation");
         }
-        if !self.inner.config.allow_duplicates()
-            && self.contains_with(key.as_ref(), meta.as_ref()).await?
-        {
-            warn!("record with key {:?} and meta {:?} exists", key, meta);
+        if !self.inner.config.allow_duplicates() && self.contains_with(key, meta.as_ref()).await? {
+            warn!(
+                "record with key {:?} and meta {:?} exists",
+                key.as_ref(),
+                meta
+            );
             return Ok(());
         }
         let record = Record::create(key, value, meta.unwrap_or_default())
@@ -323,8 +308,9 @@ impl<K: Key> Storage<K> {
     /// [`read_with`]: Storage::read_with
     #[inline]
     pub async fn read(&self, key: impl AsRef<K>) -> Result<Vec<u8>> {
-        debug!("storage read {:?}", key.as_ref());
-        self.read_with_optional_meta(key.as_ref(), None).await
+        let key = key.as_ref();
+        debug!("storage read {:?}", key);
+        self.read_with_optional_meta(key, None).await
     }
     /// Reads data matching given key and metadata
     /// # Examples
@@ -353,7 +339,7 @@ impl<K: Key> Storage<K> {
     /// # Errors
     /// Fails after any disk IO errors.
     pub async fn read_all(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
-        let key = key.as_ref().as_ref();
+        let key = key.as_ref();
         let mut all_entries = Vec::new();
         let safe = self.inner.safe.read().await;
         let active_blob = safe
@@ -387,7 +373,6 @@ impl<K: Key> Storage<K> {
     async fn read_with_optional_meta(&self, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
-        let key = key.as_ref();
         if let Some(ablob) = safe.active_blob.as_ref() {
             match ablob.read_any(key, meta, true).await {
                 Ok(data) => {
@@ -400,7 +385,7 @@ impl<K: Key> Storage<K> {
         Self::get_any_data(&safe, key, meta).await
     }
 
-    async fn get_data_last(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_last(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         let blobs = safe.blobs.read().await;
         let possible_blobs = blobs
             .iter_possible_childs_rev(key)
@@ -431,7 +416,7 @@ impl<K: Key> Storage<K> {
     }
 
     #[allow(dead_code)]
-    async fn get_data_any(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_any(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         let blobs = safe.blobs.read().await;
         let stream: FuturesUnordered<_> = blobs
             .iter_possible_childs_rev(key)
@@ -445,7 +430,7 @@ impl<K: Key> Storage<K> {
             .with_context(|| "no results in closed blobs")
     }
 
-    async fn get_any_data(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_any_data(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         Self::get_data_last(safe, key, meta).await
     }
 
@@ -575,7 +560,7 @@ impl<K: Key> Storage<K> {
         Ok(())
     }
 
-    async fn pop_active(blobs: &mut Vec<Blob>, config: &Config) -> Result<Box<Blob>> {
+    async fn pop_active(blobs: &mut Vec<Blob<K>>, config: &Config) -> Result<Box<Blob<K>>> {
         let mut active_blob = blobs
             .pop()
             .ok_or_else(|| {
@@ -584,7 +569,7 @@ impl<K: Key> Storage<K> {
                 Error::from(ErrorKind::Uninitialized)
             })?
             .boxed();
-        active_blob.load_index(K::LEN).await?;
+        active_blob.load_index().await?;
         Ok(active_blob)
     }
 
@@ -593,7 +578,7 @@ impl<K: Key> Storage<K> {
         ioring: Option<Rio>,
         disk_access_sem: Arc<Semaphore>,
         config: &Config,
-    ) -> Result<Vec<Blob>> {
+    ) -> Result<Vec<Blob<K>>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
         debug!("read {} entities", dir_content.len());
@@ -611,7 +596,7 @@ impl<K: Key> Storage<K> {
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(file.clone(), ioring.clone(), config.index(), K::LEN)
+                Blob::from_file(file.clone(), ioring.clone(), config.index())
                     .await
                     .map_err(|e| (e, file))
             })
@@ -707,12 +692,11 @@ impl<K: Key> Storage<K> {
     /// `contains` returns either "definitely in storage" or "definitely not".
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn contains(&self, key: K) -> Result<bool> {
-        let key = key.as_ref();
-        self.contains_with(key, None).await
+    pub async fn contains(&self, key: impl AsRef<K>) -> Result<bool> {
+        self.contains_with(key.as_ref(), None).await
     }
 
-    async fn contains_with(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
+    async fn contains_with(&self, key: &K, meta: Option<&Meta>) -> Result<bool> {
         let inner = self.inner.safe.read().await;
         if let Some(active_blob) = &inner.active_blob {
             if active_blob.contains(key, meta).await? {
@@ -736,11 +720,11 @@ impl<K: Key> Storage<K> {
     /// In other words, `check_filters` returns either "possibly in storage" or "definitely not".
     pub async fn check_filters(&self, key: impl AsRef<K>) -> Option<bool> {
         let key = key.as_ref();
-        trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
+        trace!("[{:?}] check in blobs bloom filter", key);
         let inner = self.inner.safe.read().await;
         let in_active = if let Some(active_blob) = inner.active_blob.as_ref() {
             active_blob
-                .check_filters(key.as_ref())
+                .check_filters(key)
                 .await
                 .map_err(|e| {
                     error!(
@@ -758,19 +742,19 @@ impl<K: Key> Storage<K> {
         }
 
         let blobs = inner.blobs.read().await;
-        let (offloaded, in_memory): (Vec<&Blob>, Vec<&Blob>) =
+        let (offloaded, in_memory): (Vec<&Blob<K>>, Vec<&Blob<K>>) =
             blobs.iter().partition(|blob| blob.is_filter_offloaded());
 
         let in_closed = in_memory
             .iter()
-            .any(|blob| blob.check_filters_in_memory(key.as_ref()));
+            .any(|blob| blob.check_filters_in_memory(key));
         if in_closed {
             return Some(true);
         }
 
         let in_closed_offloaded = offloaded
             .iter()
-            .map(|blob| blob.check_filters(key.as_ref()))
+            .map(|blob| blob.check_filters(key))
             .collect::<FuturesUnordered<_>>()
             .any(|value| value.unwrap_or(false))
             .await;
@@ -818,7 +802,7 @@ impl<K: Key> Storage<K> {
     }
 }
 
-impl Inner {
+impl<K: Key + 'static> Inner<K> {
     fn new(config: Config, ioring: Option<Rio>) -> Self {
         Self {
             safe: Arc::new(RwLock::new(Safe::new(config.bloom_filter_group_size()))),
@@ -950,7 +934,7 @@ impl Inner {
     }
 }
 
-impl Safe {
+impl<K: Key + 'static> Safe<K> {
     fn new(group_size: usize) -> Self {
         Self {
             active_blob: None,
@@ -993,7 +977,7 @@ impl Safe {
         Ok(())
     }
 
-    pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob>) -> Result<()> {
+    pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob<K>>) -> Result<()> {
         let old_active = self.active_blob.replace(blob);
         if let Some(blob) = old_active {
             self.blobs.write().await.push(*blob).await;
@@ -1021,7 +1005,7 @@ impl Safe {
 }
 
 /// Trait `Key`
-pub trait Key: AsRef<[u8]> + Debug + Send + Sync {
+pub trait Key: AsRef<[u8]> + Debug + Clone + Send + Sync + Ord + From<Vec<u8>> + Default {
     /// Key must have fixed length
     const LEN: u16;
 
