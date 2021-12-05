@@ -3,7 +3,6 @@ use crate::prelude::*;
 mod bptree;
 mod core;
 mod header;
-mod range;
 mod simple;
 mod tools;
 
@@ -17,7 +16,7 @@ pub(crate) use self::core::{
     FileIndexTrait, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,
 };
 pub(crate) use super::prelude::*;
-pub(crate) use range::RangeFilter;
+pub(crate) use crate::filter::range::RangeFilter;
 
 mod prelude {
     pub(crate) use super::*;

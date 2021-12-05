@@ -9,7 +9,7 @@ pub trait BloomDataProvider: Send + Sync {
 
 /// Trait for scructs which contains bloom filters
 #[async_trait::async_trait]
-pub trait BloomProvider<Key>: Sync + Send {
+pub trait BloomProvider<Key: Send + Sync>: Sync + Send {
     /// Inner filter type
     type Filter: FilterTrait<Key>;
     /// Check if element in filter
@@ -28,7 +28,7 @@ pub trait BloomProvider<Key>: Sync + Send {
 
 /// Trait filters should implement
 #[async_trait::async_trait]
-pub trait FilterTrait<Key>: Clone + Sync + Send {
+pub trait FilterTrait<Key: Send + Sync>: Clone + Sync + Send {
     /// Add key to filter
     fn add(&mut self, key: &Key);
 
@@ -36,14 +36,20 @@ pub trait FilterTrait<Key>: Clone + Sync + Send {
     fn contains_fast(&self, key: &Key) -> FilterResult;
 
     /// Check if key in filter (can take some time)
-    async fn contains<P: BloomDataProvider>(&self, provider: &P, key: &Key) -> FilterResult;
+    async fn contains<P: BloomDataProvider>(&self, _provider: &P, key: &Key) -> FilterResult {
+        self.contains_fast(key)
+    }
 
     /// Offload filter from memory if possible
-    fn offload_filter(&mut self) -> usize;
+    fn offload_filter(&mut self) -> usize {
+        0
+    }
 
     /// Add another filter to this filter
     fn checked_add_assign(&mut self, other: &Self) -> Option<()>;
 
     /// Memory used by filter
-    fn memory_allocated(&self) -> usize;
+    fn memory_allocated(&self) -> usize {
+        0
+    }
 }

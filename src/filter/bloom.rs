@@ -1,16 +1,9 @@
-/// Hierarchical
-pub mod hierarchical;
-/// Traits
-pub mod traits;
-pub use hierarchical::*;
-pub use traits::*;
-
-use super::prelude::*;
 use ahash::AHasher;
 use bitvec::order::Lsb0;
 use bitvec::prelude::*;
 use std::hash::Hasher;
 use std::ops::Add;
+use super::*;
 
 #[derive(PartialEq, Eq, Debug)]
 /// Filter result

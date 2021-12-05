@@ -68,8 +68,8 @@ mod record;
 mod storage;
 
 /// bloom filter for faster check record contains in blob
-pub mod bloom;
-pub use bloom::{Bloom, BloomDataProvider, BloomProvider, Config as BloomConfig, FilterResult};
+pub mod filter;
+pub use filter::{Bloom, BloomDataProvider, BloomProvider, Config as BloomConfig, FilterResult};
 
 pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
@@ -88,7 +88,7 @@ mod prelude {
     pub(crate) use anyhow::{Context as ErrorContexts, Result};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use blob::{self, Blob, IndexConfig};
-    pub(crate) use bloom::{Bloom, BloomProvider, Config as BloomConfig, HierarchicalFilters};
+    pub(crate) use filter::{Bloom, BloomProvider, Config as BloomConfig, HierarchicalFilters};
     pub(crate) use futures::{
         future,
         lock::Mutex,

@@ -1,5 +1,5 @@
 use super::prelude::*;
-use crate::bloom::BloomDataProvider;
+use crate::filter::BloomDataProvider;
 use std::mem::size_of;
 
 pub(crate) type Index<K> = IndexStruct<BPTreeFileIndex<K>, K>;
