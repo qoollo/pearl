@@ -240,7 +240,7 @@ impl SimpleFileIndex {
                 "blob index simple binary search mid header: {:?}",
                 mid_record_header
             );
-            let cmp = key.cmp(&mid_record_header.key().to_vec().into());
+            let cmp = key.as_ref_key().cmp(&mid_record_header.key().into());
             debug!("mid read: {:?}, key: {:?}", mid_record_header.key(), key);
             debug!("before mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
             match cmp {

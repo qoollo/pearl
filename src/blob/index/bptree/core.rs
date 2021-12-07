@@ -236,8 +236,8 @@ where
             let m_off = record_header_size * m as usize;
             let record_end = m_off + record_header_size;
             let record_header: RecordHeader = deserialize(&raw_headers_buf[m_off..record_end])?;
-            let read_key = record_header.key().to_vec().into();
-            match key.cmp(&read_key) {
+            let cmp_res = key.as_ref_key().cmp(&record_header.key().into());
+            match cmp_res {
                 CmpOrdering::Less => r = m - 1,
                 CmpOrdering::Greater => l = m + 1,
                 CmpOrdering::Equal => return Ok(Some((record_header, m_off))),

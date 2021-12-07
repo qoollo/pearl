@@ -33,6 +33,12 @@ impl AsRef<KeyTest> for KeyTest {
     }
 }
 
+impl<'a> From<&'a [u8]> for RefKeyTest<'a> {
+    fn from(v: &'a [u8]) -> Self {
+        Self(v)
+    }
+}
+
 impl<'a> RefKey<'a> for RefKeyTest<'a> {
     fn from_slice(slice: &'a [u8]) -> Self {
         Self(slice)

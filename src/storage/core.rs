@@ -1060,7 +1060,7 @@ where
 
 /// Trait `Key`
 pub trait Key<'a>:
-    AsRef<[u8]> + Debug + Clone + Send + Sync + Ord + From<Vec<u8>> + Default
+    AsRef<[u8]> + From<Vec<u8>> + Debug + Clone + Send + Sync + Ord + Default
 {
     /// Key must have fixed length
     const LEN: u16;
@@ -1072,10 +1072,15 @@ pub trait Key<'a>:
     fn to_vec(&self) -> Vec<u8> {
         self.as_ref().to_vec()
     }
+
+    /// Convert `Self` to `Self::Ref`
+    fn as_ref_key(&'a self) -> Self::Ref {
+        Self::Ref::from_slice(self.as_ref())
+    }
 }
 
 /// Trait for reference key type
-pub trait RefKey<'a>: Ord {
+pub trait RefKey<'a>: Ord + From<&'a [u8]> {
     /// Create reference key from slice
     fn from_slice(slice: &'a [u8]) -> Self;
 }

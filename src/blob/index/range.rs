@@ -102,6 +102,12 @@ mod tests {
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
     struct RefProperKey<'a>(&'a [u8]);
 
+    impl<'a> From<&'a [u8]> for RefProperKey<'a> {
+        fn from(v: &'a [u8]) -> Self {
+            Self(v)
+        }
+    }
+
     impl AsRef<[u8]> for ProperKey {
         fn as_ref(&self) -> &[u8] {
             self.0.as_ref()
@@ -155,6 +161,12 @@ mod tests {
     impl Ord for WrongKey {
         fn cmp(&self, other: &Self) -> std::cmp::Ordering {
             self.partial_cmp(other).unwrap()
+        }
+    }
+
+    impl<'a> From<&'a [u8]> for RefWrongKey<'a> {
+        fn from(v: &'a [u8]) -> Self {
+            Self(v)
         }
     }
 
