@@ -1075,4 +1075,7 @@ pub trait Key<'a>:
 }
 
 /// Trait for reference key type
-pub trait RefKey<'a> {}
+pub trait RefKey<'a>: Ord {
+    /// Create reference key from slice
+    fn from_slice(slice: &'a [u8]) -> Self;
+}

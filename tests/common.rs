@@ -18,6 +18,7 @@ use pearl::{Builder, Key, RefKey, Storage};
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyTest(Vec<u8>);
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct RefKeyTest<'a>(&'a [u8]);
 
 impl AsRef<[u8]> for KeyTest {
@@ -32,7 +33,11 @@ impl AsRef<KeyTest> for KeyTest {
     }
 }
 
-impl<'a> RefKey<'a> for RefKeyTest<'a> {}
+impl<'a> RefKey<'a> for RefKeyTest<'a> {
+    fn from_slice(slice: &'a [u8]) -> Self {
+        Self(slice)
+    }
+}
 
 impl<'a> Key<'a> for KeyTest {
     const LEN: u16 = 4;
