@@ -1075,12 +1075,9 @@ pub trait Key<'a>:
 
     /// Convert `Self` to `Self::Ref`
     fn as_ref_key(&'a self) -> Self::Ref {
-        Self::Ref::from_slice(self.as_ref())
+        Self::Ref::from(self.as_ref())
     }
 }
 
 /// Trait for reference key type
-pub trait RefKey<'a>: Ord + From<&'a [u8]> {
-    /// Create reference key from slice
-    fn from_slice(slice: &'a [u8]) -> Self;
-}
+pub trait RefKey<'a>: Ord + From<&'a [u8]> {}

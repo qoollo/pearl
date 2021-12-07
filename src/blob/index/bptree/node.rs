@@ -48,7 +48,7 @@ impl Node {
         while l <= r {
             let m = (l + r) / 2;
             let offset = m as usize * key_size;
-            let k = K::Ref::from_slice(&buf[offset..(offset + key_size)]); // TODO Allow keys to be based on slices
+            let k = K::Ref::from(&buf[offset..(offset + key_size)]); // TODO Allow keys to be based on slices
             match key.as_ref_key().cmp(&k) {
                 CmpOrdering::Less => r = m - 1,
                 CmpOrdering::Greater => l = m + 1,
@@ -81,7 +81,7 @@ impl Node {
         let key = key.as_ref_key();
         match self
             .keys
-            .binary_search_by(|elem| K::Ref::from_slice(elem).cmp(&key))
+            .binary_search_by(|elem| K::Ref::from(elem).cmp(&key))
         {
             Ok(pos) => self.offsets[pos + 1],
             Err(pos) => self.offsets[pos],
@@ -142,11 +142,7 @@ mod tests {
         }
     }
 
-    impl<'a> RefKey<'a> for RefKeyType<'a> {
-        fn from_slice(slice: &'a [u8]) -> Self {
-            Self(slice)
-        }
-    }
+    impl<'a> RefKey<'a> for RefKeyType<'a> {}
 
     impl<'a> Key<'a> for KeyType {
         const LEN: u16 = 4;

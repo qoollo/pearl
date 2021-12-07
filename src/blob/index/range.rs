@@ -121,11 +121,7 @@ mod tests {
         }
     }
 
-    impl<'a> RefKey<'a> for RefProperKey<'a> {
-        fn from_slice(slice: &'a [u8]) -> Self {
-            Self(slice)
-        }
-    }
+    impl<'a> RefKey<'a> for RefProperKey<'a> {}
 
     impl<'a> Key<'a> for ProperKey {
         const LEN: u16 = LEN;
@@ -170,11 +166,7 @@ mod tests {
         }
     }
 
-    impl<'a> RefKey<'a> for RefWrongKey<'a> {
-        fn from_slice(slice: &'a [u8]) -> Self {
-            RefWrongKey(slice)
-        }
-    }
+    impl<'a> RefKey<'a> for RefWrongKey<'a> {}
 
     impl<'a> Key<'a> for WrongKey {
         const LEN: u16 = LEN;

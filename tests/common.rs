@@ -39,11 +39,7 @@ impl<'a> From<&'a [u8]> for RefKeyTest<'a> {
     }
 }
 
-impl<'a> RefKey<'a> for RefKeyTest<'a> {
-    fn from_slice(slice: &'a [u8]) -> Self {
-        Self(slice)
-    }
-}
+impl<'a> RefKey<'a> for RefKeyTest<'a> {}
 
 impl<'a> Key<'a> for KeyTest {
     const LEN: u16 = 4;
