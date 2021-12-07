@@ -77,7 +77,10 @@ impl Record {
     }
 
     /// Creates new `Record` with provided data, key and meta.
-    pub fn create<K: Key>(key: &K, data: Vec<u8>, meta: Meta) -> bincode::Result<Self> {
+    pub fn create<K>(key: &K, data: Vec<u8>, meta: Meta) -> bincode::Result<Self>
+    where
+        for<'a> K: Key<'a>,
+    {
         let key = key.as_ref().to_vec();
         let meta_size = meta.serialized_size()?;
         let data_checksum = CRC32C.checksum(&data);

@@ -6,8 +6,14 @@ const META_VALUE: u8 = 17;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct KeyType(Vec<u8>);
 
-impl Key for KeyType {
+struct RefKeyType<'a>(&'a [u8]);
+
+impl<'a> RefKey<'a> for RefKeyType<'a> {}
+
+impl<'a> Key<'a> for KeyType {
     const LEN: u16 = 8;
+
+    type Ref = RefKeyType<'a>;
 }
 
 impl From<Vec<u8>> for KeyType {

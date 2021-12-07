@@ -45,14 +45,20 @@ impl Msg {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Observer<K: Key> {
+pub(crate) struct Observer<K>
+where
+    for<'a> K: Key<'a>,
+{
     inner: Option<Inner<K>>,
     pub sender: Option<Sender<Msg>>,
     dump_sem: Arc<Semaphore>,
     async_oplock: Arc<Mutex<()>>,
 }
 
-impl<K: Key + 'static> Observer<K> {
+impl<K> Observer<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     pub(crate) fn new(inner: Inner<K>, dump_sem: Arc<Semaphore>) -> Self {
         Self {
             inner: Some(inner),

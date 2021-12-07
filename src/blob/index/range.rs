@@ -2,7 +2,10 @@ use super::prelude::*;
 
 /// NOTE: le and lt operations are written for big-endian format of keys
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub(crate) struct RangeFilter<K: Key> {
+pub(crate) struct RangeFilter<K>
+where
+    for<'a> K: Key<'a>,
+{
     #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
     min: K,
     #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
@@ -10,7 +13,10 @@ pub(crate) struct RangeFilter<K: Key> {
     initialized: bool,
 }
 
-impl<K: Key> RangeFilter<K> {
+impl<K> RangeFilter<K>
+where
+    for<'a> K: Key<'a>,
+{
     pub(crate) fn new() -> Self {
         Self {
             initialized: false,
@@ -47,15 +53,24 @@ impl<K: Key> RangeFilter<K> {
     }
 }
 
-fn serialize_key<K: Key, S: serde::Serializer>(key: &K, serializer: S) -> Result<S::Ok, S::Error> {
+fn serialize_key<K, S>(key: &K, serializer: S) -> Result<S::Ok, S::Error>
+where
+    for<'a> K: Key<'a>,
+    S: serde::Serializer,
+{
     serializer.serialize_bytes(key.as_ref())
 }
 
-fn deserialize_key<'de, K: Key, D: serde::Deserializer<'de>>(
-    deserializer: D,
-) -> Result<K, D::Error> {
+fn deserialize_key<'de, K, D>(deserializer: D) -> Result<K, D::Error>
+where
+    for<'a> K: Key<'a>,
+    D: serde::Deserializer<'de>,
+{
     struct KeyVisitor<K>(PhantomData<K>);
-    impl<'de, K: Key> serde::de::Visitor<'de> for KeyVisitor<K> {
+    impl<'de, K> serde::de::Visitor<'de> for KeyVisitor<K>
+    where
+        for<'a> K: Key<'a>,
+    {
         type Value = K;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -75,7 +90,7 @@ fn deserialize_key<'de, K: Key, D: serde::Deserializer<'de>>(
 
 #[cfg(test)]
 mod tests {
-    use crate::Key;
+    use crate::{Key, RefKey};
 
     use super::RangeFilter;
 
@@ -83,6 +98,7 @@ mod tests {
 
     #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
     struct ProperKey(Vec<u8>);
+    struct RefProperKey<'a>(&'a [u8]);
 
     impl AsRef<[u8]> for ProperKey {
         fn as_ref(&self) -> &[u8] {
@@ -97,12 +113,17 @@ mod tests {
         }
     }
 
-    impl Key for ProperKey {
+    impl<'a> RefKey<'a> for RefProperKey<'a> {}
+
+    impl<'a> Key<'a> for ProperKey {
         const LEN: u16 = LEN;
+
+        type Ref = RefProperKey<'a>;
     }
 
     #[derive(Debug, Clone, Default, PartialEq, Eq)]
     struct WrongKey(Vec<u8>);
+    struct RefWrongKey<'a>(&'a [u8]);
 
     impl AsRef<[u8]> for WrongKey {
         fn as_ref(&self) -> &[u8] {
@@ -129,8 +150,12 @@ mod tests {
         }
     }
 
-    impl Key for WrongKey {
+    impl<'a> RefKey<'a> for RefWrongKey<'a> {}
+
+    impl<'a> Key<'a> for WrongKey {
         const LEN: u16 = LEN;
+
+        type Ref = RefWrongKey<'a>;
     }
 
     fn to_key<K: From<Vec<u8>>>(i: usize) -> K {

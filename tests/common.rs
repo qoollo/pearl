@@ -13,10 +13,12 @@ use std::{
     path::PathBuf,
 };
 
-use pearl::{Builder, Key, Storage};
+use pearl::{Builder, Key, RefKey, Storage};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyTest(Vec<u8>);
+
+pub struct RefKeyTest<'a>(&'a [u8]);
 
 impl AsRef<[u8]> for KeyTest {
     fn as_ref(&self) -> &[u8] {
@@ -30,8 +32,12 @@ impl AsRef<KeyTest> for KeyTest {
     }
 }
 
-impl Key for KeyTest {
+impl<'a> RefKey<'a> for RefKeyTest<'a> {}
+
+impl<'a> Key<'a> for KeyTest {
     const LEN: u16 = 4;
+
+    type Ref = RefKeyTest<'a>;
 }
 
 impl Default for KeyTest {
