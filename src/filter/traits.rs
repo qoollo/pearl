@@ -46,7 +46,8 @@ pub trait FilterTrait<Key: Send + Sync>: Clone + Sync + Send {
     }
 
     /// Add another filter to this filter
-    fn checked_add_assign(&mut self, other: &Self) -> Option<()>;
+    #[must_use]
+    fn checked_add_assign(&mut self, other: &Self) -> bool;
 
     /// Memory used by filter
     fn memory_allocated(&self) -> usize {

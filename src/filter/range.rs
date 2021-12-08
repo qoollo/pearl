@@ -27,10 +27,10 @@ where
         }
     }
 
-    fn checked_add_assign(&mut self, other: &Self) -> Option<()> {
+    fn checked_add_assign(&mut self, other: &Self) -> bool {
         self.add(&other.min);
         self.add(&other.max);
-        Some(())
+        true
     }
 }
 

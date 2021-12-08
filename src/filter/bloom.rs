@@ -1,34 +1,8 @@
+use super::*;
 use ahash::AHasher;
 use bitvec::order::Lsb0;
 use bitvec::prelude::*;
 use std::hash::Hasher;
-use std::ops::Add;
-use super::*;
-
-#[derive(PartialEq, Eq, Debug)]
-/// Filter result
-pub enum FilterResult {
-    /// Need additional check
-    NeedAdditionalCheck,
-    /// Not contains
-    NotContains,
-}
-
-impl Default for FilterResult {
-    fn default() -> Self {
-        Self::NeedAdditionalCheck
-    }
-}
-
-impl Add for FilterResult {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (FilterResult::NotContains, FilterResult::NotContains) => FilterResult::NotContains,
-            _ => FilterResult::NeedAdditionalCheck,
-        }
-    }
-}
 
 // All usizes in structures are serialized as u64 in binary
 #[derive(Clone)]
@@ -82,8 +56,7 @@ where
     }
 
     fn contains_fast(&self, key: &K) -> FilterResult {
-        self.contains_in_memory(key)
-            .unwrap_or(FilterResult::NeedAdditionalCheck)
+        self.contains_in_memory(key).unwrap_or_default()
     }
 
     async fn contains<P: BloomDataProvider>(&self, provider: &P, key: &K) -> FilterResult {
@@ -91,7 +64,7 @@ where
             res
         } else {
             let res = self.contains_in_file(provider, key).await;
-            res.unwrap_or(FilterResult::NeedAdditionalCheck)
+            res.unwrap_or_default()
         }
     }
 
@@ -99,7 +72,7 @@ where
         self.offload_from_memory()
     }
 
-    fn checked_add_assign(&mut self, other: &Self) -> Option<()> {
+    fn checked_add_assign(&mut self, other: &Self) -> bool {
         self.checked_add_assign(other)
     }
 
@@ -201,7 +174,8 @@ impl Bloom {
     }
 
     /// Merge filters
-    pub fn checked_add_assign(&mut self, other: &Bloom) -> Option<()> {
+    #[must_use]
+    pub fn checked_add_assign(&mut self, other: &Bloom) -> bool {
         match (&mut self.inner, &other.inner) {
             (Some(inner), Some(other_inner)) if inner.len() == other_inner.len() => {
                 inner
@@ -209,9 +183,9 @@ impl Bloom {
                     .iter_mut()
                     .zip(other_inner.as_raw_slice())
                     .for_each(|(a, b)| *a |= *b);
-                Some(())
+                true
             }
-            _ => None,
+            _ => false,
         }
     }
 

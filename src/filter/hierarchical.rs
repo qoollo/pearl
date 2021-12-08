@@ -123,17 +123,13 @@ where
     }
 
     fn merge_filters(dest: &mut Option<Filter>, source: Option<&Filter>) {
-        match source {
-            Some(source_filter) => {
-                let res = match dest {
-                    Some(dest_filter) => dest_filter.checked_add_assign(source_filter),
-                    _ => None,
-                };
-                if res.is_none() {
-                    *dest = None;
-                }
-            }
-            None => *dest = None,
+        if !dest
+            .as_mut()
+            .zip(source)
+            .map(|(dest, source)| dest.checked_add_assign(source))
+            .unwrap_or(false)
+        {
+            *dest = None;
         }
     }
 }
@@ -167,18 +163,25 @@ where
     async fn offload_buffer(&mut self, needed_memory: usize, level: usize) -> usize {
         let mut freed = 0;
         let mut parents = BTreeSet::new();
+        // Firstly try to free needed amount of memory by offloading childs
         for child in self.children.iter_mut().flatten() {
             if freed >= needed_memory {
                 return freed;
             }
-            parents.insert(child.parent);
+            // Collect parents of childs to go through them further
+            // Skip if level is low
+            if level >= self.level {
+                parents.insert(child.parent);
+            }
             freed += child
                 .data
                 .offload_buffer(needed_memory - freed, level)
                 .await;
         }
         match level.cmp(&self.level) {
+            // Level of current container is higher than we need to offload
             std::cmp::Ordering::Less => freed,
+            // Offload filters from nodes starting from deeper ones
             _ => {
                 while !parents.is_empty() {
                     let mut new_parents = BTreeSet::new();
@@ -275,8 +278,10 @@ where
     /// Add child to collection
     pub async fn push(&mut self, child: Child) -> ChildId {
         if self.children.len() < self.group_size {
+            // Add child to root child list
             let res = self.add_child(self.root, child).await;
             if self.children.len() >= self.group_size {
+                // Replace root with new node and push to it
                 let new_root_id = self.inner.len();
                 let filter = {
                     let root = self.root_mut();
@@ -293,29 +298,32 @@ where
             }
             res
         } else {
-            let mut id = self.last_inner_container().unwrap();
+            // Push child to node
+            let mut id = self.last_inner_node().unwrap();
             if self.get(id).children.len() >= self.group_size {
-                id = self.new_inner_container();
+                // Create new node if needed
+                id = self.new_inner_node();
             }
             self.add_child(id, child).await
         }
     }
 
-    async fn add_child(&mut self, container: InnerId, child: Child) -> ChildId {
+    // Add child to node and adds child filter data to node and it's parents
+    async fn add_child(&mut self, node: InnerId, child: Child) -> ChildId {
         let item_filter = Self::get_filter_from_child(&child).await;
         let inner_id = self.inner.len();
         let child_id = self.children.len();
         self.inner.push(Some(Inner::Leaf(InnerLeaf {
-            parent: container,
+            parent: node,
             leaf: child_id,
         })));
 
         let mut parent = {
-            let node = self.get_mut(container);
+            let node = self.get_mut(node);
             if node.children.is_empty() {
                 Self::init_filter_from_cow(&mut node.filter, &item_filter);
             } else {
-                Self::add_filter_from_item(&mut node.filter, &item_filter);
+                Self::add_filter_from_cow(&mut node.filter, &item_filter);
             }
             node.children.push(inner_id);
             node.parent
@@ -323,20 +331,20 @@ where
 
         while let Some(id) = parent {
             let node = self.get_mut(id);
-            Self::add_filter_from_item(&mut node.filter, &item_filter);
+            Self::add_filter_from_cow(&mut node.filter, &item_filter);
             parent = node.parent;
         }
 
         drop(item_filter);
         let child = Leaf {
             data: child,
-            parent: container,
+            parent: node,
         };
         self.children.push(Some(child));
         child_id
     }
 
-    fn last_inner_container(&self) -> Option<InnerId> {
+    fn last_inner_node(&self) -> Option<InnerId> {
         self.root().children.last().copied()
     }
 
@@ -388,7 +396,7 @@ where
             }
         }
     }
-    fn add_filter_from_item(dest: &mut Option<Filter>, item: &Option<Cow<'_, Filter>>)
+    fn add_filter_from_cow(dest: &mut Option<Filter>, item: &Option<Cow<'_, Filter>>)
     where
         Filter: Clone,
     {
@@ -437,15 +445,15 @@ impl<Key, Filter, Child> HierarchicalFilters<Key, Filter, Child> {
         }
     }
 
-    fn new_inner_container(&mut self) -> InnerId {
-        let container = Inner::Node(InnerNode {
+    fn new_inner_node(&mut self) -> InnerId {
+        let node = Inner::Node(InnerNode {
             parent: Some(self.root),
             ..Default::default()
         });
-        let container_id = self.inner.len();
-        self.root_mut().children.push(container_id);
-        self.inner.push(Some(container));
-        container_id
+        let node_id = self.inner.len();
+        self.root_mut().children.push(node_id);
+        self.inner.push(Some(node));
+        node_id
     }
 
     /// Remove last child from collection
@@ -599,21 +607,29 @@ where
 {
     type Item = (ChildId, &'a Leaf<Child>);
 
+    /// Postorder traversal implementation for HierarchicalFilters
+    /// Ignores nodes which not contains key and returns leafs
     fn next(&mut self) -> Option<Self::Item> {
+        // Iter to next leaf
         while let Some((index, Inner::Node(node))) = self.stack.last().copied() {
             let len = node.children.len();
             if index >= len {
+                // Remove last node from stack if all it's childs was seen
                 self.stack.pop();
             } else {
+                // Get next child of node and push it to stack
+                // Iterate in reverse order if `self.rev` flag is `true`
                 self.stack.last_mut().map(|(id, _)| *id += 1);
                 if let Some(inner) = self
                     .this
                     .get_inner(node.children[if self.rev { len - index - 1 } else { index }])
                 {
                     match inner {
+                        // Ignore nodes which is not contains key
                         Inner::Node(node)
                             if node.filter.as_ref().map(|f| f.contains_fast(&self.key))
                                 == Some(FilterResult::NotContains) => {}
+                        // Ignore if leaf was removed
                         Inner::Leaf(leaf) if self.this.get_child(leaf.leaf).is_none() => {}
                         _ => {
                             self.stack.push((0, inner));

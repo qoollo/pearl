@@ -1054,7 +1054,9 @@ impl<K: Key + 'static> BloomProvider<K> for Storage<K> {
                 .map(|b| b.get_filter_fast())
                 .flatten()
             {
-                filter.checked_add_assign(active_filter)?;
+                if !filter.checked_add_assign(active_filter) {
+                    return None;
+                }
             }
         }
         ret
