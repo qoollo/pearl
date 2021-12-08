@@ -148,7 +148,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
         .collect::<Vec<_>>();
     debug!("make sure that all keys was written");
     common::check_all_written(&storage, keys).await?;
-    common::close_storage(new_storage, path).await.unwrap();
+    common::close_storage(storage).await.unwrap();
     assert!(index.exists());
     fs::remove_dir_all(path).unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -303,7 +303,7 @@ async fn test_index_from_blob() {
     let index_file_path = path.join("test.0.index");
     fs::remove_file(&index_file_path).unwrap();
     let new_storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
-    common::close_storage(new_storage, path).await.unwrap();
+    common::close_storage(new_storage).await.unwrap();
     assert!(index_file_path.exists());
     fs::remove_dir_all(path).unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
