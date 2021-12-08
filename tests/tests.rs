@@ -140,6 +140,12 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let handles = handles.try_collect::<Vec<_>>().await.unwrap();
     let index = path.join("test.0.index");
     sleep(Duration::from_millis(64)).await;
+    if !index.exist() {
+        println!("Index does not exists");
+        for e in fs::read_dir(path).unwrap() {
+            println!("{:?}", e.unwrap().path());
+        }
+    }
     assert!(index.exists());
     assert_eq!(handles.len(), threads);
     let keys = indexes
