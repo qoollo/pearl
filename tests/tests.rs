@@ -140,13 +140,6 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let handles = handles.try_collect::<Vec<_>>().await.unwrap();
     let index = path.join("test.0.index");
     sleep(Duration::from_millis(64)).await;
-    if !index.exist() {
-        println!("Index does not exists");
-        for e in fs::read_dir(path).unwrap() {
-            println!("{:?}", e.unwrap().path());
-        }
-    }
-    assert!(index.exists());
     assert_eq!(handles.len(), threads);
     let keys = indexes
         .iter()
@@ -156,6 +149,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
     debug!("make sure that all keys was written");
     common::check_all_written(&storage, keys).await?;
     common::clean(storage, path).await.unwrap();
+    assert!(index.exists());
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     Ok(())
 }
@@ -308,11 +302,10 @@ async fn test_index_from_blob() {
     let index_file_path = path.join("test.0.index");
     fs::remove_file(&index_file_path).unwrap();
     let new_storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
-    new_storage.fsyncdata().await.unwrap();
-    assert!(index_file_path.exists());
     common::clean(new_storage, path)
         .map(|res| res.expect("clean failed"))
         .await;
+    assert!(index_file_path.exists());
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
