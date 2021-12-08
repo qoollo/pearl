@@ -293,7 +293,7 @@ async fn test_index_from_blob() {
     let now = Instant::now();
     let path = common::init("index_from_blob");
     let storage = common::create_test_storage(&path, 70_000).await.unwrap();
-    let records = common::generate_records(10, 10_000);
+    let records = common::generate_records(20, 10_000);
     for (i, data) in &records {
         write_one(&storage, *i, data, None).await.unwrap();
         sleep(Duration::from_millis(10)).await;
