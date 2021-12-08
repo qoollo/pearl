@@ -302,6 +302,7 @@ async fn test_index_from_blob() {
     let index_file_path = path.join("test.0.index");
     fs::remove_file(&index_file_path).unwrap();
     let new_storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
+    new_storage.fsyncdata().await.unwrap();
     assert!(index_file_path.exists());
     common::clean(new_storage, path)
         .map(|res| res.expect("clean failed"))
