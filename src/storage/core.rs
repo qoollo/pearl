@@ -58,7 +58,7 @@ where
     for<'a> K: Key<'a>,
 {
     pub(crate) active_blob: Option<Box<Blob<K>>>,
-    pub(crate) blobs: Arc<RwLock<Vec<Blob<K>>>>,
+    pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, Bloom, Blob<K>>>>,
 }
 
 async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
@@ -367,8 +367,8 @@ where
         }
         let blobs = safe.blobs.read().await;
         let entries_closed_blobs = blobs
-            .iter()
-            .map(|b| b.read_all_entries(key))
+            .iter_possible_childs(key)
+            .map(|b| b.1.data.read_all_entries(key))
             .collect::<FuturesUnordered<_>>();
         entries_closed_blobs
             .try_filter_map(future::ok)
@@ -399,35 +399,28 @@ where
 
     async fn get_data_last(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         let blobs = safe.blobs.read().await;
-        let blobs_stream: FuturesOrdered<_> = blobs
-            .iter()
-            .enumerate()
-            .map(|(i, blob)| async move {
-                if blob
-                    .check_filters(key)
-                    .await
-                    .map_err(|e| {
-                        error!("Failed to check filter for key {:?}: {}", key, e);
-                        e
-                    })
-                    .unwrap_or(false)
-                {
-                    Some(i)
+        let possible_blobs = blobs
+            .iter_possible_childs_rev(key)
+            .map(|(id, blob)| async move {
+                if matches!(blob.data.check_filters(key).await, Ok(true)) {
+                    Some(id)
                 } else {
                     None
                 }
             })
-            .collect();
-        let possible_blobs: Vec<_> = blobs_stream.filter_map(|e| e).collect().await;
+            .collect::<FuturesOrdered<_>>()
+            .filter_map(|x| x)
+            .collect::<Vec<_>>()
+            .await;
         debug!(
             "len of possible blobs: {} (start len: {})",
             possible_blobs.len(),
             blobs.len()
         );
         let stream: FuturesOrdered<_> = possible_blobs
-            .iter()
-            .rev()
-            .map(|i| blobs[*i].read_any(key, meta, false))
+            .into_iter()
+            .filter_map(|id| blobs.get_child(id))
+            .map(|blob| blob.data.read_any(key, meta, false))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
@@ -438,8 +431,8 @@ where
     async fn get_data_any(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         let blobs = safe.blobs.read().await;
         let stream: FuturesUnordered<_> = blobs
-            .iter()
-            .map(|blob| blob.read_any(key, meta, true))
+            .iter_possible_childs_rev(key)
+            .map(|blob| blob.1.data.read_any(key, meta, true))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
@@ -499,25 +492,6 @@ where
         } else {
             0
         }
-    }
-
-    /// Returns memory allocated for bloom filter buffer
-    pub async fn filter_memory_allocated(&self) -> usize {
-        let safe = self.inner.safe.read().await;
-        let active = safe
-            .active_blob
-            .as_ref()
-            .map_or(0, |blob| blob.filter_memory_allocated());
-
-        let closed: usize = safe
-            .blobs
-            .read()
-            .await
-            .iter()
-            .map(|blob| blob.filter_memory_allocated())
-            .sum();
-
-        active + closed
     }
 
     /// Returns next blob ID. If pearl dir structure wasn't changed from the outside,
@@ -589,7 +563,9 @@ where
 
         let mut safe = self.inner.safe.write().await;
         safe.active_blob = active_blob;
-        *safe.blobs.write().await = blobs;
+        *safe.blobs.write().await =
+            HierarchicalFilters::from_vec(self.inner.config.bloom_filter_group_size(), 1, blobs)
+                .await;
         self.inner
             .next_blob_id
             .store(safe.max_id().await.map_or(0, |i| i + 1), ORD);
@@ -740,8 +716,8 @@ where
             }
         }
         let blobs = inner.blobs.read().await;
-        for blob in blobs.iter() {
-            if blob.contains(key, meta).await? {
+        for blob in blobs.iter_possible_childs(key) {
+            if blob.1.data.contains(key, meta).await? {
                 return Ok(true);
             }
         }
@@ -797,18 +773,6 @@ where
         Some(in_closed_offloaded)
     }
 
-    /// Offload bloom filters for closed blobs
-    pub async fn offload_bloom(&self) {
-        trace!("offload bloom filters");
-        let inner = self.inner.safe.read().await;
-        inner
-            .blobs
-            .write()
-            .await
-            .iter_mut()
-            .for_each(|blob| blob.offload_filter());
-    }
-
     /// Total records count in storage.
     pub async fn records_count(&self) -> usize {
         self.inner.records_count().await
@@ -856,8 +820,8 @@ where
 {
     fn new(config: Config, ioring: Option<Rio>) -> Self {
         Self {
+            safe: Arc::new(RwLock::new(Safe::new(config.bloom_filter_group_size()))),
             config,
-            safe: Arc::new(RwLock::new(Safe::new())),
             next_blob_id: Arc::new(AtomicUsize::new(0)),
             ioring,
         }
@@ -910,7 +874,7 @@ where
             // always true
             if let Some(ablob) = safe.active_blob.take() {
                 ablob.fsyncdata().await?;
-                safe.blobs.write().await.push(*ablob);
+                safe.blobs.write().await.push(*ablob).await;
             }
             Ok(())
         }
@@ -989,16 +953,16 @@ impl<K> Safe<K>
 where
     for<'a> K: Key<'a> + 'static,
 {
-    fn new() -> Self {
+    fn new(group_size: usize) -> Self {
         Self {
             active_blob: None,
-            blobs: Arc::new(RwLock::new(Vec::new())),
+            blobs: Arc::new(RwLock::new(HierarchicalFilters::new(group_size, 1))),
         }
     }
 
     async fn max_id(&self) -> Option<usize> {
         let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
-        let blobs_max_id = self.blobs.read().await.last().map(Blob::id);
+        let blobs_max_id = self.blobs.read().await.last().map(|x| x.id());
         active_blob_id.max(blobs_max_id)
     }
 
@@ -1034,7 +998,7 @@ where
     pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob<K>>) -> Result<()> {
         let old_active = self.active_blob.replace(blob);
         if let Some(blob) = old_active {
-            self.blobs.write().await.push(*blob);
+            self.blobs.write().await.push(*blob).await;
         }
         Ok(())
     }
@@ -1081,3 +1045,68 @@ pub trait Key<'a>:
 
 /// Trait for reference key type
 pub trait RefKey<'a>: Ord + From<&'a [u8]> {}
+#[async_trait::async_trait]
+impl<K> BloomProvider<K> for Storage<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
+    type Filter = <Blob<K> as BloomProvider<K>>::Filter;
+    async fn check_filter(&self, item: &K) -> FilterResult {
+        let inner = self.inner.safe.read().await;
+        let active = inner
+            .active_blob
+            .as_ref()
+            .map(|b| b.check_filter_fast(item))
+            .unwrap_or_default();
+        let ret = inner.blobs.read().await.check_filter(item).await;
+        ret + active
+    }
+
+    fn check_filter_fast(&self, _item: &K) -> FilterResult {
+        FilterResult::NeedAdditionalCheck
+    }
+
+    async fn offload_buffer(&mut self, needed_memory: usize, level: usize) -> usize {
+        let inner = self.inner.safe.read().await;
+        let ret = inner
+            .blobs
+            .write()
+            .await
+            .offload_buffer(needed_memory, level)
+            .await;
+        ret
+    }
+
+    async fn get_filter(&self) -> Option<Self::Filter> {
+        let inner = self.inner.safe.read().await;
+        let mut ret = inner.blobs.read().await.get_filter_fast().cloned();
+        if let Some(filter) = &mut ret {
+            if let Some(active_filter) = inner
+                .active_blob
+                .as_ref()
+                .map(|b| b.get_filter_fast())
+                .flatten()
+            {
+                if !filter.checked_add_assign(active_filter) {
+                    return None;
+                }
+            }
+        }
+        ret
+    }
+
+    fn get_filter_fast(&self) -> Option<&Self::Filter> {
+        None
+    }
+
+    async fn filter_memory_allocated(&self) -> usize {
+        let safe = self.inner.safe.read().await;
+        let active = safe
+            .active_blob
+            .as_ref()
+            .map_or(0, |blob| blob.filter_memory_allocated());
+
+        let closed = safe.blobs.read().await.filter_memory_allocated().await;
+        active + closed
+    }
+}

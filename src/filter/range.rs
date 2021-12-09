@@ -1,7 +1,6 @@
-use super::prelude::*;
+use super::*;
 
-/// NOTE: le and lt operations are written for big-endian format of keys
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub(crate) struct RangeFilter<K>
 where
     for<'a> K: Key<'a>,
@@ -13,18 +12,44 @@ where
     initialized: bool,
 }
 
+#[async_trait::async_trait]
+impl<K> FilterTrait<K> for RangeFilter<K>
+where
+    for<'a> K: Key<'a>,
+{
+    fn add(&mut self, key: &K) {
+        self.add(key);
+    }
+
+    fn contains_fast(&self, key: &K) -> FilterResult {
+        if self.contains(key) {
+            FilterResult::NeedAdditionalCheck
+        } else {
+            FilterResult::NotContains
+        }
+    }
+
+    fn checked_add_assign(&mut self, other: &Self) -> bool {
+        self.add(&other.min);
+        self.add(&other.max);
+        true
+    }
+}
+
 impl<K> RangeFilter<K>
 where
     for<'a> K: Key<'a>,
 {
-    pub(crate) fn new() -> Self {
+    /// Create filter
+    pub fn new() -> Self {
         Self {
             initialized: false,
             ..Default::default()
         }
     }
 
-    pub(crate) fn add(&mut self, key: &K) {
+    /// Add key to filter
+    pub fn add(&mut self, key: &K) {
         if !self.initialized {
             self.min = key.clone();
             self.max = key.clone();
@@ -36,19 +61,23 @@ where
         }
     }
 
-    pub(crate) fn contains(&self, key: &K) -> bool {
+    /// Check if key contains in filter
+    pub fn contains(&self, key: &K) -> bool {
         self.initialized && &self.min <= key && key <= &self.max
     }
 
-    pub(crate) fn clear(&mut self) {
+    /// Clear filter
+    pub fn clear(&mut self) {
         self.initialized = false;
     }
 
-    pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
+    /// Create filter from raw bytes
+    pub fn from_raw(buf: &[u8]) -> Result<Self> {
         bincode::deserialize(&buf).map_err(|e| e.into())
     }
 
-    pub(crate) fn to_raw(&self) -> Result<Vec<u8>> {
+    /// Convert filter to raw bytes
+    pub fn to_raw(&self) -> Result<Vec<u8>> {
         bincode::serialize(&self).map_err(|e| e.into())
     }
 }

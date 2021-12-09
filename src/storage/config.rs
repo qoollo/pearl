@@ -13,6 +13,7 @@ pub(crate) struct Config {
     index: IndexConfig,
     dump_sem: Arc<Semaphore>,
     corrupted_dir_name: String,
+    bloom_filter_group_size: usize,
 }
 
 // Getters
@@ -71,6 +72,10 @@ impl Config {
     pub fn dump_sem(&self) -> Arc<Semaphore> {
         self.dump_sem.clone()
     }
+
+    pub fn bloom_filter_group_size(&self) -> usize {
+        self.bloom_filter_group_size
+    }
 }
 
 //Setters
@@ -114,6 +119,10 @@ impl Config {
     pub fn set_dump_sem(&mut self, dump_sem: Arc<Semaphore>) {
         self.dump_sem = dump_sem
     }
+
+    pub fn set_bloom_filter_group_size(&mut self, bloom_filter_group_size: usize) {
+        self.bloom_filter_group_size = bloom_filter_group_size
+    }
 }
 
 // Impl Traits
@@ -131,6 +140,7 @@ impl Default for Config {
             index: Default::default(),
             dump_sem: Arc::new(Semaphore::new(1)),
             corrupted_dir_name: "corrupted".into(),
+            bloom_filter_group_size: 8,
         }
     }
 }

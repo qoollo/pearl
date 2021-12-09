@@ -7,7 +7,7 @@ use futures::{
     stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
-use pearl::{Builder, Meta, Storage};
+use pearl::{BloomProvider, Builder, Meta, Storage};
 use rand::{seq::SliceRandom, Rng};
 use std::{
     fs,
@@ -140,7 +140,6 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let handles = handles.try_collect::<Vec<_>>().await.unwrap();
     let index = path.join("test.0.index");
     sleep(Duration::from_millis(64)).await;
-    assert!(index.exists());
     assert_eq!(handles.len(), threads);
     let keys = indexes
         .iter()
@@ -149,7 +148,9 @@ async fn test_multithread_read_write() -> Result<(), String> {
         .collect::<Vec<_>>();
     debug!("make sure that all keys was written");
     common::check_all_written(&storage, keys).await?;
-    common::clean(storage, path).await.unwrap();
+    common::close_storage(storage).await.unwrap();
+    assert!(index.exists());
+    fs::remove_dir_all(path).unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     Ok(())
 }
@@ -293,7 +294,7 @@ async fn test_index_from_blob() {
     let now = Instant::now();
     let path = common::init("index_from_blob");
     let storage = common::create_test_storage(&path, 70_000).await.unwrap();
-    let records = common::generate_records(10, 10_000);
+    let records = common::generate_records(20, 10_000);
     for (i, data) in &records {
         write_one(&storage, *i, data, None).await.unwrap();
         sleep(Duration::from_millis(10)).await;
@@ -302,10 +303,9 @@ async fn test_index_from_blob() {
     let index_file_path = path.join("test.0.index");
     fs::remove_file(&index_file_path).unwrap();
     let new_storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
+    common::close_storage(new_storage).await.unwrap();
     assert!(index_file_path.exists());
-    common::clean(new_storage, path)
-        .map(|res| res.expect("clean failed"))
-        .await;
+    fs::remove_dir_all(path).unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -562,7 +562,7 @@ async fn test_check_bloom_filter_multiple() {
 async fn test_check_bloom_filter_multiple_offloaded() {
     let now = Instant::now();
     let path = common::init("check_bloom_filter_multiple_offloaded");
-    let storage = common::create_test_storage(&path, 20000).await.unwrap();
+    let mut storage = common::create_test_storage(&path, 20000).await.unwrap();
     let data =
         b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
     for i in 1..800 {
@@ -571,7 +571,7 @@ async fn test_check_bloom_filter_multiple_offloaded() {
         sleep(Duration::from_millis(6)).await;
         trace!("blobs count: {}", storage.blobs_count().await);
     }
-    storage.offload_bloom().await;
+    storage.offload_buffer(usize::MAX, 100).await;
     for i in 1..800 {
         assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(true));
     }
