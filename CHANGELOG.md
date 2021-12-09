@@ -16,7 +16,7 @@ Pearl changelog
 #### Updated
 
 
-## [0.9.0]
+## [0.9.0] - 2021-12-09
 #### Added
 - Add hierarchical filters support (#126)
 
