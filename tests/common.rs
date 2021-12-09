@@ -125,6 +125,12 @@ pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<
     fs::remove_dir_all(path).map_err(Into::into)
 }
 
+pub async fn close_storage(storage: Storage<KeyTest>) -> Result<()> {
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    storage.close().await?;
+    Ok(())
+}
+
 pub async fn check_all_written(storage: &Storage<KeyTest>, keys: Vec<u32>) -> Result<(), String> {
     let mut read_futures: FuturesUnordered<_> = keys
         .iter()
