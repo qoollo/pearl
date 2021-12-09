@@ -16,6 +16,11 @@ Pearl changelog
 #### Updated
 
 
+## [0.9.0]
+#### Added
+- Add hierarchical filters support (#126)
+
+
 ## [0.8.1] - 2021-12-02
 #### Added
 - Add key trait (#123)
