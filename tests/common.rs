@@ -125,8 +125,18 @@ pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<
     fs::remove_dir_all(path).map_err(Into::into)
 }
 
-pub async fn close_storage(storage: Storage<KeyTest>) -> Result<()> {
-    std::thread::sleep(std::time::Duration::from_millis(100));
+const MAX_WAIT_CYCLES: usize = 10;
+const WAIT_DELAY: std::time::Duration = std::time::Duration::from_millis(20);
+
+pub async fn close_storage(storage: Storage<KeyTest>, expected_files: &[&PathBuf]) -> Result<()> {
+    let _ = (0..MAX_WAIT_CYCLES).fold(false, |all_files_exists, _| {
+        if !all_files_exists {
+            std::thread::sleep(WAIT_DELAY);
+            expected_files.iter().all(|p| p.exists())
+        } else {
+            all_files_exists
+        }
+    });
     storage.close().await?;
     Ok(())
 }
