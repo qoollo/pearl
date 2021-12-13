@@ -5,10 +5,9 @@ Pearl changelog
 ## [Unreleased]
 #### Added
 - Add hierarchical filters support (#126)
-
+- Add wait cycle for tests with index files (#144)
 
 #### Changed
-
 
 #### Fixed
 
