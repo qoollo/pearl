@@ -126,7 +126,7 @@ pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<
 }
 
 pub async fn close_storage(storage: Storage<KeyTest>, expected_files: &[&PathBuf]) -> Result<()> {
-    wait_for(|| expected_files.iter().all(|p| p.exists()));
+    let _ = wait_for(|| expected_files.iter().all(|p| p.exists()));
     storage.close().await?;
     Ok(())
 }
@@ -192,13 +192,13 @@ pub fn corrupt_file(path: impl AsRef<Path>, corruption_type: CorruptionType) -> 
 const MAX_WAIT_CYCLES: usize = 10;
 const WAIT_DELAY: std::time::Duration = std::time::Duration::from_millis(20);
 
-pub fn wait_for(condition: impl Fn() -> bool) {
-    let _ = (0..MAX_WAIT_CYCLES).fold(condition(), |evaluated, _| {
+pub fn wait_for(condition: impl Fn() -> bool) -> bool {
+    (0..MAX_WAIT_CYCLES).fold(condition(), |evaluated, _| {
         if !evaluated {
             std::thread::sleep(WAIT_DELAY);
             condition()
         } else {
             evaluated
         }
-    });
+    })
 }
