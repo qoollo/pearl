@@ -193,7 +193,7 @@ const MAX_WAIT_CYCLES: usize = 10;
 const WAIT_DELAY: std::time::Duration = std::time::Duration::from_millis(20);
 
 pub fn wait_for(condition: impl Fn() -> bool) {
-    let _ = (0..MAX_WAIT_CYCLES).fold(false, |evaluated, _| {
+    let _ = (0..MAX_WAIT_CYCLES).fold(condition(), |evaluated, _| {
         if !evaluated {
             std::thread::sleep(WAIT_DELAY);
             condition()
