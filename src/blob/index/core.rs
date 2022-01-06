@@ -322,7 +322,7 @@ where
         match &self.inner {
             State::InMemory(headers) => {
                 debug!("index get any in memory headers: {}", headers.len());
-                Ok(headers.get(key).and_then(|h| h.first()).cloned())
+                Ok(headers.get(key).and_then(|h| h.last()).cloned())
             }
             State::OnDisk(findex) => {
                 debug!("index get any on disk");
