@@ -1,15 +1,16 @@
+use crate::error::ValidationErrorKind;
+
 use super::prelude::*;
+use futures::stream::FuturesOrdered;
+use tokio::fs::{create_dir, create_dir_all};
 
 const BLOB_FILE_EXTENSION: &str = "blob";
-const LOCK_FILE: &str = "pearl.lock";
-
-const O_EXCL: i32 = 128;
 
 /// A main storage struct.
 ///
 /// This type is clonable, cloning it will only create a new reference,
 /// not a new storage.
-/// Storage has a type parameter K.
+/// Storage has a type kindeter K.
 /// To perform read/write operations K must implement [`Key`] trait.
 ///
 /// # Examples
@@ -31,37 +32,24 @@ const O_EXCL: i32 = 128;
 /// ```
 ///
 /// [`Key`]: trait.Key.html
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Storage<K: Key> {
-    pub(crate) inner: Inner,
-    observer: Observer,
-    marker: PhantomData<K>,
+    pub(crate) inner: Inner<K>,
+    observer: Observer<K>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Inner {
+pub(crate) struct Inner<K: Key> {
     pub(crate) config: Config,
-    pub(crate) safe: Arc<RwLock<Safe>>,
+    pub(crate) safe: Arc<RwLock<Safe<K>>>,
     next_blob_id: Arc<AtomicUsize>,
     pub(crate) ioring: Option<Rio>,
 }
 
 #[derive(Debug)]
-pub(crate) struct Safe {
-    pub(crate) active_blob: Option<Box<Blob>>,
-    pub(crate) blobs: Arc<RwLock<Vec<Blob>>>,
-    lock_file: Option<StdFile>,
-}
-
-impl<K: Key> Clone for Storage<K> {
-    #[must_use]
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-            observer: self.observer.clone(),
-            marker: PhantomData,
-        }
-    }
+pub(crate) struct Safe<K: Key> {
+    pub(crate) active_blob: Option<Box<Blob<K>>>,
+    pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, Bloom, Blob<K>>>>,
 }
 
 async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
@@ -87,16 +75,12 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     Ok(content)
 }
 
-impl<K: Key> Storage<K> {
+impl<K: Key + 'static> Storage<K> {
     pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
         let dump_sem = config.dump_sem();
         let inner = Inner::new(config, ioring);
         let observer = Observer::new(inner.clone(), dump_sem);
-        Self {
-            inner,
-            observer,
-            marker: PhantomData,
-        }
+        Self { inner, observer }
     }
 
     /// [`init()`] used to prepare all environment to further work.
@@ -105,23 +89,44 @@ impl<K: Key> Storage<K> {
     /// storage creates it, otherwise tries to init existing storage.
     /// # Errors
     /// Returns error in case of failures with IO operations or
-    /// if some of the required params are missed.
+    /// if some of the required kinds are missed.
     ///
     /// [`init()`]: struct.Storage.html#method.init
     pub async fn init(&mut self) -> Result<()> {
+        self.init_ext(true).await
+    }
+
+    /// [`init_lazy()`] used to prepare all environment to further work, but unlike `init`
+    /// doesn't set active blob, which means that first write may take time..
+    ///
+    /// Storage works in directory provided to builder. If directory don't exist,
+    /// storage creates it, otherwise tries to init existing storage.
+    /// # Errors
+    /// Returns error in case of failures with IO operations or
+    /// if some of the required params are missed.
+    ///
+    /// [`init_lazy()`]: struct.Storage.html#method.init
+    pub async fn init_lazy(&mut self) -> Result<()> {
+        self.init_ext(false).await
+    }
+
+    async fn init_ext(&mut self, with_active: bool) -> Result<()> {
         // @TODO implement work dir validation
-        self.prepare_work_dir().await?;
-        let cont_res = work_dir_content(
-            self.inner
-                .config
-                .work_dir()
-                .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?,
-        )
-        .await;
+        self.prepare_work_dir()
+            .await
+            .context("failed to prepare work dir")?;
+        let wd = self
+            .inner
+            .config
+            .work_dir()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
+        let cont_res = work_dir_content(wd)
+            .await
+            .with_context(|| format!("failed to read work dir content: {}", wd.display()));
         trace!("work dir content loaded");
         if let Some(files) = cont_res? {
             trace!("storage init from existing files");
-            self.init_from_existing(files)
+            self.init_from_existing(files, with_active)
                 .await
                 .context("failed to init from existing blobs")?
         } else {
@@ -133,8 +138,87 @@ impl<K: Key> Storage<K> {
         Ok(())
     }
 
+    /// Checks if there is a pending async operation
+    /// Returns boolean value (true - if there is, false otherwise)
+    /// Never falls
+    pub fn is_pending(&self) -> bool {
+        self.observer.is_pending()
+    }
+
+    /// FIXME: maybe it would be better to add check of `is_pending` state of observer for all
+    /// sync operations and return result in more appropriate way for that case (change Result<bool>
+    /// on Result<OpRes>, where OpRes = Pending|Done|NotDone for example)
+
+    /// Checks if active blob is set
+    /// Returns boolean value
+    /// Never falls
+    pub async fn has_active_blob(&self) -> bool {
+        self.inner.has_active_blob().await
+    }
+
+    /// Creates active blob
+    /// NOTICE! This function works in current thread, so it may take time. To perform this
+    /// asyncronously, use [`create_active_blob_in_background()`]
+    /// Returns true if new blob was created else false
+    /// # Errors
+    /// Fails if it's not possible to create new blob
+    /// [`create_active_blob_in_background()`]: struct.Storage.html#method.create_active_blob_async
+    pub async fn try_create_active_blob(&self) -> Result<()> {
+        self.inner.create_active_blob().await
+    }
+
+    /// Creates active blob
+    /// NOTICE! This function returns immediately, so you can't check result of operation. If you
+    /// want be sure about operation's result, use [`try_create_active_blob()`]
+    /// [`try_create_active_blob()`]: struct.Storage.html#method.try_create_active_blob
+    pub async fn create_active_blob_in_background(&self) {
+        self.observer.create_active_blob().await
+    }
+
+    /// Dumps active blob
+    /// NOTICE! This function works in current thread, so it may take time. To perform this
+    /// asyncronously, use [`close_active_blob_in_background()`]
+    /// Returns true if blob was really dumped else false
+    /// # Errors
+    /// Fails if there are some errors during dump
+    /// [`close_active_blob_in_background()`]: struct.Storage.html#method.create_active_blob_async
+    pub async fn try_close_active_blob(&self) -> Result<()> {
+        let result = self.inner.close_active_blob().await;
+        self.observer.try_dump_old_blob_indexes().await;
+        result
+    }
+
+    /// Dumps active blob
+    /// NOTICE! This function returns immediately, so you can't check result of operation. If you
+    /// want be sure about operation's result, use [`try_close_active_blob()`]
+    pub async fn close_active_blob_in_background(&self) {
+        self.observer.close_active_blob().await;
+        self.observer.try_dump_old_blob_indexes().await
+    }
+
+    /// Sets last blob from closed blobs as active if there is no active blobs
+    /// NOTICE! This function works in current thread, so it may take time. To perform this
+    /// asyncronously, use [`restore_active_blob_in_background()`]
+    /// Returns true if last blob was set as active as false
+    /// # Errors
+    /// Fails if active blob is set or there is no closed blobs
+    /// [`restore_active_blob_in_background()`]: struct.Storage.html#method.restore_active_blob_async
+    pub async fn try_restore_active_blob(&self) -> Result<()> {
+        self.inner.restore_active_blob().await
+    }
+
+    /// Sets last blob from closed blobs as active if there is no active blobs
+    /// NOTICE! This function returns immediately, so you can't check result of operation. If you
+    /// want be sure about operation's result, use [`try_restore_active_blob()`]
+    /// [`try_restore_active_blob()`]: struct.Storage.html#method.try_restore_active_blob
+    pub async fn restore_active_blob_in_background(&self) {
+        self.observer.restore_active_blob().await
+    }
+
     /// Writes `data` to active blob asyncronously. If active blob reaches it limit, creates new
     /// and closes old.
+    /// NOTICE! First write into storage without active blob may take more time due to active blob
+    /// creation
     /// # Examples
     /// ```no-run
     /// async fn write_data() {
@@ -148,8 +232,7 @@ impl<K: Key> Storage<K> {
     ///
     /// [`write_with`]: Storage::write_with
     pub async fn write(&self, key: impl AsRef<K>, value: Vec<u8>) -> Result<()> {
-        self.write_with_optional_meta(key.as_ref(), value, None)
-            .await
+        self.write_with_optional_meta(key, value, None).await
     }
 
     /// Similar to [`write`] but with metadata
@@ -166,21 +249,27 @@ impl<K: Key> Storage<K> {
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
     pub async fn write_with(&self, key: impl AsRef<K>, value: Vec<u8>, meta: Meta) -> Result<()> {
-        self.write_with_optional_meta(key.as_ref(), value, Some(meta))
-            .await
+        self.write_with_optional_meta(key, value, Some(meta)).await
     }
 
     async fn write_with_optional_meta(
         &self,
-        key: &K,
+        key: impl AsRef<K>,
         value: Vec<u8>,
         meta: Option<Meta>,
     ) -> Result<()> {
+        let key = key.as_ref();
         debug!("storage write with {:?}, {}b, {:?}", key, value.len(), meta);
-        if !self.inner.config.allow_duplicates()
-            && self.contains_with(key.as_ref(), meta.as_ref()).await?
-        {
-            warn!("record with key {:?} and meta {:?} exists", key, meta);
+        // if active blob is set, this function will only check this fact and return false
+        if self.try_create_active_blob().await.is_ok() {
+            info!("Active blob was set during write operation");
+        }
+        if !self.inner.config.allow_duplicates() && self.contains_with(key, meta.as_ref()).await? {
+            warn!(
+                "record with key {:?} and meta {:?} exists",
+                key.as_ref(),
+                meta
+            );
             return Ok(());
         }
         let record = Record::create(key, value, meta.unwrap_or_default())
@@ -219,8 +308,9 @@ impl<K: Key> Storage<K> {
     /// [`read_with`]: Storage::read_with
     #[inline]
     pub async fn read(&self, key: impl AsRef<K>) -> Result<Vec<u8>> {
-        debug!("storage read {:?}", key.as_ref());
-        self.read_with_optional_meta(key.as_ref(), None).await
+        let key = key.as_ref();
+        debug!("storage read {:?}", key);
+        self.read_with_optional_meta(key, None).await
     }
     /// Reads data matching given key and metadata
     /// # Examples
@@ -249,7 +339,7 @@ impl<K: Key> Storage<K> {
     /// # Errors
     /// Fails after any disk IO errors.
     pub async fn read_all(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
-        let key = key.as_ref().as_ref();
+        let key = key.as_ref();
         let mut all_entries = Vec::new();
         let safe = self.inner.safe.read().await;
         let active_blob = safe
@@ -265,8 +355,8 @@ impl<K: Key> Storage<K> {
         }
         let blobs = safe.blobs.read().await;
         let entries_closed_blobs = blobs
-            .iter()
-            .map(|b| b.read_all_entries(key))
+            .iter_possible_childs(key)
+            .map(|b| b.1.data.read_all_entries(key))
             .collect::<FuturesUnordered<_>>();
         entries_closed_blobs
             .try_filter_map(future::ok)
@@ -283,30 +373,55 @@ impl<K: Key> Storage<K> {
     async fn read_with_optional_meta(&self, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
-        let key = key.as_ref();
-        let active_blob_read_res = safe
-            .active_blob
-            .as_ref()
-            .ok_or_else(Error::active_blob_not_set)?
-            .read_any(key, meta)
-            .await;
-        debug!("storage read with optional meta from active blob finished");
-        match active_blob_read_res {
-            Ok(data) => {
-                debug!("storage read with optional meta active blob returned data");
-                Ok(data)
-            }
-            Err(e) => {
-                debug!("read with optional meta active blob returned: {:#?}", e);
-                Self::get_any_data(&safe, key, meta).await
+        if let Some(ablob) = safe.active_blob.as_ref() {
+            match ablob.read_any(key, meta, true).await {
+                Ok(data) => {
+                    debug!("storage read with optional meta active blob returned data");
+                    return Ok(data);
+                }
+                Err(e) => debug!("read with optional meta active blob returned: {:#?}", e),
             }
         }
+        Self::get_any_data(&safe, key, meta).await
     }
 
-    async fn get_any_data(safe: &Safe, key: &[u8], meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_last(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
         let blobs = safe.blobs.read().await;
-        let stream: FuturesUnordered<_> =
-            blobs.iter().map(|blob| blob.read_any(key, meta)).collect();
+        let possible_blobs = blobs
+            .iter_possible_childs_rev(key)
+            .map(|(id, blob)| async move {
+                if matches!(blob.data.check_filters(key).await, Ok(true)) {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .collect::<FuturesOrdered<_>>()
+            .filter_map(|x| x)
+            .collect::<Vec<_>>()
+            .await;
+        debug!(
+            "len of possible blobs: {} (start len: {})",
+            possible_blobs.len(),
+            blobs.len()
+        );
+        let stream: FuturesOrdered<_> = possible_blobs
+            .into_iter()
+            .filter_map(|id| blobs.get_child(id))
+            .map(|blob| blob.data.read_any(key, meta, false))
+            .collect();
+        debug!("read with optional meta {} closed blobs", stream.len());
+        let mut task = stream.skip_while(Result::is_err);
+        task.next().await.ok_or_else(Error::not_found)?
+    }
+
+    #[allow(dead_code)]
+    async fn get_data_any(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+        let blobs = safe.blobs.read().await;
+        let stream: FuturesUnordered<_> = blobs
+            .iter_possible_childs_rev(key)
+            .map(|blob| blob.1.data.read_any(key, meta, true))
+            .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
         task.next()
@@ -315,47 +430,8 @@ impl<K: Key> Storage<K> {
             .with_context(|| "no results in closed blobs")
     }
 
-    /// Mark as deleted entries with matching key
-    /// # Errors
-    /// Fails after any disk IO errors.
-    pub async fn mark_all_as_deleted(&self, key: impl AsRef<K>) -> Result<u64> {
-        let mut total = 0;
-        total += self.mark_all_as_deleted_active(key.as_ref()).await?;
-        total += self.mark_all_as_deleted_closed(key.as_ref()).await?;
-        debug!("{} deleted total", total);
-        Ok(total)
-    }
-
-    async fn mark_all_as_deleted_closed(&self, key: &K) -> Result<u64> {
-        let safe = self.inner.safe.write().await;
-        let mut blobs = safe.blobs.write().await;
-        let entries_closed_blobs = blobs
-            .iter_mut()
-            .map(|b| b.mark_all_as_deleted(key))
-            .collect::<FuturesUnordered<_>>();
-        let total = entries_closed_blobs
-            .filter_map(|result| match result {
-                Ok(count) => count,
-                Err(error) => {
-                    warn!("failed to delete records: {}", error);
-                    None
-                }
-            })
-            .fold(0, |a, b| a + b)
-            .await;
-        debug!("{} deleted from closed blobs", total);
-        Ok(total)
-    }
-
-    async fn mark_all_as_deleted_active(&self, key: &K) -> Result<u64> {
-        let mut safe = self.inner.safe.write().await;
-        let active_blob = safe
-            .active_blob
-            .as_deref_mut()
-            .ok_or_else(Error::active_blob_not_set)?;
-        let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
-        debug!("{} deleted from active blob", count);
-        Ok(count)
+    async fn get_any_data(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+        Self::get_data_last(safe, key, meta).await
     }
 
     /// Stop blob updater and release lock file
@@ -372,14 +448,6 @@ impl<K: Key> Storage<K> {
                     .map(|_| info!("active blob dumped"))
                     .with_context(|| format!("blob {} dump failed", blob.name())),
             )
-        }
-        safe.lock_file = None;
-        if let Some(work_dir) = self.inner.config.work_dir() {
-            res = res.and(
-                std::fs::remove_file(work_dir.join(LOCK_FILE))
-                    .map(|_| info!("lock released"))
-                    .with_context(|| "failed to remove lockfile ({:?})"),
-            );
         }
         res
     }
@@ -432,7 +500,7 @@ impl<K: Key> Storage<K> {
             debug!("work dir exists: {}", path.display());
         } else if self.inner.config.create_work_dir() {
             debug!("creating work dir recursively: {}", path.display());
-            std::fs::create_dir_all(path)?;
+            create_dir_all(path).await?;
         } else {
             error!("work dir path not found: {}", path.display());
             return Err(Error::work_dir_unavailable(
@@ -442,40 +510,20 @@ impl<K: Key> Storage<K> {
             ))
             .with_context(|| "failed to prepare work dir");
         }
-        self.try_lock_dir(path).await
-    }
-
-    async fn try_lock_dir<'a>(&'a self, path: &'a Path) -> Result<()> {
-        let lock_file_path = path.join(LOCK_FILE);
-        debug!("try to open lock file: {}", lock_file_path.display());
-        let lock_file = StdOpenOptions::new()
-            .create(true)
-            .write(true)
-            .custom_flags(O_EXCL)
-            .open(&lock_file_path)
-            .map_err(|e| {
-                error!("working directory is locked: {:?}", lock_file_path);
-                error!("check if any other bob instances are running");
-                error!("or delete .lock file and try again");
-                e
-            })?;
-        debug!("{} not locked", path.display());
-        self.inner.safe.write().await.lock_file = Some(lock_file);
         Ok(())
     }
 
     async fn init_new(&mut self) -> Result<()> {
         let next = self.inner.next_blob_name()?;
-        let config = self.filter_config();
         let mut safe = self.inner.safe.write().await;
-        let blob = Blob::open_new(next, self.inner.ioring.clone(), config)
+        let blob = Blob::open_new(next, self.inner.ioring.clone(), self.inner.config.index())
             .await?
             .boxed();
         safe.active_blob = Some(blob);
         Ok(())
     }
 
-    async fn init_from_existing(&mut self, files: Vec<DirEntry>) -> Result<()> {
+    async fn init_from_existing(&mut self, files: Vec<DirEntry>, with_active: bool) -> Result<()> {
         trace!("init from existing: {:#?}", files);
         let disk_access_sem = self.observer.get_dump_sem();
         let mut blobs = Self::read_blobs(
@@ -489,27 +537,40 @@ impl<K: Key> Storage<K> {
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
-        let mut active_blob = blobs
-            .pop()
-            .ok_or_else(|| {
-                let wd = self.inner.config.work_dir();
-                error!("There are some blob files in the work dir: {:?}", wd);
-                error!("Creating blobs from all these files failed");
-                Error::from(ErrorKind::Uninitialized)
-            })?
-            .boxed();
-        let mut safe = self.inner.safe.write().await;
-        active_blob.load_index(K::LEN).await?;
+
+        let active_blob = if with_active {
+            Some(Self::pop_active(&mut blobs, &self.inner.config).await?)
+        } else {
+            None
+        };
+
         for blob in &mut blobs {
             debug!("dump all blobs except active blob");
             blob.dump().await?;
         }
-        safe.active_blob = Some(active_blob);
-        *safe.blobs.write().await = blobs;
+
+        let mut safe = self.inner.safe.write().await;
+        safe.active_blob = active_blob;
+        *safe.blobs.write().await =
+            HierarchicalFilters::from_vec(self.inner.config.bloom_filter_group_size(), 1, blobs)
+                .await;
         self.inner
             .next_blob_id
             .store(safe.max_id().await.map_or(0, |i| i + 1), ORD);
         Ok(())
+    }
+
+    async fn pop_active(blobs: &mut Vec<Blob<K>>, config: &Config) -> Result<Box<Blob<K>>> {
+        let mut active_blob = blobs
+            .pop()
+            .ok_or_else(|| {
+                let wd = config.work_dir();
+                error!("No blobs in {:?} to create an active one", wd);
+                Error::from(ErrorKind::Uninitialized)
+            })?
+            .boxed();
+        active_blob.load_index().await?;
+        Ok(active_blob)
     }
 
     async fn read_blobs(
@@ -517,7 +578,7 @@ impl<K: Key> Storage<K> {
         ioring: Option<Rio>,
         disk_access_sem: Arc<Semaphore>,
         config: &Config,
-    ) -> Result<Vec<Blob>> {
+    ) -> Result<Vec<Blob<K>>> {
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
         debug!("read {} entities", dir_content.len());
@@ -535,7 +596,7 @@ impl<K: Key> Storage<K> {
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(file.clone(), ioring.clone(), config.filter(), K::LEN)
+                Blob::from_file(file.clone(), ioring.clone(), config.index())
                     .await
                     .map_err(|e| (e, file))
             })
@@ -546,12 +607,20 @@ impl<K: Key> Storage<K> {
             match blob_res {
                 Ok(blob) => blobs.push(blob),
                 Err((e, file)) => {
-                    let msg = format!(
-                        "Failed to read existing blob!\nPath: {:?};\nReason: {:?}.",
-                        file, e
-                    );
+                    let msg = format!("Failed to read existing blob: {}", file.display());
                     if config.ignore_corrupted() {
-                        error!("{}", msg);
+                        error!("{}, cause: {:#}", msg, e);
+                    } else if Self::should_save_corrupted_blob(&e) {
+                        error!(
+                            "save corrupted blob '{}' to directory '{}'",
+                            file.display(),
+                            config.corrupted_dir_name()
+                        );
+                        Self::save_corrupted_blob(&file, config.corrupted_dir_name())
+                            .await
+                            .with_context(|| {
+                                anyhow!(format!("failed to save corrupted blob {:?}", file))
+                            })?;
                     } else {
                         return Err(e.context(msg));
                     }
@@ -561,17 +630,73 @@ impl<K: Key> Storage<K> {
         Ok(blobs)
     }
 
+    fn should_save_corrupted_blob(error: &anyhow::Error) -> bool {
+        debug!("decide wether to save corrupted blobs: {:#}", error);
+        if let Some(error) = error.downcast_ref::<Error>() {
+            return match error.kind() {
+                ErrorKind::Bincode(_) => true,
+                ErrorKind::Validation { kind, cause: _ } => {
+                    !matches!(kind, ValidationErrorKind::BlobVersion)
+                }
+                _ => false,
+            };
+        }
+        false
+    }
+
+    async fn save_corrupted_blob(path: &Path, corrupted_dir_name: &str) -> Result<()> {
+        let parent = path
+            .parent()
+            .ok_or_else(|| anyhow!("[{}] blob path don't have parent directory", path.display()))?;
+        let file_name = path
+            .file_name()
+            .ok_or_else(|| anyhow!("[{}] blob path don't have file name", path.display()))?
+            .to_os_string();
+        let corrupted_dir_path = parent.join(corrupted_dir_name);
+        let corrupted_path = corrupted_dir_path.join(file_name);
+        if corrupted_dir_path.exists() {
+            debug!("{} dir exists", path.display());
+        } else {
+            debug!("creating dir for corrupted files: {}", path.display());
+            create_dir(corrupted_dir_path).await.with_context(|| {
+                format!(
+                    "failed to create dir for corrupted files: {}",
+                    path.display()
+                )
+            })?;
+        }
+        tokio::fs::rename(&path, &corrupted_path)
+            .await
+            .with_context(|| {
+                anyhow!(format!(
+                    "failed to move file {:?} to {:?}",
+                    path, corrupted_path
+                ))
+            })?;
+        Self::remove_index_by_blob_path(path).await?;
+        Ok(())
+    }
+
+    async fn remove_index_by_blob_path(path: &Path) -> Result<()> {
+        let index_path = path.with_extension(blob::BLOB_INDEX_FILE_EXTENSION);
+        if index_path.exists() {
+            tokio::fs::remove_file(&index_path)
+                .await
+                .with_context(|| anyhow!(format!("failed to remove file {:?}", index_path)))?;
+        }
+        Ok(())
+    }
+
     /// `contains` is used to check whether a key is in storage.
     /// Slower than `check_bloom`, because doesn't prevent disk IO operations.
     /// `contains` returns either "definitely in storage" or "definitely not".
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn contains(&self, key: K) -> Result<bool> {
-        let key = key.as_ref();
-        self.contains_with(key, None).await
+    pub async fn contains(&self, key: impl AsRef<K>) -> Result<bool> {
+        self.contains_with(key.as_ref(), None).await
     }
 
-    async fn contains_with(&self, key: &[u8], meta: Option<&Meta>) -> Result<bool> {
+    async fn contains_with(&self, key: &K, meta: Option<&Meta>) -> Result<bool> {
         let inner = self.inner.safe.read().await;
         if let Some(active_blob) = &inner.active_blob {
             if active_blob.contains(key, meta).await? {
@@ -579,8 +704,8 @@ impl<K: Key> Storage<K> {
             }
         }
         let blobs = inner.blobs.read().await;
-        for blob in blobs.iter() {
-            if blob.contains(key, meta).await? {
+        for blob in blobs.iter_possible_childs(key) {
+            if blob.1.data.contains(key, meta).await? {
                 return Ok(true);
             }
         }
@@ -588,28 +713,52 @@ impl<K: Key> Storage<K> {
         Ok(false)
     }
 
-    /// `check_bloom` is used to check whether a key is in storage.
-    /// If bloom filter opt out, returns `None`.
-    /// Uses bloom filter under the hood, so false positive results are possible,
-    /// but false negatives are not.
-    /// In other words, `check_bloom` returns either "possibly in storage" or "definitely not".
-    pub async fn check_bloom(&self, key: impl AsRef<K>) -> Option<bool> {
+    /// `check_filters` is used to check whether a key is in storage.
+    /// Range (min-max test) and bloom filters are used.
+    /// If bloom filter opt out and range filter passes, returns `None`.
+    /// False positive results are possible, but false negatives are not.
+    /// In other words, `check_filters` returns either "possibly in storage" or "definitely not".
+    pub async fn check_filters(&self, key: impl AsRef<K>) -> Option<bool> {
         let key = key.as_ref();
-        trace!("[{:?}] check in blobs bloom filter", &key.to_vec());
+        trace!("[{:?}] check in blobs bloom filter", key);
         let inner = self.inner.safe.read().await;
-        let in_active = inner
-            .active_blob
-            .as_ref()
-            .map_or(Some(false), |active_blob| {
-                active_blob.check_bloom(key.as_ref())
-            })?;
-        let in_closed = inner
-            .blobs
-            .read()
-            .await
+        let in_active = if let Some(active_blob) = inner.active_blob.as_ref() {
+            active_blob
+                .check_filters(key)
+                .await
+                .map_err(|e| {
+                    error!(
+                        "Failed to check filter for active blob for key {:?}: {}",
+                        key, e
+                    );
+                    e
+                })
+                .unwrap_or(false)
+        } else {
+            false
+        };
+        if in_active {
+            return Some(true);
+        }
+
+        let blobs = inner.blobs.read().await;
+        let (offloaded, in_memory): (Vec<&Blob<K>>, Vec<&Blob<K>>) =
+            blobs.iter().partition(|blob| blob.is_filter_offloaded());
+
+        let in_closed = in_memory
             .iter()
-            .any(|blob| blob.check_bloom(key.as_ref()) == Some(true));
-        Some(in_active || in_closed)
+            .any(|blob| blob.check_filters_in_memory(key));
+        if in_closed {
+            return Some(true);
+        }
+
+        let in_closed_offloaded = offloaded
+            .iter()
+            .map(|blob| blob.check_filters(key))
+            .collect::<FuturesUnordered<_>>()
+            .any(|value| value.unwrap_or(false))
+            .await;
+        Some(in_closed_offloaded)
     }
 
     /// Total records count in storage.
@@ -636,34 +785,150 @@ impl<K: Key> Storage<K> {
         self.inner.fsyncdata().await
     }
 
-    /// Force closes active blob to dump index on disk and free RAM.
+    /// Force updates active blob on new one to dump index of old one on disk and free RAM.
+    /// This function was used previously instead of [`close_active_blob_in_background()`]
     /// Creates new active blob.
     /// # Errors
     /// Fails because of any IO errors.
-    /// Or if there are any problems with syncronization.
-    pub async fn close_active_blob(&self) {
-        self.observer.close_active_blob().await
-    }
-
-    fn filter_config(&self) -> Option<BloomConfig> {
-        self.inner.config.filter()
+    /// Or if there are some problems with syncronization.
+    /// [`close_active_blob_in_background()`]: struct.Storage.html#method.close_active_blob_async
+    pub async fn force_update_active_blob(&self, predicate: ActiveBlobPred) {
+        self.observer.force_update_active_blob(predicate).await;
+        self.observer.try_dump_old_blob_indexes().await
     }
 
     fn launch_observer(&mut self) {
         self.observer.run();
     }
+
+    /// Mark as deleted entries with matching key
+    /// # Errors
+    /// Fails after any disk IO errors.
+    pub async fn mark_all_as_deleted(&self, key: impl AsRef<K>) -> Result<u64> {
+        let mut total = 0;
+        total += self.mark_all_as_deleted_active(key.as_ref()).await?;
+        total += self.mark_all_as_deleted_closed(key.as_ref()).await?;
+        debug!("{} deleted total", total);
+        Ok(total)
+    }
+
+    async fn mark_all_as_deleted_closed(&self, key: &K) -> Result<u64> {
+        let safe = self.inner.safe.write().await;
+        let mut blobs = safe.blobs.write().await;
+        let entries_closed_blobs = blobs
+            .iter_mut()
+            .map(|b| b.mark_all_as_deleted(key))
+            .collect::<FuturesUnordered<_>>();
+        let total = entries_closed_blobs
+            .filter_map(|result| match result {
+                Ok(count) => count,
+                Err(error) => {
+                    warn!("failed to delete records: {}", error);
+                    None
+                }
+            })
+            .fold(0, |a, b| a + b)
+            .await;
+        debug!("{} deleted from closed blobs", total);
+        Ok(total)
+    }
+
+    async fn mark_all_as_deleted_active(&self, key: &K) -> Result<u64> {
+        let mut safe = self.inner.safe.write().await;
+        let active_blob = safe
+            .active_blob
+            .as_deref_mut()
+            .ok_or_else(Error::active_blob_not_set)?;
+        let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
+        debug!("{} deleted from active blob", count);
+        Ok(count)
+    }
 }
 
-impl Inner {
+impl<K: Key + 'static> Inner<K> {
     fn new(config: Config, ioring: Option<Rio>) -> Self {
         Self {
+            safe: Arc::new(RwLock::new(Safe::new(config.bloom_filter_group_size()))),
             config,
-            safe: Arc::new(RwLock::new(Safe::new())),
             next_blob_id: Arc::new(AtomicUsize::new(0)),
             ioring,
         }
     }
 
+    pub(crate) async fn restore_active_blob(&self) -> Result<()> {
+        if self.has_active_blob().await {
+            return Err(Error::active_blob_already_exists().into());
+        }
+        let mut safe = self.safe.write().await;
+        if let None = safe.active_blob {
+            let blob_opt = safe.blobs.write().await.pop().map(|b| b.boxed());
+            if let Some(blob) = blob_opt {
+                safe.active_blob = Some(blob);
+                Ok(())
+            } else {
+                Err(Error::uninitialized().into())
+            }
+        } else {
+            Err(Error::active_blob_not_set().into())
+        }
+    }
+
+    pub(crate) async fn create_active_blob(&self) -> Result<()> {
+        if self.has_active_blob().await {
+            return Err(Error::active_blob_already_exists().into());
+        }
+        let mut safe = self.safe.write().await;
+        if let None = safe.active_blob {
+            let next = self.next_blob_name()?;
+            let config = self.config.index();
+            let blob = Blob::open_new(next, self.ioring.clone(), config)
+                .await?
+                .boxed();
+            safe.active_blob = Some(blob);
+            Ok(())
+        } else {
+            Ok(())
+        }
+    }
+
+    pub(crate) async fn close_active_blob(&self) -> Result<()> {
+        if !self.has_active_blob().await {
+            return Err(Error::active_blob_doesnt_exist().into());
+        }
+        let mut safe = self.safe.write().await;
+        if safe.active_blob.is_none() {
+            Err(Error::active_blob_doesnt_exist().into())
+        } else {
+            // always true
+            if let Some(ablob) = safe.active_blob.take() {
+                ablob.fsyncdata().await?;
+                safe.blobs.write().await.push(*ablob).await;
+            }
+            Ok(())
+        }
+    }
+
+    pub(crate) async fn has_active_blob(&self) -> bool {
+        if let None = self.safe.read().await.active_blob {
+            false
+        } else {
+            true
+        }
+    }
+
+    pub(crate) async fn active_blob_stat(&self) -> Option<ActiveBlobStat> {
+        if let Some(ablob) = self.safe.read().await.active_blob.as_ref() {
+            let records_count = ablob.records_count();
+            let index_memory = ablob.index_memory();
+            let file_size = ablob.file_size() as usize;
+            Some(ActiveBlobStat::new(records_count, index_memory, file_size))
+        } else {
+            None
+        }
+    }
+
+    // FIXME: Maybe we should revert counter if new blob creation failed?
+    // It'll make code a bit more complicated, but blobs will sequentially grow for sure
     pub(crate) fn next_blob_name(&self) -> Result<blob::FileName> {
         let next_id = self.next_blob_id.fetch_add(1, ORD);
         let prefix = self
@@ -707,23 +972,22 @@ impl Inner {
         self.safe.read().await.fsyncdata().await
     }
 
-    pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
+    pub(crate) async fn try_dump_old_blob_indexes(&self, sem: Arc<Semaphore>) {
         self.safe.write().await.try_dump_old_blob_indexes(sem).await;
     }
 }
 
-impl Safe {
-    fn new() -> Self {
+impl<K: Key + 'static> Safe<K> {
+    fn new(group_size: usize) -> Self {
         Self {
             active_blob: None,
-            blobs: Arc::new(RwLock::new(Vec::new())),
-            lock_file: None,
+            blobs: Arc::new(RwLock::new(HierarchicalFilters::new(group_size, 1))),
         }
     }
 
     async fn max_id(&self) -> Option<usize> {
         let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
-        let blobs_max_id = self.blobs.read().await.last().map(Blob::id);
+        let blobs_max_id = self.blobs.read().await.last().map(|x| x.id());
         active_blob_id.max(blobs_max_id)
     }
 
@@ -756,12 +1020,11 @@ impl Safe {
         Ok(())
     }
 
-    pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob>) -> Result<()> {
-        let old_active = self
-            .active_blob
-            .replace(blob)
-            .ok_or_else(Error::active_blob_not_set)?;
-        self.blobs.write().await.push(*old_active);
+    pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob<K>>) -> Result<()> {
+        let old_active = self.active_blob.replace(blob);
+        if let Some(blob) = old_active {
+            self.blobs.write().await.push(*blob).await;
+        }
         Ok(())
     }
 
@@ -785,12 +1048,75 @@ impl Safe {
 }
 
 /// Trait `Key`
-pub trait Key: AsRef<[u8]> + Debug {
+pub trait Key: AsRef<[u8]> + Debug + Clone + Send + Sync + Ord + From<Vec<u8>> + Default {
     /// Key must have fixed length
     const LEN: u16;
 
     /// Convert `Self` into `Vec<u8>`
     fn to_vec(&self) -> Vec<u8> {
         self.as_ref().to_vec()
+    }
+}
+
+#[async_trait::async_trait]
+impl<K: Key + 'static> BloomProvider<K> for Storage<K> {
+    type Filter = <Blob<K> as BloomProvider<K>>::Filter;
+    async fn check_filter(&self, item: &K) -> FilterResult {
+        let inner = self.inner.safe.read().await;
+        let active = inner
+            .active_blob
+            .as_ref()
+            .map(|b| b.check_filter_fast(item))
+            .unwrap_or_default();
+        let ret = inner.blobs.read().await.check_filter(item).await;
+        ret + active
+    }
+
+    fn check_filter_fast(&self, _item: &K) -> FilterResult {
+        FilterResult::NeedAdditionalCheck
+    }
+
+    async fn offload_buffer(&mut self, needed_memory: usize, level: usize) -> usize {
+        let inner = self.inner.safe.read().await;
+        let ret = inner
+            .blobs
+            .write()
+            .await
+            .offload_buffer(needed_memory, level)
+            .await;
+        ret
+    }
+
+    async fn get_filter(&self) -> Option<Self::Filter> {
+        let inner = self.inner.safe.read().await;
+        let mut ret = inner.blobs.read().await.get_filter_fast().cloned();
+        if let Some(filter) = &mut ret {
+            if let Some(active_filter) = inner
+                .active_blob
+                .as_ref()
+                .map(|b| b.get_filter_fast())
+                .flatten()
+            {
+                if !filter.checked_add_assign(active_filter) {
+                    return None;
+                }
+            }
+        }
+        ret
+    }
+
+    fn get_filter_fast(&self) -> Option<&Self::Filter> {
+        None
+    }
+
+    async fn filter_memory_allocated(&self) -> usize {
+        let safe = self.inner.safe.read().await;
+        let active = safe
+            .active_blob
+            .as_ref()
+            .map_or(0, |blob| blob.filter_memory_allocated());
+
+        let closed = safe.blobs.read().await.filter_memory_allocated().await;
+        active + closed
     }
 }

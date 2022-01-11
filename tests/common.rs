@@ -6,11 +6,16 @@ use env_logger::fmt::Color;
 use futures::{future, stream::futures_unordered::FuturesUnordered, FutureExt, StreamExt};
 use log::Level;
 use rand::Rng;
-use std::{env, fs, io::Write, path::Path, path::PathBuf};
+use std::{
+    env, fs,
+    io::{Seek, SeekFrom, Write},
+    path::Path,
+    path::PathBuf,
+};
 
 use pearl::{Builder, Key, Storage};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyTest(Vec<u8>);
 
 impl AsRef<[u8]> for KeyTest {
@@ -21,12 +26,25 @@ impl AsRef<[u8]> for KeyTest {
 
 impl AsRef<KeyTest> for KeyTest {
     fn as_ref(&self) -> &KeyTest {
-        &self
+        self
     }
 }
 
 impl Key for KeyTest {
     const LEN: u16 = 4;
+}
+
+impl Default for KeyTest {
+    fn default() -> Self {
+        Self(vec![0; 4])
+    }
+}
+
+impl From<Vec<u8>> for KeyTest {
+    fn from(mut v: Vec<u8>) -> Self {
+        v.resize(KeyTest::LEN as usize, 0);
+        Self(v)
+    }
 }
 
 impl KeyTest {
@@ -107,6 +125,12 @@ pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<
     fs::remove_dir_all(path).map_err(Into::into)
 }
 
+pub async fn close_storage(storage: Storage<KeyTest>) -> Result<()> {
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    storage.close().await?;
+    Ok(())
+}
+
 pub async fn check_all_written(storage: &Storage<KeyTest>, keys: Vec<u32>) -> Result<(), String> {
     let mut read_futures: FuturesUnordered<_> = keys
         .iter()
@@ -141,4 +165,26 @@ pub fn generate_records(count: usize, avg_size: usize) -> Vec<(u32, Vec<u8>)> {
             (gen.gen(), buf)
         })
         .collect()
+}
+
+pub enum CorruptionType {
+    ZeroedAtBegin(u64),
+}
+
+pub fn corrupt_file(path: impl AsRef<Path>, corruption_type: CorruptionType) -> Result<()> {
+    let mut file = std::fs::OpenOptions::new()
+        .create(false)
+        .write(true)
+        .truncate(false)
+        .open(path)?;
+    let size = file.metadata()?.len();
+    match corruption_type {
+        CorruptionType::ZeroedAtBegin(zeroed_size) => {
+            let write_size = zeroed_size.min(size);
+            file.seek(SeekFrom::Start(0))?;
+            file.write_all(&vec![0u8; write_size as usize])?;
+        }
+    }
+    file.sync_all()?;
+    Ok(())
 }

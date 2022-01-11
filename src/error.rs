@@ -21,8 +21,9 @@ impl Error {
         Self::new(Kind::WrongFileNamePattern(path))
     }
 
-    pub(crate) fn validation(cause: impl Into<String>) -> Self {
-        Self::new(Kind::Validation(cause.into()))
+    pub(crate) fn validation(kind: ValidationErrorKind, cause: impl Into<String>) -> Self {
+        let cause = cause.into();
+        Self::new(Kind::Validation { kind, cause })
     }
 
     pub(crate) fn uninitialized() -> Self {
@@ -31,6 +32,14 @@ impl Error {
 
     pub(crate) fn active_blob_not_set() -> Self {
         Self::new(Kind::ActiveBlobNotSet)
+    }
+
+    pub(crate) fn active_blob_doesnt_exist() -> Self {
+        Self::new(Kind::ActiveBlobDoesntExist)
+    }
+
+    pub(crate) fn active_blob_already_exists() -> Self {
+        Self::new(Kind::ActiveBlobExists)
     }
 
     pub(crate) fn not_found() -> Self {
@@ -101,6 +110,10 @@ pub enum Kind {
     FileUnavailable(IOErrorKind),
     /// Storage was initialized with different key size
     KeySizeMismatch,
+    /// Active blob doesn't exist
+    ActiveBlobDoesntExist,
+    /// Active blob already exists
+    ActiveBlobExists,
     /// Record with the same key and the same metadata already exists
     RecordExists,
     /// Any error not part of this list
@@ -115,8 +128,49 @@ pub enum Kind {
     WrongFileNamePattern(PathBuf),
     /// Conversion error
     Conversion(String),
-    /// Record validation errors, eg. magic byte check
-    Validation(String),
+    /// Validation errors, eg. magic byte check
+    Validation {
+        /// Describes what check failed.
+        kind: ValidationErrorKind,
+        /// Description of an error cause.
+        cause: String,
+    },
+
     /// Other error
     Other,
+}
+
+/// Variants of validation errors.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ValidationErrorKind {
+    /// Blob key size.
+    BlobKeySize,
+    /// Blob magic byte.
+    BlobMagicByte,
+    /// Blob version.
+    BlobVersion,
+    /// Index checksum.
+    IndexChecksum,
+    /// Existing index write was successfully finished.
+    IndexIsWritten,
+    /// Index version.
+    IndexVersion,
+    /// Record data checksum.
+    RecordDataChecksum,
+    /// Record header checksum.
+    RecordHeaderChecksum,
+    /// Record magic byte.
+    RecordMagicByte,
+}
+
+/// Convenient helper for downcasting anyhow error to pearl error.
+pub trait AsPearlError {
+    /// Performs conversion.
+    fn as_pearl_error(&self) -> Option<&Error>;
+}
+
+impl AsPearlError for anyhow::Error {
+    fn as_pearl_error(&self) -> Option<&Error> {
+        self.downcast_ref()
+    }
 }
