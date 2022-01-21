@@ -9,10 +9,10 @@ use super::FileName;
 pub(crate) const BLOB_VERSION: u32 = 1;
 pub(crate) const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub(crate) struct Header {
-    magic_byte: u64,
-    version: u32,
+    pub magic_byte: u64,
+    pub version: u32,
     flags: u64,
 }
 

@@ -2,24 +2,36 @@ use crate::{error::ValidationErrorKind, prelude::*};
 
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
 pub struct Record {
-    header: Header,
-    meta: Meta,
-    data: Vec<u8>,
+    pub header: Header,
+    pub meta: Meta,
+    pub data: Vec<u8>,
+}
+
+impl Debug for Record {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(
+            f,
+            "Record(header={:?}, meta={:?}, data_size={})",
+            self.header,
+            self.meta.0,
+            self.data.len()
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Header {
-    magic_byte: u64,
+    pub magic_byte: u64,
     key: Vec<u8>,
-    meta_size: u64,
-    data_size: u64,
+    pub meta_size: u64,
+    pub data_size: u64,
     flags: u8,
     blob_offset: u64,
     created: u64,
-    data_checksum: u32,
-    header_checksum: u32,
+    pub data_checksum: u32,
+    pub header_checksum: u32,
 }
 
 /// Struct representing additional meta information. Helps to distinguish different
@@ -244,5 +256,11 @@ impl Header {
 
     fn crc32(&self) -> bincode::Result<u32> {
         self.to_raw().map(|raw| CRC32C.checksum(&raw))
+    }
+
+    pub(crate) fn with_reversed_key_bytes(mut self) -> bincode::Result<Self> {
+        self.key.reverse();
+        self.update_checksum()?;
+        Ok(self)
     }
 }

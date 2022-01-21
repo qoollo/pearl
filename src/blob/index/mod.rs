@@ -2,15 +2,16 @@ use crate::prelude::*;
 
 mod bptree;
 mod core;
-mod header;
+pub(crate) mod header;
 mod simple;
 mod tools;
 
 #[cfg(test)]
 mod benchmarks;
 
-use bptree::BPTreeFileIndex;
+pub(crate) use bptree::BPTreeFileIndex;
 use header::IndexHeader;
+pub(crate) use simple::SimpleFileIndex;
 
 pub(crate) use self::core::{
     FileIndexTrait, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,

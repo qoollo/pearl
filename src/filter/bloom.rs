@@ -101,7 +101,7 @@ pub struct Config {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Save {
+pub(crate) struct Save {
     config: Config,
     buf: Vec<u64>,
     bits_count: usize,
