@@ -5,6 +5,7 @@ Pearl changelog
 ## [Unreleased]
 #### Added
 - Add hierarchical filters support (#126)
+- Add tools to recover and migrate blobs and indexes (#148)
 
 
 #### Changed
