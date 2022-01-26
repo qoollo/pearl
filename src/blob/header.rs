@@ -41,10 +41,7 @@ impl Header {
     }
 
     fn validate(&self) -> Result<()> {
-        if self.magic_byte != BLOB_MAGIC_BYTE {
-            let param = ValidationErrorKind::BlobMagicByte;
-            return Err(Error::validation(param, "blob header magic byte mismatch").into());
-        }
+        self.validate_without_version()?;
         if self.version != BLOB_VERSION {
             let cause = format!(
                 "old blob version: {}, expected: {}",
@@ -53,6 +50,14 @@ impl Header {
             return Err(Error::validation(ValidationErrorKind::BlobVersion, cause).into());
         }
 
+        Ok(())
+    }
+
+    pub fn validate_without_version(&self) -> Result<()> {
+        if self.magic_byte != BLOB_MAGIC_BYTE {
+            let param = ValidationErrorKind::BlobMagicByte;
+            return Err(Error::validation(param, "blob header magic byte mismatch").into());
+        }
         Ok(())
     }
 }

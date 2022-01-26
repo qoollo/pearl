@@ -1,3 +1,5 @@
+use crate::error::ValidationErrorKind;
+
 use super::prelude::*;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -70,6 +72,14 @@ impl IndexHeader {
     #[inline]
     pub(crate) fn from_raw(buf: &[u8]) -> bincode::Result<Self> {
         bincode::deserialize(buf)
+    }
+
+    pub(crate) fn validate_without_version(&self) -> Result<()> {
+        if !self.is_written() {
+            let param = ValidationErrorKind::RecordMagicByte;
+            return Err(Error::validation(param, "missing 'written' bit").into());
+        }
+        Ok(())
     }
 }
 
