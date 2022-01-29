@@ -399,21 +399,22 @@ async fn test_read_with() {
     debug!("storage created");
     let key = 2345;
     trace!("key: {}", key);
-    let data = b"some_random_data";
-    trace!("data: {:?}", data);
-    write_one(&storage, key, data, Some("1.0")).await.unwrap();
-    debug!("first data written");
-    let data = b"some data with different version";
-    trace!("data: {:?}", data);
-    write_one(&storage, key, data, Some("2.0")).await.unwrap();
-    debug!("second data written");
+    let data1 = b"some_random_data";
+    trace!("data1: {:?}", data1);
+    write_one(&storage, key, data1, Some("1.0")).await.unwrap();
+    debug!("data1 written");
+    let data2 = b"some data with different version";
+    trace!("data2: {:?}", data2);
+    write_one(&storage, key, data2, Some("2.0")).await.unwrap();
+    debug!("data2 written");
     let key = KeyTest::new(key);
-    let data_read_with = storage.read_with(&key, &meta_with("2.0")).await.unwrap();
+    let data_read_with = storage.read_with(&key, &meta_with("1.0")).await.unwrap();
     debug!("read with finished");
     let data_read = storage.read(&key).await.unwrap();
     debug!("read finished");
+    // data_read - last record, data_read_with - first record with "1.0" meta
     assert_ne!(data_read_with, data_read);
-    assert_eq!(data_read_with, data);
+    assert_eq!(data_read_with, data1);
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
