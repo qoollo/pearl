@@ -11,6 +11,7 @@ Pearl changelog
 
 
 #### Fixed
+- In memory index last record retrieval
 
 
 #### Updated
