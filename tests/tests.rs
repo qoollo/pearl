@@ -4,7 +4,7 @@ extern crate log;
 use anyhow::Result;
 use futures::{
     future::FutureExt,
-    stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
+    stream::{futures_unordered::FuturesUnordered, FuturesOrdered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
 use pearl::{BloomProvider, Builder, Meta, Storage};
@@ -401,21 +401,22 @@ async fn test_read_with() {
     debug!("storage created");
     let key = 2345;
     trace!("key: {}", key);
-    let data = b"some_random_data";
-    trace!("data: {:?}", data);
-    write_one(&storage, key, data, Some("1.0")).await.unwrap();
-    debug!("first data written");
-    let data = b"some data with different version";
-    trace!("data: {:?}", data);
-    write_one(&storage, key, data, Some("2.0")).await.unwrap();
-    debug!("second data written");
+    let data1 = b"some_random_data";
+    trace!("data1: {:?}", data1);
+    write_one(&storage, key, data1, Some("1.0")).await.unwrap();
+    debug!("data1 written");
+    let data2 = b"some data with different version";
+    trace!("data2: {:?}", data2);
+    write_one(&storage, key, data2, Some("2.0")).await.unwrap();
+    debug!("data2 written");
     let key = KeyTest::new(key);
-    let data_read_with = storage.read_with(&key, &meta_with("2.0")).await.unwrap();
+    let data_read_with = storage.read_with(&key, &meta_with("1.0")).await.unwrap();
     debug!("read with finished");
     let data_read = storage.read(&key).await.unwrap();
     debug!("read finished");
+    // data_read - last record, data_read_with - first record with "1.0" meta
     assert_ne!(data_read_with, data_read);
-    assert_eq!(data_read_with, data);
+    assert_eq!(data_read_with, data1);
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
@@ -936,4 +937,69 @@ async fn test_blob_header_validation() {
     );
     assert!(is_correct);
     common::clean(storage, path).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_in_memory_and_disk_records_retrieval() -> Result<()> {
+    let path = common::init("in_memory_and_disk_records_retrieval");
+    let max_blob_size = 1_000_000;
+    let records_amount = 30u32;
+    let on_disk_key = 0;
+    let half_disk_half_memory_key = records_amount / 2 / 2 + 1;
+    let in_memory_key = records_amount / 2 - 1;
+    let keys = [on_disk_key, half_disk_half_memory_key, in_memory_key];
+    let records = common::build_rep_data(500, &mut [17, 40, 29, 7, 75], records_amount as usize);
+
+    let mut storage = Builder::new()
+        .work_dir(&path)
+        .blob_file_name_prefix("test")
+        .max_blob_size(max_blob_size)
+        .allow_duplicates()
+        // records_amount / 2 + 2 - on disk, records_amount / 2 - 2 - in memory (17, 13)
+        .max_data_in_blob(records_amount as u64 / 2 + 2)
+        .build()?;
+
+    let res = storage.init().await;
+    assert!(res.is_ok());
+
+    info!("write (0..{})", records_amount);
+    for i in 0..records_amount {
+        sleep(Duration::from_millis(100)).await;
+        let res = write_one(&storage, i / 2, &records[i as usize], None).await;
+        assert!(res.is_ok());
+    }
+
+    while storage.blobs_count().await < 2 {
+        sleep(Duration::from_millis(200)).await;
+    }
+
+    assert_eq!(
+        (storage.blobs_count().await, storage.records_count().await),
+        (2, 30)
+    );
+
+    for key in keys {
+        let record = storage.read(KeyTest::new(key)).await;
+        assert_eq!(record?, records[key as usize * 2 + 1]);
+    }
+
+    for key in keys {
+        let read_records = storage
+            .read_all(&KeyTest::new(key))
+            .and_then(|entries| {
+                entries
+                    .into_iter()
+                    .map(|e| e.load())
+                    .collect::<FuturesOrdered<_>>()
+                    .map(|e| e.map(|r| r.into_data()))
+                    .try_collect::<Vec<_>>()
+            })
+            .await;
+        assert!(common::cmp_records_collections(
+            read_records?,
+            &records[(key as usize * 2)..(key as usize * 2 + 2)]
+        ));
+    }
+
+    Ok(())
 }

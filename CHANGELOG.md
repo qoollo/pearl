@@ -10,6 +10,7 @@ Pearl changelog
 #### Changed
 
 #### Fixed
+- In memory index last record retrieval
 
 
 #### Updated

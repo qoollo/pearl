@@ -202,3 +202,30 @@ pub fn wait_for(condition: impl Fn() -> bool) -> bool {
         }
     })
 }
+
+pub fn build_rep_data(data_size: usize, slice: &mut [u8], records_amount: usize) -> Vec<Vec<u8>> {
+    let mut res = Vec::new();
+    for i in 0..records_amount {
+        slice[0] = (i % 256) as u8;
+        let mut data = Vec::new();
+        for _ in 0..(data_size / slice.len()) {
+            data.extend(slice.iter());
+        }
+        res.push(data);
+    }
+    res
+}
+
+pub fn cmp_records_collections(mut got: Vec<Vec<u8>>, expected: &[Vec<u8>]) -> bool {
+    if got.len() != expected.len() {
+        false
+    } else {
+        got.sort();
+        got.iter()
+            .zip(expected.iter())
+            .map(|(a, b)| a == b)
+            .filter(|b| *b)
+            .count()
+            == got.len()
+    }
+}
