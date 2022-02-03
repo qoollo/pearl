@@ -4,14 +4,12 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-- Add hierarchical filters support (#126)
-
+- Add wait cycle for tests with index files (#144)
 
 #### Changed
 
-
 #### Fixed
-- In memory index last record retrieval
+- In memory index last record retrieval (#147)
 
 
 #### Updated
