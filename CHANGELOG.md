@@ -6,6 +6,7 @@ Pearl changelog
 #### Added
 - Add record delete api method ([#103](https://github.com/qoollo/pearl/pull/103)) 
 
+
 #### Changed
 
 
@@ -13,6 +14,15 @@ Pearl changelog
 
 
 #### Updated
+
+
+## [0.9.1] - 2022-02-03
+#### Added
+- Add wait cycle for tests with index files (#144)
+
+
+#### Fixed
+- In memory index last record retrieval (#147)
 
 
 ## [0.9.0] - 2021-12-09
