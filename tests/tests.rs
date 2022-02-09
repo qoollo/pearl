@@ -885,7 +885,7 @@ async fn test_memory_index() {
 #[tokio::test]
 async fn test_mark_as_deleted_single() {
     let now = Instant::now();
-    let path = common::init("write_1_000_000_records_with_same_key");
+    let path = common::init("mark_as_deleted_single");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let count = 30;
     let delete_key = KeyTest::new(5);

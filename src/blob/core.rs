@@ -537,23 +537,24 @@ impl RawRecords {
 }
 
 pub(crate) fn filter_deleted_headers(headers: Vec<RecordHeader>) -> Vec<RecordHeader> {
-    let mut headers_map: BTreeMap<Vec<u8>, Vec<RecordHeader>> = BTreeMap::new();
-    // Avoid of unnecessary copying keys
-    for header in headers {
-        if let Some(v) = headers_map.get_mut(header.key()) {
-            v.push(header)
-        } else {
-            headers_map.insert(header.key().to_vec(), vec![header]);
+    let deleted = headers.iter().fold(BTreeMap::new(), |mut map, h| {
+        if h.is_deleted() {
+            let entry = map.entry(h.key().to_vec()).or_insert(h.created());
+            *entry = h.created().max(*entry);
         }
+        map
+    });
+    if deleted.is_empty() {
+        return headers;
     }
 
-    headers_map
-        .into_values()
-        .flat_map(|mut headers| {
-            headers.sort_by_key(|h| h.created());
-            headers.into_iter().rev().take_while(|h| !h.is_deleted())
-        })
-        .collect()
+    let mut new_headers = vec![];
+    for header in headers {
+        if deleted.get(header.key()).cloned().unwrap_or_default() < header.created() {
+            new_headers.push(header);
+        }
+    }
+    new_headers
 }
 
 #[async_trait::async_trait]
