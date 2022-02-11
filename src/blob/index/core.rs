@@ -261,6 +261,11 @@ impl<FileIndex: FileIndexTrait<K>, K: Key> IndexStruct<FileIndex, K> {
             0
         }
     }
+
+    fn mark_all_as_deleted_in_memory(headers: &mut InMemoryIndex<K>, key: &K) -> Option<u64> {
+        debug!("headers: {}", headers.len());
+        headers.remove(key).map(|v| v.len() as u64)
+    }
 }
 
 #[async_trait::async_trait]
@@ -356,6 +361,17 @@ where
                 .as_ref()
                 .map(|mem| mem.records_count)
                 .expect("No memory info in `InMemory` State"),
+        }
+    }
+
+    fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
+        debug!("mark all as deleted by {:?} key", key);
+        match &mut self.inner {
+            State::InMemory(headers) => Ok(Self::mark_all_as_deleted_in_memory(headers, key)),
+            State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
+                "Index is closed, delete is unavalaible".to_string(),
+            ))
+            .into()),
         }
     }
 }

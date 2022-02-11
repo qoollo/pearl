@@ -886,6 +886,24 @@ async fn test_memory_index() {
 }
 
 #[tokio::test]
+async fn test_mark_as_deleted_single() {
+    let now = Instant::now();
+    let path = common::init("mark_as_deleted_single");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
+    let count = 30;
+    let delete_key = KeyTest::new(5);
+    let records = common::generate_records(count, 1000);
+    for (key, data) in &records {
+        write_one(&storage, *key, data, None).await.unwrap();
+        sleep(Duration::from_millis(64)).await;
+    }
+    storage.mark_all_as_deleted(&delete_key).await.unwrap();
+    assert!(!storage.contains(delete_key).await.unwrap());
+    common::clean(storage, path).await.expect("clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
 async fn test_blob_header_validation() {
     use pearl::error::{AsPearlError, ValidationErrorKind};
     use std::os::unix::fs::FileExt;
