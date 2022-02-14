@@ -4,7 +4,6 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-- Add record delete api method ([#103](https://github.com/qoollo/pearl/pull/103)) 
 
 
 #### Changed
@@ -14,6 +13,11 @@ Pearl changelog
 
 
 #### Updated
+
+
+## [0.9.2] - 2022-02-14
+#### Added
+- Add record delete api method (#103)
 
 
 ## [0.9.1] - 2022-02-03
