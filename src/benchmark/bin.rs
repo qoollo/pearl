@@ -78,9 +78,7 @@ async fn start_app() {
 
     let futures_limit: usize = matches.value_of("futures_limit").unwrap().parse().unwrap();
 
-    let prepared: Vec<_> = (0..futures_limit)
-        .map(|_| generator.next().unwrap())
-        .collect();
+    let prepared = (0..futures_limit).map(|_| generator.next().unwrap());
 
     let mut futures_pool: FuturesUnordered<_> = prepared
         .into_iter()
@@ -134,47 +132,47 @@ async fn start_app() {
     writer.close().await;
 }
 
-fn prepare_matches<'a>() -> ArgMatches<'a> {
+fn prepare_matches() -> ArgMatches {
     App::new("benchmark")
         .arg(
-            Arg::with_name("value_size")
-                .short("v")
+            Arg::new("value_size")
+                .short('v')
                 .default_value("90")
                 .help("KB, by default 90"),
         )
         .arg(
-            Arg::with_name("limit")
-                .short("l")
+            Arg::new("limit")
+                .short('l')
                 .default_value("100")
                 .help("MB, by default 100"),
         )
         .arg(
-            Arg::with_name("max_reports")
-                .short("m")
+            Arg::new("max_reports")
+                .short('m')
                 .default_value("0")
                 .help("0 - unlimited"),
         )
-        .arg(Arg::with_name("dst_dir").short("d").default_value("/tmp"))
+        .arg(Arg::new("dst_dir").short('d').default_value("/tmp"))
         .arg(
-            Arg::with_name("max_size")
-                .short("s")
+            Arg::new("max_size")
+                .short('s')
                 .default_value("1000")
                 .help("MB, limit of the blob file size"),
         )
         .arg(
-            Arg::with_name("max_data")
-                .short("x")
+            Arg::new("max_data")
+                .short('x')
                 .default_value("1000")
                 .help("MB, limit of the records number in blob"),
         )
         .arg(
-            Arg::with_name("futures_limit")
+            Arg::new("futures_limit")
                 .long("futures")
                 .default_value("10"),
         )
         .arg(
-            Arg::with_name("allow_duplicates")
-                .short("a")
+            Arg::new("allow_duplicates")
+                .short('a')
                 .help("Disable existence checking on write"),
         )
         .get_matches()
@@ -205,7 +203,7 @@ fn init_logger() {
         .filter_module("pearl", LevelFilter::Info)
         .try_init();
 }
-#[derive(Debug)]
+#[derive(Debug, Default, PartialOrd, Ord, PartialEq, Eq, Clone)]
 pub struct Key128(Vec<u8>);
 
 impl Key for Key128 {

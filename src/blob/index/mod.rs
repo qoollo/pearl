@@ -32,4 +32,5 @@ pub(crate) trait IndexTrait<K>: Send + Sync {
     fn count(&self) -> usize;
     async fn dump(&mut self) -> Result<usize>;
     async fn load(&mut self) -> Result<()>;
+    fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>>;
 }

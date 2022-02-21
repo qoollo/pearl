@@ -4,8 +4,8 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-- Add hierarchical filters support (#126)
-- Add tools to recover and migrate blobs and indexes (#148)
+- Add functions to get info about blobs and indexes (#151)
+- Add key_size field to index header (#151)
 
 
 #### Changed
@@ -15,6 +15,20 @@ Pearl changelog
 
 
 #### Updated
+
+
+## [0.9.2] - 2022-02-14
+#### Added
+- Add record delete api method (#103)
+
+
+## [0.9.1] - 2022-02-03
+#### Added
+- Add wait cycle for tests with index files (#144)
+
+
+#### Fixed
+- In memory index last record retrieval (#147)
 
 
 ## [0.9.0] - 2021-12-09
