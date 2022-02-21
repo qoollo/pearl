@@ -117,6 +117,14 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
             let param = ValidationErrorKind::IndexVersion;
             return Err(Error::validation(param, "Index Header version is not valid").into());
         }
+        if self.header.key_size() != K::LEN {
+            let param = ValidationErrorKind::IndexKeySize;
+            return Err(Error::validation(
+                param,
+                "Index header key_size is not equal to pearl compile-time key size",
+            )
+            .into());
+        }
         Ok(())
     }
 }
@@ -270,7 +278,7 @@ impl SimpleFileIndex {
             let record_header_size = record_header.serialized_size().try_into()?;
             trace!("record header serialized size: {}", record_header_size);
             let headers = headers.iter().flat_map(|r| r.1).collect::<Vec<_>>(); // produce sorted
-            let header = IndexHeader::new(record_header_size, headers.len(), meta.len());
+            let header = IndexHeader::new(record_header_size, headers.len(), meta.len(), K::LEN);
             let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
             trace!("index header size: {}b", hs);
             let fsize = header.meta_size;

@@ -147,6 +147,14 @@ impl<K: Key + 'static> FileIndexTrait<K> for BPTreeFileIndex<K> {
             let param = ValidationErrorKind::IndexVersion;
             return Err(Error::validation(param, "Index Header version is not valid").into());
         }
+        if self.header.key_size() != K::LEN {
+            let param = ValidationErrorKind::IndexKeySize;
+            return Err(Error::validation(
+                param,
+                "Index header key_size is not equal to pearl compile-time key size",
+            )
+            .into());
+        }
         Ok(())
     }
 }

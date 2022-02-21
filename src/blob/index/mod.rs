@@ -11,7 +11,6 @@ mod benchmarks;
 
 pub(crate) use bptree::BPTreeFileIndex;
 use header::IndexHeader;
-pub(crate) use simple::SimpleFileIndex;
 
 pub(crate) use self::core::{
     FileIndexTrait, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,

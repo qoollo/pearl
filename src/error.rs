@@ -155,6 +155,8 @@ pub enum ValidationErrorKind {
     IndexIsWritten,
     /// Index version.
     IndexVersion,
+    /// Index key size.
+    IndexKeySize,
     /// Record data checksum.
     RecordDataChecksum,
     /// Record header checksum.

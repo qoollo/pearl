@@ -13,7 +13,7 @@ pub(crate) const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 pub(crate) struct Header {
     pub magic_byte: u64,
     pub version: u32,
-    flags: u64,
+    pub(crate) flags: u64,
 }
 
 impl Header {

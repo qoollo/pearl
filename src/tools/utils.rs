@@ -1,4 +1,8 @@
+use super::predefined_keys::*;
 use super::prelude::*;
+use crate::blob::index::FileIndexTrait;
+use crate::blob::FileName;
+use futures::Future;
 
 /// Read index header from file
 pub(crate) fn read_index_header(path: &Path) -> Result<IndexHeader> {
@@ -109,4 +113,52 @@ where
         writer.written()
     );
     Ok(())
+}
+
+fn block_on<T, F: Future<Output = T>>(f: F) -> Result<T> {
+    Ok(tokio::runtime::Runtime::new()?.block_on(f))
+}
+
+fn index_from_file<K: Key + 'static>(
+    header: &IndexHeader,
+    path: &Path,
+) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>> {
+    let headers = match header.version() {
+        5 => block_on(async {
+            let index = block_on(BPTreeFileIndex::<K>::from_file(
+                FileName::from_path(path)?,
+                None,
+            ))??;
+            let res = index.get_records_headers().await?;
+            AnyResult::<_>::Ok(res.0)
+        })?,
+        _ => return Err(Error::index_header_validation_error("unsupported header version").into()),
+    }?;
+    let headers = headers
+        .into_iter()
+        .map(|(key, value)| (key.to_vec(), value))
+        .collect();
+    Ok(headers)
+}
+
+/// Read index file
+pub fn read_index(path: &Path) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>> {
+    let header = read_index_header(path)?;
+    let headers = match header.key_size() {
+        1 => index_from_file::<Key1>(&header, path),
+        2 => index_from_file::<Key2>(&header, path),
+        4 => index_from_file::<Key4>(&header, path),
+        8 => index_from_file::<Key8>(&header, path),
+        16 => index_from_file::<Key16>(&header, path),
+        32 => index_from_file::<Key32>(&header, path),
+        64 => index_from_file::<Key64>(&header, path),
+        128 => index_from_file::<Key128>(&header, path),
+        size => return Err(Error::unsupported_key_size(size).into()),
+    }?;
+    for (_, headers) in headers.iter() {
+        for header in headers {
+            header.validate()?;
+        }
+    }
+    Ok(headers)
 }

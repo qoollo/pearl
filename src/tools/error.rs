@@ -25,6 +25,9 @@ pub enum Error {
     /// Can't migrate blob
     #[error("unsupported migration from {0} to {1}")]
     UnsupportedMigration(u32, u32),
+    /// Key size is not supported
+    #[error("key size is not supported by this build")]
+    UnsupportedKeySize(u16),
 }
 
 impl Error {
@@ -50,5 +53,9 @@ impl Error {
 
     pub(crate) fn unsupported_migration(from: u32, to: u32) -> Self {
         Self::UnsupportedMigration(from, to)
+    }
+
+    pub(crate) fn unsupported_key_size(size: u16) -> Self {
+        Self::UnsupportedKeySize(size)
     }
 }

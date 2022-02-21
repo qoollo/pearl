@@ -34,7 +34,7 @@ impl<'a, K: Key> Serializer<'a, K> {
                 .headers_btree
                 .iter()
                 .fold(0, |acc, (_k, v)| acc + v.len());
-            let header = IndexHeader::new(record_header_size, headers_len, meta.len());
+            let header = IndexHeader::new(record_header_size, headers_len, meta.len(), K::LEN);
             Ok(HeaderStage {
                 headers_btree: self.headers_btree,
                 header,
