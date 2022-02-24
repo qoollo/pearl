@@ -138,8 +138,8 @@ pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<
     fs::remove_dir_all(path).map_err(Into::into)
 }
 
-pub async fn close_storage(storage: Storage<KeyTest>) -> Result<()> {
-    std::thread::sleep(std::time::Duration::from_millis(100));
+pub async fn close_storage(storage: Storage<KeyTest>, expected_files: &[&PathBuf]) -> Result<()> {
+    let _ = wait_for(|| expected_files.iter().all(|p| p.exists()));
     storage.close().await?;
     Ok(())
 }
@@ -200,4 +200,45 @@ pub fn corrupt_file(path: impl AsRef<Path>, corruption_type: CorruptionType) -> 
     }
     file.sync_all()?;
     Ok(())
+}
+
+const MAX_WAIT_CYCLES: usize = 10;
+const WAIT_DELAY: std::time::Duration = std::time::Duration::from_millis(20);
+
+pub fn wait_for(condition: impl Fn() -> bool) -> bool {
+    (0..MAX_WAIT_CYCLES).fold(condition(), |evaluated, _| {
+        if !evaluated {
+            std::thread::sleep(WAIT_DELAY);
+            condition()
+        } else {
+            evaluated
+        }
+    })
+}
+
+pub fn build_rep_data(data_size: usize, slice: &mut [u8], records_amount: usize) -> Vec<Vec<u8>> {
+    let mut res = Vec::new();
+    for i in 0..records_amount {
+        slice[0] = (i % 256) as u8;
+        let mut data = Vec::new();
+        for _ in 0..(data_size / slice.len()) {
+            data.extend(slice.iter());
+        }
+        res.push(data);
+    }
+    res
+}
+
+pub fn cmp_records_collections(mut got: Vec<Vec<u8>>, expected: &[Vec<u8>]) -> bool {
+    if got.len() != expected.len() {
+        false
+    } else {
+        got.sort();
+        got.iter()
+            .zip(expected.iter())
+            .map(|(a, b)| a == b)
+            .filter(|b| *b)
+            .count()
+            == got.len()
+    }
 }

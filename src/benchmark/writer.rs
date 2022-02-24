@@ -1,7 +1,7 @@
 use super::prelude::*;
 use pearl::rio;
 
-pub struct Writer<K: Key> {
+pub struct Writer<K: Key + 'static> {
     storage: Storage<K>,
 }
 

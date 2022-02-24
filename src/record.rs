@@ -1,6 +1,7 @@
 use crate::{error::ValidationErrorKind, prelude::*};
 
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
+const DELETE_FLAG: u8 = 0x01;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Record {
@@ -102,6 +103,12 @@ impl Record {
         buf.extend(&raw_meta);
         buf.extend(&self.data);
         Ok(buf)
+    }
+
+    pub(crate) fn deleted<K: Key>(key: &K) -> bincode::Result<Self> {
+        let mut record = Record::create(key, vec![], Meta::default())?;
+        record.header.mark_as_deleted()?;
+        Ok(record)
     }
 
     pub(crate) fn set_offset(&mut self, offset: u64) -> bincode::Result<()> {
@@ -247,5 +254,18 @@ impl Header {
 
     fn crc32(&self) -> bincode::Result<u32> {
         self.to_raw().map(|raw| CRC32C.checksum(&raw))
+    }
+
+    pub(crate) fn mark_as_deleted(&mut self) -> bincode::Result<()> {
+        self.flags |= DELETE_FLAG;
+        self.update_checksum()
+    }
+
+    pub(crate) fn is_deleted(&self) -> bool {
+        self.flags & DELETE_FLAG == DELETE_FLAG
+    }
+
+    pub(crate) fn created(&self) -> u64 {
+        self.created
     }
 }

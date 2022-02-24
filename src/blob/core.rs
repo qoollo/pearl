@@ -202,6 +202,7 @@ where
                 self.name.to_path()
             )
         })? {
+            let headers = filter_deleted_headers(headers);
             for header in headers {
                 self.index.push(header).context("index push failed")?;
             }
@@ -265,6 +266,24 @@ where
             debug!("blob core read all {} headers", h.len());
             Self::headers_to_entries(h, &self.file)
         }))
+    }
+
+    pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
+        if self.index.get_any(key).await?.is_some() {
+            let on_disk = self.index.on_disk();
+            if on_disk {
+                self.load_index().await?;
+            }
+            let record = Record::deleted(key)?;
+            self.write(record).await?;
+            let res = self.index.mark_all_as_deleted(key)?;
+            if on_disk {
+                self.dump().await?;
+            }
+            Ok(res)
+        } else {
+            Ok(None)
+        }
     }
 
     fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
@@ -521,6 +540,27 @@ impl RawRecords {
         self.current_offset += header.data_size();
         Ok(header)
     }
+}
+
+pub(crate) fn filter_deleted_headers(headers: Vec<RecordHeader>) -> Vec<RecordHeader> {
+    let deleted = headers.iter().fold(BTreeMap::new(), |mut map, h| {
+        if h.is_deleted() {
+            let entry = map.entry(h.key().to_vec()).or_insert(h.created());
+            *entry = h.created().max(*entry);
+        }
+        map
+    });
+    if deleted.is_empty() {
+        return headers;
+    }
+
+    let mut new_headers = vec![];
+    for header in headers {
+        if deleted.get(header.key()).cloned().unwrap_or_default() < header.created() {
+            new_headers.push(header);
+        }
+    }
+    new_headers
 }
 
 #[async_trait::async_trait]
