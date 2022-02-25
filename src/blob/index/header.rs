@@ -11,6 +11,7 @@ pub(crate) struct IndexHeader {
     // this field also contains `written` bit (the first one)
     // to get the version, you should proceed `version >> 1`
     pub(crate) version: u8,
+    magic_byte: u64,
 }
 
 impl IndexHeader {
@@ -51,6 +52,10 @@ impl IndexHeader {
         self.version >> 1
     }
 
+    pub(crate) fn magic_byte(&self) -> u64 {
+        self.magic_byte
+    }
+
     #[allow(dead_code)]
     pub(crate) fn set_version(&mut self, version: u8) {
         let written = self.version & 1;
@@ -81,6 +86,7 @@ impl Default for IndexHeader {
             meta_size: 0,
             hash: vec![0; ring::digest::SHA256.output_len],
             version: HEADER_VERSION << 1,
+            magic_byte: INDEX_HEADER_MAGIC_BYTE,
         }
     }
 }

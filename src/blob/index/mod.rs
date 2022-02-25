@@ -14,6 +14,7 @@ use header::IndexHeader;
 
 pub(crate) use self::core::{
     FileIndexTrait, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,
+    INDEX_HEADER_MAGIC_BYTE,
 };
 pub(crate) use super::prelude::*;
 pub(crate) use crate::filter::range::RangeFilter;

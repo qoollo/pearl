@@ -117,6 +117,10 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
             let param = ValidationErrorKind::IndexVersion;
             return Err(Error::validation(param, "Index Header version is not valid").into());
         }
+        if self.header.magic_byte() != INDEX_HEADER_MAGIC_BYTE {
+            let param = ValidationErrorKind::IndexMagicByte;
+            return Err(Error::validation(param, "Index Header version is not valid").into());
+        }
         Ok(())
     }
 }
