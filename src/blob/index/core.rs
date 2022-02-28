@@ -4,7 +4,7 @@ use std::mem::size_of;
 
 pub(crate) type Index<K> = IndexStruct<BPTreeFileIndex<K>, K>;
 
-pub(crate) const HEADER_VERSION: u8 = 4;
+pub(crate) const HEADER_VERSION: u8 = 5;
 
 #[derive(Debug)]
 struct IndexParams {
@@ -186,7 +186,7 @@ impl<FileIndex: FileIndexTrait<K>, K: Key> IndexStruct<FileIndex, K> {
         matches!(&self.inner, State::OnDisk(_))
     }
 
-    async fn dump_in_memory(&mut self) -> Result<usize> {
+    async fn dump_in_memory(&mut self, blob_size: u64) -> Result<usize> {
         if let State::InMemory(headers) = &self.inner {
             if headers.len() == 0 {
                 return Ok(0);
@@ -200,6 +200,7 @@ impl<FileIndex: FileIndexTrait<K>, K: Key> IndexStruct<FileIndex, K> {
                 headers,
                 meta_buf,
                 self.params.recreate_file,
+                blob_size,
             )
             .await?;
             let size = findex.file_size() as usize;
@@ -339,8 +340,8 @@ where
         }
     }
 
-    async fn dump(&mut self) -> Result<usize> {
-        self.dump_in_memory().await
+    async fn dump(&mut self, blob_size: u64) -> Result<usize> {
+        self.dump_in_memory(blob_size).await
     }
 
     async fn load(&mut self) -> Result<()> {
@@ -385,6 +386,7 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,
+        blob_size: u64,
     ) -> Result<Self>;
     fn file_size(&self) -> u64;
     fn records_count(&self) -> usize;

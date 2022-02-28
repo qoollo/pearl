@@ -57,6 +57,7 @@ async fn serialize_deserialize_file() {
         &inmem,
         meta,
         true,
+        0,
     )
     .await
     .expect("Can't create file index");
@@ -86,6 +87,7 @@ async fn check_get_any() {
         &inmem,
         meta,
         true,
+        0,
     )
     .await
     .expect("Can't create file index");
@@ -135,6 +137,7 @@ async fn check_get() {
         &inmem,
         meta,
         true,
+        0,
     )
     .await
     .expect("Can't create file index");

@@ -60,8 +60,9 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,
+        blob_size: u64,
     ) -> Result<Self> {
-        let res = Self::serialize(headers, meta)?;
+        let res = Self::serialize(headers, meta, blob_size)?;
         if res.is_none() {
             error!("Indices are empty!");
             return Err(anyhow!("empty in-memory indices".to_string()));
@@ -263,6 +264,7 @@ impl SimpleFileIndex {
     fn serialize<K: Key>(
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
+        blob_size: u64,
     ) -> Result<Option<(IndexHeader, Vec<u8>)>> {
         debug!("blob index simple serialize headers");
         if let Some(record_header) = headers.values().next().and_then(|v| v.first()) {
@@ -270,7 +272,7 @@ impl SimpleFileIndex {
             let record_header_size = record_header.serialized_size().try_into()?;
             trace!("record header serialized size: {}", record_header_size);
             let headers = headers.iter().flat_map(|r| r.1).collect::<Vec<_>>(); // produce sorted
-            let header = IndexHeader::new(record_header_size, headers.len(), meta.len());
+            let header = IndexHeader::new(record_header_size, headers.len(), meta.len(), blob_size);
             let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
             trace!("index header size: {}b", hs);
             let fsize = header.meta_size;

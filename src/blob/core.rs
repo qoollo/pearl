@@ -80,8 +80,9 @@ impl<K: Key + 'static> Blob<K> {
             self.fsyncdata()
                 .await
                 .with_context(|| "Blob file dump failed!")?;
+
             self.index
-                .dump()
+                .dump(self.file.size())
                 .await
                 .with_context(|| "Blob index file dump failed!")
         }

@@ -48,9 +48,10 @@ impl<K: Key + 'static> FileIndexTrait<K> for BPTreeFileIndex<K> {
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,
+        blob_size: u64,
     ) -> Result<Self> {
         clean_file(path, recreate_index_file)?;
-        let res = Self::serialize(headers, meta)?;
+        let res = Self::serialize(headers, meta, blob_size)?;
         let (mut header, metadata, buf) = res;
         let file = File::create(path, ioring)
             .await
@@ -380,9 +381,10 @@ impl<K: Key + 'static> BPTreeFileIndex<K> {
     fn serialize(
         headers_btree: &InMemoryIndex<K>,
         meta: Vec<u8>,
+        blob_size: u64,
     ) -> Result<(IndexHeader, TreeMeta, Vec<u8>)> {
         Serializer::new(headers_btree)
-            .header_stage(meta)?
+            .header_stage(meta, blob_size)?
             .tree_stage()?
             .build()
     }
