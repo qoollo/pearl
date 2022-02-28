@@ -1,5 +1,6 @@
 /// Bloom filter
 pub mod bloom;
+mod combined;
 /// Hierarchical
 pub mod hierarchical;
 /// Range filter
@@ -9,6 +10,7 @@ pub mod traits;
 
 use super::prelude::*;
 pub use bloom::*;
+pub use combined::*;
 pub use hierarchical::*;
 pub use range::*;
 use std::ops::Add;

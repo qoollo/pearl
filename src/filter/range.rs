@@ -32,6 +32,10 @@ where
         self.add(&other.max);
         true
     }
+
+    fn clear_filter(&mut self) {
+        self.clear()
+    }
 }
 
 impl<K: Key> RangeFilter<K> {

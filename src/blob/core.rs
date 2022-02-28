@@ -1,6 +1,7 @@
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
+use crate::filter::{CombinedFilter, FilterTrait};
 
 use super::prelude::*;
 
@@ -294,7 +295,7 @@ impl<K: Key + 'static> Blob<K> {
         check_filters: bool,
     ) -> Result<Option<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
-        if check_filters && !self.check_filters(key).await? {
+        if check_filters && self.check_filter(key).await == FilterResult::NotContains {
             debug!("Key was filtered out by filters");
             Ok(None)
         } else if let Some(meta) = meta {
@@ -361,34 +362,8 @@ impl<K: Key + 'static> Blob<K> {
         self.name.id
     }
 
-    pub(crate) async fn check_filters(&self, key: &K) -> Result<bool> {
-        trace!("check filters (range and bloom)");
-        if let FilterResult::NotContains = self.index.check_filters_key(key).await? {
-            Ok(false)
-        } else {
-            Ok(true)
-        }
-    }
-
-    pub(crate) fn check_filters_in_memory(&self, key: &K) -> bool {
-        trace!("check filters (range and bloom)");
-        if let FilterResult::NotContains = self.index.check_filters_in_memory(key) {
-            false
-        } else {
-            true
-        }
-    }
-
-    pub(crate) fn is_filter_offloaded(&self) -> bool {
-        self.index.is_filter_offloaded()
-    }
-
     pub(crate) fn index_memory(&self) -> usize {
         self.index.memory_used()
-    }
-
-    pub(crate) fn filter_memory_allocated(&self) -> usize {
-        self.index.bloom_memory_allocated()
     }
 }
 
@@ -562,13 +537,13 @@ impl<K> BloomProvider<K> for Blob<K>
 where
     K: Key + 'static,
 {
-    type Filter = Bloom;
+    type Filter = CombinedFilter<K>;
     async fn check_filter(&self, item: &K) -> FilterResult {
-        self.index.check_bloom_key(item).await.unwrap_or_default()
+        self.index.get_filter().contains(&self.index, item).await
     }
 
     fn check_filter_fast(&self, item: &K) -> FilterResult {
-        self.index.check_bloom_key_in_memory(item)
+        self.index.get_filter().contains_fast(item)
     }
 
     async fn offload_buffer(&mut self, _: usize, _: usize) -> usize {
@@ -576,14 +551,14 @@ where
     }
 
     async fn get_filter(&self) -> Option<Self::Filter> {
-        Some(self.index.get_bloom_filter().clone())
+        Some(self.index.get_filter().clone())
     }
 
     fn get_filter_fast(&self) -> Option<&Self::Filter> {
-        Some(self.index.get_bloom_filter())
+        Some(self.index.get_filter())
     }
 
     async fn filter_memory_allocated(&self) -> usize {
-        self.index.get_bloom_filter().memory_allocated()
+        self.index.get_filter().memory_allocated()
     }
 }
