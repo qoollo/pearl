@@ -1,4 +1,4 @@
-use super::predefined_keys::*;
+use super::generic_key::*;
 use super::prelude::*;
 use crate::blob::index::FileIndexTrait;
 use crate::blob::FileName;
@@ -145,14 +145,12 @@ fn index_from_file<K: Key + 'static>(
 pub fn read_index(path: &Path) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>> {
     let header = read_index_header(path)?;
     let headers = match header.key_size() {
-        1 => index_from_file::<Key1>(&header, path),
-        2 => index_from_file::<Key2>(&header, path),
-        4 => index_from_file::<Key4>(&header, path),
-        8 => index_from_file::<Key8>(&header, path),
-        16 => index_from_file::<Key16>(&header, path),
-        32 => index_from_file::<Key32>(&header, path),
-        64 => index_from_file::<Key64>(&header, path),
-        128 => index_from_file::<Key128>(&header, path),
+        4 => index_from_file::<GenericKey<4>>(&header, path),
+        8 => index_from_file::<GenericKey<8>>(&header, path),
+        16 => index_from_file::<GenericKey<16>>(&header, path),
+        32 => index_from_file::<GenericKey<32>>(&header, path),
+        64 => index_from_file::<GenericKey<64>>(&header, path),
+        128 => index_from_file::<GenericKey<128>>(&header, path),
         size => return Err(Error::unsupported_key_size(size).into()),
     }?;
     for (_, headers) in headers.iter() {

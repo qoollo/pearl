@@ -3,8 +3,8 @@ pub(crate) mod blob_writer;
 pub(crate) mod collectors;
 /// Error type defenition
 pub mod error;
+mod generic_key;
 pub(crate) mod migration;
-mod predefined_keys;
 pub(crate) mod utils;
 pub(crate) mod validation;
 
