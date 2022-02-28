@@ -162,9 +162,12 @@ impl<FileIndex: FileIndexTrait<K>, K: Key> IndexStruct<FileIndex, K> {
         name: FileName,
         config: IndexConfig,
         ioring: Option<Rio>,
+        blob_size: u64,
     ) -> Result<Self> {
         let findex = FileIndex::from_file(name.clone(), ioring.clone()).await?;
-        findex.validate().with_context(|| "Header is corrupt")?;
+        findex
+            .validate(blob_size)
+            .with_context(|| "Header is corrupt")?;
         let meta_buf = findex.read_meta().await?;
         let (bloom_filter, range_filter, bloom_offset) = Self::deserialize_filters(&meta_buf)?;
         let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
@@ -233,8 +236,8 @@ impl<FileIndex: FileIndexTrait<K>, K: Key> IndexStruct<FileIndex, K> {
         Ok((bloom, range, range_size + size_of::<u64>()))
     }
 
-    async fn load_in_memory(&mut self, findex: FileIndex) -> Result<()> {
-        let (record_headers, records_count) = findex.get_records_headers().await?;
+    async fn load_in_memory(&mut self, findex: FileIndex, blob_size: u64) -> Result<()> {
+        let (record_headers, records_count) = findex.get_records_headers(blob_size).await?;
         self.mem = Some(compute_mem_attrs(&record_headers, records_count));
         self.inner = State::InMemory(record_headers);
         let meta_buf = findex.read_meta().await?;
@@ -344,12 +347,12 @@ where
         self.dump_in_memory(blob_size).await
     }
 
-    async fn load(&mut self) -> Result<()> {
+    async fn load(&mut self, blob_size: u64) -> Result<()> {
         match &self.inner {
             State::InMemory(_) => Ok(()),
             State::OnDisk(findex) => {
                 let findex = findex.clone();
-                self.load_in_memory(findex).await
+                self.load_in_memory(findex, blob_size).await
             }
         }
     }
@@ -393,9 +396,9 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
     async fn read_meta(&self) -> Result<Vec<u8>>;
     async fn read_meta_at(&self, i: u64) -> Result<u8>;
     async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
-    async fn get_records_headers(&self) -> Result<(InMemoryIndex<K>, usize)>;
+    async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)>;
     async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>>;
-    fn validate(&self) -> Result<()>;
+    fn validate(&self, blob_size: u64) -> Result<()>;
 }
 
 #[async_trait::async_trait]

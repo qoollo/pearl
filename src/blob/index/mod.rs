@@ -31,6 +31,6 @@ pub(crate) trait IndexTrait<K>: Send + Sync {
     async fn contains_key(&self, key: &K) -> Result<bool>;
     fn count(&self) -> usize;
     async fn dump(&mut self, blob_size: u64) -> Result<usize>;
-    async fn load(&mut self) -> Result<()>;
+    async fn load(&mut self, blob_size: u64) -> Result<()>;
     fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>>;
 }

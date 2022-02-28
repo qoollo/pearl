@@ -108,9 +108,9 @@ impl<K: Key + 'static> FileIndexTrait<K> for BPTreeFileIndex<K> {
         self.read_headers(leaf_offset, key, &mut buf).await
     }
 
-    async fn get_records_headers(&self) -> Result<(InMemoryIndex<K>, usize)> {
+    async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)> {
         let mut buf = self.file.read_all().await?;
-        self.validate_header(&mut buf).await?;
+        self.validate_header(&mut buf, blob_size).await?;
         let offset = self.metadata.leaves_offset as usize;
         let records_end = FileIndexTrait::<K>::file_size(self) as usize;
         let records_buf = &buf[offset..records_end];
@@ -138,7 +138,7 @@ impl<K: Key + 'static> FileIndexTrait<K> for BPTreeFileIndex<K> {
         self.read_header(leaf_offset, key, &mut buf).await
     }
 
-    fn validate(&self) -> Result<()> {
+    fn validate(&self, blob_size: u64) -> Result<()> {
         // FIXME: check hash here?
         if !self.header.is_written() {
             let param = ValidationErrorKind::IndexIsWritten;
@@ -147,6 +147,18 @@ impl<K: Key + 'static> FileIndexTrait<K> for BPTreeFileIndex<K> {
         if self.header.version() != HEADER_VERSION {
             let param = ValidationErrorKind::IndexVersion;
             return Err(Error::validation(param, "Index Header version is not valid").into());
+        }
+        if self.header.blob_size() != blob_size {
+            let param = ValidationErrorKind::IndexBlobSize;
+            return Err(Error::validation(
+                param,
+                format!(
+                    "Index Header is for blob of size {}, but actual blob size is {}",
+                    self.header.blob_size(),
+                    blob_size
+                ),
+            )
+            .into());
         }
         Ok(())
     }
@@ -335,8 +347,8 @@ impl<K: Key + 'static> BPTreeFileIndex<K> {
         Ok(())
     }
 
-    async fn validate_header(&self, buf: &mut Vec<u8>) -> Result<()> {
-        self.validate()?;
+    async fn validate_header(&self, buf: &mut Vec<u8>, blob_size: u64) -> Result<()> {
+        self.validate(blob_size)?;
         if !Self::hash_valid(&self.header, buf)? {
             let param = ValidationErrorKind::IndexChecksum;
             return Err(Error::validation(param, "header hash mismatch").into());

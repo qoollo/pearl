@@ -62,7 +62,7 @@ async fn serialize_deserialize_file() {
     .await
     .expect("Can't create file index");
     let (inmem_after, _size) = findex
-        .get_records_headers()
+        .get_records_headers(0)
         .await
         .expect("Can't get InMemoryIndex");
     assert_eq!(inmem, inmem_after);

@@ -80,9 +80,9 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
         Ok(Self { file, header })
     }
 
-    async fn get_records_headers(&self) -> Result<(InMemoryIndex<K>, usize)> {
+    async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)> {
         let mut buf = self.file.read_all().await?;
-        self.validate_header::<K>(&mut buf).await?;
+        self.validate_header::<K>(&mut buf, blob_size).await?;
         let offset = self.header.meta_size + self.header.serialized_size()? as usize;
         let records_buf = &buf[offset..];
         (0..self.header.records_count)
@@ -108,7 +108,7 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
             .map(|res| res.map(|h| h.0))
     }
 
-    fn validate(&self) -> Result<()> {
+    fn validate(&self, blob_size: u64) -> Result<()> {
         // FIXME: check hash here?
         if !self.header.is_written() {
             let param = ValidationErrorKind::IndexIsWritten;
@@ -117,6 +117,18 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
         if self.header.version() != HEADER_VERSION {
             let param = ValidationErrorKind::IndexVersion;
             return Err(Error::validation(param, "Index Header version is not valid").into());
+        }
+        if self.header.blob_size() != blob_size {
+            let param = ValidationErrorKind::IndexBlobSize;
+            return Err(Error::validation(
+                param,
+                format!(
+                    "Index Header is for blob of size {}, but actual blob size is {}",
+                    self.header.blob_size(),
+                    blob_size
+                ),
+            )
+            .into());
         }
         Ok(())
     }
@@ -252,8 +264,8 @@ impl SimpleFileIndex {
         Ok(None)
     }
 
-    async fn validate_header<K: Key>(&self, buf: &mut Vec<u8>) -> Result<()> {
-        FileIndexTrait::<K>::validate(self)?;
+    async fn validate_header<K: Key>(&self, buf: &mut Vec<u8>, blob_size: u64) -> Result<()> {
+        FileIndexTrait::<K>::validate(self, blob_size)?;
         if !Self::hash_valid(&self.header, buf)? {
             let param = ValidationErrorKind::IndexChecksum;
             return Err(Error::validation(param, "header hash mismatch").into());

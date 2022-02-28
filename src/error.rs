@@ -161,6 +161,8 @@ pub enum ValidationErrorKind {
     RecordHeaderChecksum,
     /// Record magic byte.
     RecordMagicByte,
+    /// Index blob size
+    IndexBlobSize,
 }
 
 /// Convenient helper for downcasting anyhow error to pearl error.

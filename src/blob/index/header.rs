@@ -78,6 +78,10 @@ impl IndexHeader {
     pub(crate) fn from_raw(buf: &[u8]) -> bincode::Result<Self> {
         bincode::deserialize(buf)
     }
+
+    pub(crate) fn blob_size(&self) -> u64 {
+        self.blob_size
+    }
 }
 
 impl Default for IndexHeader {
