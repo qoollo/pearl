@@ -2,6 +2,7 @@ use super::prelude::*;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct IndexHeader {
+    magic_byte: u64,
     pub records_count: usize,
     // contains serialized size of record headers, which allows to calculate offset in
     // case of `OnDisk` state of indices
@@ -11,7 +12,6 @@ pub(crate) struct IndexHeader {
     // this field also contains `written` bit (the first one)
     // to get the version, you should proceed `version >> 1`
     pub(crate) version: u8,
-    magic_byte: u64,
 }
 
 impl IndexHeader {
