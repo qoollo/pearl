@@ -210,6 +210,7 @@ impl<'a, K: Key> TreeStage<'a, K> {
             self.header.records_count,
             self.meta.len(),
             hash,
+            self.header.blob_size
         );
         serialize_into(buf.as_mut_slice(), &header)?;
         Ok((header, self.metadata, buf))

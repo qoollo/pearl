@@ -310,7 +310,7 @@ impl SimpleFileIndex {
             );
             let hash = get_hash(&buf);
             let header =
-                IndexHeader::with_hash(record_header_size, headers.len(), meta.len(), hash);
+                IndexHeader::with_hash(record_header_size, headers.len(), meta.len(), hash, blob_size);
             serialize_into(buf.as_mut_slice(), &header)?;
             Ok(Some((header, buf)))
         } else {
