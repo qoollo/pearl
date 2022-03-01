@@ -79,11 +79,17 @@ async fn magic_byte_corruption() {
         inmem.insert(key, vec![rh]);
     });
     let meta = vec![META_VALUE; META_SIZE];
-    let findex =
-        BPTreeFileIndex::<KeyType>::from_records(&Path::new(filename), None, &inmem, meta, true, 100)
-            .await
-            .expect("can't create file index");
-  
+    let findex = BPTreeFileIndex::<KeyType>::from_records(
+        &Path::new(filename),
+        None,
+        &inmem,
+        meta,
+        true,
+        100,
+    )
+    .await
+    .expect("can't create file index");
+
     assert!(findex.validate(50).is_err());
     assert!(matches!(
         findex

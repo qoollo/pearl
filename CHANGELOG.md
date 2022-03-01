@@ -4,7 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Add blob size to index header (#153)
 
 #### Changed
 
