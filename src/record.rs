@@ -105,7 +105,10 @@ impl Record {
         Ok(buf)
     }
 
-    pub(crate) fn deleted<K: Key>(key: &K) -> bincode::Result<Self> {
+    pub(crate) fn deleted<K>(key: &K) -> bincode::Result<Self>
+    where
+        for<'a> K: Key<'a> + 'static,
+    {
         let mut record = Record::create(key, vec![], Meta::default())?;
         record.header.mark_as_deleted()?;
         Ok(record)
