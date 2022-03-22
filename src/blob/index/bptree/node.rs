@@ -48,7 +48,7 @@ impl Node {
         while l <= r {
             let m = (l + r) / 2;
             let offset = m as usize * key_size;
-            let k = K::Ref::from(&buf[offset..(offset + key_size)]); // TODO Allow keys to be based on slices
+            let k = K::Ref::from(&buf[offset..(offset + key_size)]);
             match key.as_ref_key().cmp(&k) {
                 CmpOrdering::Less => r = m - 1,
                 CmpOrdering::Greater => l = m + 1,
