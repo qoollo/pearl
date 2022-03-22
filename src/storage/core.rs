@@ -1088,6 +1088,7 @@ pub trait Key<'a>:
 
 /// Trait for reference key type
 pub trait RefKey<'a>: Ord + From<&'a [u8]> {}
+
 #[async_trait::async_trait]
 impl<K> BloomProvider<K> for Storage<K>
 where
