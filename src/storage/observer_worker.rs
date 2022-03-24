@@ -1,7 +1,10 @@
 use super::prelude::*;
 use tokio::{sync::mpsc::Receiver, sync::Semaphore, time::timeout};
 
-pub(crate) struct ObserverWorker<K: Key> {
+pub(crate) struct ObserverWorker<K>
+where
+    for<'a> K: Key<'a>,
+{
     inner: Inner<K>,
     receiver: Receiver<Msg>,
     dump_sem: Arc<Semaphore>,
@@ -9,7 +12,10 @@ pub(crate) struct ObserverWorker<K: Key> {
     async_oplock: Arc<Mutex<()>>,
 }
 
-impl<K: Key + 'static> ObserverWorker<K> {
+impl<K> ObserverWorker<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     pub(crate) fn new(
         receiver: Receiver<Msg>,
         inner: Inner<K>,
@@ -104,7 +110,10 @@ impl<K: Key + 'static> ObserverWorker<K> {
     }
 }
 
-async fn active_blob_check<K: Key + 'static>(inner: Inner<K>) -> Result<Option<Inner<K>>> {
+async fn active_blob_check<K>(inner: Inner<K>) -> Result<Option<Inner<K>>>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     let (active_size, active_count) = {
         trace!("await for lock");
         let safe_locked = inner.safe.read().await;
@@ -132,7 +141,10 @@ async fn active_blob_check<K: Key + 'static>(inner: Inner<K>) -> Result<Option<I
     }
 }
 
-async fn update_active_blob<K: Key + 'static>(inner: Inner<K>) -> Result<()> {
+async fn update_active_blob<K>(inner: Inner<K>) -> Result<()>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
     trace!("obtaining new active blob");

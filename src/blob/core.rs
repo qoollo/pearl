@@ -13,7 +13,10 @@ pub(crate) const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 ///
 /// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
-pub struct Blob<K: Key> {
+pub struct Blob<K>
+where
+    for<'a> K: Key<'a>,
+{
     header: Header,
     index: Index<K>,
     name: FileName,
@@ -22,7 +25,10 @@ pub struct Blob<K: Key> {
     key_type_marker: PhantomData<K>,
 }
 
-impl<K: Key + 'static> Blob<K> {
+impl<K> Blob<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     /// # Description
     /// Creates new blob file with given [`FileName`].
     /// And creates index from existing `.index` file or scans corresponding blob.
@@ -560,7 +566,7 @@ pub(crate) fn filter_deleted_headers(headers: Vec<RecordHeader>) -> Vec<RecordHe
 #[async_trait::async_trait]
 impl<K> BloomProvider<K> for Blob<K>
 where
-    K: Key + 'static,
+    for<'a> K: Key<'a> + 'static,
 {
     type Filter = Bloom;
     async fn check_filter(&self, item: &K) -> FilterResult {

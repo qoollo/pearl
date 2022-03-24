@@ -37,7 +37,10 @@ impl Default for IndexConfig {
 }
 
 #[derive(Debug)]
-pub(crate) struct IndexStruct<FileIndex, K: Key> {
+pub(crate) struct IndexStruct<FileIndex, K>
+where
+    for<'a> K: Key<'a>,
+{
     mem: Option<MemoryAttrs>,
     range_filter: RangeFilter<K>,
     bloom_filter: Bloom,
@@ -67,7 +70,11 @@ pub(crate) enum State<FileIndex, K> {
     OnDisk(FileIndex),
 }
 
-impl<FileIndex: FileIndexTrait<K>, K: Key> IndexStruct<FileIndex, K> {
+impl<FileIndex, K> IndexStruct<FileIndex, K>
+where
+    FileIndex: FileIndexTrait<K>,
+    for<'a> K: Key<'a>,
+{
     pub(crate) fn new(name: FileName, ioring: Option<Rio>, config: IndexConfig) -> Self {
         let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
         let filter = config.bloom_config.map(Bloom::new).unwrap_or_default();
@@ -272,7 +279,7 @@ impl<FileIndex: FileIndexTrait<K>, K: Key> IndexStruct<FileIndex, K> {
 impl<FileIndex, K> IndexTrait<K> for IndexStruct<FileIndex, K>
 where
     FileIndex: FileIndexTrait<K> + Clone,
-    K: Key,
+    for<'a> K: Key<'a>,
 {
     async fn contains_key(&self, key: &K) -> Result<bool> {
         self.get_any(key).await.map(|h| h.is_some())
@@ -397,7 +404,11 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
 }
 
 #[async_trait::async_trait]
-impl<FileIndex: FileIndexTrait<K>, K: Key> BloomDataProvider for IndexStruct<FileIndex, K> {
+impl<FileIndex, K> BloomDataProvider for IndexStruct<FileIndex, K>
+where
+    FileIndex: FileIndexTrait<K>,
+    for<'a> K: Key<'a>,
+{
     async fn read_byte(&self, index: u64) -> Result<u8> {
         match &self.inner {
             State::OnDisk(findex) => {

@@ -10,7 +10,6 @@ pub mod traits;
 use super::prelude::*;
 pub use bloom::*;
 pub use hierarchical::*;
-pub use range::*;
 use std::ops::Add;
 pub use traits::*;
 

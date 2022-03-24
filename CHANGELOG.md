@@ -7,7 +7,7 @@ Pearl changelog
 
 
 #### Changed
-
+- Add refkey trait (#141)
 
 #### Fixed
 
