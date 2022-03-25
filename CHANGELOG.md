@@ -8,6 +8,7 @@ Pearl changelog
 
 #### Changed
 - Add refkey trait (#141)
+- Change nightly to stable rust toolchain
 
 #### Fixed
 
