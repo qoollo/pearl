@@ -1,6 +1,7 @@
-use crate::prelude::*;
+use crate::{error::ValidationErrorKind, prelude::*};
 
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
+const DELETE_FLAG: u8 = 0x01;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Record {
@@ -77,10 +78,14 @@ impl Record {
     }
 
     /// Creates new `Record` with provided data, key and meta.
-    pub fn create<K: Key>(key: &K, data: Vec<u8>, meta: Meta) -> bincode::Result<Self> {
+    pub fn create<K>(key: &K, data: Vec<u8>, meta: Meta) -> bincode::Result<Self>
+    where
+        for<'a> K: Key<'a>,
+    {
         let key = key.as_ref().to_vec();
         let meta_size = meta.serialized_size()?;
-        let header = Header::new(key, meta_size, data.len() as u64, crc32(&data));
+        let data_checksum = CRC32C.checksum(&data);
+        let header = Header::new(key, meta_size, data.len() as u64, data_checksum);
         Ok(Self { header, meta, data })
     }
 
@@ -100,6 +105,15 @@ impl Record {
         Ok(buf)
     }
 
+    pub(crate) fn deleted<K>(key: &K) -> bincode::Result<Self>
+    where
+        for<'a> K: Key<'a> + 'static,
+    {
+        let mut record = Record::create(key, vec![], Meta::default())?;
+        record.header.mark_as_deleted()?;
+        Ok(record)
+    }
+
     pub(crate) fn set_offset(&mut self, offset: u64) -> bincode::Result<()> {
         self.header.blob_offset = offset;
         self.header.update_checksum()
@@ -117,12 +131,13 @@ impl Record {
         if self.header().magic_byte == RECORD_MAGIC_BYTE {
             Ok(())
         } else {
-            Err(Error::validation("wrong magic byte").into())
+            let param = ValidationErrorKind::RecordMagicByte;
+            Err(Error::validation(param, "wrong magic byte").into())
         }
     }
 
     fn check_data_checksum(&self) -> Result<()> {
-        let calc_crc = crc32(&self.data);
+        let calc_crc = CRC32C.checksum(&self.data);
         if calc_crc == self.header.data_checksum {
             Ok(())
         } else {
@@ -130,7 +145,8 @@ impl Record {
                 "wrong data checksum {} vs {}",
                 calc_crc, self.header.data_checksum
             );
-            let e = Error::validation(cause);
+            let param = ValidationErrorKind::RecordDataChecksum;
+            let e = Error::validation(param, cause);
             error!("{:#?}", e);
             Err(e.into())
         }
@@ -145,10 +161,12 @@ impl Record {
         if calc_crc == self.header.header_checksum {
             Ok(())
         } else {
-            let e = ErrorKind::Validation(format!(
+            let cause = format!(
                 "wrong header checksum {} vs {}",
                 calc_crc, self.header.header_checksum
-            ));
+            );
+            let param = ValidationErrorKind::RecordHeaderChecksum;
+            let e = Error::validation(param, cause);
             error!("{:#?}", e);
             Err(Error::from(e).into())
         }
@@ -238,6 +256,19 @@ impl Header {
     }
 
     fn crc32(&self) -> bincode::Result<u32> {
-        self.to_raw().map(|raw| crc32(&raw))
+        self.to_raw().map(|raw| CRC32C.checksum(&raw))
+    }
+
+    pub(crate) fn mark_as_deleted(&mut self) -> bincode::Result<()> {
+        self.flags |= DELETE_FLAG;
+        self.update_checksum()
+    }
+
+    pub(crate) fn is_deleted(&self) -> bool {
+        self.flags & DELETE_FLAG == DELETE_FLAG
+    }
+
+    pub(crate) fn created(&self) -> u64 {
+        self.created
     }
 }

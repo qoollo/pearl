@@ -1,17 +1,98 @@
 # Changelog
 Pearl changelog
 
+
 ## [Unreleased]
 #### Added
 - Setup build and test with GitHub Actions ([#113](https://github.com/qoollo/pearl/pull/116))
 
+
 #### Changed
-- Add key size check for blob from file ([#99](https://github.com/qoollo/pearl/pull/99)) 
+- Add refkey trait (#141)
 
 #### Fixed
-- Fix warnings ([#100](https://github.com/qoollo/pearl/pull/100)) 
+
 
 #### Updated
+
+
+## [0.9.2] - 2022-02-14
+#### Added
+- Add record delete api method (#103)
+
+
+## [0.9.1] - 2022-02-03
+#### Added
+- Add wait cycle for tests with index files (#144)
+
+
+#### Fixed
+- In memory index last record retrieval (#147)
+
+
+## [0.9.0] - 2021-12-09
+#### Added
+- Add hierarchical filters support (#126)
+
+
+## [0.8.1] - 2021-12-02
+#### Added
+- Add key trait (#123)
+
+
+## [0.8.0] - 2021-11-09
+#### Added
+- Add method to offload bloom filters (#121)
+
+#### Changed
+- Dump blob indices in separate thread on active blob close (#136)
+- Remove second file descriptor from File (#124)
+- Acquire advisory write lock on files (#124)
+
+
+## [0.7.1] - 2021-10-18
+#### Added
+- Add more functions to interface to support work with optional active blob (#118)
+
+
+## [0.7.0] - 2021-10-02
+#### Added
+- B+ Tree indexes (#84)
+- Range indexes (#11)
+- Move corrupted blobs into speacial directory (#98)
+- Blob version validation (#120)
+
+#### Changed
+- Rebuild corrupted index automatically during startup (#94)
+- Move build_time.rs file to OUT_DIR.
+
+#### Fixed
+- Create corrupted directory only when needed (#94)
+
+
+## [0.6.2] - 2021-09-14
+#### Added
+- Setup build and test with GitHub Actions (#113)
+
+#### Changed
+- Helpers for build time, commit hash and version moved to `build_info` mod.
+- Build time format.
+- `build_time.rs` added to `.gitignore`.
+
+
+## [0.6.1] - 2021-08-13
+#### Updated
+- Blob version v0 -> v1
+
+
+## [0.6.0] - 2021-08-13
+#### Changed
+- Add key size check for blob from file (#99)
+- `ahash` version fixed on `=v0.7.4` (#112)
+
+
+#### Fixed
+- Fix lint warnings (#100)
 
 
 ## [0.5.14] - 2021-04-14

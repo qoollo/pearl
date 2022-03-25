@@ -58,26 +58,37 @@ extern crate anyhow;
 
 extern crate ring;
 
+/// Basic info about current build.
+pub mod build_info;
+
 mod blob;
-mod error;
+/// Types representing various errors that can occur in pearl.
+pub mod error;
 mod record;
 mod storage;
 
-pub use blob::{filter, Entry};
+/// bloom filter for faster check record contains in blob
+pub mod filter;
+pub use filter::{Bloom, BloomDataProvider, BloomProvider, Config as BloomConfig, FilterResult};
+
+pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
-pub use storage::{Builder, Key, Storage};
+pub use storage::{Builder, Key, RefKey, Storage};
 
 mod prelude {
+    use crc::{Crc, CRC_32_ISCSI};
+    pub const CRC32C: Crc<u32> = Crc::<u32>::new(&CRC_32_ISCSI);
+
     pub(crate) use super::*;
     pub(crate) use std::collections::BTreeMap;
     pub(crate) const ORD: Ordering = Ordering::Relaxed;
 
     pub(crate) use anyhow::{Context as ErrorContexts, Result};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
-    pub(crate) use blob::{self, Blob, BloomConfig};
-    pub(crate) use crc::crc32::checksum_castagnoli as crc32;
+    pub(crate) use blob::{self, Blob, IndexConfig};
+    pub(crate) use filter::{Bloom, BloomProvider, Config as BloomConfig, HierarchicalFilters};
     pub(crate) use futures::{
         future,
         lock::Mutex,
@@ -90,12 +101,11 @@ mod prelude {
         collections::HashMap,
         convert::TryInto,
         fmt::{Debug, Display, Formatter, Result as FmtResult},
-        fs::{File as StdFile, Metadata, OpenOptions as StdOpenOptions},
+        fs::File as StdFile,
         io::Error as IOError,
         io::ErrorKind as IOErrorKind,
         io::Result as IOResult,
         marker::PhantomData,
-        os::unix::fs::OpenOptionsExt,
         path::{Path, PathBuf},
         sync::{
             atomic::{AtomicUsize, Ordering},

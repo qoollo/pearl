@@ -1,4 +1,6 @@
-use std::os::unix::prelude::FileExt;
+use std::os::unix::prelude::{AsRawFd, FileExt};
+
+use nix::{errno::Errno, fcntl::FcntlArg};
 
 use super::prelude::*;
 
@@ -6,37 +8,43 @@ use super::prelude::*;
 pub struct File {
     ioring: Option<Rio>,
     no_lock_fd: Arc<StdFile>, // requires only for read_at/write_at methods
-    write_fd: Arc<RwLock<TokioFile>>,
     size: Arc<AtomicU64>,
+}
+
+#[derive(PartialEq, Eq)]
+enum LockAcquisitionResult {
+    Acquired,
+    AlreadyLocked,
+    Error(Errno),
 }
 
 impl File {
     pub(crate) async fn open(path: impl AsRef<Path>, ioring: Option<Rio>) -> IOResult<Self> {
-        let file = OpenOptions::new()
-            .create(false)
-            .append(true)
-            .read(true)
-            .open(path.as_ref())
-            .await?;
-        Self::from_tokio_file(file, ioring).await
+        Self::from_file(path, |f| f.create(false).append(true).read(true), ioring).await
     }
 
     pub(crate) async fn create(path: impl AsRef<Path>, ioring: Option<Rio>) -> IOResult<Self> {
-        let file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .read(true)
-            .open(path)
-            .await?;
+        Self::from_file(path, |f| f.create(true).write(true).read(true), ioring).await
+    }
+
+    async fn from_file(
+        path: impl AsRef<Path>,
+        setup: impl Fn(&mut OpenOptions) -> &mut OpenOptions,
+        ioring: Option<Rio>,
+    ) -> IOResult<Self> {
+        let file = setup(&mut OpenOptions::new()).open(path.as_ref()).await?;
+
+        if Self::advisory_write_lock_file(file.as_raw_fd()) == LockAcquisitionResult::AlreadyLocked
+        {
+            error!("File {:?} is locked", path.as_ref());
+            panic!("File {:?} is locked", path.as_ref());
+        }
+
         Self::from_tokio_file(file, ioring).await
     }
 
     pub fn size(&self) -> u64 {
         self.size.load(ORD)
-    }
-
-    pub(crate) async fn _metadata(&self) -> IOResult<Metadata> {
-        self.write_fd.read().await.metadata().await
     }
 
     pub(crate) async fn write_append(&self, buf: &[u8]) -> IOResult<usize> {
@@ -151,14 +159,13 @@ impl File {
     }
 
     async fn from_tokio_file(file: TokioFile, ioring: Option<Rio>) -> IOResult<Self> {
-        let tokio_file = file.try_clone().await?;
-        let size = tokio_file.metadata().await?.len();
+        let size = file.metadata().await?.len();
         let size = Arc::new(AtomicU64::new(size));
-        let std_file = tokio_file.try_into_std().expect("tokio file into std");
+        let std_file = file.try_into_std().expect("tokio file into std");
+
         let file = Self {
             ioring,
             no_lock_fd: Arc::new(std_file),
-            write_fd: Arc::new(RwLock::new(file)),
             size,
         };
         Ok(file)
@@ -169,7 +176,28 @@ impl File {
             let compl = ioring.fsync(&*self.no_lock_fd);
             compl.await
         } else {
-            self.write_fd.read().await.sync_all().await
+            let fd = self.no_lock_fd.clone();
+            Self::blocking_call(move || fd.sync_all()).await
+        }
+    }
+
+    fn advisory_write_lock_file(fd: i32) -> LockAcquisitionResult {
+        let flock = libc::flock {
+            l_len: 0, // 0 means "whole file"
+            l_start: 0,
+            l_whence: libc::SEEK_SET as i16,
+            l_type: libc::F_WRLCK as i16,
+            l_pid: -1, // pid of current file owner, if any (when fcntl is invoked with F_GETLK)
+        };
+        let res = nix::fcntl::fcntl(fd, FcntlArg::F_SETLK(&flock));
+        if let Err(e) = res {
+            warn!("acquiring writelock failed, errno: {:?}", e);
+            match e {
+                Errno::EACCES | Errno::EAGAIN => LockAcquisitionResult::AlreadyLocked,
+                e => LockAcquisitionResult::Error(e),
+            }
+        } else {
+            LockAcquisitionResult::Acquired
         }
     }
 

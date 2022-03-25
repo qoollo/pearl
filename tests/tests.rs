@@ -4,13 +4,14 @@ extern crate log;
 use anyhow::Result;
 use futures::{
     future::FutureExt,
-    stream::{futures_unordered::FuturesUnordered, StreamExt, TryStreamExt},
+    stream::{futures_unordered::FuturesUnordered, FuturesOrdered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
-use pearl::{Builder, Meta, Storage};
+use pearl::{BloomProvider, Builder, Meta, Storage};
 use rand::{seq::SliceRandom, Rng};
 use std::{
     fs,
+    hash::Hasher,
     time::{Duration, Instant},
 };
 use tokio::time::sleep;
@@ -18,6 +19,22 @@ use tokio::time::sleep;
 mod common;
 
 use common::KeyTest;
+
+#[test]
+fn test_hash_algorithm_compat() {
+    test_hash(&(0..10).collect::<Vec<u8>>(), 3604729491498336444);
+    test_hash(&(245..255).collect::<Vec<u8>>(), 4698010058046694585);
+    test_hash(&(63..73).collect::<Vec<u8>>(), 7892047681755360091);
+    test_hash(&(101..111).collect::<Vec<u8>>(), 15822444892006722439);
+}
+
+fn test_hash(data: &[u8], eq_to: u64) {
+    let mut hasher_7 = ahash::AHasher::new_with_keys(1, 2);
+    hasher_7.write(data);
+    let hash_7 = hasher_7.finish();
+
+    assert_eq!(hash_7, eq_to);
+}
 
 #[tokio::test]
 async fn test_storage_init_new() {
@@ -122,8 +139,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
         .collect();
     let handles = handles.try_collect::<Vec<_>>().await.unwrap();
     let index = path.join("test.0.index");
-    sleep(Duration::from_millis(32)).await;
-    assert!(index.exists());
+    sleep(Duration::from_millis(64)).await;
     assert_eq!(handles.len(), threads);
     let keys = indexes
         .iter()
@@ -132,7 +148,9 @@ async fn test_multithread_read_write() -> Result<(), String> {
         .collect::<Vec<_>>();
     debug!("make sure that all keys was written");
     common::check_all_written(&storage, keys).await?;
-    common::clean(storage, path).await.unwrap();
+    common::close_storage(storage, &[&index]).await.unwrap();
+    assert!(index.exists());
+    fs::remove_dir_all(path).unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     Ok(())
 }
@@ -210,17 +228,62 @@ async fn test_on_disk_index() -> Result<()> {
 
 #[tokio::test]
 async fn test_work_dir_lock() {
-    let now = Instant::now();
+    use nix::sys::wait::{waitpid, WaitStatus};
+    use nix::unistd::{fork, ForkResult};
+
     let path = common::init("work_dir_lock");
-    let storage_one = common::create_test_storage(&path, 1_000_000);
-    let res_one = storage_one.await;
-    assert!(res_one.is_ok());
-    let storage = res_one.unwrap();
-    let storage_two = common::create_test_storage(&path, 1_000_000);
-    let res_two = storage_two.await;
-    dbg!(&res_two);
-    assert!(res_two.is_err());
-    common::clean(storage, path)
+
+    // We need separate processes because locks do not work within the same process
+    match unsafe { fork() } {
+        Ok(ForkResult::Parent { child }) => {
+            let now = Instant::now();
+
+            let storage_one = common::create_test_storage(&path, 1_000_000);
+            let res_one = storage_one.await;
+            assert!(res_one.is_ok());
+
+            let storage = res_one.unwrap();
+            let result = waitpid(child, None);
+            assert_eq!(Ok(WaitStatus::Exited(child, 0)), result);
+
+            common::clean(storage, path)
+                .map(|res| res.expect("clean failed"))
+                .await;
+
+            warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+        }
+        Ok(ForkResult::Child) => {
+            sleep(Duration::from_secs(1)).await;
+            let storage_two = common::create_test_storage(&path, 1_000_000);
+            let _ = storage_two.await;
+            unreachable!("Second storage process must panic")
+        }
+        Err(_) => unreachable!("Fork must not fail"),
+    }
+}
+
+#[tokio::test]
+async fn test_corrupted_index_regeneration() {
+    let now = Instant::now();
+    let path = common::init("corrupted_index");
+    let storage = common::create_test_storage(&path, 70_000).await.unwrap();
+    let records = common::generate_records(100, 10_000);
+    for (i, data) in &records {
+        write_one(&storage, *i, data, None).await.unwrap();
+        sleep(Duration::from_millis(10)).await;
+    }
+    storage.close().await.unwrap();
+    let index_file_path = path.join("test.0.index");
+    assert!(index_file_path.exists());
+
+    common::corrupt_file(index_file_path, common::CorruptionType::ZeroedAtBegin(1024))
+        .expect("index corruption failed");
+
+    let new_storage = common::create_test_storage(&path, 1_000_000)
+        .await
+        .expect("storage should be loaded successfully");
+
+    common::clean(new_storage, path)
         .map(|res| res.expect("clean failed"))
         .await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -231,7 +294,7 @@ async fn test_index_from_blob() {
     let now = Instant::now();
     let path = common::init("index_from_blob");
     let storage = common::create_test_storage(&path, 70_000).await.unwrap();
-    let records = common::generate_records(10, 10_000);
+    let records = common::generate_records(20, 10_000);
     for (i, data) in &records {
         write_one(&storage, *i, data, None).await.unwrap();
         sleep(Duration::from_millis(10)).await;
@@ -240,10 +303,11 @@ async fn test_index_from_blob() {
     let index_file_path = path.join("test.0.index");
     fs::remove_file(&index_file_path).unwrap();
     let new_storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
+    common::close_storage(new_storage, &[&index_file_path])
+        .await
+        .unwrap();
     assert!(index_file_path.exists());
-    common::clean(new_storage, path)
-        .map(|res| res.expect("clean failed"))
-        .await;
+    fs::remove_dir_all(path).unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -337,21 +401,22 @@ async fn test_read_with() {
     debug!("storage created");
     let key = 2345;
     trace!("key: {}", key);
-    let data = b"some_random_data";
-    trace!("data: {:?}", data);
-    write_one(&storage, key, data, Some("1.0")).await.unwrap();
-    debug!("first data written");
-    let data = b"some data with different version";
-    trace!("data: {:?}", data);
-    write_one(&storage, key, data, Some("2.0")).await.unwrap();
-    debug!("second data written");
+    let data1 = b"some_random_data";
+    trace!("data1: {:?}", data1);
+    write_one(&storage, key, data1, Some("1.0")).await.unwrap();
+    debug!("data1 written");
+    let data2 = b"some data with different version";
+    trace!("data2: {:?}", data2);
+    write_one(&storage, key, data2, Some("2.0")).await.unwrap();
+    debug!("data2 written");
     let key = KeyTest::new(key);
-    let data_read_with = storage.read_with(&key, &meta_with("2.0")).await.unwrap();
+    let data_read_with = storage.read_with(&key, &meta_with("1.0")).await.unwrap();
     debug!("read with finished");
     let data_read = storage.read(&key).await.unwrap();
     debug!("read finished");
+    // data_read - last record, data_read_with - first record with "1.0" meta
     assert_ne!(data_read_with, data_read);
-    assert_eq!(data_read_with, data);
+    assert_eq!(data_read_with, data1);
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
@@ -464,11 +529,11 @@ async fn test_check_bloom_filter_single() {
         trace!("key: {}, pos: {:?}, negative: {:?}", i, pos_key, neg_key);
         let key = KeyTest::new(i);
         storage.write(&key, data.to_vec()).await.unwrap();
-        assert_eq!(storage.check_bloom(key).await, Some(true));
+        assert_eq!(storage.check_filters(key).await, Some(true));
         let data = b"other_random_data";
         storage.write(&pos_key, data.to_vec()).await.unwrap();
-        assert_eq!(storage.check_bloom(pos_key).await, Some(true));
-        assert_eq!(storage.check_bloom(neg_key).await, Some(false));
+        assert_eq!(storage.check_filters(pos_key).await, Some(true));
+        assert_eq!(storage.check_filters(neg_key).await, Some(false));
     }
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -487,10 +552,34 @@ async fn test_check_bloom_filter_multiple() {
         trace!("blobs count: {}", storage.blobs_count().await);
     }
     for i in 1..800 {
-        assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(true));
+        assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(true));
     }
     for i in 800..1600 {
-        assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(false));
+        assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(false));
+    }
+    common::clean(storage, path).await.expect("clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_check_bloom_filter_multiple_offloaded() {
+    let now = Instant::now();
+    let path = common::init("check_bloom_filter_multiple_offloaded");
+    let mut storage = common::create_test_storage(&path, 20000).await.unwrap();
+    let data =
+        b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
+    for i in 1..800 {
+        let key = KeyTest::new(i);
+        storage.write(&key, data.to_vec()).await.unwrap();
+        sleep(Duration::from_millis(6)).await;
+        trace!("blobs count: {}", storage.blobs_count().await);
+    }
+    storage.offload_buffer(usize::MAX, 100).await;
+    for i in 1..800 {
+        assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(true));
+    }
+    for i in 800..1600 {
+        assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(false));
     }
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -523,13 +612,13 @@ async fn test_check_bloom_filter_init_from_existing() {
     let storage = common::create_test_storage(&path, 100).await.unwrap();
     debug!("check check_bloom");
     for i in 1..base {
-        assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(true));
+        assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(true));
     }
     info!("check certainly missed keys");
     let mut false_positive_counter = 0usize;
     for i in base..base * 2 {
         trace!("check key: {}", i);
-        if storage.check_bloom(KeyTest::new(i)).await == Some(true) {
+        if storage.check_filters(KeyTest::new(i)).await == Some(true) {
             false_positive_counter += 1;
         }
     }
@@ -571,13 +660,13 @@ async fn test_check_bloom_filter_generated() {
     debug!("check check_bloom");
     for i in 1..base {
         trace!("check key: {}", i);
-        assert_eq!(storage.check_bloom(KeyTest::new(i)).await, Some(true));
+        assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(true));
     }
     info!("check certainly missed keys");
     let mut false_positive_counter = 0usize;
     for i in base..base * 2 {
         trace!("check key: {}", i);
-        if storage.check_bloom(KeyTest::new(i)).await == Some(true) {
+        if storage.check_filters(KeyTest::new(i)).await == Some(true) {
             false_positive_counter += 1;
         }
     }
@@ -684,7 +773,7 @@ async fn test_manual_close_active_blob() {
     assert_eq!(storage.blobs_count().await, 1);
     assert!(path.join("test.0.blob").exists());
     sleep(Duration::from_millis(1000)).await;
-    storage.close_active_blob().await;
+    storage.try_close_active_blob().await.unwrap();
     assert!(path.join("test.0.blob").exists());
     assert!(!path.join("test.1.blob").exists());
     common::clean(storage, path).await.unwrap();
@@ -780,7 +869,7 @@ async fn test_memory_index() {
         KEY_AND_DATA_SIZE * 4 + RECORD_HEADER_SIZE * 13 - 6 * std::mem::size_of::<u32>()
     ); // 4 keys, 7 records in active blob (13 allocated (6 without key on heap))
     assert!(path.join("test.0.blob").exists());
-    storage.close_active_blob().await;
+    storage.try_close_active_blob().await.unwrap();
     // Doesn't work without this: indices are written in old btree (which I want to dump in memory)
     sleep(Duration::from_millis(100)).await;
     for (key, data) in records.iter().skip(7) {
@@ -794,4 +883,141 @@ async fn test_memory_index() {
     ); // 3 keys, 3 records in active blob (3 allocated)
     assert!(path.join("test.1.blob").exists());
     common::clean(storage, path).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_mark_as_deleted_single() {
+    let now = Instant::now();
+    let path = common::init("mark_as_deleted_single");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
+    let count = 30;
+    let delete_key = KeyTest::new(5);
+    let records = common::generate_records(count, 1000);
+    for (key, data) in &records {
+        write_one(&storage, *key, data, None).await.unwrap();
+        sleep(Duration::from_millis(64)).await;
+    }
+    storage.mark_all_as_deleted(&delete_key).await.unwrap();
+    assert!(!storage.contains(delete_key).await.unwrap());
+    common::clean(storage, path).await.expect("clean failed");
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
+async fn test_blob_header_validation() {
+    use pearl::error::{AsPearlError, ValidationErrorKind};
+    use std::os::unix::fs::FileExt;
+
+    let path = common::init("blob_header_validation");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
+    let data = vec![1, 1, 2, 3, 5, 8];
+    write_one(&storage, 42, &data, None).await.unwrap();
+    storage.close().await.expect("storage close failed");
+    let blob_path = std::env::temp_dir().join(&path).join("test.0.blob");
+    info!("path: {}", blob_path.display());
+    let file = fs::OpenOptions::new()
+        .write(true)
+        .create(false)
+        .open(&blob_path)
+        .expect("failed to open file");
+    let buf = bincode::serialize(&0_u32).expect("failed to serialize u32");
+    file.write_at(&buf, 8)
+        .expect("failed to overwrite blob version");
+
+    let builder = Builder::new()
+        .work_dir(&path)
+        .blob_file_name_prefix("test")
+        .max_blob_size(10_000)
+        .max_data_in_blob(100_000)
+        .set_filter_config(Default::default())
+        .allow_duplicates();
+    let builder = if let Ok(ioring) = rio::new() {
+        builder.enable_aio(ioring)
+    } else {
+        println!("current OS doesn't support AIO");
+        builder
+    };
+    let mut storage: Storage<KeyTest> = builder.build().unwrap();
+    let err = storage
+        .init()
+        .await
+        .expect_err("storage initialized with invalid blob header");
+    info!("{:#}", err);
+    let pearl_err = err
+        .as_pearl_error()
+        .expect("result doesn't contains pearl error");
+    let is_correct = matches!(
+        pearl_err.kind(),
+        pearl::ErrorKind::Validation {
+            kind: ValidationErrorKind::BlobVersion,
+            cause: _
+        }
+    );
+    assert!(is_correct);
+    common::clean(storage, path).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_in_memory_and_disk_records_retrieval() -> Result<()> {
+    let path = common::init("in_memory_and_disk_records_retrieval");
+    let max_blob_size = 1_000_000;
+    let records_amount = 30u32;
+    let on_disk_key = 0;
+    let half_disk_half_memory_key = records_amount / 2 / 2 + 1;
+    let in_memory_key = records_amount / 2 - 1;
+    let keys = [on_disk_key, half_disk_half_memory_key, in_memory_key];
+    let records = common::build_rep_data(500, &mut [17, 40, 29, 7, 75], records_amount as usize);
+
+    let mut storage = Builder::new()
+        .work_dir(&path)
+        .blob_file_name_prefix("test")
+        .max_blob_size(max_blob_size)
+        .allow_duplicates()
+        // records_amount / 2 + 2 - on disk, records_amount / 2 - 2 - in memory (17, 13)
+        .max_data_in_blob(records_amount as u64 / 2 + 2)
+        .build()?;
+
+    let res = storage.init().await;
+    assert!(res.is_ok());
+
+    info!("write (0..{})", records_amount);
+    for i in 0..records_amount {
+        sleep(Duration::from_millis(100)).await;
+        let res = write_one(&storage, i / 2, &records[i as usize], None).await;
+        assert!(res.is_ok());
+    }
+
+    while storage.blobs_count().await < 2 {
+        sleep(Duration::from_millis(200)).await;
+    }
+
+    assert_eq!(
+        (storage.blobs_count().await, storage.records_count().await),
+        (2, 30)
+    );
+
+    for key in keys {
+        let record = storage.read(KeyTest::new(key)).await;
+        assert_eq!(record?, records[key as usize * 2 + 1]);
+    }
+
+    for key in keys {
+        let read_records = storage
+            .read_all(&KeyTest::new(key))
+            .and_then(|entries| {
+                entries
+                    .into_iter()
+                    .map(|e| e.load())
+                    .collect::<FuturesOrdered<_>>()
+                    .map(|e| e.map(|r| r.into_data()))
+                    .try_collect::<Vec<_>>()
+            })
+            .await;
+        assert!(common::cmp_records_collections(
+            read_records?,
+            &records[(key as usize * 2)..(key as usize * 2 + 2)]
+        ));
+    }
+
+    Ok(())
 }

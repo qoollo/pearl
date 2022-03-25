@@ -35,6 +35,8 @@ pub struct Builder {
     ioring: Option<Rio>,
 }
 
+const MAX_POSSIBLE_DATA_IN_BLOB: u64 = u32::MAX as u64;
+
 impl Builder {
     /// Create new uninitialized `Builder`
     #[must_use]
@@ -45,22 +47,30 @@ impl Builder {
     /// Creates `Storage` based on given configuration,
     /// returns error if not all params are set.
     /// # Errors
-    /// Return error if some of the required params is missed
-    pub fn build<K: Key>(self) -> Result<Storage<K>> {
-        let mut missed_params = String::new();
+    /// Return error if some of the required params is missed or wrong
+    pub fn build<K>(self) -> Result<Storage<K>>
+    where
+        for<'a> K: Key<'a> + 'static,
+    {
+        let mut error_params = String::new();
         if self.config.work_dir().is_none() {
-            missed_params.push_str("> work_dir\n");
+            error_params.push_str("> work_dir\n");
         } else if self.config.max_data_in_blob().is_none() {
-            missed_params.push_str("> max_data_in_blob\n");
+            error_params.push_str("> max_data_in_blob\n");
+        } else if self.config.max_data_in_blob().unwrap() > MAX_POSSIBLE_DATA_IN_BLOB {
+            error_params.push_str(&format!(
+                "> max_data_in_blob must be less than {}",
+                MAX_POSSIBLE_DATA_IN_BLOB
+            ));
         } else if self.config.max_blob_size().is_none() {
-            missed_params.push_str("> max_blob_size\n");
+            error_params.push_str("> max_blob_size\n");
         } else if self.config.blob_file_name_prefix().is_none() {
-            missed_params.push_str("> blob_file_name_prefix\n");
+            error_params.push_str("> blob_file_name_prefix\n");
         }
-        if missed_params.is_empty() {
+        if error_params.is_empty() {
             Ok(Storage::new(self.config, self.ioring))
         } else {
-            error!("{}", missed_params);
+            error!("{}", error_params);
             Err(Error::uninitialized().into())
         }
     }
@@ -71,6 +81,15 @@ impl Builder {
         let path: PathBuf = work_dir.into();
         debug!("work dir set to: {}", path.display());
         self.config.set_work_dir(path);
+        self
+    }
+
+    /// Sets directory name for corrupted files. If path doesn't exists, Storage will try to create it
+    /// at initialization stage.
+    pub fn corrupted_dir_name(mut self, name: impl Into<String>) -> Self {
+        let name = name.into();
+        debug!("corrupted dir name set to: {}", name);
+        self.config.set_corrupted_dir_name(name);
         self
     }
 
@@ -135,7 +154,9 @@ impl Builder {
     /// Sets custom bloom filter config, if not set, use default values.
     #[must_use]
     pub fn set_filter_config(mut self, config: BloomConfig) -> Self {
-        self.config.set_filter(config);
+        let mut index_config = self.config.index();
+        index_config.bloom_config = Some(config);
+        self.config.set_index(index_config);
         self
     }
 
@@ -160,6 +181,12 @@ impl Builder {
     /// This can prevent disk overusage in systems with multiple pearls.
     pub fn set_dump_sem(mut self, dump_sem: Arc<Semaphore>) -> Self {
         self.config.set_dump_sem(dump_sem);
+        self
+    }
+
+    /// Sets bloom filter group size
+    pub fn set_bloom_filter_group_size(mut self, size: usize) -> Self {
+        self.config.set_bloom_filter_group_size(size);
         self
     }
 }
