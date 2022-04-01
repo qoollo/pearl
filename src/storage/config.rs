@@ -7,7 +7,7 @@ pub(crate) struct Config {
     max_blob_size: Option<u64>,
     max_data_in_blob: Option<u64>,
     blob_file_name_prefix: Option<String>,
-    update_interval_ms: u64,
+    debounce_interval_ms: u64,
     allow_duplicates: bool,
     ignore_corrupted: bool,
     index: IndexConfig,
@@ -39,8 +39,8 @@ impl Config {
     }
 
     #[inline]
-    pub const fn update_interval_ms(&self) -> u64 {
-        self.update_interval_ms
+    pub const fn debounce_interval_ms(&self) -> u64 {
+        self.debounce_interval_ms
     }
 
     #[inline]
@@ -134,7 +134,7 @@ impl Default for Config {
             max_blob_size: None,
             max_data_in_blob: None,
             blob_file_name_prefix: None,
-            update_interval_ms: 100,
+            debounce_interval_ms: 100,
             allow_duplicates: false,
             ignore_corrupted: false,
             index: Default::default(),
