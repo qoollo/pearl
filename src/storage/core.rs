@@ -291,7 +291,7 @@ where
             .active_blob
             .as_mut()
             .ok_or_else(Error::active_blob_not_set)?;
-        blob.write(record).await.or_else(|err| {
+        let result = blob.write(record).await.or_else(|err| {
             let e = err.downcast::<Error>()?;
             if let ErrorKind::FileUnavailable(kind) = e.kind() {
                 let work_dir = self
@@ -303,8 +303,39 @@ where
             } else {
                 Err(e.into())
             }
-        })
+        });
+        self.try_update_active_blob(blob).await?;
+        result
     }
+
+    async fn try_update_active_blob(&self, active_blob: &Box<Blob<K>>) -> Result<()> {
+        let config_max_size = self
+            .inner
+            .config
+            .max_blob_size()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
+        let config_max_count = self
+            .inner
+            .config
+            .max_data_in_blob()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
+        Ok(
+            if active_blob.file_size() > config_max_size
+                || active_blob.records_count() as u64 > config_max_count
+            {
+                println!(
+                    "file_size: {}, max_size: {}, count: {}, max_count: {}",
+                    active_blob.file_size(),
+                    config_max_size,
+                    active_blob.records_count(),
+                    config_max_count
+                );
+                self.observer.force_update_active_blob_always().await;
+                self.observer.try_dump_old_blob_indexes().await;
+            },
+        )
+    }
+
     /// Reads the first found data matching given key.
     /// # Examples
     /// ```no-run

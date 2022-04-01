@@ -94,6 +94,11 @@ where
         .await
     }
 
+    pub(crate) async fn force_update_active_blob_always(&self) {
+        self.send_msg(Msg::new(OperationType::ForceUpdateActiveBlob, None))
+            .await
+    }
+
     pub(crate) async fn restore_active_blob(&self) {
         self.send_msg(Msg::new(OperationType::RestoreActiveBlob, None))
             .await

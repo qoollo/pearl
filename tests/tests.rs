@@ -636,7 +636,9 @@ async fn test_check_bloom_filter_generated() {
     debug!("open new storage");
     let base = 20_000;
     {
-        let storage = common::create_test_storage(&path, 100_000).await.unwrap();
+        let storage = common::create_test_storage(&path, 100_000_000)
+            .await
+            .unwrap();
         debug!("write some data");
         let data =
             b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
