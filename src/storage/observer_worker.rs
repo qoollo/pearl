@@ -1,13 +1,11 @@
 use super::prelude::*;
-use tokio::{sync::mpsc::Receiver, sync::Semaphore, time::Instant};
+use tokio::{sync::mpsc::Receiver, sync::Semaphore};
 
 pub(crate) struct ObserverWorker<K: Key> {
     inner: Inner<K>,
     receiver: Receiver<Msg>,
     dump_sem: Arc<Semaphore>,
     async_oplock: Arc<Mutex<()>>,
-    last_blob_update_time: Option<Instant>,
-    debounce_interval: Duration,
 }
 
 impl<K: Key + 'static> ObserverWorker<K> {
@@ -17,14 +15,11 @@ impl<K: Key + 'static> ObserverWorker<K> {
         dump_sem: Arc<Semaphore>,
         async_oplock: Arc<Mutex<()>>,
     ) -> Self {
-        let debounce_interval = Duration::from_millis(inner.config.debounce_interval_ms());
         Self {
             inner,
             receiver,
             dump_sem,
             async_oplock,
-            last_blob_update_time: None,
-            debounce_interval,
         }
     }
 
@@ -61,13 +56,7 @@ impl<K: Key + 'static> ObserverWorker<K> {
         }
         match msg.optype {
             OperationType::ForceUpdateActiveBlob => {
-                if self.last_blob_update_time.is_none()
-                    || Instant::now().saturating_duration_since(self.last_blob_update_time.unwrap())
-                        > self.debounce_interval
-                {
-                    update_active_blob(self.inner.clone()).await?;
-                    self.last_blob_update_time = Some(Instant::now());
-                }
+                update_active_blob(self.inner.clone()).await?;
             }
             OperationType::CloseActiveBlob => {
                 self.inner.close_active_blob().await?;
@@ -100,7 +89,7 @@ async fn update_active_blob<K: Key + 'static>(inner: Inner<K>) -> Result<()> {
     let next_name = inner.next_blob_name()?;
     // Opening a new blob may take a while
     trace!("obtaining new active blob");
-    let new_active = Blob::open_new(next_name, inner.ioring, inner.config.index())
+    let new_active = Blob::open_new(next_name, inner.ioring.clone(), inner.config.index())
         .await?
         .boxed();
     inner

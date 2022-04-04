@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
@@ -19,7 +21,7 @@ pub struct Blob<K: Key> {
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
-    key_type_marker: PhantomData<K>,
+    created_at: SystemTime,
 }
 
 impl<K: Key + 'static> Blob<K> {
@@ -45,7 +47,7 @@ impl<K: Key + 'static> Blob<K> {
             name,
             file,
             current_offset,
-            key_type_marker: PhantomData,
+            created_at: SystemTime::now(),
         };
         blob.write_header().await?;
         Ok(blob)
@@ -53,6 +55,10 @@ impl<K: Key + 'static> Blob<K> {
 
     pub fn name(&self) -> &FileName {
         &self.name
+    }
+
+    pub(crate) fn created_at(&self) -> SystemTime {
+        self.created_at
     }
 
     async fn write_header(&mut self) -> Result<()> {
@@ -142,13 +148,14 @@ impl<K: Key + 'static> Blob<K> {
         };
         trace!("index initialized");
         let header_size = bincode::serialized_size(&header)?;
+        let created_at = file.created_at()?;
         let mut blob = Self {
             header,
             file,
             name,
             index,
             current_offset: Arc::new(Mutex::new(size)),
-            key_type_marker: PhantomData,
+            created_at,
         };
         trace!("call update index");
         if is_index_corrupted || size as u64 > header_size {
