@@ -309,6 +309,14 @@ where
     }
 
     async fn try_update_active_blob(&self, active_blob: &Box<Blob<K>>) -> Result<()> {
+        let now = std::time::SystemTime::now();
+        let diff = now.duration_since(active_blob.created_at());
+        if let Ok(dur) = diff {
+            if dur.as_millis() < self.inner.config.debounce_interval_ms() as u128 {
+                return Ok(());
+            }
+        }
+
         let config_max_size = self
             .inner
             .config
@@ -323,13 +331,6 @@ where
             if active_blob.file_size() > config_max_size
                 || active_blob.records_count() as u64 > config_max_count
             {
-                println!(
-                    "file_size: {}, max_size: {}, count: {}, max_count: {}",
-                    active_blob.file_size(),
-                    config_max_size,
-                    active_blob.records_count(),
-                    config_max_count
-                );
                 self.observer.force_update_active_blob_always().await;
                 self.observer.try_dump_old_blob_indexes().await;
             },
