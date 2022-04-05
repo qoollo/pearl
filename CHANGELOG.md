@@ -10,7 +10,7 @@ Pearl changelog
 
 
 #### Fixed
-
+- corrupted blob now should be saved in case of 'unexpected eof' error
 
 #### Updated
 
