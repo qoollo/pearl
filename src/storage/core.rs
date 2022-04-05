@@ -297,14 +297,6 @@ impl<K: Key + 'static> Storage<K> {
     }
 
     async fn try_update_active_blob(&self, active_blob: &Box<Blob<K>>) -> Result<()> {
-        let now = std::time::SystemTime::now();
-        let diff = now.duration_since(active_blob.created_at());
-        if let Ok(dur) = diff {
-            if dur.as_millis() < self.inner.config.debounce_interval_ms() as u128 {
-                return Ok(());
-            }
-        }
-
         let config_max_size = self
             .inner
             .config
@@ -315,14 +307,17 @@ impl<K: Key + 'static> Storage<K> {
             .config
             .max_data_in_blob()
             .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
-        Ok(
-            if active_blob.file_size() > config_max_size
-                || active_blob.records_count() as u64 > config_max_count
-            {
+        if active_blob.file_size() > config_max_size
+            || active_blob.records_count() as u64 > config_max_count
+        {
+            let now = std::time::SystemTime::now();
+            let dur = now.duration_since(active_blob.created_at())?;
+            if dur.as_millis() > self.inner.config.debounce_interval_ms() as u128 {
                 self.observer.force_update_active_blob_always().await;
                 self.observer.try_dump_old_blob_indexes().await;
-            },
-        )
+            }
+        }
+        Ok(())
     }
 
     /// Reads the first found data matching given key.
