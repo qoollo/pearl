@@ -653,9 +653,6 @@ where
                 },
                 _ => false,
             };
-        } else if let Some(bincode::ErrorKind::Io(error)) =
-            error.downcast_ref::<bincode::Error>().and_then(|b| Some(b.as_ref())) {
-            return error.kind() == std::io::ErrorKind::UnexpectedEof;
         }
         false
     }
