@@ -3,7 +3,6 @@ use crate::error::ValidationErrorKind;
 use super::prelude::*;
 use futures::stream::FuturesOrdered;
 use tokio::fs::{create_dir, create_dir_all};
-use std::io::ErrorKind as IOErrorKind;
 
 const BLOB_FILE_EXTENSION: &str = "blob";
 
