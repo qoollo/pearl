@@ -72,6 +72,12 @@ impl<K: Key + 'static> ObserverWorker<K> {
                     .try_dump_old_blob_indexes(self.dump_sem.clone())
                     .await;
             }
+            OperationType::TryUpdateActiveBlob => {
+                self.try_update_active_blob().await?;
+                self.inner
+                    .try_dump_old_blob_indexes(self.dump_sem.clone())
+                    .await;
+            }
         }
         Ok(())
     }
@@ -82,6 +88,52 @@ impl<K: Key + 'static> ObserverWorker<K> {
         } else {
             true
         }
+    }
+
+    async fn try_update_active_blob(&self) -> Result<()> {
+        let config_max_size = self
+            .inner
+            .config
+            .max_blob_size()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
+        let config_max_count = self
+            .inner
+            .config
+            .max_data_in_blob()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
+
+        {
+            let read = self.inner.safe.read().await;
+            let active_blob = read.active_blob.as_ref();
+            if let Some(active_blob) = active_blob {
+                if active_blob.file_size() < config_max_size
+                    && (active_blob.records_count() as u64) < config_max_count
+                {
+                    return Ok(());
+                }
+            }
+        }
+
+        let mut write = self.inner.safe.write().await;
+        let active_blob = write.active_blob.as_ref();
+        if let Some(active_blob) = active_blob {
+            if active_blob.file_size() >= config_max_size
+                || active_blob.records_count() as u64 >= config_max_count
+            {
+                let next_name = self.inner.next_blob_name()?;
+                // Opening a new blob may take a while
+                trace!("obtaining new active blob");
+                let new_active = Blob::open_new(
+                    next_name,
+                    self.inner.ioring.clone(),
+                    self.inner.config.index(),
+                )
+                .await?
+                .boxed();
+                write.replace_active_blob(new_active).await?;
+            }
+        }
+        Ok(())
     }
 }
 

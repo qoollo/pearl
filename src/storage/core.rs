@@ -317,8 +317,7 @@ impl<K: Key + 'static> Storage<K> {
                 Err(d) => d,
             };
             if dur.as_millis() > self.inner.config.debounce_interval_ms() as u128 {
-                self.observer.force_update_active_blob_always().await;
-                self.observer.try_dump_old_blob_indexes().await;
+                self.observer.try_update_active_blob().await;
             }
         }
         Ok(())
