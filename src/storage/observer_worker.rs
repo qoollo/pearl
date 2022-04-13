@@ -73,10 +73,11 @@ impl<K: Key + 'static> ObserverWorker<K> {
                     .await;
             }
             OperationType::TryUpdateActiveBlob => {
-                self.try_update_active_blob().await?;
-                self.inner
-                    .try_dump_old_blob_indexes(self.dump_sem.clone())
-                    .await;
+                if self.try_update_active_blob().await? {
+                    self.inner
+                        .try_dump_old_blob_indexes(self.dump_sem.clone())
+                        .await;
+                }
             }
         }
         Ok(())
@@ -90,7 +91,7 @@ impl<K: Key + 'static> ObserverWorker<K> {
         }
     }
 
-    async fn try_update_active_blob(&self) -> Result<()> {
+    async fn try_update_active_blob(&self) -> Result<bool> {
         let config_max_size = self
             .inner
             .config
@@ -109,7 +110,7 @@ impl<K: Key + 'static> ObserverWorker<K> {
                 if active_blob.file_size() < config_max_size
                     && (active_blob.records_count() as u64) < config_max_count
                 {
-                    return Ok(());
+                    return Ok(false);
                 }
             }
         }
@@ -131,9 +132,10 @@ impl<K: Key + 'static> ObserverWorker<K> {
                 .await?
                 .boxed();
                 write.replace_active_blob(new_active).await?;
+                return Ok(true);
             }
         }
-        Ok(())
+        Ok(false)
     }
 }
 
