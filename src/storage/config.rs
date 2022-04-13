@@ -134,7 +134,7 @@ impl Default for Config {
             max_blob_size: None,
             max_data_in_blob: None,
             blob_file_name_prefix: None,
-            debounce_interval_ms: 100,
+            debounce_interval_ms: 200,
             allow_duplicates: false,
             ignore_corrupted: false,
             index: Default::default(),

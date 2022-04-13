@@ -307,11 +307,15 @@ impl<K: Key + 'static> Storage<K> {
             .config
             .max_data_in_blob()
             .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
-        if active_blob.file_size() > config_max_size
-            || active_blob.records_count() as u64 > config_max_count
+        if active_blob.file_size() >= config_max_size
+            || active_blob.records_count() as u64 >= config_max_count
         {
-            let now = std::time::SystemTime::now();
-            let dur = now.duration_since(active_blob.created_at())?;
+            // In case of current time being earlier than active blob's creation, error will contain the difference
+            let dur = active_blob.created_at().elapsed().map_err(|e| e.duration());
+            let dur = match dur {
+                Ok(d) => d,
+                Err(d) => d,
+            };
             if dur.as_millis() > self.inner.config.debounce_interval_ms() as u128 {
                 self.observer.force_update_active_blob_always().await;
                 self.observer.try_dump_old_blob_indexes().await;
