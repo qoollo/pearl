@@ -114,28 +114,7 @@ impl<K: Key + 'static> ObserverWorker<K> {
                 }
             }
         }
-
-        let mut write = self.inner.safe.write().await;
-        let active_blob = write.active_blob.as_ref();
-        if let Some(active_blob) = active_blob {
-            if active_blob.file_size() >= config_max_size
-                || active_blob.records_count() as u64 >= config_max_count
-            {
-                let next_name = self.inner.next_blob_name()?;
-                // Opening a new blob may take a while
-                trace!("obtaining new active blob");
-                let new_active = Blob::open_new(
-                    next_name,
-                    self.inner.ioring.clone(),
-                    self.inner.config.index(),
-                )
-                .await?
-                .boxed();
-                write.replace_active_blob(new_active).await?;
-                return Ok(true);
-            }
-        }
-        Ok(false)
+        update_active_blob(&self.inner).await.map(|_| true)
     }
 }
 
