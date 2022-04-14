@@ -5,12 +5,45 @@ Pearl changelog
 ## [Unreleased]
 #### Added
 
-
 #### Changed
 
+#### Fixed
+- Fix build of version 0.9.5 (#298)
+
+#### Updated
+
+
+## [0.9.5] - 2023-06-05
+#### Added
+
+#### Changed
+- Blob file path added into context information for several errors (#286)
 
 #### Fixed
 
+#### Updated
+
+
+## [0.9.4] - 2022-11-24
+#### Added
+
+#### Changed
+
+#### Fixed
+
+#### Updated
+- Update bitvec version (#222)
+
+
+## [0.9.3] - 2022-04-18
+#### Added
+
+
+#### Changed
+- Remove active checking for blob update (#159)
+
+#### Fixed
+- corrupted blob now should be saved in case of 'unexpected eof' error
 
 #### Updated
 
