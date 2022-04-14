@@ -523,12 +523,14 @@ impl RawRecords {
             .read_at(&mut buf, self.current_offset)
             .await
             .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
-        let header = RecordHeader::from_raw(&buf).with_context(|| {
-            format!(
-                "header deserialization from raw failed, buf len: {}",
-                buf.len()
-            )
-        })?;
+        let header = RecordHeader::from_raw(&buf)
+            .map_err(|e| Error::from(ErrorKind::Bincode(e.to_string())))
+            .with_context(|| {
+                format!(
+                    "header deserialization from raw failed, buf len: {}",
+                    buf.len()
+                )
+            })?;
         self.current_offset += self.record_header_size;
         self.current_offset += header.meta_size();
         self.current_offset += header.data_size();
