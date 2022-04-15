@@ -114,6 +114,7 @@ impl<K: Key + 'static> ObserverWorker<K> {
                 }
             }
         }
+        // We don't need to held lock because update can be performed only in this thread
         update_active_blob(&self.inner).await.map(|_| true)
     }
 }
