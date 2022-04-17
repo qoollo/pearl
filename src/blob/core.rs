@@ -14,7 +14,10 @@ pub(crate) const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 ///
 /// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
-pub struct Blob<K: Key> {
+pub struct Blob<K>
+where
+    for<'a> K: Key<'a>,
+{
     header: Header,
     index: Index<K>,
     name: FileName,
@@ -23,7 +26,10 @@ pub struct Blob<K: Key> {
     key_type_marker: PhantomData<K>,
 }
 
-impl<K: Key + 'static> Blob<K> {
+impl<K> Blob<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     /// # Description
     /// Creates new blob file with given [`FileName`].
     /// And creates index from existing `.index` file or scans corresponding blob.
@@ -498,12 +504,14 @@ impl RawRecords {
             .read_at(&mut buf, self.current_offset)
             .await
             .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
-        let header = RecordHeader::from_raw(&buf).with_context(|| {
-            format!(
-                "header deserialization from raw failed, buf len: {}",
-                buf.len()
-            )
-        })?;
+        let header = RecordHeader::from_raw(&buf)
+            .map_err(|e| Error::from(ErrorKind::Bincode(e.to_string())))
+            .with_context(|| {
+                format!(
+                    "header deserialization from raw failed, buf len: {}",
+                    buf.len()
+                )
+            })?;
         self.current_offset += self.record_header_size;
         self.current_offset += header.meta_size();
         self.current_offset += header.data_size();
@@ -535,7 +543,7 @@ pub(crate) fn filter_deleted_headers(headers: Vec<RecordHeader>) -> Vec<RecordHe
 #[async_trait::async_trait]
 impl<K> BloomProvider<K> for Blob<K>
 where
-    K: Key + 'static,
+    for<'a> K: Key<'a> + 'static,
 {
     type Filter = CombinedFilter<K>;
     async fn check_filter(&self, item: &K) -> FilterResult {

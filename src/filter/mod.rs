@@ -12,7 +12,6 @@ use super::prelude::*;
 pub use bloom::*;
 pub use combined::*;
 pub use hierarchical::*;
-pub use range::*;
 use std::ops::Add;
 pub use traits::*;
 

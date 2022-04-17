@@ -11,9 +11,15 @@ Add support for hierarchical range filters (#154)
 
 
 #### Fixed
-
+- corrupted blob now should be saved in case of 'unexpected eof' error
 
 #### Updated
+
+
+## [0.10.0] - 2022-03-30
+#### Changed
+- Add refkey trait (#141)
+- Change nightly to stable rust toolchain
 
 
 ## [0.9.2] - 2022-02-14

@@ -36,13 +36,19 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 ///
 /// [`Key`]: trait.Key.html
 #[derive(Debug, Clone)]
-pub struct Storage<K: Key> {
+pub struct Storage<K>
+where
+    for<'a> K: Key<'a>,
+{
     pub(crate) inner: Inner<K>,
     observer: Observer<K>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Inner<K: Key> {
+pub(crate) struct Inner<K>
+where
+    for<'a> K: Key<'a>,
+{
     pub(crate) config: Config,
     pub(crate) safe: Arc<RwLock<Safe<K>>>,
     next_blob_id: Arc<AtomicUsize>,
@@ -50,7 +56,10 @@ pub(crate) struct Inner<K: Key> {
 }
 
 #[derive(Debug)]
-pub(crate) struct Safe<K: Key> {
+pub(crate) struct Safe<K>
+where
+    for<'a> K: Key<'a>,
+{
     pub(crate) active_blob: Option<Box<Blob<K>>>,
     pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
 }
@@ -78,7 +87,10 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     Ok(content)
 }
 
-impl<K: Key + 'static> Storage<K> {
+impl<K> Storage<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
         let dump_sem = config.dump_sem();
         let inner = Inner::new(config, ioring);
@@ -640,7 +652,7 @@ impl<K: Key + 'static> Storage<K> {
                 ErrorKind::Bincode(_) => true,
                 ErrorKind::Validation { kind, cause: _ } => {
                     !matches!(kind, ValidationErrorKind::BlobVersion)
-                }
+                },
                 _ => false,
             };
         }
@@ -841,7 +853,10 @@ impl<K: Key + 'static> Storage<K> {
     }
 }
 
-impl<K: Key + 'static> Inner<K> {
+impl<K> Inner<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     fn new(config: Config, ioring: Option<Rio>) -> Self {
         Self {
             safe: Arc::new(RwLock::new(Safe::new(config.bloom_filter_group_size()))),
@@ -973,7 +988,10 @@ impl<K: Key + 'static> Inner<K> {
     }
 }
 
-impl<K: Key + 'static> Safe<K> {
+impl<K> Safe<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     fn new(group_size: usize) -> Self {
         Self {
             active_blob: None,
@@ -1044,18 +1062,34 @@ impl<K: Key + 'static> Safe<K> {
 }
 
 /// Trait `Key`
-pub trait Key: AsRef<[u8]> + Debug + Clone + Send + Sync + Ord + From<Vec<u8>> + Default {
+pub trait Key<'a>:
+    AsRef<[u8]> + From<Vec<u8>> + Debug + Clone + Send + Sync + Ord + Default
+{
     /// Key must have fixed length
     const LEN: u16;
+
+    /// Reference type for zero-copy key creation
+    type Ref: RefKey<'a>;
 
     /// Convert `Self` into `Vec<u8>`
     fn to_vec(&self) -> Vec<u8> {
         self.as_ref().to_vec()
     }
+
+    /// Convert `Self` to `Self::Ref`
+    fn as_ref_key(&'a self) -> Self::Ref {
+        Self::Ref::from(self.as_ref())
+    }
 }
 
+/// Trait for reference key type
+pub trait RefKey<'a>: Ord + From<&'a [u8]> {}
+
 #[async_trait::async_trait]
-impl<K: Key + 'static> BloomProvider<K> for Storage<K> {
+impl<K> BloomProvider<K> for Storage<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     type Filter = <Blob<K> as BloomProvider<K>>::Filter;
     async fn check_filter(&self, item: &K) -> FilterResult {
         let inner = self.inner.safe.read().await;
