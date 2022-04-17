@@ -69,7 +69,7 @@ pub(crate) enum State<FileIndex, K> {
 impl<FileIndex: FileIndexTrait<K>, K: Key> IndexStruct<FileIndex, K> {
     pub(crate) fn new(name: FileName, ioring: Option<Rio>, config: IndexConfig) -> Self {
         let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
-        let filter = if params.bloom_is_on {
+        let bloom_filter = if params.bloom_is_on {
             Some(config.bloom_config.map(Bloom::new).unwrap_or_default())
         } else {
             None
@@ -77,7 +77,7 @@ impl<FileIndex: FileIndexTrait<K>, K: Key> IndexStruct<FileIndex, K> {
         let mem = Some(Default::default());
         Self {
             params,
-            filter: CombinedFilter::new(filter, RangeFilter::new()),
+            filter: CombinedFilter::new(bloom_filter, RangeFilter::new()),
             bloom_offset: None,
             inner: State::InMemory(BTreeMap::new()),
             mem,

@@ -393,10 +393,7 @@ impl<K: Key + 'static> Storage<K> {
         let possible_blobs = blobs
             .iter_possible_childs_rev(key)
             .map(|(id, blob)| async move {
-                if matches!(
-                    blob.data.check_filter(key).await,
-                    FilterResult::NeedAdditionalCheck
-                ) {
+                if !matches!(blob.data.check_filter(key).await, FilterResult::NotContains) {
                     Some(id)
                 } else {
                     None
