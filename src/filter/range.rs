@@ -1,7 +1,8 @@
 use super::*;
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
-pub(crate) struct RangeFilter<K>
+/// Range filter
+pub struct RangeFilter<K>
 where
     for<'a> K: Key<'a>,
 {

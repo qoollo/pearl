@@ -1,15 +1,19 @@
 use super::*;
+pub use crate::filter::range::*;
 
 #[derive(Debug, Clone)]
 /// Combined bloom and range filter
-pub struct CombinedFilter<K: Key> {
+pub struct CombinedFilter<K>
+where
+    for<'a> K: Key<'a>,
+{
     bloom: Option<Bloom>,
     range: RangeFilter<K>,
 }
 
 impl<K> CombinedFilter<K>
 where
-    K: Key,
+    for<'a> K: Key<'a>,
 {
     /// Create new CombinedFilter
     pub fn new(bloom: Option<Bloom>, range: RangeFilter<K>) -> Self {
@@ -31,7 +35,7 @@ where
 #[async_trait::async_trait]
 impl<K> FilterTrait<K> for CombinedFilter<K>
 where
-    K: Key + Send + Sync,
+    for<'a> K: Key<'a> + Send + Sync,
     Bloom: FilterTrait<K>,
 {
     /// Add key to filter
