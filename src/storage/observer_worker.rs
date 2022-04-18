@@ -120,8 +120,19 @@ where
                 }
             }
         }
-        // We don't need to held lock because update can be performed only in this thread
-        update_active_blob(&self.inner).await.map(|_| true)
+
+        let mut write = self.inner.safe.write().await;
+        let active_blob = write.active_blob.as_ref();
+        if let Some(active_blob) = active_blob {
+            if active_blob.file_size() >= config_max_size
+                || active_blob.records_count() as u64 >= config_max_count
+            {
+                let new_active = get_new_active_blob(&self.inner).await?;
+                write.replace_active_blob(new_active).await?;
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 }
 
@@ -129,12 +140,7 @@ async fn update_active_blob<K>(inner: &Inner<K>) -> Result<()>
 where
     for<'a> K: Key<'a> + 'static,
 {
-    let next_name = inner.next_blob_name()?;
-    // Opening a new blob may take a while
-    trace!("obtaining new active blob");
-    let new_active = Blob::open_new(next_name, inner.ioring.clone(), inner.config.index())
-        .await?
-        .boxed();
+    let new_active = get_new_active_blob(inner).await?;
     inner
         .safe
         .write()
@@ -142,4 +148,16 @@ where
         .replace_active_blob(new_active)
         .await?;
     Ok(())
+}
+
+async fn get_new_active_blob<K>(inner: &Inner<K>) -> Result<Box<Blob<K>>>
+where
+    for<'a> K: Key<'a> + 'static,
+{
+    let next_name = inner.next_blob_name()?;
+    trace!("obtaining new active blob");
+    let new_active = Blob::open_new(next_name, inner.ioring.clone(), inner.config.index())
+        .await?
+        .boxed();
+    Ok(new_active)
 }
