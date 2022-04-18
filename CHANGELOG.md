@@ -5,6 +5,16 @@ Pearl changelog
 ## [Unreleased]
 #### Added
 
+#### Changed
+
+#### Fixed
+
+#### Updated
+
+
+## [0.9.3] - 2022-04-18
+#### Added
+
 
 #### Changed
 - Remove active checking for blob update (#159)
