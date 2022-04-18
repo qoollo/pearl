@@ -4,14 +4,23 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-Add support for hierarchical range filters (#154)
 
+#### Changed
+
+#### Fixed
+
+#### Updated
+
+
+## [0.11.0] - 2022-04-18
+#### Added
+Add support for hierarchical range filters (#154)
 
 #### Changed
 - Remove active checking for blob update (#159)
 
 #### Fixed
-- corrupted blob now should be saved in case of 'unexpected eof' error
+- corrupted blob now should be saved in case of 'unexpected eof' error (#160)
 
 #### Updated
 
