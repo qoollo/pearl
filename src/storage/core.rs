@@ -1,4 +1,7 @@
-use crate::error::ValidationErrorKind;
+use crate::{
+    error::ValidationErrorKind,
+    filter::{CombinedFilter, FilterTrait},
+};
 
 use super::prelude::*;
 use futures::stream::FuturesOrdered;
@@ -58,7 +61,7 @@ where
     for<'a> K: Key<'a>,
 {
     pub(crate) active_blob: Option<Box<Blob<K>>>,
-    pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, Bloom, Blob<K>>>>,
+    pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
 }
 
 async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
@@ -432,7 +435,7 @@ where
         let possible_blobs = blobs
             .iter_possible_childs_rev(key)
             .map(|(id, blob)| async move {
-                if matches!(blob.data.check_filters(key).await, Ok(true)) {
+                if !matches!(blob.data.check_filter(key).await, FilterResult::NotContains) {
                     Some(id)
                 } else {
                     None
@@ -765,40 +768,33 @@ where
         trace!("[{:?}] check in blobs bloom filter", key);
         let inner = self.inner.safe.read().await;
         let in_active = if let Some(active_blob) = inner.active_blob.as_ref() {
-            active_blob
-                .check_filters(key)
-                .await
-                .map_err(|e| {
-                    error!(
-                        "Failed to check filter for active blob for key {:?}: {}",
-                        key, e
-                    );
-                    e
-                })
-                .unwrap_or(false)
+            active_blob.check_filter(key).await
         } else {
-            false
+            FilterResult::NotContains
         };
-        if in_active {
+        if in_active == FilterResult::NeedAdditionalCheck {
             return Some(true);
         }
 
         let blobs = inner.blobs.read().await;
         let (offloaded, in_memory): (Vec<&Blob<K>>, Vec<&Blob<K>>) =
-            blobs.iter().partition(|blob| blob.is_filter_offloaded());
+            blobs.iter().partition(|blob| {
+                blob.get_filter_fast()
+                    .map_or(false, |filter| filter.is_filter_offloaded())
+            });
 
         let in_closed = in_memory
             .iter()
-            .any(|blob| blob.check_filters_in_memory(key));
+            .any(|blob| blob.check_filter_fast(key) == FilterResult::NeedAdditionalCheck);
         if in_closed {
             return Some(true);
         }
 
         let in_closed_offloaded = offloaded
             .iter()
-            .map(|blob| blob.check_filters(key))
+            .map(|blob| blob.check_filter(key))
             .collect::<FuturesUnordered<_>>()
-            .any(|value| value.unwrap_or(false))
+            .any(|value| value == FilterResult::NeedAdditionalCheck)
             .await;
         Some(in_closed_offloaded)
     }
@@ -1175,10 +1171,11 @@ where
 
     async fn filter_memory_allocated(&self) -> usize {
         let safe = self.inner.safe.read().await;
-        let active = safe
-            .active_blob
-            .as_ref()
-            .map_or(0, |blob| blob.filter_memory_allocated());
+        let active = if let Some(blob) = safe.active_blob.as_ref() {
+            blob.filter_memory_allocated().await
+        } else {
+            0
+        };
 
         let closed = safe.blobs.read().await.filter_memory_allocated().await;
         active + closed

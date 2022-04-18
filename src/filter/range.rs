@@ -1,7 +1,8 @@
 use super::*;
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
-pub(crate) struct RangeFilter<K>
+/// Range filter
+pub struct RangeFilter<K>
 where
     for<'a> K: Key<'a>,
 {
@@ -33,6 +34,10 @@ where
         self.add(&other.min);
         self.add(&other.max);
         true
+    }
+
+    fn clear_filter(&mut self) {
+        self.clear()
     }
 }
 
