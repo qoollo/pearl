@@ -10,7 +10,7 @@ Pearl changelog
 - Remove active checking for blob update (#159)
 
 #### Fixed
-
+- corrupted blob now should be saved in case of 'unexpected eof' error
 
 #### Updated
 

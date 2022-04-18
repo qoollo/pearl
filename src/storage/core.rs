@@ -679,7 +679,7 @@ where
                 ErrorKind::Bincode(_) => true,
                 ErrorKind::Validation { kind, cause: _ } => {
                     !matches!(kind, ValidationErrorKind::BlobVersion)
-                }
+                },
                 _ => false,
             };
         }
