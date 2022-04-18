@@ -11,6 +11,7 @@ pub(crate) enum OperationType {
     RestoreActiveBlob = 2,
     ForceUpdateActiveBlob = 3,
     TryDumpBlobIndexes = 4,
+    TryUpdateActiveBlob = 5,
 }
 
 #[derive(Debug)]
@@ -105,6 +106,11 @@ impl<K: Key + 'static> Observer<K> {
 
     pub(crate) async fn try_dump_old_blob_indexes(&self) {
         self.send_msg(Msg::new(OperationType::TryDumpBlobIndexes, None))
+            .await
+    }
+
+    pub(crate) async fn try_update_active_blob(&self) {
+        self.send_msg(Msg::new(OperationType::TryUpdateActiveBlob, None))
             .await
     }
 

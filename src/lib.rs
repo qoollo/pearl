@@ -111,7 +111,6 @@ mod prelude {
             atomic::{AtomicUsize, Ordering},
             Arc,
         },
-        time::Duration,
     };
     pub(crate) use thiserror::Error;
     pub(crate) use tokio::{

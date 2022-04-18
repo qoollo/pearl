@@ -279,7 +279,7 @@ impl<K: Key + 'static> Storage<K> {
             .active_blob
             .as_mut()
             .ok_or_else(Error::active_blob_not_set)?;
-        blob.write(record).await.or_else(|err| {
+        let result = blob.write(record).await.or_else(|err| {
             let e = err.downcast::<Error>()?;
             if let ErrorKind::FileUnavailable(kind) = e.kind() {
                 let work_dir = self
@@ -291,8 +291,38 @@ impl<K: Key + 'static> Storage<K> {
             } else {
                 Err(e.into())
             }
-        })
+        });
+        self.try_update_active_blob(blob).await?;
+        result
     }
+
+    async fn try_update_active_blob(&self, active_blob: &Box<Blob<K>>) -> Result<()> {
+        let config_max_size = self
+            .inner
+            .config
+            .max_blob_size()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
+        let config_max_count = self
+            .inner
+            .config
+            .max_data_in_blob()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
+        if active_blob.file_size() >= config_max_size
+            || active_blob.records_count() as u64 >= config_max_count
+        {
+            // In case of current time being earlier than active blob's creation, error will contain the difference
+            let dur = active_blob.created_at().elapsed().map_err(|e| e.duration());
+            let dur = match dur {
+                Ok(d) => d,
+                Err(d) => d,
+            };
+            if dur.as_millis() > self.inner.config.debounce_interval_ms() as u128 {
+                self.observer.try_update_active_blob().await;
+            }
+        }
+        Ok(())
+    }
+
     /// Reads the first found data matching given key.
     /// # Examples
     /// ```no-run
