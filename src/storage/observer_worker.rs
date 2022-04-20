@@ -1,5 +1,12 @@
+use std::time::Duration;
+
 use super::prelude::*;
-use tokio::{sync::mpsc::Receiver, sync::Semaphore};
+use futures::TryFutureExt;
+use tokio::{
+    sync::mpsc::{Receiver, Sender},
+    sync::Semaphore,
+    time::{sleep, Instant},
+};
 
 pub(crate) struct ObserverWorker<K>
 where
@@ -7,16 +14,28 @@ where
 {
     inner: Inner<K>,
     receiver: Receiver<Msg>,
+    loopback_sender: Sender<Msg>,
     dump_sem: Arc<Semaphore>,
     async_oplock: Arc<Mutex<()>>,
+    first_deferred_event_time: Arc<RwLock<Option<Instant>>>,
+    last_deferred_event_time: Arc<RwLock<Option<Instant>>>,
 }
-
+/*
+There is a time of the first event, T0
+There is a time of the last occured event, T
+There is a maximum time allowed, TDmax
+There is a minimum time allowed, TDmin
+If there are no events in TDMin since T, fire dump event
+If TDmax passed since T0, fire dump event
+T0 stays the same until event is fired
+T changes with each event*/
 impl<K> ObserverWorker<K>
 where
     for<'a> K: Key<'a> + 'static,
 {
     pub(crate) fn new(
         receiver: Receiver<Msg>,
+        loopback_sender: Sender<Msg>,
         inner: Inner<K>,
         dump_sem: Arc<Semaphore>,
         async_oplock: Arc<Mutex<()>>,
@@ -24,8 +43,11 @@ where
         Self {
             inner,
             receiver,
+            loopback_sender,
             dump_sem,
             async_oplock,
+            first_deferred_event_time: Arc::default(),
+            last_deferred_event_time: Arc::default(),
         }
     }
 
@@ -85,7 +107,28 @@ where
                         .await;
                 }
             }
+            OperationType::DeferredDumpBlobIndexes => self.deffer_blob_indexes_dump().await?,
         }
+        Ok(())
+    }
+
+    async fn deffer_blob_indexes_dump(&self) -> Result<()> {
+        let sender = self.loopback_sender.clone();
+        let first_time = self.first_deferred_event_time.clone();
+        let last_time = self.last_deferred_event_time.clone();
+        let minD = Duration::from_secs(10);
+        let maxD = Duration::from_secs(100);
+        let delay = async move {
+            sleep(minD).await;
+            let last_time = last_time.read().await.unwrap();
+            let first_time = first_time.read().await.unwrap();
+            if last_time.elapsed() >= minD || first_time.elapsed() >= maxD {
+                let _ = sender
+                    .send(Msg::new(OperationType::TryDumpBlobIndexes, None))
+                    .await;
+            }
+            return Result::<(), ()>::Ok(());
+        };
         Ok(())
     }
 
