@@ -682,7 +682,7 @@ where
                 ErrorKind::Bincode(_) => true,
                 ErrorKind::Validation { kind, cause: _ } => {
                     !matches!(kind, ValidationErrorKind::BlobVersion)
-                },
+                }
                 _ => false,
             };
         }
@@ -873,12 +873,14 @@ where
 
     async fn mark_all_as_deleted_active(&self, key: &K) -> Result<u64> {
         let mut safe = self.inner.safe.write().await;
-        let active_blob = safe
-            .active_blob
-            .as_deref_mut()
-            .ok_or_else(Error::active_blob_not_set)?;
-        let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
-        debug!("{} deleted from active blob", count);
+        let active_blob = safe.active_blob.as_deref_mut();
+        let count = if let Some(active_blob) = active_blob {
+            let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
+            debug!("{} deleted from active blob", count);
+            count
+        } else {
+            0
+        };
         Ok(count)
     }
 }
