@@ -682,7 +682,7 @@ where
                 ErrorKind::Bincode(_) => true,
                 ErrorKind::Validation { kind, cause: _ } => {
                     !matches!(kind, ValidationErrorKind::BlobVersion)
-                },
+                }
                 _ => false,
             };
         }
@@ -868,6 +868,7 @@ where
             .fold(0, |a, b| a + b)
             .await;
         debug!("{} deleted from closed blobs", total);
+        self.observer.defer_dump_old_blob_indexes().await;
         Ok(total)
     }
 

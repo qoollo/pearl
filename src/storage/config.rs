@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -14,6 +16,8 @@ pub(crate) struct Config {
     dump_sem: Arc<Semaphore>,
     corrupted_dir_name: String,
     bloom_filter_group_size: usize,
+    deferred_min_time: Duration,
+    deferred_max_time: Duration,
 }
 
 // Getters
@@ -75,6 +79,14 @@ impl Config {
 
     pub fn bloom_filter_group_size(&self) -> usize {
         self.bloom_filter_group_size
+    }
+
+    pub fn deferred_min_time(&self) -> Duration {
+        self.deferred_min_time
+    }
+
+    pub fn deferred_max_time(&self) -> Duration {
+        self.deferred_max_time
     }
 }
 
@@ -141,6 +153,8 @@ impl Default for Config {
             dump_sem: Arc::new(Semaphore::new(1)),
             corrupted_dir_name: "corrupted".into(),
             bloom_filter_group_size: 8,
+            deferred_min_time: Duration::from_secs(60),
+            deferred_max_time: Duration::from_secs(180),
         }
     }
 }

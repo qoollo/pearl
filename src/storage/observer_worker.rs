@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use super::prelude::*;
-use futures::TryFutureExt;
 use tokio::{
     sync::mpsc::{Receiver, Sender},
     sync::Semaphore,
@@ -17,18 +16,16 @@ where
     loopback_sender: Sender<Msg>,
     dump_sem: Arc<Semaphore>,
     async_oplock: Arc<Mutex<()>>,
-    first_deferred_event_time: Arc<RwLock<Option<Instant>>>,
-    last_deferred_event_time: Arc<RwLock<Option<Instant>>>,
+    deferred: Arc<RwLock<Option<DeferredEventData>>>,
+    deferred_min_duration: Duration,
+    deferred_max_duration: Duration,
 }
-/*
-There is a time of the first event, T0
-There is a time of the last occured event, T
-There is a maximum time allowed, TDmax
-There is a minimum time allowed, TDmin
-If there are no events in TDMin since T, fire dump event
-If TDmax passed since T0, fire dump event
-T0 stays the same until event is fired
-T changes with each event*/
+
+struct DeferredEventData {
+    first_time: Instant,
+    last_time: Instant,
+}
+
 impl<K> ObserverWorker<K>
 where
     for<'a> K: Key<'a> + 'static,
@@ -40,14 +37,17 @@ where
         dump_sem: Arc<Semaphore>,
         async_oplock: Arc<Mutex<()>>,
     ) -> Self {
+        let deferred_min_duration = inner.config.deferred_min_time().clone();
+        let deferred_max_duration = inner.config.deferred_max_time().clone();
         Self {
             inner,
             receiver,
             loopback_sender,
             dump_sem,
             async_oplock,
-            first_deferred_event_time: Arc::default(),
-            last_deferred_event_time: Arc::default(),
+            deferred: Arc::default(),
+            deferred_min_duration,
+            deferred_max_duration,
         }
     }
 
@@ -113,22 +113,32 @@ where
     }
 
     async fn deffer_blob_indexes_dump(&self) -> Result<()> {
-        let sender = self.loopback_sender.clone();
-        let first_time = self.first_deferred_event_time.clone();
-        let last_time = self.last_deferred_event_time.clone();
-        let minD = Duration::from_secs(10);
-        let maxD = Duration::from_secs(100);
-        let delay = async move {
-            sleep(minD).await;
-            let last_time = last_time.read().await.unwrap();
-            let first_time = first_time.read().await.unwrap();
-            if last_time.elapsed() >= minD || first_time.elapsed() >= maxD {
-                let _ = sender
-                    .send(Msg::new(OperationType::TryDumpBlobIndexes, None))
-                    .await;
-            }
-            return Result::<(), ()>::Ok(());
-        };
+        let mut deferred = self.deferred.write().await;
+        if let Some(ref mut deferred) = *deferred {
+            deferred.update_last_time();
+        } else {
+            let sender = self.loopback_sender.clone();
+            let data = DeferredEventData::new();
+            *deferred = Some(data);
+            let min = self.deferred_min_duration.clone();
+            let max = self.deferred_max_duration.clone();
+            let deferred = self.deferred.clone();
+            tokio::spawn(async move {
+                loop {
+                    sleep(min).await;
+                    let mut deferred = deferred.write().await;
+                    if deferred.as_ref().unwrap().last_time.elapsed() >= min
+                        || deferred.as_ref().unwrap().first_time.elapsed() >= max
+                    {
+                        let _ = sender
+                            .send(Msg::new(OperationType::TryDumpBlobIndexes, None))
+                            .await;
+                        *deferred = None;
+                        return;
+                    }
+                }
+            });
+        }
         Ok(())
     }
 
@@ -203,4 +213,18 @@ where
         .await?
         .boxed();
     Ok(new_active)
+}
+
+impl DeferredEventData {
+    fn new() -> Self {
+        let time = Instant::now();
+        Self {
+            first_time: time,
+            last_time: time,
+        }
+    }
+
+    fn update_last_time(&mut self) {
+        self.last_time = Instant::now();
+    }
 }
