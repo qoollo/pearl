@@ -135,6 +135,11 @@ impl Config {
     pub fn set_bloom_filter_group_size(&mut self, bloom_filter_group_size: usize) {
         self.bloom_filter_group_size = bloom_filter_group_size
     }
+
+    pub fn set_deferred_index_dump_times(&mut self, min: Duration, max: Duration) {
+        self.deferred_min_time = min;
+        self.deferred_max_time = max;
+    }
 }
 
 // Impl Traits

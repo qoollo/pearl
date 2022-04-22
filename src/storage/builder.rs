@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::prelude::*;
 
 /// Is used to initialize a `Storage`.
@@ -187,6 +189,12 @@ impl Builder {
     /// Sets bloom filter group size
     pub fn set_bloom_filter_group_size(mut self, size: usize) -> Self {
         self.config.set_bloom_filter_group_size(size);
+        self
+    }
+
+    /// Set min and max waiting time for deferred index dump
+    pub fn set_deferred_index_dump_times(mut self, min: Duration, max: Duration) -> Self {
+        self.config.set_deferred_index_dump_times(min, max);
         self
     }
 }

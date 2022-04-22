@@ -10,7 +10,7 @@ use std::{
     env, fs,
     io::{Seek, SeekFrom, Write},
     path::Path,
-    path::PathBuf,
+    path::PathBuf, time::Duration,
 };
 
 use pearl::{Builder, Key, RefKey, Storage};
@@ -114,6 +114,7 @@ pub async fn create_test_storage(
         .max_blob_size(max_blob_size)
         .max_data_in_blob(100_000)
         .set_filter_config(Default::default())
+        .set_deferred_index_dump_times(Duration::from_millis(300), Duration::from_millis(700))
         .allow_duplicates();
     let builder = if let Ok(ioring) = rio::new() {
         builder.enable_aio(ioring)

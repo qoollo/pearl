@@ -893,8 +893,8 @@ async fn test_mark_as_deleted_single() {
     let path = common::init("mark_as_deleted_single");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let count = 30;
-    let delete_key = KeyTest::new(5);
     let records = common::generate_records(count, 1000);
+    let delete_key = KeyTest::new(records[0].0);
     for (key, data) in &records {
         write_one(&storage, *key, data, None).await.unwrap();
         sleep(Duration::from_millis(64)).await;
@@ -907,26 +907,32 @@ async fn test_mark_as_deleted_single() {
 
 #[tokio::test]
 async fn test_mark_as_deleted_deferred_dump() {
-    let now = Instant::now();
     let path = common::init("mark_as_deleted_deferred_dump");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let count = 30;
-    let delete_key = KeyTest::new(5);
     let records = common::generate_records(count, 1000);
+    let delete_key = KeyTest::new(records[0].0);
     for (key, data) in &records {
         write_one(&storage, *key, data, None).await.unwrap();
         sleep(Duration::from_millis(64)).await;
     }
-    let _ = storage.try_close_active_blob().await;
-    let update_time = std::fs::metadata(&path).expect("metadata");
+    let _ = storage.close().await;
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
+    let update_time = std::fs::metadata(&path.join("test.0.index")).expect("metadata");
     storage.mark_all_as_deleted(&delete_key).await.unwrap();
-    let new_update_time = std::fs::metadata(&path).expect("metadata");
+    sleep(Duration::from_millis(100)).await;
+    let new_update_time = std::fs::metadata(&path.join("test.0.index")).expect("metadata");
     assert_eq!(
         update_time.modified().unwrap(),
         new_update_time.modified().unwrap()
     );
+    sleep(Duration::from_millis(700)).await;
+    let new_update_time = std::fs::metadata(&path.join("test.0.index")).expect("metadata");
+    assert_ne!(
+        update_time.modified().unwrap(),
+        new_update_time.modified().unwrap()
+    );
     common::clean(storage, path).await.expect("clean failed");
-    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
 #[tokio::test]
