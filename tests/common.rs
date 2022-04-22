@@ -10,7 +10,8 @@ use std::{
     env, fs,
     io::{Seek, SeekFrom, Write},
     path::Path,
-    path::PathBuf, time::Duration,
+    path::PathBuf,
+    time::Duration,
 };
 
 use pearl::{Builder, Key, RefKey, Storage};

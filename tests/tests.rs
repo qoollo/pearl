@@ -18,7 +18,7 @@ use tokio::time::sleep;
 
 mod common;
 
-use common::{KeyTest, MIN_DEFER_TIME, MAX_DEFER_TIME};
+use common::{KeyTest, MAX_DEFER_TIME, MIN_DEFER_TIME};
 
 #[test]
 fn test_hash_algorithm_compat() {
@@ -917,7 +917,7 @@ async fn test_mark_as_deleted_deferred_dump() {
         sleep(Duration::from_millis(64)).await;
     }
     let _ = storage.close().await;
-    
+
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let update_time = std::fs::metadata(&path.join("test.0.index")).expect("metadata");
     storage.mark_all_as_deleted(&delete_key).await.unwrap();
