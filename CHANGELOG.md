@@ -8,7 +8,7 @@ Pearl changelog
 #### Changed
 
 #### Fixed
-- Fix delete with no active blob set
+- Fix delete with no active blob set (#167)
 
 #### Updated
 
