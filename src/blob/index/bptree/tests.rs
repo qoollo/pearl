@@ -71,7 +71,7 @@ async fn serialize_deserialize_file() {
 }
 
 #[tokio::test]
-async fn magic_byte_corruption() {
+async fn blob_size_invalidation() {
     let filename = "/tmp/bptree_index.0.index";
     let mut inmem = InMemoryIndex::<KeyType>::new();
     (0..10000).map(|i| i.into()).for_each(|key: KeyType| {
