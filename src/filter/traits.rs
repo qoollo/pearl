@@ -53,4 +53,80 @@ pub trait FilterTrait<Key: Send + Sync>: Clone + Sync + Send {
     fn memory_allocated(&self) -> usize {
         0
     }
+
+    /// Clear all filter data
+    fn clear_filter(&mut self);
+
+    /// Check if filter was offloaded
+    fn is_filter_offloaded(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait::async_trait]
+impl<T, K> FilterTrait<K> for Option<T>
+where
+    K: Send + Sync,
+    T: Send + Sync + Clone + FilterTrait<K>,
+{
+    fn add(&mut self, key: &K) {
+        if let Some(filter) = self {
+            filter.add(key);
+        }
+    }
+
+    fn contains_fast(&self, key: &K) -> FilterResult {
+        if let Some(filter) = &self {
+            filter.contains_fast(key)
+        } else {
+            FilterResult::NeedAdditionalCheck
+        }
+    }
+
+    fn checked_add_assign(&mut self, other: &Self) -> bool {
+        match (self, other) {
+            (Some(this), Some(other)) => this.checked_add_assign(other),
+            (None, None) => true,
+            _ => false,
+        }
+    }
+
+    fn clear_filter(&mut self) {
+        if let Some(filter) = self {
+            filter.clear_filter();
+        }
+    }
+
+    /// Check if key in filter (can take some time)
+    async fn contains<P: BloomDataProvider>(&self, provider: &P, key: &K) -> FilterResult {
+        if let Some(filter) = &self {
+            filter.contains(provider, key).await
+        } else {
+            FilterResult::NeedAdditionalCheck
+        }
+    }
+
+    fn offload_filter(&mut self) -> usize {
+        if let Some(filter) = self {
+            filter.offload_filter()
+        } else {
+            0
+        }
+    }
+
+    fn memory_allocated(&self) -> usize {
+        if let Some(filter) = self {
+            filter.memory_allocated()
+        } else {
+            0
+        }
+    }
+
+    fn is_filter_offloaded(&self) -> bool {
+        if let Some(filter) = &self {
+            filter.is_filter_offloaded()
+        } else {
+            false
+        }
+    }
 }

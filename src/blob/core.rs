@@ -1,6 +1,9 @@
+use std::time::SystemTime;
+
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
+use crate::filter::{CombinedFilter, FilterTrait};
 
 use super::prelude::*;
 
@@ -13,16 +16,22 @@ pub(crate) const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 ///
 /// [`Blob`]: struct.Blob.html
 #[derive(Debug)]
-pub struct Blob<K: Key> {
+pub struct Blob<K>
+where
+    for<'a> K: Key<'a>,
+{
     header: Header,
     index: Index<K>,
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
-    key_type_marker: PhantomData<K>,
+    created_at: SystemTime,
 }
 
-impl<K: Key + 'static> Blob<K> {
+impl<K> Blob<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     /// # Description
     /// Creates new blob file with given [`FileName`].
     /// And creates index from existing `.index` file or scans corresponding blob.
@@ -45,7 +54,7 @@ impl<K: Key + 'static> Blob<K> {
             name,
             file,
             current_offset,
-            key_type_marker: PhantomData,
+            created_at: SystemTime::now(),
         };
         blob.write_header().await?;
         Ok(blob)
@@ -53,6 +62,10 @@ impl<K: Key + 'static> Blob<K> {
 
     pub fn name(&self) -> &FileName {
         &self.name
+    }
+
+    pub(crate) fn created_at(&self) -> SystemTime {
+        self.created_at
     }
 
     async fn write_header(&mut self) -> Result<()> {
@@ -142,13 +155,14 @@ impl<K: Key + 'static> Blob<K> {
         };
         trace!("index initialized");
         let header_size = bincode::serialized_size(&header)?;
+        let created_at = file.created_at()?;
         let mut blob = Self {
             header,
             file,
             name,
             index,
             current_offset: Arc::new(Mutex::new(size)),
-            key_type_marker: PhantomData,
+            created_at,
         };
         trace!("call update index");
         if is_index_corrupted || size as u64 > header_size {
@@ -294,7 +308,7 @@ impl<K: Key + 'static> Blob<K> {
         check_filters: bool,
     ) -> Result<Option<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
-        if check_filters && !self.check_filters(key).await? {
+        if check_filters && self.check_filter(key).await == FilterResult::NotContains {
             debug!("Key was filtered out by filters");
             Ok(None)
         } else if let Some(meta) = meta {
@@ -361,34 +375,8 @@ impl<K: Key + 'static> Blob<K> {
         self.name.id
     }
 
-    pub(crate) async fn check_filters(&self, key: &K) -> Result<bool> {
-        trace!("check filters (range and bloom)");
-        if let FilterResult::NotContains = self.index.check_filters_key(key).await? {
-            Ok(false)
-        } else {
-            Ok(true)
-        }
-    }
-
-    pub(crate) fn check_filters_in_memory(&self, key: &K) -> bool {
-        trace!("check filters (range and bloom)");
-        if let FilterResult::NotContains = self.index.check_filters_in_memory(key) {
-            false
-        } else {
-            true
-        }
-    }
-
-    pub(crate) fn is_filter_offloaded(&self) -> bool {
-        self.index.is_filter_offloaded()
-    }
-
     pub(crate) fn index_memory(&self) -> usize {
         self.index.memory_used()
-    }
-
-    pub(crate) fn filter_memory_allocated(&self) -> usize {
-        self.index.bloom_memory_allocated()
     }
 }
 
@@ -523,12 +511,14 @@ impl RawRecords {
             .read_at(&mut buf, self.current_offset)
             .await
             .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
-        let header = RecordHeader::from_raw(&buf).with_context(|| {
-            format!(
-                "header deserialization from raw failed, buf len: {}",
-                buf.len()
-            )
-        })?;
+        let header = RecordHeader::from_raw(&buf)
+            .map_err(|e| Error::from(ErrorKind::Bincode(e.to_string())))
+            .with_context(|| {
+                format!(
+                    "header deserialization from raw failed, buf len: {}",
+                    buf.len()
+                )
+            })?;
         self.current_offset += self.record_header_size;
         self.current_offset += header.meta_size();
         self.current_offset += header.data_size();
@@ -560,15 +550,15 @@ pub(crate) fn filter_deleted_headers(headers: Vec<RecordHeader>) -> Vec<RecordHe
 #[async_trait::async_trait]
 impl<K> BloomProvider<K> for Blob<K>
 where
-    K: Key + 'static,
+    for<'a> K: Key<'a> + 'static,
 {
-    type Filter = Bloom;
+    type Filter = CombinedFilter<K>;
     async fn check_filter(&self, item: &K) -> FilterResult {
-        self.index.check_bloom_key(item).await.unwrap_or_default()
+        self.index.get_filter().contains(&self.index, item).await
     }
 
     fn check_filter_fast(&self, item: &K) -> FilterResult {
-        self.index.check_bloom_key_in_memory(item)
+        self.index.get_filter().contains_fast(item)
     }
 
     async fn offload_buffer(&mut self, _: usize, _: usize) -> usize {
@@ -576,14 +566,14 @@ where
     }
 
     async fn get_filter(&self) -> Option<Self::Filter> {
-        Some(self.index.get_bloom_filter().clone())
+        Some(self.index.get_filter().clone())
     }
 
     fn get_filter_fast(&self) -> Option<&Self::Filter> {
-        Some(self.index.get_bloom_filter())
+        Some(self.index.get_filter())
     }
 
     async fn filter_memory_allocated(&self) -> usize {
-        self.index.get_bloom_filter().memory_allocated()
+        self.index.get_filter().memory_allocated()
     }
 }

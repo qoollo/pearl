@@ -11,10 +11,13 @@ pub(crate) fn get_hash(buf: &[u8]) -> Vec<u8> {
 
 // if there is no elements, data will be wrong (because we can't get key_size),
 // BUT it will be computed correctly during first push
-pub(crate) fn compute_mem_attrs<K: Key>(
+pub(crate) fn compute_mem_attrs<K>(
     record_headers: &InMemoryIndex<K>,
     records_count: usize,
-) -> MemoryAttrs {
+) -> MemoryAttrs
+where
+    for<'a> K: Key<'a>,
+{
     let mut attrs: MemoryAttrs = Default::default();
     set_key_related_fields::<K>(&mut attrs);
     attrs.records_allocated = record_headers.values().fold(0, |acc, v| acc + v.capacity());
@@ -22,7 +25,10 @@ pub(crate) fn compute_mem_attrs<K: Key>(
     attrs
 }
 
-pub(crate) fn set_key_related_fields<K: Key>(attrs: &mut MemoryAttrs) {
+pub(crate) fn set_key_related_fields<K>(attrs: &mut MemoryAttrs)
+where
+    for<'a> K: Key<'a>,
+{
     let key_size = K::LEN as usize;
     attrs.key_size = key_size;
     attrs.btree_entry_size = size_of::<Vec<u8>>() + key_size + size_of::<Vec<RecordHeader>>();

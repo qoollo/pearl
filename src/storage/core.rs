@@ -1,4 +1,7 @@
-use crate::error::ValidationErrorKind;
+use crate::{
+    error::ValidationErrorKind,
+    filter::{CombinedFilter, FilterTrait},
+};
 
 use super::prelude::*;
 use futures::stream::FuturesOrdered;
@@ -33,13 +36,19 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 ///
 /// [`Key`]: trait.Key.html
 #[derive(Debug, Clone)]
-pub struct Storage<K: Key> {
+pub struct Storage<K>
+where
+    for<'a> K: Key<'a>,
+{
     pub(crate) inner: Inner<K>,
     observer: Observer<K>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Inner<K: Key> {
+pub(crate) struct Inner<K>
+where
+    for<'a> K: Key<'a>,
+{
     pub(crate) config: Config,
     pub(crate) safe: Arc<RwLock<Safe<K>>>,
     next_blob_id: Arc<AtomicUsize>,
@@ -47,9 +56,12 @@ pub(crate) struct Inner<K: Key> {
 }
 
 #[derive(Debug)]
-pub(crate) struct Safe<K: Key> {
+pub(crate) struct Safe<K>
+where
+    for<'a> K: Key<'a>,
+{
     pub(crate) active_blob: Option<Box<Blob<K>>>,
-    pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, Bloom, Blob<K>>>>,
+    pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
 }
 
 async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
@@ -75,7 +87,10 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     Ok(content)
 }
 
-impl<K: Key + 'static> Storage<K> {
+impl<K> Storage<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
         let dump_sem = config.dump_sem();
         let inner = Inner::new(config, ioring);
@@ -279,7 +294,7 @@ impl<K: Key + 'static> Storage<K> {
             .active_blob
             .as_mut()
             .ok_or_else(Error::active_blob_not_set)?;
-        blob.write(record).await.or_else(|err| {
+        let result = blob.write(record).await.or_else(|err| {
             let e = err.downcast::<Error>()?;
             if let ErrorKind::FileUnavailable(kind) = e.kind() {
                 let work_dir = self
@@ -291,8 +306,38 @@ impl<K: Key + 'static> Storage<K> {
             } else {
                 Err(e.into())
             }
-        })
+        });
+        self.try_update_active_blob(blob).await?;
+        result
     }
+
+    async fn try_update_active_blob(&self, active_blob: &Box<Blob<K>>) -> Result<()> {
+        let config_max_size = self
+            .inner
+            .config
+            .max_blob_size()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
+        let config_max_count = self
+            .inner
+            .config
+            .max_data_in_blob()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
+        if active_blob.file_size() >= config_max_size
+            || active_blob.records_count() as u64 >= config_max_count
+        {
+            // In case of current time being earlier than active blob's creation, error will contain the difference
+            let dur = active_blob.created_at().elapsed().map_err(|e| e.duration());
+            let dur = match dur {
+                Ok(d) => d,
+                Err(d) => d,
+            };
+            if dur.as_millis() > self.inner.config.debounce_interval_ms() as u128 {
+                self.observer.try_update_active_blob().await;
+            }
+        }
+        Ok(())
+    }
+
     /// Reads the first found data matching given key.
     /// # Examples
     /// ```no-run
@@ -390,7 +435,7 @@ impl<K: Key + 'static> Storage<K> {
         let possible_blobs = blobs
             .iter_possible_childs_rev(key)
             .map(|(id, blob)| async move {
-                if matches!(blob.data.check_filters(key).await, Ok(true)) {
+                if !matches!(blob.data.check_filter(key).await, FilterResult::NotContains) {
                     Some(id)
                 } else {
                     None
@@ -723,40 +768,33 @@ impl<K: Key + 'static> Storage<K> {
         trace!("[{:?}] check in blobs bloom filter", key);
         let inner = self.inner.safe.read().await;
         let in_active = if let Some(active_blob) = inner.active_blob.as_ref() {
-            active_blob
-                .check_filters(key)
-                .await
-                .map_err(|e| {
-                    error!(
-                        "Failed to check filter for active blob for key {:?}: {}",
-                        key, e
-                    );
-                    e
-                })
-                .unwrap_or(false)
+            active_blob.check_filter(key).await
         } else {
-            false
+            FilterResult::NotContains
         };
-        if in_active {
+        if in_active == FilterResult::NeedAdditionalCheck {
             return Some(true);
         }
 
         let blobs = inner.blobs.read().await;
         let (offloaded, in_memory): (Vec<&Blob<K>>, Vec<&Blob<K>>) =
-            blobs.iter().partition(|blob| blob.is_filter_offloaded());
+            blobs.iter().partition(|blob| {
+                blob.get_filter_fast()
+                    .map_or(false, |filter| filter.is_filter_offloaded())
+            });
 
         let in_closed = in_memory
             .iter()
-            .any(|blob| blob.check_filters_in_memory(key));
+            .any(|blob| blob.check_filter_fast(key) == FilterResult::NeedAdditionalCheck);
         if in_closed {
             return Some(true);
         }
 
         let in_closed_offloaded = offloaded
             .iter()
-            .map(|blob| blob.check_filters(key))
+            .map(|blob| blob.check_filter(key))
             .collect::<FuturesUnordered<_>>()
-            .any(|value| value.unwrap_or(false))
+            .any(|value| value == FilterResult::NeedAdditionalCheck)
             .await;
         Some(in_closed_offloaded)
     }
@@ -835,17 +873,22 @@ impl<K: Key + 'static> Storage<K> {
 
     async fn mark_all_as_deleted_active(&self, key: &K) -> Result<u64> {
         let mut safe = self.inner.safe.write().await;
-        let active_blob = safe
-            .active_blob
-            .as_deref_mut()
-            .ok_or_else(Error::active_blob_not_set)?;
-        let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
-        debug!("{} deleted from active blob", count);
+        let active_blob = safe.active_blob.as_deref_mut();
+        let count = if let Some(active_blob) = active_blob {
+            let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
+            debug!("{} deleted from active blob", count);
+            count
+        } else {
+            0
+        };
         Ok(count)
     }
 }
 
-impl<K: Key + 'static> Inner<K> {
+impl<K> Inner<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     fn new(config: Config, ioring: Option<Rio>) -> Self {
         Self {
             safe: Arc::new(RwLock::new(Safe::new(config.bloom_filter_group_size()))),
@@ -977,7 +1020,10 @@ impl<K: Key + 'static> Inner<K> {
     }
 }
 
-impl<K: Key + 'static> Safe<K> {
+impl<K> Safe<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     fn new(group_size: usize) -> Self {
         Self {
             active_blob: None,
@@ -1048,18 +1094,34 @@ impl<K: Key + 'static> Safe<K> {
 }
 
 /// Trait `Key`
-pub trait Key: AsRef<[u8]> + Debug + Clone + Send + Sync + Ord + From<Vec<u8>> + Default {
+pub trait Key<'a>:
+    AsRef<[u8]> + From<Vec<u8>> + Debug + Clone + Send + Sync + Ord + Default
+{
     /// Key must have fixed length
     const LEN: u16;
+
+    /// Reference type for zero-copy key creation
+    type Ref: RefKey<'a>;
 
     /// Convert `Self` into `Vec<u8>`
     fn to_vec(&self) -> Vec<u8> {
         self.as_ref().to_vec()
     }
+
+    /// Convert `Self` to `Self::Ref`
+    fn as_ref_key(&'a self) -> Self::Ref {
+        Self::Ref::from(self.as_ref())
+    }
 }
 
+/// Trait for reference key type
+pub trait RefKey<'a>: Ord + From<&'a [u8]> {}
+
 #[async_trait::async_trait]
-impl<K: Key + 'static> BloomProvider<K> for Storage<K> {
+impl<K> BloomProvider<K> for Storage<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     type Filter = <Blob<K> as BloomProvider<K>>::Filter;
     async fn check_filter(&self, item: &K) -> FilterResult {
         let inner = self.inner.safe.read().await;
@@ -1111,10 +1173,11 @@ impl<K: Key + 'static> BloomProvider<K> for Storage<K> {
 
     async fn filter_memory_allocated(&self) -> usize {
         let safe = self.inner.safe.read().await;
-        let active = safe
-            .active_blob
-            .as_ref()
-            .map_or(0, |blob| blob.filter_memory_allocated());
+        let active = if let Some(blob) = safe.active_blob.as_ref() {
+            blob.filter_memory_allocated().await
+        } else {
+            0
+        };
 
         let closed = safe.blobs.read().await.filter_memory_allocated().await;
         active + closed

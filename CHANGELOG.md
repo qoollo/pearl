@@ -6,14 +6,31 @@ Pearl changelog
 #### Added
 - Add magic byte to index header (#152)
 
-
 #### Changed
 
-
 #### Fixed
-
+- Fix delete with no active blob set (#167)
 
 #### Updated
+
+
+## [0.11.0] - 2022-04-18
+#### Added
+Add support for hierarchical range filters (#154)
+
+#### Changed
+- Remove active checking for blob update (#159)
+
+#### Fixed
+- corrupted blob now should be saved in case of 'unexpected eof' error (#160)
+
+#### Updated
+
+
+## [0.10.0] - 2022-03-30
+#### Changed
+- Add refkey trait (#141)
+- Change nightly to stable rust toolchain
 
 
 ## [0.9.2] - 2022-02-14

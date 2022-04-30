@@ -11,6 +11,7 @@ pub(crate) enum OperationType {
     RestoreActiveBlob = 2,
     ForceUpdateActiveBlob = 3,
     TryDumpBlobIndexes = 4,
+    TryUpdateActiveBlob = 5,
 }
 
 #[derive(Debug)]
@@ -45,14 +46,20 @@ impl Msg {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Observer<K: Key> {
+pub(crate) struct Observer<K>
+where
+    for<'a> K: Key<'a>,
+{
     inner: Option<Inner<K>>,
     pub sender: Option<Sender<Msg>>,
     dump_sem: Arc<Semaphore>,
     async_oplock: Arc<Mutex<()>>,
 }
 
-impl<K: Key + 'static> Observer<K> {
+impl<K> Observer<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     pub(crate) fn new(inner: Inner<K>, dump_sem: Arc<Semaphore>) -> Self {
         Self {
             inner: Some(inner),
@@ -105,6 +112,11 @@ impl<K: Key + 'static> Observer<K> {
 
     pub(crate) async fn try_dump_old_blob_indexes(&self) {
         self.send_msg(Msg::new(OperationType::TryDumpBlobIndexes, None))
+            .await
+    }
+
+    pub(crate) async fn try_update_active_blob(&self) {
+        self.send_msg(Msg::new(OperationType::TryUpdateActiveBlob, None))
             .await
     }
 

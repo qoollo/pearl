@@ -23,7 +23,10 @@ pub(crate) struct BPTreeFileIndex<K> {
 }
 
 #[async_trait::async_trait]
-impl<K: Key + 'static> FileIndexTrait<K> for BPTreeFileIndex<K> {
+impl<K> FileIndexTrait<K> for BPTreeFileIndex<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self> {
         trace!("open index file");
         let file = File::open(name.to_path(), ioring)
@@ -155,7 +158,10 @@ impl<K: Key + 'static> FileIndexTrait<K> for BPTreeFileIndex<K> {
     }
 }
 
-impl<K: Key + 'static> BPTreeFileIndex<K> {
+impl<K> BPTreeFileIndex<K>
+where
+    for<'a> K: Key<'a> + 'static,
+{
     async fn find_leaf_node(&self, key: &K, mut offset: u64, buf: &mut [u8]) -> Result<u64> {
         while offset < self.metadata.leaves_offset {
             offset = if offset == self.metadata.tree_offset {
@@ -234,8 +240,8 @@ impl<K: Key + 'static> BPTreeFileIndex<K> {
             let m_off = record_header_size * m as usize;
             let record_end = m_off + record_header_size;
             let record_header: RecordHeader = deserialize(&raw_headers_buf[m_off..record_end])?;
-            let read_key = record_header.key().to_vec().into();
-            match key.cmp(&read_key) {
+            let cmp_res = key.as_ref_key().cmp(&record_header.key().into());
+            match cmp_res {
                 CmpOrdering::Less => r = m - 1,
                 CmpOrdering::Greater => l = m + 1,
                 CmpOrdering::Equal => return Ok(Some((record_header, m_off))),

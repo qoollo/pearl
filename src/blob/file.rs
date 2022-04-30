@@ -1,4 +1,7 @@
-use std::os::unix::prelude::{AsRawFd, FileExt};
+use std::{
+    os::unix::prelude::{AsRawFd, FileExt},
+    time::SystemTime,
+};
 
 use nix::{errno::Errno, fcntl::FcntlArg};
 
@@ -209,5 +212,10 @@ impl File {
         tokio::task::spawn_blocking(move || f())
             .await
             .expect("spawned blocking task failed")
+    }
+
+    pub(crate) fn created_at(&self) -> Result<SystemTime> {
+        let metadata = self.no_lock_fd.metadata()?;
+        Ok(metadata.created().unwrap_or(SystemTime::now()))
     }
 }
