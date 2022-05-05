@@ -144,7 +144,9 @@ where
         // FIXME: check hash here?
         if !self.header.is_written() {
             let param = ValidationErrorKind::IndexIsWritten;
-            return Err(Error::validation(param, "Index is not written").into());
+            return Err(
+                Error::validation(param, "Index is incomplete (no 'is_written' flag)").into(),
+            );
         }
         if self.header.version() != HEADER_VERSION {
             let param = ValidationErrorKind::IndexVersion;
