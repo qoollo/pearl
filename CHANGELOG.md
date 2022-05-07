@@ -4,6 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Add magic byte to index header (#152)
 
 #### Changed
 

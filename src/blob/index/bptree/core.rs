@@ -144,11 +144,17 @@ where
         // FIXME: check hash here?
         if !self.header.is_written() {
             let param = ValidationErrorKind::IndexIsWritten;
-            return Err(Error::validation(param, "Index Header version is not valid").into());
+            return Err(
+                Error::validation(param, "Index is incomplete (no 'is_written' flag)").into(),
+            );
         }
         if self.header.version() != HEADER_VERSION {
             let param = ValidationErrorKind::IndexVersion;
             return Err(Error::validation(param, "Index Header version is not valid").into());
+        }
+        if self.header.magic_byte() != INDEX_HEADER_MAGIC_BYTE {
+            let param = ValidationErrorKind::IndexMagicByte;
+            return Err(Error::validation(param, "Index magic byte is not valid").into());
         }
         Ok(())
     }
