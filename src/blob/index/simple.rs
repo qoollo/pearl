@@ -9,7 +9,10 @@ pub(crate) struct SimpleFileIndex {
 }
 
 #[async_trait::async_trait]
-impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
+impl<K> FileIndexTrait<K> for SimpleFileIndex
+where
+    for<'a> K: Key<'a>,
+{
     async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self> {
         trace!("open index file");
         let file = File::open(name.to_path(), ioring)
@@ -112,7 +115,9 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
         // FIXME: check hash here?
         if !self.header.is_written() {
             let param = ValidationErrorKind::IndexIsWritten;
-            return Err(Error::validation(param, "Index Header version is not valid").into());
+            return Err(
+                Error::validation(param, "Index is incomplete (no 'is_written' flag)").into(),
+            );
         }
         if self.header.version() != HEADER_VERSION {
             let param = ValidationErrorKind::IndexVersion;
@@ -129,6 +134,10 @@ impl<K: Key> FileIndexTrait<K> for SimpleFileIndex {
                 ),
             )
             .into());
+        }
+        if self.header.magic_byte() != INDEX_HEADER_MAGIC_BYTE {
+            let param = ValidationErrorKind::IndexMagicByte;
+            return Err(Error::validation(param, "Index magic byte is not valid").into());
         }
         Ok(())
     }
@@ -153,11 +162,14 @@ impl SimpleFileIndex {
         IndexHeader::from_raw(&buf).map_err(Into::into)
     }
 
-    async fn search_all<K: Key>(
+    async fn search_all<K>(
         file: &File,
         key: &K,
         index_header: &IndexHeader,
-    ) -> Result<Option<Vec<RecordHeader>>> {
+    ) -> Result<Option<Vec<RecordHeader>>>
+    where
+        for<'a> K: Key<'a>,
+    {
         if let Some(header_pos) = Self::binary_search(file, key, index_header)
             .await
             .with_context(|| "blob, index simple, search all, binary search failed")?
@@ -226,11 +238,14 @@ impl SimpleFileIndex {
         }
     }
 
-    async fn binary_search<K: Key>(
+    async fn binary_search<K>(
         file: &File,
         key: &K,
         header: &IndexHeader,
-    ) -> Result<Option<(RecordHeader, usize)>> {
+    ) -> Result<Option<(RecordHeader, usize)>>
+    where
+        for<'a> K: Key<'a>,
+    {
         debug!("blob index simple binary search header {:?}", header);
 
         let mut start = 0;
@@ -244,7 +259,7 @@ impl SimpleFileIndex {
                 "blob index simple binary search mid header: {:?}",
                 mid_record_header
             );
-            let cmp = key.cmp(&mid_record_header.key().to_vec().into());
+            let cmp = key.as_ref_key().cmp(&mid_record_header.key().into());
             debug!("mid read: {:?}, key: {:?}", mid_record_header.key(), key);
             debug!("before mid: {:?}, start: {:?}, end: {:?}", mid, start, end);
             match cmp {
@@ -264,7 +279,10 @@ impl SimpleFileIndex {
         Ok(None)
     }
 
-    async fn validate_header<K: Key>(&self, buf: &mut Vec<u8>, blob_size: u64) -> Result<()> {
+    async fn validate_header<K>(&self, buf: &mut Vec<u8>, blob_size: u64) -> Result<()>
+    where
+        for<'a> K: Key<'a>,
+    {
         FileIndexTrait::<K>::validate(self, blob_size)?;
         if !Self::hash_valid(&self.header, buf)? {
             let param = ValidationErrorKind::IndexChecksum;
@@ -273,11 +291,14 @@ impl SimpleFileIndex {
         Ok(())
     }
 
-    fn serialize<K: Key>(
+    fn serialize<K>(
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         blob_size: u64,
-    ) -> Result<Option<(IndexHeader, Vec<u8>)>> {
+    ) -> Result<Option<(IndexHeader, Vec<u8>)>>
+    where
+        for<'a> K: Key<'a>,
+    {
         debug!("blob index simple serialize headers");
         if let Some(record_header) = headers.values().next().and_then(|v| v.first()) {
             debug!("index simple serialize headers first: {:?}", record_header);
@@ -309,8 +330,13 @@ impl SimpleFileIndex {
                 buf.len()
             );
             let hash = get_hash(&buf);
-            let header =
-                IndexHeader::with_hash(record_header_size, headers.len(), meta.len(), hash, blob_size);
+            let header = IndexHeader::with_hash(
+                record_header_size,
+                headers.len(),
+                meta.len(),
+                hash,
+                blob_size,
+            );
             serialize_into(buf.as_mut_slice(), &header)?;
             Ok(Some((header, buf)))
         } else {

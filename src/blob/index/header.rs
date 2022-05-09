@@ -2,6 +2,7 @@ use super::prelude::*;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct IndexHeader {
+    magic_byte: u64,
     pub records_count: usize,
     // contains serialized size of record headers, which allows to calculate offset in
     // case of `OnDisk` state of indices
@@ -60,6 +61,10 @@ impl IndexHeader {
         self.version >> 1
     }
 
+    pub(crate) fn magic_byte(&self) -> u64 {
+        self.magic_byte
+    }
+
     #[allow(dead_code)]
     pub(crate) fn set_version(&mut self, version: u8) {
         let written = self.version & 1;
@@ -95,6 +100,7 @@ impl Default for IndexHeader {
             blob_size: 0,
             hash: vec![0; ring::digest::SHA256.output_len],
             version: HEADER_VERSION << 1,
+            magic_byte: INDEX_HEADER_MAGIC_BYTE,
         }
     }
 }

@@ -3,13 +3,19 @@ use super::prelude::*;
 type MinKeyWithOffset = (Vec<u8>, u64);
 type NodesWithLayerSize = (Vec<MinKeyWithOffset>, u64);
 
-pub(super) struct HeaderStage<'a, K: Key> {
+pub(super) struct HeaderStage<'a, K>
+where
+    for<'b> K: Key<'b>,
+{
     headers_btree: &'a InMemoryIndex<K>,
     header: IndexHeader,
     meta: Vec<u8>,
 }
 
-pub(super) struct TreeStage<'a, K: Key> {
+pub(super) struct TreeStage<'a, K>
+where
+    for<'b> K: Key<'b>,
+{
     headers_btree: &'a InMemoryIndex<K>,
     metadata: TreeMeta,
     header: IndexHeader,
@@ -19,11 +25,17 @@ pub(super) struct TreeStage<'a, K: Key> {
     meta: Vec<u8>,
 }
 
-pub(super) struct Serializer<'a, K: Key> {
+pub(super) struct Serializer<'a, K>
+where
+    for<'b> K: Key<'b>,
+{
     headers_btree: &'a InMemoryIndex<K>,
 }
 
-impl<'a, K: Key> Serializer<'a, K> {
+impl<'a, K> Serializer<'a, K>
+where
+    for<'b> K: Key<'b>,
+{
     pub(super) fn new(headers_btree: &'a InMemoryIndex<K>) -> Self {
         Self { headers_btree }
     }
@@ -46,7 +58,10 @@ impl<'a, K: Key> Serializer<'a, K> {
     }
 }
 
-impl<'a, K: Key + 'static> HeaderStage<'a, K> {
+impl<'a, K> HeaderStage<'a, K>
+where
+    for<'b> K: Key<'b> + 'static,
+{
     pub(super) fn tree_stage(self) -> Result<TreeStage<'a, K>> {
         let hs = self.header.serialized_size()? as usize;
         let external_buf_size = self.header.meta_size;
@@ -192,7 +207,10 @@ impl<'a, K: Key + 'static> HeaderStage<'a, K> {
     }
 }
 
-impl<'a, K: Key> TreeStage<'a, K> {
+impl<'a, K> TreeStage<'a, K>
+where
+    for<'b> K: Key<'b>,
+{
     pub(super) fn build(self) -> Result<(IndexHeader, TreeMeta, Vec<u8>)> {
         let hs = self.header.serialized_size()? as usize;
         let fsize = self.header.meta_size;
