@@ -93,15 +93,16 @@ where
             self.fsyncdata()
                 .await
                 .with_context(|| "Blob file dump failed!")?;
+
             self.index
-                .dump()
+                .dump(self.file_size())
                 .await
                 .with_context(|| "Blob index file dump failed!")
         }
     }
 
     pub(crate) async fn load_index(&mut self) -> Result<()> {
-        if let Err(e) = self.index.load().await {
+        if let Err(e) = self.index.load(self.file_size()).await {
             warn!("error loading index: {}, regenerating", e);
             self.index.clear();
             self.try_regenerate_index().await?;
@@ -134,21 +135,26 @@ where
         let mut is_index_corrupted = false;
         let index = if index_name.exists() {
             trace!("file exists");
-            Index::from_file(index_name.clone(), index_config.clone(), ioring.clone())
-                .await
-                .or_else(|error| {
-                    if let Some(io_error) = error.downcast_ref::<IOError>() {
-                        match io_error.kind() {
-                            IOErrorKind::PermissionDenied | IOErrorKind::Other => {
-                                warn!("index cannot be regenerated due to error: {}", io_error);
-                                return Err(error);
-                            }
-                            _ => {}
+            Index::from_file(
+                index_name.clone(),
+                index_config.clone(),
+                ioring.clone(),
+                size,
+            )
+            .await
+            .or_else(|error| {
+                if let Some(io_error) = error.downcast_ref::<IOError>() {
+                    match io_error.kind() {
+                        IOErrorKind::PermissionDenied | IOErrorKind::Other => {
+                            warn!("index cannot be regenerated due to error: {}", io_error);
+                            return Err(error);
                         }
+                        _ => {}
                     }
-                    is_index_corrupted = true;
-                    Ok(Index::new(index_name, ioring, index_config))
-                })?
+                }
+                is_index_corrupted = true;
+                Ok(Index::new(index_name, ioring, index_config))
+            })?
         } else {
             trace!("file not found, create new");
             Index::new(index_name, ioring, index_config)

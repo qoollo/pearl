@@ -4,7 +4,7 @@ use std::mem::size_of;
 
 pub(crate) type Index<K> = IndexStruct<BPTreeFileIndex<K>, K>;
 
-pub(crate) const HEADER_VERSION: u8 = 4;
+pub(crate) const HEADER_VERSION: u8 = 5;
 pub(crate) const INDEX_HEADER_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
 #[derive(Debug)]
@@ -120,9 +120,12 @@ where
         name: FileName,
         config: IndexConfig,
         ioring: Option<Rio>,
+        blob_size: u64,
     ) -> Result<Self> {
         let findex = FileIndex::from_file(name.clone(), ioring.clone()).await?;
-        findex.validate().with_context(|| "Header is corrupt")?;
+        findex
+            .validate(blob_size)
+            .with_context(|| "Header is corrupt")?;
         let meta_buf = findex.read_meta().await?;
         let (bloom_filter, range_filter, bloom_offset) = Self::deserialize_filters(&meta_buf)?;
         let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
@@ -148,7 +151,7 @@ where
         matches!(&self.inner, State::OnDisk(_))
     }
 
-    async fn dump_in_memory(&mut self) -> Result<usize> {
+    async fn dump_in_memory(&mut self, blob_size: u64) -> Result<usize> {
         if let State::InMemory(headers) = &self.inner {
             if headers.len() == 0 {
                 return Ok(0);
@@ -162,6 +165,7 @@ where
                 headers,
                 meta_buf,
                 self.params.recreate_file,
+                blob_size,
             )
             .await?;
             let size = findex.file_size() as usize;
@@ -198,8 +202,8 @@ where
         Ok((bloom, range, range_size + size_of::<u64>()))
     }
 
-    async fn load_in_memory(&mut self, findex: FileIndex) -> Result<()> {
-        let (record_headers, records_count) = findex.get_records_headers().await?;
+    async fn load_in_memory(&mut self, findex: FileIndex, blob_size: u64) -> Result<()> {
+        let (record_headers, records_count) = findex.get_records_headers(blob_size).await?;
         self.mem = Some(compute_mem_attrs(&record_headers, records_count));
         self.inner = State::InMemory(record_headers);
         let meta_buf = findex.read_meta().await?;
@@ -308,16 +312,16 @@ where
         }
     }
 
-    async fn dump(&mut self) -> Result<usize> {
-        self.dump_in_memory().await
+    async fn dump(&mut self, blob_size: u64) -> Result<usize> {
+        self.dump_in_memory(blob_size).await
     }
 
-    async fn load(&mut self) -> Result<()> {
+    async fn load(&mut self, blob_size: u64) -> Result<()> {
         match &self.inner {
             State::InMemory(_) => Ok(()),
             State::OnDisk(findex) => {
                 let findex = findex.clone();
-                self.load_in_memory(findex).await
+                self.load_in_memory(findex, blob_size).await
             }
         }
     }
@@ -354,15 +358,16 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,
+        blob_size: u64,
     ) -> Result<Self>;
     fn file_size(&self) -> u64;
     fn records_count(&self) -> usize;
     async fn read_meta(&self) -> Result<Vec<u8>>;
     async fn read_meta_at(&self, i: u64) -> Result<u8>;
     async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
-    async fn get_records_headers(&self) -> Result<(InMemoryIndex<K>, usize)>;
+    async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)>;
     async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>>;
-    fn validate(&self) -> Result<()>;
+    fn validate(&self, blob_size: u64) -> Result<()>;
 }
 
 #[async_trait::async_trait]
