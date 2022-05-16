@@ -78,7 +78,7 @@ pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
-pub use storage::{Builder, Key, Storage};
+pub use storage::{Builder, Key, RefKey, Storage};
 
 mod prelude {
     use crc::{Crc, CRC_32_ISCSI};
@@ -114,7 +114,6 @@ mod prelude {
             atomic::{AtomicUsize, Ordering},
             Arc,
         },
-        time::Duration,
     };
     pub(crate) use thiserror::Error;
     pub(crate) use tokio::{

@@ -155,12 +155,16 @@ pub enum ValidationErrorKind {
     IndexIsWritten,
     /// Index version.
     IndexVersion,
+    /// Index magic byte
+    IndexMagicByte,
     /// Record data checksum.
     RecordDataChecksum,
     /// Record header checksum.
     RecordHeaderChecksum,
     /// Record magic byte.
     RecordMagicByte,
+    /// Index blob size
+    IndexBlobSize,
 }
 
 /// Convenient helper for downcasting anyhow error to pearl error.
