@@ -8,7 +8,10 @@ documentation = "https://docs.rs/pearl"
 keywords = ["blob", "blob-storage", "append-only", "key-value", "async"]
 categories = ["data-structures", "filesystem"]
 license = "MIT"
-authors = ["Pavel Yakushin <p.yakushin@qoollo.com>", "Kirill Bushminkin <kbushminkin@gmail.com>"]
+authors = [
+    "Pavel Yakushin <p.yakushin@qoollo.com>",
+    "Kirill Bushminkin <kbushminkin@gmail.com>",
+]
 edition = "2018"
 readme = "README.md"
 
@@ -40,6 +43,7 @@ thiserror = "1.0"
 tokio-stream = "0.1"
 nix = "0.23.0"
 libc = "0.2"
+static_assertions = "1.1.0"
 
 [dependencies.tokio]
 version = "1.14"
