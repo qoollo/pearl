@@ -29,15 +29,14 @@ pub fn migrate_blob(
         &output,
         validate_every,
         |record, version| record.migrate(version, target_version),
-        |header| header.migrate(target_version),
+        |header, version| header.migrate(version, target_version),
         false,
     )?;
     Ok(())
 }
 
 impl BlobHeader {
-    pub fn migrate(self, target_version: u32) -> AnyResult<Self> {
-        let source_version = self.version;
+    pub fn migrate(self, source_version: u32, target_version: u32) -> AnyResult<Self> {
         match (source_version, target_version) {
             (source, target) if source >= target => Ok(self),
             (0, 1) => self.mirgate_v0_to_v1(),

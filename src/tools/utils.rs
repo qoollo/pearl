@@ -44,7 +44,7 @@ where
         output,
         validate_every,
         |record, _| Ok(record),
-        |header| Ok(header),
+        |header, _| Ok(header),
         skip_wrong_record,
     )
 }
@@ -60,7 +60,7 @@ pub(crate) fn process_blob_with<P, Q, F, H>(
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
-    H: Fn(BlobHeader) -> AnyResult<BlobHeader>,
+    H: Fn(BlobHeader, u32) -> AnyResult<BlobHeader>,
     F: Fn(Record, u32) -> AnyResult<Record>,
 {
     if input.as_ref() == output.as_ref() {
@@ -73,7 +73,7 @@ where
     info!("Blob reader created");
     let header = reader.read_header()?;
     let source_version = header.version;
-    let header = preprocess_header(header)?;
+    let header = preprocess_header(header, source_version)?;
     // Create writer after read blob header to prevent empty blob creation
     let mut writer = BlobWriter::from_path(&output, validate_written_records)?;
     info!("Blob writer created");

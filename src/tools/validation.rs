@@ -16,18 +16,27 @@ pub fn validate_index<K>(path: &Path) -> AnyResult<()>
 where
     for<'a> K: Key<'a> + 'static,
 {
-    static_assertions::const_assert_eq!(blob::index::HEADER_VERSION, 5);
+    use blob::index::HEADER_VERSION;
+
+    static_assertions::const_assert_eq!(HEADER_VERSION, 5);
     let header = read_index_header(path)?;
     let blob_size = path.metadata()?.len();
-    let headers = match header.version() {
-        2..=4 => return Err(Error::index_header_validation_error("too low header version").into()),
-        5 => block_on(async {
+    let headers = if header.version() < HEADER_VERSION {
+        return Err(Error::index_header_validation_error(format!(
+            "Index version is outdated. Passed version: {}, latest version: {}",
+            header.version(),
+            HEADER_VERSION
+        ))
+        .into());
+    } else if header.version() == HEADER_VERSION {
+        block_on(async {
             let index = BPTreeFileIndex::<K>::from_file(FileName::from_path(path)?, None).await?;
             let res = index.get_records_headers(blob_size).await?;
             AnyResult::<_>::Ok(res.0)
-        })?,
-        _ => return Err(Error::index_header_validation_error("unknown header version").into()),
-    }?;
+        })??
+    } else {
+        return Err(Error::index_header_validation_error("unknown header version").into());
+    };
     for (_, headers) in headers {
         for header in headers {
             header.validate()?;
