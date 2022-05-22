@@ -151,8 +151,6 @@ pub enum ValidationErrorKind {
     BlobVersion,
     /// Index checksum.
     IndexChecksum,
-    /// Existing index write was successfully finished.
-    IndexIsWritten,
     /// Index version.
     IndexVersion,
     /// Index magic byte

@@ -114,7 +114,7 @@ where
     fn validate(&self, blob_size: u64) -> Result<()> {
         // FIXME: check hash here?
         if !self.header.is_written() {
-            let param = ValidationErrorKind::IndexIsWritten;
+            let param = ValidationErrorKind::IndexNotWritten;
             return Err(
                 Error::validation(param, "Index is incomplete (no 'is_written' flag)").into(),
             );
