@@ -240,6 +240,7 @@ impl Header {
         self.to_raw().map(|raw| CRC32C.checksum(&raw))
     }
 
+    /// Used for migration
     pub(crate) fn with_reversed_key_bytes(mut self) -> bincode::Result<Self> {
         self.key.reverse();
         self.update_checksum()?;

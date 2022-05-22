@@ -11,9 +11,9 @@ pub(crate) const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Header {
-    pub magic_byte: u64,
-    pub version: u32,
-    flags: u64,
+    pub(crate) magic_byte: u64,
+    pub(crate) version: u32,
+    pub(crate) flags: u64,
 }
 
 impl Header {
