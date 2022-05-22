@@ -90,7 +90,7 @@ impl IndexHeader {
 
     pub(crate) fn validate_without_version(&self) -> Result<()> {
         if !self.is_written() {
-            let param = ValidationErrorKind::RecordMagicByte;
+            let param = ValidationErrorKind::IndexNotWritten;
             return Err(Error::validation(param, "missing 'written' bit").into());
         }
         Ok(())

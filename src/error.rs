@@ -165,6 +165,8 @@ pub enum ValidationErrorKind {
     RecordMagicByte,
     /// Index blob size
     IndexBlobSize,
+    /// Index is not written (index header corrupted)
+    IndexNotWritten,
 }
 
 /// Convenient helper for downcasting anyhow error to pearl error.
