@@ -3,11 +3,23 @@ use crate::{error::ValidationErrorKind, prelude::*};
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 const DELETE_FLAG: u8 = 0x01;
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
 pub struct Record {
-    header: Header,
-    meta: Meta,
-    data: Vec<u8>,
+    pub header: Header,
+    pub meta: Meta,
+    pub data: Vec<u8>,
+}
+
+impl Debug for Record {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(
+            f,
+            "Record(header={:?}, meta={:?}, data_size={})",
+            self.header,
+            self.meta.0,
+            self.data.len()
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
@@ -120,20 +132,9 @@ impl Record {
     }
 
     pub(crate) fn validate(self) -> Result<Self> {
-        self.check_magic_byte()?;
+        self.header().validate()?;
         self.check_data_checksum()?;
-        self.check_header_checksum()
-            .with_context(|| "check header checksum failed")?;
         Ok(self)
-    }
-
-    fn check_magic_byte(&self) -> Result<()> {
-        if self.header().magic_byte == RECORD_MAGIC_BYTE {
-            Ok(())
-        } else {
-            let param = ValidationErrorKind::RecordMagicByte;
-            Err(Error::validation(param, "wrong magic byte").into())
-        }
     }
 
     fn check_data_checksum(&self) -> Result<()> {
@@ -149,26 +150,6 @@ impl Record {
             let e = Error::validation(param, cause);
             error!("{:#?}", e);
             Err(e.into())
-        }
-    }
-
-    fn check_header_checksum(&self) -> Result<()> {
-        let mut header = self.header.clone();
-        header.header_checksum = 0;
-        let calc_crc = header
-            .crc32()
-            .with_context(|| "header checksum calculation failed")?;
-        if calc_crc == self.header.header_checksum {
-            Ok(())
-        } else {
-            let cause = format!(
-                "wrong header checksum {} vs {}",
-                calc_crc, self.header.header_checksum
-            );
-            let param = ValidationErrorKind::RecordHeaderChecksum;
-            let e = Error::validation(param, cause);
-            error!("{:#?}", e);
-            Err(Error::from(e).into())
         }
     }
 
@@ -257,6 +238,50 @@ impl Header {
 
     fn crc32(&self) -> bincode::Result<u32> {
         self.to_raw().map(|raw| CRC32C.checksum(&raw))
+    }
+
+    /// Used for migration
+    pub(crate) fn with_reversed_key_bytes(mut self) -> bincode::Result<Self> {
+        self.key.reverse();
+        self.update_checksum()?;
+        Ok(self)
+    }
+
+    fn check_magic_byte(&self) -> Result<()> {
+        if self.magic_byte == RECORD_MAGIC_BYTE {
+            Ok(())
+        } else {
+            let param = ValidationErrorKind::RecordMagicByte;
+            Err(Error::validation(param, "wrong magic byte").into())
+        }
+    }
+
+    fn check_header_checksum(&self) -> Result<()> {
+        let mut header = self.clone();
+        header.header_checksum = 0;
+        let calc_crc = header
+            .crc32()
+            .with_context(|| "header checksum calculation failed")?;
+        if calc_crc == self.header_checksum {
+            Ok(())
+        } else {
+            let cause = format!(
+                "wrong header checksum {} vs {}",
+                calc_crc, self.header_checksum
+            );
+            let param = ValidationErrorKind::RecordHeaderChecksum;
+            let e = Error::validation(param, cause);
+            error!("{:#?}", e);
+            Err(Error::from(e).into())
+        }
+    }
+
+    pub(crate) fn validate(&self) -> Result<()> {
+        self.check_magic_byte()
+            .with_context(|| "check header magic byte failed")?;
+        self.check_header_checksum()
+            .with_context(|| "check header checksum failed")?;
+        Ok(())
     }
 
     pub(crate) fn mark_as_deleted(&mut self) -> bincode::Result<()> {

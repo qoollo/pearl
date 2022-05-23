@@ -1,3 +1,5 @@
+use crate::error::ValidationErrorKind;
+
 use super::prelude::*;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -36,7 +38,7 @@ impl IndexHeader {
         records_count: usize,
         meta_size: usize,
         hash: Vec<u8>,
-        blob_size: u64
+        blob_size: u64,
     ) -> Self {
         Self {
             records_count,
@@ -84,6 +86,14 @@ impl IndexHeader {
     #[inline]
     pub(crate) fn from_raw(buf: &[u8]) -> bincode::Result<Self> {
         bincode::deserialize(buf)
+    }
+
+    pub(crate) fn validate_without_version(&self) -> Result<()> {
+        if !self.is_written() {
+            let param = ValidationErrorKind::IndexNotWritten;
+            return Err(Error::validation(param, "missing 'written' bit").into());
+        }
+        Ok(())
     }
 
     pub(crate) fn blob_size(&self) -> u64 {
