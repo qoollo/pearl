@@ -122,11 +122,11 @@ where
             *deferred = Some(data);
             let min = self.deferred_min_duration.clone();
             let max = self.deferred_max_duration.clone();
-            let deferred = self.deferred.clone();
+            let deferred_local = self.deferred.clone();
             tokio::spawn(async move {
                 loop {
                     sleep(min).await;
-                    let mut deferred = deferred.lock().await;
+                    let mut deferred = deferred_local.lock().await;
                     if deferred.as_ref().unwrap().last_time.elapsed() >= min
                         || deferred.as_ref().unwrap().first_time.elapsed() >= max
                     {
