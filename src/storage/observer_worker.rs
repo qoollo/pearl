@@ -16,7 +16,7 @@ where
     loopback_sender: Sender<Msg>,
     dump_sem: Arc<Semaphore>,
     async_oplock: Arc<Mutex<()>>,
-    deferred: Arc<RwLock<Option<DeferredEventData>>>,
+    deferred: Arc<Mutex<Option<DeferredEventData>>>,
     deferred_min_duration: Duration,
     deferred_max_duration: Duration,
 }
@@ -113,7 +113,7 @@ where
     }
 
     async fn deffer_blob_indexes_dump(&self) -> Result<()> {
-        let mut deferred = self.deferred.write().await;
+        let mut deferred = self.deferred.lock().await;
         if let Some(ref mut deferred) = *deferred {
             deferred.update_last_time();
         } else {
@@ -126,7 +126,7 @@ where
             tokio::spawn(async move {
                 loop {
                     sleep(min).await;
-                    let mut deferred = deferred.write().await;
+                    let mut deferred = deferred.lock().await;
                     if deferred.as_ref().unwrap().last_time.elapsed() >= min
                         || deferred.as_ref().unwrap().first_time.elapsed() >= max
                     {
