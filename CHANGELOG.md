@@ -9,7 +9,7 @@ Pearl changelog
 - Defer index drop on delete (#165)
 
 #### Fixed
-- Fix delete with no active blob set
+
 
 #### Updated
 
