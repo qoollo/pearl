@@ -39,14 +39,14 @@ where
     pub(super) fn new(headers_btree: &'a InMemoryIndex<K>) -> Self {
         Self { headers_btree }
     }
-    pub(super) fn header_stage(self, meta: Vec<u8>) -> Result<HeaderStage<'a, K>> {
+    pub(super) fn header_stage(self, meta: Vec<u8>, blob_size: u64) -> Result<HeaderStage<'a, K>> {
         if let Some(record_header) = self.headers_btree.values().next().and_then(|v| v.first()) {
             let record_header_size = record_header.serialized_size().try_into()?;
             let headers_len = self
                 .headers_btree
                 .iter()
                 .fold(0, |acc, (_k, v)| acc + v.len());
-            let header = IndexHeader::new(record_header_size, headers_len, meta.len());
+            let header = IndexHeader::new(record_header_size, headers_len, meta.len(), blob_size);
             Ok(HeaderStage {
                 headers_btree: self.headers_btree,
                 header,
@@ -228,6 +228,7 @@ where
             self.header.records_count,
             self.meta.len(),
             hash,
+            self.header.blob_size
         );
         serialize_into(buf.as_mut_slice(), &header)?;
         Ok((header, self.metadata, buf))

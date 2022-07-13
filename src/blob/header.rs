@@ -9,11 +9,11 @@ use super::FileName;
 pub(crate) const BLOB_VERSION: u32 = 1;
 pub(crate) const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Header {
-    magic_byte: u64,
-    version: u32,
-    flags: u64,
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Header {
+    pub(crate) magic_byte: u64,
+    pub(crate) version: u32,
+    pub(crate) flags: u64,
 }
 
 impl Header {
@@ -41,10 +41,7 @@ impl Header {
     }
 
     fn validate(&self) -> Result<()> {
-        if self.magic_byte != BLOB_MAGIC_BYTE {
-            let param = ValidationErrorKind::BlobMagicByte;
-            return Err(Error::validation(param, "blob header magic byte mismatch").into());
-        }
+        self.validate_without_version()?;
         if self.version != BLOB_VERSION {
             let cause = format!(
                 "old blob version: {}, expected: {}",
@@ -53,6 +50,14 @@ impl Header {
             return Err(Error::validation(ValidationErrorKind::BlobVersion, cause).into());
         }
 
+        Ok(())
+    }
+
+    pub fn validate_without_version(&self) -> Result<()> {
+        if self.magic_byte != BLOB_MAGIC_BYTE {
+            let param = ValidationErrorKind::BlobMagicByte;
+            return Err(Error::validation(param, "blob header magic byte mismatch").into());
+        }
         Ok(())
     }
 }

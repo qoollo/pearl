@@ -94,6 +94,7 @@ async fn benchmark_from_records() {
             &headers,
             meta.clone(),
             true,
+            0,
         )
         .await
         .unwrap();
@@ -134,6 +135,7 @@ async fn benchmark_from_file() {
             &headers,
             meta,
             true,
+            0,
         )
         .await
         .unwrap();
@@ -186,6 +188,7 @@ async fn benchmark_get_any() {
         &headers,
         meta.clone(),
         true,
+        0,
     )
     .await
     .unwrap();
@@ -239,6 +242,7 @@ async fn benchmark_get_all() {
         &headers,
         meta.clone(),
         true,
+        0,
     )
     .await
     .unwrap();

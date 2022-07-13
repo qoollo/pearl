@@ -71,6 +71,9 @@ mod storage;
 pub mod filter;
 pub use filter::{Bloom, BloomDataProvider, BloomProvider, Config as BloomConfig, FilterResult};
 
+/// tools to interact with pearl structures
+pub mod tools;
+
 pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;

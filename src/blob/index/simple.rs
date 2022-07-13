@@ -63,8 +63,9 @@ where
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,
+        blob_size: u64,
     ) -> Result<Self> {
-        let res = Self::serialize(headers, meta)?;
+        let res = Self::serialize(headers, meta, blob_size)?;
         if res.is_none() {
             error!("Indices are empty!");
             return Err(anyhow!("empty in-memory indices".to_string()));
@@ -82,9 +83,9 @@ where
         Ok(Self { file, header })
     }
 
-    async fn get_records_headers(&self) -> Result<(InMemoryIndex<K>, usize)> {
+    async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)> {
         let mut buf = self.file.read_all().await?;
-        self.validate_header::<K>(&mut buf).await?;
+        self.validate_header::<K>(&mut buf, blob_size).await?;
         let offset = self.header.meta_size + self.header.serialized_size()? as usize;
         let records_buf = &buf[offset..];
         (0..self.header.records_count)
@@ -110,15 +111,33 @@ where
             .map(|res| res.map(|h| h.0))
     }
 
-    fn validate(&self) -> Result<()> {
+    fn validate(&self, blob_size: u64) -> Result<()> {
         // FIXME: check hash here?
         if !self.header.is_written() {
-            let param = ValidationErrorKind::IndexIsWritten;
-            return Err(Error::validation(param, "Index Header version is not valid").into());
+            let param = ValidationErrorKind::IndexNotWritten;
+            return Err(
+                Error::validation(param, "Index is incomplete (no 'is_written' flag)").into(),
+            );
         }
         if self.header.version() != HEADER_VERSION {
             let param = ValidationErrorKind::IndexVersion;
             return Err(Error::validation(param, "Index Header version is not valid").into());
+        }
+        if self.header.blob_size() != blob_size {
+            let param = ValidationErrorKind::IndexBlobSize;
+            return Err(Error::validation(
+                param,
+                format!(
+                    "Index Header is for blob of size {}, but actual blob size is {}",
+                    self.header.blob_size(),
+                    blob_size
+                ),
+            )
+            .into());
+        }
+        if self.header.magic_byte() != INDEX_HEADER_MAGIC_BYTE {
+            let param = ValidationErrorKind::IndexMagicByte;
+            return Err(Error::validation(param, "Index magic byte is not valid").into());
         }
         Ok(())
     }
@@ -260,11 +279,11 @@ impl SimpleFileIndex {
         Ok(None)
     }
 
-    async fn validate_header<K>(&self, buf: &mut Vec<u8>) -> Result<()>
+    async fn validate_header<K>(&self, buf: &mut Vec<u8>, blob_size: u64) -> Result<()>
     where
         for<'a> K: Key<'a>,
     {
-        FileIndexTrait::<K>::validate(self)?;
+        FileIndexTrait::<K>::validate(self, blob_size)?;
         if !Self::hash_valid(&self.header, buf)? {
             let param = ValidationErrorKind::IndexChecksum;
             return Err(Error::validation(param, "header hash mismatch").into());
@@ -275,6 +294,7 @@ impl SimpleFileIndex {
     fn serialize<K>(
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
+        blob_size: u64,
     ) -> Result<Option<(IndexHeader, Vec<u8>)>>
     where
         for<'a> K: Key<'a>,
@@ -285,7 +305,7 @@ impl SimpleFileIndex {
             let record_header_size = record_header.serialized_size().try_into()?;
             trace!("record header serialized size: {}", record_header_size);
             let headers = headers.iter().flat_map(|r| r.1).collect::<Vec<_>>(); // produce sorted
-            let header = IndexHeader::new(record_header_size, headers.len(), meta.len());
+            let header = IndexHeader::new(record_header_size, headers.len(), meta.len(), blob_size);
             let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
             trace!("index header size: {}b", hs);
             let fsize = header.meta_size;
@@ -310,8 +330,13 @@ impl SimpleFileIndex {
                 buf.len()
             );
             let hash = get_hash(&buf);
-            let header =
-                IndexHeader::with_hash(record_header_size, headers.len(), meta.len(), hash);
+            let header = IndexHeader::with_hash(
+                record_header_size,
+                headers.len(),
+                meta.len(),
+                hash,
+                blob_size,
+            );
             serialize_into(buf.as_mut_slice(), &header)?;
             Ok(Some((header, buf)))
         } else {

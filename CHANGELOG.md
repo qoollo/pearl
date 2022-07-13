@@ -14,6 +14,21 @@ Pearl changelog
 #### Updated
 
 
+## [0.12.0] - 2022-05-23
+#### Added
+- Add hierarchical filters support (#126)
+- Add tools to recover and migrate blobs and indexes (#148)
+- Add blob size to index header (#153)
+- Add magic byte to index header (#152)
+
+#### Changed
+
+#### Fixed
+- Fix delete with no active blob set (#167)
+
+#### Updated
+
+
 ## [0.11.0] - 2022-04-18
 #### Added
 Add support for hierarchical range filters (#154)

@@ -1,3 +1,5 @@
+use crate::error::ValidationErrorKind;
+
 use super::prelude::*;
 
 const META_SIZE: usize = 100;
@@ -70,14 +72,99 @@ async fn serialize_deserialize_file() {
         &inmem,
         meta,
         true,
+        0,
     )
     .await
     .expect("Can't create file index");
     let (inmem_after, _size) = findex
-        .get_records_headers()
+        .get_records_headers(0)
         .await
         .expect("Can't get InMemoryIndex");
     assert_eq!(inmem, inmem_after);
+}
+
+#[tokio::test]
+async fn blob_size_invalidation() {
+    let filename = "/tmp/bptree_index.0.index";
+    let mut inmem = InMemoryIndex::<KeyType>::new();
+    (0..10000).map(|i| i.into()).for_each(|key: KeyType| {
+        let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+        inmem.insert(key, vec![rh]);
+    });
+    let meta = vec![META_VALUE; META_SIZE];
+    let findex = BPTreeFileIndex::<KeyType>::from_records(
+        &Path::new(filename),
+        None,
+        &inmem,
+        meta,
+        true,
+        100,
+    )
+    .await
+    .expect("can't create file index");
+
+    assert!(findex.validate(50).is_err());
+    assert!(matches!(
+        findex
+            .validate(50)
+            .unwrap_err()
+            .downcast_ref::<Error>()
+            .unwrap()
+            .kind(),
+        ErrorKind::Validation {
+            kind: ValidationErrorKind::IndexBlobSize,
+            ..
+        }
+    ));
+}
+#[tokio::test]
+async fn magic_byte_corruption() {
+    let filename = "/tmp/bptree_index.0.index";
+    let mut inmem = InMemoryIndex::<KeyType>::new();
+    (0..10000).map(|i| i.into()).for_each(|key: KeyType| {
+        let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+        inmem.insert(key, vec![rh]);
+    });
+    let meta = vec![META_VALUE; META_SIZE];
+    let _ = BPTreeFileIndex::<KeyType>::from_records(
+        &Path::new(filename),
+        None,
+        &inmem,
+        meta,
+        true,
+        100,
+    )
+    .await
+    .expect("can't create file index");
+    // corrupt
+    let mut file_content = std::fs::read(filename).expect("failed to read file");
+    for i in 0..8 {
+        if i % 4 == 0 {
+            file_content[i as usize] = 0;
+        }
+    }
+    std::fs::write(filename, file_content).expect("failed to write file");
+
+    let findex = BPTreeFileIndex::<KeyType>::from_file(
+        FileName::from_path(&Path::new(filename)).expect("failed to create filename"),
+        None,
+    )
+    .await
+    .expect("can't read file index");
+
+    assert!(findex.validate(100).is_err());
+    assert!(matches!(
+        findex
+            .validate(100)
+            .unwrap_err()
+            .downcast_ref::<Error>()
+            .unwrap()
+            .kind(),
+        ErrorKind::Validation {
+            kind: ValidationErrorKind::IndexMagicByte,
+            ..
+        }
+    ));
 }
 
 #[tokio::test]
@@ -99,6 +186,7 @@ async fn check_get_any() {
         &inmem,
         meta,
         true,
+        0,
     )
     .await
     .expect("Can't create file index");
@@ -148,6 +236,7 @@ async fn check_get() {
         &inmem,
         meta,
         true,
+        0,
     )
     .await
     .expect("Can't create file index");
