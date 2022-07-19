@@ -236,6 +236,14 @@ where
         }
     }
 
+    pub(crate) fn disk_used(&self) -> u64 {
+        if let State::OnDisk(file) = &self.inner {
+            file.file_size()
+        } else {
+            0
+        }
+    }
+
     fn mark_all_as_deleted_in_memory(headers: &mut InMemoryIndex<K>, key: &K) -> Option<u64> {
         debug!("headers: {}", headers.len());
         headers.remove(key).map(|v| v.len() as u64)

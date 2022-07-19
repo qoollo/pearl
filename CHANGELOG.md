@@ -4,6 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Add method to receive occupied disk space (#170)
 
 #### Changed
 

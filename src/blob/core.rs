@@ -384,6 +384,10 @@ where
     pub(crate) fn index_memory(&self) -> usize {
         self.index.memory_used()
     }
+
+    pub(crate) fn disk_used(&self) -> u64 {
+        self.file_size() + self.index.disk_used()
+    }
 }
 
 #[derive(Debug, Clone)]
