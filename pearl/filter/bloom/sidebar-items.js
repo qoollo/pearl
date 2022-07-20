@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Bloom","Bloom filter"],["Config","Bloom filter configuration parameters."]]});

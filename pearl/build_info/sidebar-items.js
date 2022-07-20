@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["BuildInfo","Contains info about current build: name, version, commit and build time (if built with `--release` flag). To get current info, use `build_info` helper."]]});

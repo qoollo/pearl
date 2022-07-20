@@ -1,0 +1,1 @@
+initSidebarItems({"trait":[["BloomDataProvider","Provider for raw filter data"],["BloomProvider","Trait for scructs which contains bloom filters"],["FilterTrait","Trait filters should implement"]]});

@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Config","Bloom filter configuration parameters."]]});
+initSidebarItems({"enum":[["FilterResult","Filter result"]],"mod":[["bloom","Bloom filter"],["hierarchical","Hierarchical"],["range","Range filter"],["traits","Traits"]],"struct":[["CombinedFilter","Combined bloom and range filter"]]});

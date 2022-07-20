@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["migrate_blob","Migrate blob version"],["move_and_recover_blob","Recover blob in-place, corrupted blob will be moved to `backup_path`"],["recovery_blob","Recover blob"],["validate_blob","Validate blob file"],["validate_index","Validate index file"]],"mod":[["error","Error type defenition"]]});
