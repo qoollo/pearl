@@ -26,8 +26,6 @@ jobs:
       - name: Add index.html
         run: echo "<meta http-equiv=refresh content=0;url=pearl/index.html>" > target/doc/index.html
       - name: Publish generated content to GitHub Pages
-        uses: tsunematsu21/actions-publish-gh-pages@v1.0.2
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          dir: target/doc
-          branch: gh-pages
-          token: ${{ secrets.GH_TOKEN }}
+          folder:: target/doc
