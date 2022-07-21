@@ -9,6 +9,7 @@ Pearl changelog
 #### Changed
 
 #### Fixed
+- Restore documentation publishing (#173)
 
 #### Updated
 
