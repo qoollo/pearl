@@ -267,6 +267,13 @@ where
         self.write_with_optional_meta(key, value, Some(meta)).await
     }
 
+    /// Free all resources that may be freed without work interruption
+    /// NOTICE! This function frees resources in separate thread, so actual
+    /// resources may be freed later
+    pub async fn free_possible_resources(&self) {
+        self.observer.try_dump_old_blob_indexes().await;
+    }
+
     async fn write_with_optional_meta(
         &self,
         key: impl AsRef<K>,
