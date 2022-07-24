@@ -1,0 +1,29 @@
+name: publish-documentation
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+
+  publish-documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v3
+      - name: Install latest stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+      - name: Build documentation
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+      - name: Add index.html
+        run: echo "<meta http-equiv=refresh content=0;url=pearl/index.html>" > target/doc/index.html
+      - name: Publish generated content to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: target/doc

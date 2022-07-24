@@ -534,6 +534,21 @@ where
         }
     }
 
+    /// `disk_used` returns amount of disk space occupied by storage related  files
+    pub async fn disk_used(&self) -> u64 {
+        let safe = self.inner.safe.read().await;
+        let lock = safe.blobs.read().await;
+        let mut result = safe
+            .active_blob
+            .as_ref()
+            .map(|b| b.disk_used())
+            .unwrap_or_default();
+        for blob in lock.iter() {
+            result += blob.disk_used();
+        }
+        result
+    }
+
     /// Returns next blob ID. If pearl dir structure wasn't changed from the outside,
     /// returned number is equal to `blobs_count`. But this method doesn't require
     /// lock. So it is much faster than `blobs_count`.

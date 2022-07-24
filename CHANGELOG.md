@@ -4,11 +4,13 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Add method to receive occupied disk space (#170)
 
 #### Changed
 - Defer index drop on delete (#165)
 
 #### Fixed
+- Restore documentation publishing (#173)
 
 
 #### Updated
