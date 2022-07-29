@@ -274,9 +274,8 @@ where
         self.observer.try_dump_old_blob_indexes().await;
     }
 
-    /// Get size in bytes of all resources that can be freed without
-    /// work interruption.
-    pub async fn freeable_resources_size(&self) -> usize {
+    /// Get size in bytes of inactive indexes
+    pub async fn inactive_index_memory(&self) -> usize {
         let safe = self.inner.safe.read().await;
         let blobs = safe.blobs.read().await;
         blobs.iter().fold(0, |s, n| s + n.index_memory())
