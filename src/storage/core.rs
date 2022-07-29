@@ -272,6 +272,7 @@ where
     /// so actual resources may be freed later
     pub async fn free_possible_resources(&self) {
         self.observer.try_dump_old_blob_indexes().await;
+        self.close_active_blob_in_background().await;
     }
 
     /// Get size in bytes of inactive indexes
