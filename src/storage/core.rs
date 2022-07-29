@@ -268,10 +268,18 @@ where
     }
 
     /// Free all resources that may be freed without work interruption
-    /// NOTICE! This function frees resources in separate thread, so actual
-    /// resources may be freed later
+    /// NOTICE! This function frees part of the resources in separate thread,
+    /// so actual resources may be freed later
     pub async fn free_possible_resources(&self) {
         self.observer.try_dump_old_blob_indexes().await;
+    }
+
+    /// Get size in bytes of all resources that can be freed without
+    /// work interruption.
+    pub async fn freeable_resources_size(&self) -> usize {
+        let safe = self.inner.safe.read().await;
+        let blobs = safe.blobs.read().await;
+        blobs.iter().fold(0, |s, n| s + n.index_memory())
     }
 
     async fn write_with_optional_meta(
@@ -524,8 +532,8 @@ where
         }
     }
 
-    /// `index_memory` returns the amount of memory used by blob to store indices
-    pub async fn index_memory(&self) -> usize {
+    /// `active_index_memory` returns the amount of memory used by blob to store active indices
+    pub async fn active_index_memory(&self) -> usize {
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
             ablob.index_memory()
