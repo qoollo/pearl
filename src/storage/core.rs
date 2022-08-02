@@ -270,9 +270,10 @@ where
     /// Free all resources that may be freed without work interruption
     /// NOTICE! This function frees part of the resources in separate thread,
     /// so actual resources may be freed later
-    pub async fn free_freeable_resources(&self) {
+    pub async fn free_excess_resources(&self) -> usize {
+        let memory = self.inactive_index_memory().await;
         self.observer.try_dump_old_blob_indexes().await;
-        self.close_active_blob_in_background().await;
+        memory
     }
 
     /// Get size in bytes of inactive indexes
@@ -283,7 +284,7 @@ where
     }
 
     /// Get size in bytes of all freeable resources
-    pub async fn freeable_resources_memory(&self) -> usize {
+    pub async fn index_memory(&self) -> usize {
         self.active_index_memory().await + self.inactive_index_memory().await
     }
 
