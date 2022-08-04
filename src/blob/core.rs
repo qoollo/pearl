@@ -291,9 +291,6 @@ where
             let record = Record::deleted(key)?;
             self.write(record).await?;
             let res = self.index.mark_all_as_deleted(key)?;
-            if on_disk {
-                self.dump().await?;
-            }
             Ok(res)
         } else {
             Ok(None)

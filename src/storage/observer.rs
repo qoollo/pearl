@@ -12,6 +12,7 @@ pub(crate) enum OperationType {
     ForceUpdateActiveBlob = 3,
     TryDumpBlobIndexes = 4,
     TryUpdateActiveBlob = 5,
+    DeferredDumpBlobIndexes = 6,
 }
 
 #[derive(Debug)]
@@ -76,9 +77,11 @@ where
     pub(crate) fn run(&mut self) {
         if let Some(inner) = self.inner.take() {
             let (sender, receiver) = channel(1024);
+            let loop_sender = sender.clone();
             self.sender = Some(sender);
             let worker = ObserverWorker::new(
                 receiver,
+                loop_sender,
                 inner,
                 self.dump_sem.clone(),
                 self.async_oplock.clone(),
@@ -112,6 +115,11 @@ where
 
     pub(crate) async fn try_dump_old_blob_indexes(&self) {
         self.send_msg(Msg::new(OperationType::TryDumpBlobIndexes, None))
+            .await
+    }
+
+    pub(crate) async fn defer_dump_old_blob_indexes(&self) {
+        self.send_msg(Msg::new(OperationType::DeferredDumpBlobIndexes, None))
             .await
     }
 

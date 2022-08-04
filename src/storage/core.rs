@@ -267,6 +267,27 @@ where
         self.write_with_optional_meta(key, value, Some(meta)).await
     }
 
+    /// Free all resources that may be freed without work interruption
+    /// NOTICE! This function frees part of the resources in separate thread,
+    /// so actual resources may be freed later
+    pub async fn free_excess_resources(&self) -> usize {
+        let memory = self.inactive_index_memory().await;
+        self.observer.try_dump_old_blob_indexes().await;
+        memory
+    }
+
+    /// Get size in bytes of inactive indexes
+    pub async fn inactive_index_memory(&self) -> usize {
+        let safe = self.inner.safe.read().await;
+        let blobs = safe.blobs.read().await;
+        blobs.iter().fold(0, |s, n| s + n.index_memory())
+    }
+
+    /// Get size in bytes of all freeable resources
+    pub async fn index_memory(&self) -> usize {
+        self.active_index_memory().await + self.inactive_index_memory().await
+    }
+
     async fn write_with_optional_meta(
         &self,
         key: impl AsRef<K>,
@@ -517,8 +538,8 @@ where
         }
     }
 
-    /// `index_memory` returns the amount of memory used by blob to store indices
-    pub async fn index_memory(&self) -> usize {
+    /// `active_index_memory` returns the amount of memory used by blob to store active indices
+    pub async fn active_index_memory(&self) -> usize {
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
             ablob.index_memory()
@@ -883,6 +904,7 @@ where
             .fold(0, |a, b| a + b)
             .await;
         debug!("{} deleted from closed blobs", total);
+        self.observer.defer_dump_old_blob_indexes().await;
         Ok(total)
     }
 
