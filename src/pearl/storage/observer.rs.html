@@ -143,6 +143,14 @@
 <span id="138">138</span>
 <span id="139">139</span>
 <span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{
     <span class="ident">mpsc</span>::{<span class="ident">channel</span>, <span class="ident">Sender</span>},
@@ -157,6 +165,7 @@
     <span class="ident">ForceUpdateActiveBlob</span> <span class="op">=</span> <span class="number">3</span>,
     <span class="ident">TryDumpBlobIndexes</span> <span class="op">=</span> <span class="number">4</span>,
     <span class="ident">TryUpdateActiveBlob</span> <span class="op">=</span> <span class="number">5</span>,
+    <span class="ident">DeferredDumpBlobIndexes</span> <span class="op">=</span> <span class="number">6</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
@@ -221,9 +230,11 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">run</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">take</span>() {
             <span class="kw">let</span> (<span class="ident">sender</span>, <span class="ident">receiver</span>) <span class="op">=</span> <span class="ident">channel</span>(<span class="number">1024</span>);
+            <span class="kw">let</span> <span class="ident">loop_sender</span> <span class="op">=</span> <span class="ident">sender</span>.<span class="ident">clone</span>();
             <span class="self">self</span>.<span class="ident">sender</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">sender</span>);
             <span class="kw">let</span> <span class="ident">worker</span> <span class="op">=</span> <span class="ident">ObserverWorker::new</span>(
                 <span class="ident">receiver</span>,
+                <span class="ident">loop_sender</span>,
                 <span class="ident">inner</span>,
                 <span class="self">self</span>.<span class="ident">dump_sem</span>.<span class="ident">clone</span>(),
                 <span class="self">self</span>.<span class="ident">async_oplock</span>.<span class="ident">clone</span>(),
@@ -257,6 +268,11 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">try_dump_old_blob_indexes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="self">self</span>.<span class="ident">send_msg</span>(<span class="ident">Msg::new</span>(<span class="ident">OperationType::TryDumpBlobIndexes</span>, <span class="prelude-val">None</span>))
+            .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">defer_dump_old_blob_indexes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.<span class="ident">send_msg</span>(<span class="ident">Msg::new</span>(<span class="ident">OperationType::DeferredDumpBlobIndexes</span>, <span class="prelude-val">None</span>))
             .<span class="kw">await</span>
     }
 

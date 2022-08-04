@@ -1203,6 +1203,28 @@
 <span id="1198">1198</span>
 <span id="1199">1199</span>
 <span id="1200">1200</span>
+<span id="1201">1201</span>
+<span id="1202">1202</span>
+<span id="1203">1203</span>
+<span id="1204">1204</span>
+<span id="1205">1205</span>
+<span id="1206">1206</span>
+<span id="1207">1207</span>
+<span id="1208">1208</span>
+<span id="1209">1209</span>
+<span id="1210">1210</span>
+<span id="1211">1211</span>
+<span id="1212">1212</span>
+<span id="1213">1213</span>
+<span id="1214">1214</span>
+<span id="1215">1215</span>
+<span id="1216">1216</span>
+<span id="1217">1217</span>
+<span id="1218">1218</span>
+<span id="1219">1219</span>
+<span id="1220">1220</span>
+<span id="1221">1221</span>
+<span id="1222">1222</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">error::ValidationErrorKind</span>,
     <span class="ident">filter</span>::{<span class="ident">CombinedFilter</span>, <span class="ident">FilterTrait</span>},
@@ -1472,6 +1494,27 @@
         <span class="self">self</span>.<span class="ident">write_with_optional_meta</span>(<span class="ident">key</span>, <span class="ident">value</span>, <span class="prelude-val">Some</span>(<span class="ident">meta</span>)).<span class="kw">await</span>
     }
 
+    <span class="doccomment">/// Free all resources that may be freed without work interruption</span>
+    <span class="doccomment">/// NOTICE! This function frees part of the resources in separate thread,</span>
+    <span class="doccomment">/// so actual resources may be freed later</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">free_excess_resources</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
+        <span class="kw">let</span> <span class="ident">memory</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inactive_index_memory</span>().<span class="kw">await</span>;
+        <span class="self">self</span>.<span class="ident">observer</span>.<span class="ident">try_dump_old_blob_indexes</span>().<span class="kw">await</span>;
+        <span class="ident">memory</span>
+    }
+
+    <span class="doccomment">/// Get size in bytes of inactive indexes</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">inactive_index_memory</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
+        <span class="kw">let</span> <span class="ident">safe</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">safe</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">blobs</span> <span class="op">=</span> <span class="ident">safe</span>.<span class="ident">blobs</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+        <span class="ident">blobs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">s</span>, <span class="ident">n</span><span class="op">|</span> <span class="ident">s</span> <span class="op">+</span> <span class="ident">n</span>.<span class="ident">index_memory</span>())
+    }
+
+    <span class="doccomment">/// Get size in bytes of all freeable resources</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">index_memory</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
+        <span class="self">self</span>.<span class="ident">active_index_memory</span>().<span class="kw">await</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">inactive_index_memory</span>().<span class="kw">await</span>
+    }
+
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write_with_optional_meta</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">key</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
@@ -1722,8 +1765,8 @@
         }
     }
 
-    <span class="doccomment">/// `index_memory` returns the amount of memory used by blob to store indices</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">index_memory</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
+    <span class="doccomment">/// `active_index_memory` returns the amount of memory used by blob to store active indices</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">active_index_memory</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="kw">let</span> <span class="ident">safe</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">safe</span>.<span class="ident">read</span>().<span class="kw">await</span>;
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ablob</span>) <span class="op">=</span> <span class="ident">safe</span>.<span class="ident">active_blob</span>.<span class="ident">as_ref</span>() {
             <span class="ident">ablob</span>.<span class="ident">index_memory</span>()
@@ -2088,6 +2131,7 @@
             .<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">a</span>, <span class="ident">b</span><span class="op">|</span> <span class="ident">a</span> <span class="op">+</span> <span class="ident">b</span>)
             .<span class="kw">await</span>;
         <span class="macro">debug!</span>(<span class="string">&quot;{} deleted from closed blobs&quot;</span>, <span class="ident">total</span>);
+        <span class="self">self</span>.<span class="ident">observer</span>.<span class="ident">defer_dump_old_blob_indexes</span>().<span class="kw">await</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">total</span>)
     }
 

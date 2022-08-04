@@ -589,9 +589,6 @@
 <span id="584">584</span>
 <span id="585">585</span>
 <span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::time::SystemTime</span>;
 
 <span class="kw">use</span> <span class="ident">tokio::time::Instant</span>;
@@ -885,9 +882,6 @@
             <span class="kw">let</span> <span class="ident">record</span> <span class="op">=</span> <span class="ident">Record::deleted</span>(<span class="ident">key</span>)<span class="question-mark">?</span>;
             <span class="self">self</span>.<span class="ident">write</span>(<span class="ident">record</span>).<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">index</span>.<span class="ident">mark_all_as_deleted</span>(<span class="ident">key</span>)<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="ident">on_disk</span> {
-                <span class="self">self</span>.<span class="ident">dump</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-            }
             <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
         } <span class="kw">else</span> {
             <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)

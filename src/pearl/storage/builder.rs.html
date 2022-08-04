@@ -195,7 +195,17 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prelude</span>::<span class="kw-2">*</span>;
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prelude</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Is used to initialize a `Storage`.</span>
 <span class="doccomment">///</span>
@@ -384,6 +394,12 @@
     <span class="doccomment">/// Sets bloom filter group size</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_bloom_filter_group_size</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">size</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_bloom_filter_group_size</span>(<span class="ident">size</span>);
+        <span class="self">self</span>
+    }
+
+    <span class="doccomment">/// Set min and max waiting time for deferred index dump</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_deferred_index_dump_times</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">min</span>: <span class="ident">Duration</span>, <span class="ident">max</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_deferred_index_dump_times</span>(<span class="ident">min</span>, <span class="ident">max</span>);
         <span class="self">self</span>
     }
 }
