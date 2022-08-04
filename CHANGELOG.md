@@ -4,6 +4,20 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+
+
+#### Changed
+
+
+#### Fixed
+
+
+#### Updated
+
+
+
+## [0.13.0] - 2022-08-04
+#### Added
 - Add method to receive occupied disk space (#170)
 
 #### Changed
@@ -11,7 +25,6 @@ Pearl changelog
 
 #### Fixed
 - Restore documentation publishing (#173)
-
 
 #### Updated
 
