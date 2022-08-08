@@ -12,7 +12,7 @@ use super::prelude::*;
 ///  - [`key_size`] - const key size in bytes
 ///
 /// # Example
-/// ```no-run
+/// ```no_run
 /// use pearl::{Builder, Storage, Key};
 ///
 /// struct Id;
