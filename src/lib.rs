@@ -17,7 +17,7 @@
 //! The following example shows a storage building and initialization.
 //! For more advanced usage see the benchmark tool as the example
 //!
-//! ```no_run
+//! ```no-run
 //! use pearl::{Storage, Builder, Key};
 //!
 //! struct Id(String);

@@ -18,7 +18,7 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```no-run
 /// use pearl::{Storage, Builder, Key};
 ///
 /// #[tokio::main]
@@ -235,7 +235,7 @@ where
     /// NOTICE! First write into storage without active blob may take more time due to active blob
     /// creation
     /// # Examples
-    /// ```no_run
+    /// ```no-run
     /// async fn write_data() {
     ///     let key = 42u64.to_be_bytes().to_vec();
     ///     let data = b"async written to blob".to_vec();
@@ -252,7 +252,7 @@ where
 
     /// Similar to [`write`] but with metadata
     /// # Examples
-    /// ```no_run
+    /// ```no-run
     /// async fn write_data() {
     ///     let key = 42u64.to_be_bytes().to_vec();
     ///     let data = b"async written to blob".to_vec();
@@ -361,7 +361,7 @@ where
 
     /// Reads the first found data matching given key.
     /// # Examples
-    /// ```no_run
+    /// ```no-run
     /// async fn read_data() {
     ///     let key = 42u64.to_be_bytes().to_vec();
     ///     let data = storage.read(key).await;
@@ -380,7 +380,7 @@ where
     }
     /// Reads data matching given key and metadata
     /// # Examples
-    /// ```no_run
+    /// ```no-run
     /// async fn read_data() {
     ///     let key = 42u64.to_be_bytes().to_vec();
     ///     let meta = Meta::new();
@@ -521,7 +521,7 @@ where
     /// `blob_count` returns exact number of closed blobs plus one active, if there is some.
     /// It locks on inner structure, so it much slower than `next_blob_id`.
     /// # Examples
-    /// ```no_run
+    /// ```no-run
     /// use pearl::Builder;
     ///
     /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build::<f64>();
