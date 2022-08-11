@@ -10,6 +10,7 @@ Pearl changelog
 
 
 #### Fixed
+- Fix docs (#177)
 
 
 #### Updated
