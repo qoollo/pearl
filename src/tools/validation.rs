@@ -20,7 +20,11 @@ where
 
     static_assertions::const_assert_eq!(HEADER_VERSION, 5);
     let header = read_index_header(path)?;
-    let blob_size = path.metadata()?.len();
+    let blob_path = path.with_extension("blob");
+    if !blob_path.exists() {
+        return Err(Error::index_header_validation_error("blob file doesn't exist").into());
+    }
+    let blob_size = blob_path.metadata()?.len();
     let headers = if header.version() < HEADER_VERSION {
         return Err(Error::index_header_validation_error(format!(
             "Index version is outdated. Passed version: {}, latest version: {}",
