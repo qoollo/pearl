@@ -1220,3 +1220,65 @@ where
         active + closed
     }
 }
+
+/// Key for demonstration purposes
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnitKey(Vec<u8>);
+
+impl Default for UnitKey {
+    fn default() -> Self {
+        Self([0])
+    }
+}
+
+impl AsRef<[u8]> for UnitKey {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl From<Vec<u8>> for UnitKey {
+    fn from(v: Vec<u8>) -> Self {
+        Self(v)
+    }
+}
+
+impl PartialOrd for UnitKey {
+    fn partial_cmp(&self, _: &Self) -> Option<CmpOrdering> {
+        Some(CmpOrdering::Equal)
+    }
+}
+
+impl Ord for UnitKey {
+    fn cmp(&self, _: &Self) -> CmpOrdering {
+        CmpOrdering::Equal
+    }
+}
+
+#[derive(PartialEq, Eq)]
+pub struct UnitRefKey<'a>(&'a [u8]);
+
+impl<'a> From<&'a [u8]> for UnitRefKey<'a> {
+    fn from(v: &'a [u8]) -> Self {
+        Self(v)
+    }
+}
+
+impl<'a> PartialOrd for UnitRefKey<'a> {
+    fn partial_cmp(&self, _: &Self) -> Option<CmpOrdering> {
+        Some(CmpOrdering::Equal)
+    }
+}
+
+impl<'a> Ord for UnitRefKey<'a> {
+    fn cmp(&self, _: &Self) -> CmpOrdering {
+        CmpOrdering::Equal
+    }
+}
+
+impl<'a> RefKey<'a> for UnitRefKey<'a> {}
+
+impl<'a> Key<'a> for UnitKey {
+    const LEN: u16 = 1;
+    type Ref = UnitRefKey<'a>;
+}
