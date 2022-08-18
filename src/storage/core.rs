@@ -1227,7 +1227,7 @@ pub struct UnitKey(Vec<u8>);
 
 impl Default for UnitKey {
     fn default() -> Self {
-        Self([0])
+        Self([0].to_vec())
     }
 }
 
