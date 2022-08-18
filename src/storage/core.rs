@@ -19,11 +19,11 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 /// # Examples
 ///
 /// ```no_run
-/// use pearl::{Storage, Builder, Key};
+/// use pearl::{Storage, Builder, Key, UnitKey};
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     let mut storage: Storage<String> = Builder::new()
+///     let mut storage: Storage<UnitKey> = Builder::new()
 ///         .work_dir("/tmp/pearl/")
 ///         .max_blob_size(1_000_000)
 ///         .max_data_in_blob(1_000_000_000)
