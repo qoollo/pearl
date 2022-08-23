@@ -1255,7 +1255,7 @@ impl Ord for UnitKey {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct UnitRefKey<'a>(&'a [u8]);
 
 impl<'a> From<&'a [u8]> for UnitRefKey<'a> {

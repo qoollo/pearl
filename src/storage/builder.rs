@@ -13,11 +13,9 @@ use super::prelude::*;
 ///
 /// # Example
 /// ```no_run
-/// use pearl::{Builder, Storage, Key};
+/// use pearl::{Builder, Storage, UnitKey};
 ///
-/// struct Id;
-///
-/// let storage: Storage<Id> = Builder::new()
+/// let storage: Storage<UnitKey> = Builder::new()
 ///         .blob_file_name_prefix("benchmark")
 ///         .max_blob_size(10_000_000)
 ///         .max_data_in_blob(1_000)

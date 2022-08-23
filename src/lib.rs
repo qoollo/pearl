@@ -18,23 +18,11 @@
 //! For more advanced usage see the benchmark tool as the example
 //!
 //! ```no_run
-//! use pearl::{Storage, Builder, Key};
-//!
-//! struct Id(String);
-//!
-//! impl AsRef<[u8]> for Id {
-//!     fn as_ref(&self) -> &[u8] {
-//!         self.0.as_bytes()
-//!     }
-//! }
-//!
-//! impl Key for Id {
-//!     const LEN: u16 = 4;
-//! }
+//! use pearl::{Storage, Builder, UnitKey};
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let mut storage: Storage<Id> = Builder::new()
+//!     let mut storage: Storage<Unit> = Builder::new()
 //!         .work_dir("/tmp/pearl/")
 //!         .max_blob_size(1_000_000)
 //!         .max_data_in_blob(1_000_000_000)
@@ -43,7 +31,7 @@
 //!         .build()
 //!         .unwrap();
 //!     storage.init().await.unwrap();
-//!     let key = Id("test".to_string());
+//!     let key = UnitKey::default();
 //!     let data = b"Hello World!".to_vec();
 //!     storage.write(key, data).await.unwrap();
 //! }
@@ -78,7 +66,7 @@ pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
-pub use storage::{Builder, Key, RefKey, Storage};
+pub use storage::{Builder, Key, RefKey, Storage, UnitKey};
 
 mod prelude {
     use crc::{Crc, CRC_32_ISCSI};
