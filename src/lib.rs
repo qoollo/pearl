@@ -22,12 +22,12 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let mut storage: Storage<Unit> = Builder::new()
+//!     let mut storage: Storage<UnitKey> = Builder::new()
 //!         .work_dir("/tmp/pearl/")
 //!         .max_blob_size(1_000_000)
 //!         .max_data_in_blob(1_000_000_000)
 //!         .blob_file_name_prefix("pearl-test")
-//!         .allow_duplicates(true)
+//!         .allow_duplicates()
 //!         .build()
 //!         .unwrap();
 //!     storage.init().await.unwrap();

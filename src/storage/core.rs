@@ -236,10 +236,13 @@ where
     /// creation
     /// # Examples
     /// ```no_run
+    /// use pearl::{Builder, Storage, UnitKey};
+    ///
     /// async fn write_data() {
-    ///     let key = 42u64.to_be_bytes().to_vec();
+    ///     let key = UnitKey::default();
     ///     let data = b"async written to blob".to_vec();
-    ///     storage.write(key, data).await
+    ///     let storage: Storage<UnitKey> = Builder::new().build().unwrap();
+    ///     storage.write(key, data).await;
     /// }
     /// ```
     /// # Errors
@@ -253,12 +256,15 @@ where
     /// Similar to [`write`] but with metadata
     /// # Examples
     /// ```no_run
+    /// use pearl::{Builder, Meta, Storage, UnitKey};
+    ///
     /// async fn write_data() {
-    ///     let key = 42u64.to_be_bytes().to_vec();
+    ///     let key = UnitKey::default();
     ///     let data = b"async written to blob".to_vec();
-    ///     let meta = Meta::new();
+    ///     let mut meta = Meta::new();
+    ///     let storage: Storage<UnitKey> = Builder::new().build().unwrap();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
-    ///     storage.write_with(&key, data, meta).await
+    ///     storage.write_with(&key, data, meta).await;
     /// }
     /// ```
     /// # Errors
@@ -362,8 +368,11 @@ where
     /// Reads the first found data matching given key.
     /// # Examples
     /// ```no_run
+    /// use pearl::{Builder, Meta, Storage, UnitKey};
+    ///
     /// async fn read_data() {
-    ///     let key = 42u64.to_be_bytes().to_vec();
+    ///     let key = UnitKey::default();
+    ///     let storage: Storage<UnitKey> = Builder::new().build().unwrap();
     ///     let data = storage.read(key).await;
     /// }
     /// ```
@@ -381,11 +390,14 @@ where
     /// Reads data matching given key and metadata
     /// # Examples
     /// ```no_run
+    /// use pearl::{Builder, Meta, Storage, UnitKey};
+    ///
     /// async fn read_data() {
-    ///     let key = 42u64.to_be_bytes().to_vec();
-    ///     let meta = Meta::new();
+    ///     let key = UnitKey::default();
+    ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
-    ///     let data = storage.read(&key, &meta).await;
+    ///     let storage: Storage<UnitKey> = Builder::new().build().unwrap();
+    ///     let data = storage.read_with(&key, &meta).await;
     /// }
     /// ```
     /// # Errors
@@ -522,11 +534,13 @@ where
     /// It locks on inner structure, so it much slower than `next_blob_id`.
     /// # Examples
     /// ```no_run
-    /// use pearl::Builder;
+    /// use pearl::{Builder, Storage, UnitKey};
     ///
-    /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build::<f64>();
-    /// storage.init().await;
-    /// assert_eq!(storage.blobs_count(), 1);
+    /// async fn check_blobs_count() {
+    ///     let mut storage: Storage<UnitKey> = Builder::new().build().unwrap();
+    ///     storage.init().await;
+    ///     assert_eq!(storage.blobs_count().await, 1);
+    /// }
     /// ```
     pub async fn blobs_count(&self) -> usize {
         let safe = self.inner.safe.read().await;
@@ -1224,6 +1238,12 @@ where
 /// Key for demonstration purposes
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnitKey(Vec<u8>);
+
+impl AsRef<UnitKey> for UnitKey {
+    fn as_ref(&self) -> &UnitKey {
+        self
+    }
+}
 
 impl Default for UnitKey {
     fn default() -> Self {
