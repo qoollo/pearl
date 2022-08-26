@@ -131,6 +131,12 @@ where
                 }
                 Ok(headers)
             })
+            .map(|mut headers| {
+                for val in headers.values_mut() {
+                    val.reverse();
+                }
+                headers
+            })
             .map(|headers| (headers, self.header.records_count))
     }
 
