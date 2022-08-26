@@ -10,6 +10,7 @@ Pearl changelog
 
 
 #### Fixed
+- Fix order of records after bptree deserialization (#181)
 
 
 #### Updated
