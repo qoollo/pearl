@@ -1,5 +1,5 @@
 use crate::error::ValidationErrorKind;
-use super::storage::Key
+use super::storage::Key;
 
 /// structure of b+-tree index file from the beginning:
 /// 1. Header
@@ -15,7 +15,10 @@ use super::prelude::*;
 pub(super) const BLOCK_SIZE: usize = 4096;
 
 #[derive(Debug, Clone)]
-pub(crate) struct BPTreeFileIndex<'a, K> where K: storage::core::Key<'a> {
+pub(crate) struct BPTreeFileIndex<K>
+where
+    for<'a> K: Key<'a>
+{
     file: File,
     header: IndexHeader,
     metadata: TreeMeta,
@@ -81,6 +84,10 @@ where
 
     fn records_count(&self) -> usize {
         self.header.records_count
+    }
+
+    fn blob_size(&self) -> u64 {
+        self.header.blob_size()
     }
 
     async fn read_meta(&self) -> Result<Vec<u8>> {

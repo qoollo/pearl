@@ -370,6 +370,7 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
     ) -> Result<Self>;
     fn file_size(&self) -> u64;
     fn records_count(&self) -> usize;
+    fn blob_size(&self) -> u64;
     async fn read_meta(&self) -> Result<Vec<u8>>;
     async fn read_meta_at(&self, i: u64) -> Result<u8>;
     async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;

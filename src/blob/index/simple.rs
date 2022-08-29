@@ -31,6 +31,10 @@ where
         self.header.records_count
     }
 
+    fn blob_size(&self) -> u64 {
+        self.header.blob_size()
+    }
+
     async fn read_meta(&self) -> Result<Vec<u8>> {
         trace!("load meta");
         let mut buf = vec![0; self.header.meta_size];

@@ -120,21 +120,25 @@ where
     Ok(())
 }
 
+/// block on function
 pub fn block_on<T, F: Future<Output = T>>(f: F) -> Result<T> {
     Ok(tokio::runtime::Runtime::new()?.block_on(f))
 }
 
-fn index_from_file<'a, K: Key<'a> + 'static>(
+fn index_from_file<K>(
     header: &IndexHeader,
     path: &Path,
-) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>> {
+) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>>
+where
+    for<'a> K: Key<'a> + 'static
+{
     let headers = match header.version() {
         5 => block_on(async {
             let index = block_on(BPTreeFileIndex::<K>::from_file(
                 FileName::from_path(path)?,
                 None,
             ))??;
-            let res = index.get_records_headers().await?;
+            let res = index.get_records_headers(index.blob_size()).await?;
             AnyResult::<_>::Ok(res.0)
         })?,
         _ => return Err(Error::index_header_validation_error("unsupported header version").into()),
