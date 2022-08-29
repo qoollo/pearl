@@ -4,6 +4,7 @@ use super::prelude::*;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct IndexHeader {
+    magic_byte: u64,
     pub records_count: usize,
     // contains serialized size of record headers, which allows to calculate offset in
     // case of `OnDisk` state of indices
@@ -14,6 +15,7 @@ pub(crate) struct IndexHeader {
     // to get the version, you should proceed `version >> 1`
     pub(crate) version: u8,
     pub(crate) key_size: u16,
+    pub(crate) blob_size: u64,
 }
 
 impl IndexHeader {
@@ -22,12 +24,14 @@ impl IndexHeader {
         records_count: usize,
         meta_size: usize,
         key_size: u16,
+        blob_size: u64,
     ) -> Self {
         Self {
             records_count,
             record_header_size,
             meta_size,
             key_size,
+            blob_size,
             ..Self::default()
         }
     }
@@ -37,12 +41,14 @@ impl IndexHeader {
         records_count: usize,
         meta_size: usize,
         hash: Vec<u8>,
+        blob_size: u64,
     ) -> Self {
         Self {
             records_count,
             record_header_size,
             meta_size,
             hash,
+            blob_size,
             ..Self::default()
         }
     }
@@ -62,6 +68,10 @@ impl IndexHeader {
 
     pub(crate) fn key_size(&self) -> u16 {
         self.key_size
+    }
+
+    pub(crate) fn magic_byte(&self) -> u64 {
+        self.magic_byte
     }
 
     #[allow(dead_code)]
@@ -87,10 +97,14 @@ impl IndexHeader {
 
     pub(crate) fn validate_without_version(&self) -> Result<()> {
         if !self.is_written() {
-            let param = ValidationErrorKind::RecordMagicByte;
+            let param = ValidationErrorKind::IndexNotWritten;
             return Err(Error::validation(param, "missing 'written' bit").into());
         }
         Ok(())
+    }
+
+    pub(crate) fn blob_size(&self) -> u64 {
+        self.blob_size
     }
 }
 
@@ -100,9 +114,11 @@ impl Default for IndexHeader {
             records_count: 0,
             record_header_size: 0,
             meta_size: 0,
+            blob_size: 0,
             hash: vec![0; ring::digest::SHA256.output_len],
             version: HEADER_VERSION << 1,
             key_size: 0,
+            magic_byte: INDEX_HEADER_MAGIC_BYTE,
         }
     }
 }

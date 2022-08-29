@@ -38,15 +38,18 @@ impl Node {
         Ok(meta_size + (keys_buf_size + offsets_buf_size) as u64)
     }
 
-    pub(super) fn binary_search_serialized<K: Key>(key: &K, buf: &[u8]) -> Result<usize, usize> {
+    pub(super) fn binary_search_serialized<K>(key: &K, buf: &[u8]) -> Result<usize, usize>
+    where
+        for<'a> K: Key<'a>,
+    {
         let key_size = K::LEN as usize;
         let mut l = 0i32;
         let mut r: i32 = (buf.len() / key_size - 1) as i32;
         while l <= r {
             let m = (l + r) / 2;
             let offset = m as usize * key_size;
-            let k = buf[offset..(offset + key_size)].to_vec().into(); // TODO Allow keys to be based on slices
-            match key.cmp(&k) {
+            let k = K::Ref::from(&buf[offset..(offset + key_size)]);
+            match key.as_ref_key().cmp(&k) {
                 CmpOrdering::Less => r = m - 1,
                 CmpOrdering::Greater => l = m + 1,
                 CmpOrdering::Equal => return Ok(m as usize),
@@ -55,7 +58,10 @@ impl Node {
         Err(l as usize)
     }
 
-    pub(super) fn key_offset_serialized<K: Key>(buf: &[u8], key: &K) -> Result<u64> {
+    pub(super) fn key_offset_serialized<K>(buf: &[u8], key: &K) -> Result<u64>
+    where
+        for<'a> K: Key<'a>,
+    {
         let meta_size = NodeMeta::serialized_size_default()? as usize;
         let node_size = deserialize::<NodeMeta>(&buf[..meta_size])?.size as usize;
         let offsets_offset = meta_size + node_size * (K::LEN as usize);
@@ -68,10 +74,14 @@ impl Node {
     }
 
     #[allow(dead_code)]
-    pub(super) fn key_offset<K: Key>(&self, key: &K) -> u64 {
+    pub(super) fn key_offset<K>(&self, key: &K) -> u64
+    where
+        for<'a> K: Key<'a>,
+    {
+        let key = key.as_ref_key();
         match self
             .keys
-            .binary_search_by(|elem| K::from(elem.clone()).cmp(key))
+            .binary_search_by(|elem| K::Ref::from(elem).cmp(&key))
         {
             Ok(pos) => self.offsets[pos + 1],
             Err(pos) => self.offsets[pos],
@@ -91,7 +101,10 @@ impl Node {
     }
 
     #[allow(dead_code)]
-    pub(super) fn deserialize<K: Key>(buf: &[u8]) -> Result<Self> {
+    pub(super) fn deserialize<K>(buf: &[u8]) -> Result<Self>
+    where
+        for<'a> K: Key<'a>,
+    {
         let key_size = K::LEN as u64;
         let meta_size = NodeMeta::serialized_size_default()?;
         let (meta_buf, data_buf) = buf.split_at(meta_size as usize);
@@ -120,8 +133,21 @@ mod tests {
     #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     struct KeyType(Vec<u8>);
 
-    impl Key for KeyType {
+    #[derive(PartialEq, Eq, PartialOrd, Ord)]
+    struct RefKeyType<'a>(&'a [u8]);
+
+    impl<'a> From<&'a [u8]> for RefKeyType<'a> {
+        fn from(v: &'a [u8]) -> Self {
+            Self(v)
+        }
+    }
+
+    impl<'a> RefKey<'a> for RefKeyType<'a> {}
+
+    impl<'a> Key<'a> for KeyType {
         const LEN: u16 = 4;
+
+        type Ref = RefKeyType<'a>;
     }
 
     impl From<Vec<u8>> for KeyType {

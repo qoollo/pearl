@@ -48,20 +48,23 @@ where
         output,
         validate_every,
         |record, _| Ok(record),
+        |header, _| Ok(header),
         skip_wrong_record,
     )
 }
 
-pub(crate) fn process_blob_with<P, Q, F>(
+pub(crate) fn process_blob_with<P, Q, F, H>(
     input: &P,
     output: &Q,
     validate_every: usize,
     preprocess_record: F,
+    preprocess_header: H,
     skip_wrong_record: bool,
 ) -> AnyResult<()>
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
+    H: Fn(BlobHeader, u32) -> AnyResult<BlobHeader>,
     F: Fn(Record, u32) -> AnyResult<Record>,
 {
     if input.as_ref() == output.as_ref() {
@@ -73,16 +76,18 @@ where
     let mut reader = BlobReader::from_path(&input)?;
     info!("Blob reader created");
     let header = reader.read_header()?;
+    let source_version = header.version;
+    let header = preprocess_header(header, source_version)?;
     // Create writer after read blob header to prevent empty blob creation
     let mut writer = BlobWriter::from_path(&output, validate_written_records)?;
     info!("Blob writer created");
     writer.write_header(&header)?;
-    info!("Input blob header version: {}", header.version);
+    info!("Input blob header version: {}", source_version);
     let mut count = 0;
     while !reader.is_eof() {
         match reader
             .read_record(skip_wrong_record)
-            .and_then(|record| preprocess_record(record, header.version))
+            .and_then(|record| preprocess_record(record, source_version))
         {
             Ok(record) => {
                 writer.write_record(record)?;
@@ -115,11 +120,11 @@ where
     Ok(())
 }
 
-fn block_on<T, F: Future<Output = T>>(f: F) -> Result<T> {
+pub fn block_on<T, F: Future<Output = T>>(f: F) -> Result<T> {
     Ok(tokio::runtime::Runtime::new()?.block_on(f))
 }
 
-fn index_from_file<K: Key + 'static>(
+fn index_from_file<'a, K: Key<'a> + 'static>(
     header: &IndexHeader,
     path: &Path,
 ) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>> {

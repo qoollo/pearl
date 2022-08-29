@@ -6,7 +6,7 @@ mod observer_worker;
 
 pub use self::{
     builder::Builder,
-    core::{Key, Storage},
+    core::{Key, RefKey, Storage},
     observer::ActiveBlobPred,
     observer::ActiveBlobStat,
 };

@@ -151,18 +151,22 @@ pub enum ValidationErrorKind {
     BlobVersion,
     /// Index checksum.
     IndexChecksum,
-    /// Existing index write was successfully finished.
-    IndexIsWritten,
     /// Index version.
     IndexVersion,
     /// Index key size.
     IndexKeySize,
+    /// Index magic byte
+    IndexMagicByte,
     /// Record data checksum.
     RecordDataChecksum,
     /// Record header checksum.
     RecordHeaderChecksum,
     /// Record magic byte.
     RecordMagicByte,
+    /// Index blob size
+    IndexBlobSize,
+    /// Index is not written (index header corrupted)
+    IndexNotWritten,
 }
 
 /// Convenient helper for downcasting anyhow error to pearl error.

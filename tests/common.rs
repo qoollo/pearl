@@ -11,12 +11,19 @@ use std::{
     io::{Seek, SeekFrom, Write},
     path::Path,
     path::PathBuf,
+    time::Duration,
 };
 
-use pearl::{Builder, Key, Storage};
+use pearl::{Builder, Key, RefKey, Storage};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyTest(Vec<u8>);
+
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub struct RefKeyTest<'a>(&'a [u8]);
+
+pub const MIN_DEFER_TIME: Duration = Duration::from_millis(100);
+pub const MAX_DEFER_TIME: Duration = Duration::from_millis(600);
 
 impl AsRef<[u8]> for KeyTest {
     fn as_ref(&self) -> &[u8] {
@@ -30,8 +37,18 @@ impl AsRef<KeyTest> for KeyTest {
     }
 }
 
-impl Key for KeyTest {
+impl<'a> From<&'a [u8]> for RefKeyTest<'a> {
+    fn from(v: &'a [u8]) -> Self {
+        Self(v)
+    }
+}
+
+impl<'a> RefKey<'a> for RefKeyTest<'a> {}
+
+impl<'a> Key<'a> for KeyTest {
     const LEN: u16 = 4;
+
+    type Ref = RefKeyTest<'a>;
 }
 
 impl Default for KeyTest {
@@ -101,6 +118,7 @@ pub async fn create_test_storage(
         .max_blob_size(max_blob_size)
         .max_data_in_blob(100_000)
         .set_filter_config(Default::default())
+        .set_deferred_index_dump_times(MIN_DEFER_TIME, MAX_DEFER_TIME)
         .allow_duplicates();
     let builder = if let Ok(ioring) = rio::new() {
         builder.enable_aio(ioring)

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -7,13 +9,15 @@ pub(crate) struct Config {
     max_blob_size: Option<u64>,
     max_data_in_blob: Option<u64>,
     blob_file_name_prefix: Option<String>,
-    update_interval_ms: u64,
+    debounce_interval_ms: u64,
     allow_duplicates: bool,
     ignore_corrupted: bool,
     index: IndexConfig,
     dump_sem: Arc<Semaphore>,
     corrupted_dir_name: String,
     bloom_filter_group_size: usize,
+    deferred_min_time: Duration,
+    deferred_max_time: Duration,
 }
 
 // Getters
@@ -39,8 +43,8 @@ impl Config {
     }
 
     #[inline]
-    pub const fn update_interval_ms(&self) -> u64 {
-        self.update_interval_ms
+    pub const fn debounce_interval_ms(&self) -> u64 {
+        self.debounce_interval_ms
     }
 
     #[inline]
@@ -75,6 +79,14 @@ impl Config {
 
     pub fn bloom_filter_group_size(&self) -> usize {
         self.bloom_filter_group_size
+    }
+
+    pub fn deferred_min_time(&self) -> Duration {
+        self.deferred_min_time
+    }
+
+    pub fn deferred_max_time(&self) -> Duration {
+        self.deferred_max_time
     }
 }
 
@@ -123,6 +135,11 @@ impl Config {
     pub fn set_bloom_filter_group_size(&mut self, bloom_filter_group_size: usize) {
         self.bloom_filter_group_size = bloom_filter_group_size
     }
+
+    pub fn set_deferred_index_dump_times(&mut self, min: Duration, max: Duration) {
+        self.deferred_min_time = min;
+        self.deferred_max_time = max;
+    }
 }
 
 // Impl Traits
@@ -134,13 +151,15 @@ impl Default for Config {
             max_blob_size: None,
             max_data_in_blob: None,
             blob_file_name_prefix: None,
-            update_interval_ms: 100,
+            debounce_interval_ms: 200,
             allow_duplicates: false,
             ignore_corrupted: false,
             index: Default::default(),
             dump_sem: Arc::new(Semaphore::new(1)),
             corrupted_dir_name: "corrupted".into(),
             bloom_filter_group_size: 8,
+            deferred_min_time: Duration::from_secs(60),
+            deferred_max_time: Duration::from_secs(180),
         }
     }
 }

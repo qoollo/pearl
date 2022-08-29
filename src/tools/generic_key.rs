@@ -3,7 +3,10 @@ use super::prelude::*;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GenericKey<const N: usize>([u8; N]);
 
-impl<const N: usize> KeyTrait for GenericKey<N> {
+impl<'a> RefKey<'a> for &'a [u8] {}
+
+impl<'a, const N: usize> KeyTrait<'a> for GenericKey<N> {
+    type Ref = &'a [u8];
     const LEN: u16 = N as u16;
 }
 

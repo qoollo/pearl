@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::prelude::*;
 
 /// Is used to initialize a `Storage`.
@@ -48,7 +50,10 @@ impl Builder {
     /// returns error if not all params are set.
     /// # Errors
     /// Return error if some of the required params is missed or wrong
-    pub fn build<K: Key + 'static>(self) -> Result<Storage<K>> {
+    pub fn build<K>(self) -> Result<Storage<K>>
+    where
+        for<'a> K: Key<'a> + 'static,
+    {
         let mut error_params = String::new();
         if self.config.work_dir().is_none() {
             error_params.push_str("> work_dir\n");
@@ -184,6 +189,12 @@ impl Builder {
     /// Sets bloom filter group size
     pub fn set_bloom_filter_group_size(mut self, size: usize) -> Self {
         self.config.set_bloom_filter_group_size(size);
+        self
+    }
+
+    /// Set min and max waiting time for deferred index dump
+    pub fn set_deferred_index_dump_times(mut self, min: Duration, max: Duration) -> Self {
+        self.config.set_deferred_index_dump_times(min, max);
         self
     }
 }

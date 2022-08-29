@@ -49,7 +49,7 @@ impl Default for Bloom {
 #[async_trait::async_trait]
 impl<K> FilterTrait<K> for Bloom
 where
-    K: AsRef<[u8]> + Sync + Send,
+    K: AsRef<[u8]> + Sync + Send + Debug,
 {
     fn add(&mut self, key: &K) {
         let _ = self.add(key);
@@ -64,7 +64,11 @@ where
             res
         } else {
             let res = self.contains_in_file(provider, key).await;
-            res.unwrap_or_default()
+            res.map_err(|e| {
+                error!("Failed to check filter for key {:?}: {}", key, e);
+                e
+            })
+            .unwrap_or_default()
         }
     }
 
@@ -78,6 +82,14 @@ where
 
     fn memory_allocated(&self) -> usize {
         self.memory_allocated()
+    }
+
+    fn clear_filter(&mut self) {
+        self.clear();
+    }
+
+    fn is_filter_offloaded(&self) -> bool {
+        self.is_offloaded()
     }
 }
 

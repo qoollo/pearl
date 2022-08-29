@@ -6,8 +6,21 @@ use std::time::Instant;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct KeyType(Vec<u8>);
 
-impl Key for KeyType {
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct RefKeyType<'a>(&'a [u8]);
+
+impl<'a> From<&'a [u8]> for RefKeyType<'a> {
+    fn from(v: &'a [u8]) -> Self {
+        Self(v)
+    }
+}
+
+impl<'a> RefKey<'a> for RefKeyType<'a> {}
+
+impl<'a> Key<'a> for KeyType {
     const LEN: u16 = 8;
+
+    type Ref = RefKeyType<'a>;
 }
 
 impl From<Vec<u8>> for KeyType {
@@ -81,6 +94,7 @@ async fn benchmark_from_records() {
             &headers,
             meta.clone(),
             true,
+            0,
         )
         .await
         .unwrap();
@@ -121,6 +135,7 @@ async fn benchmark_from_file() {
             &headers,
             meta,
             true,
+            0,
         )
         .await
         .unwrap();
@@ -173,6 +188,7 @@ async fn benchmark_get_any() {
         &headers,
         meta.clone(),
         true,
+        0,
     )
     .await
     .unwrap();
@@ -226,6 +242,7 @@ async fn benchmark_get_all() {
         &headers,
         meta.clone(),
         true,
+        0,
     )
     .await
     .unwrap();
