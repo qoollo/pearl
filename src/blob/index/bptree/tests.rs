@@ -216,6 +216,37 @@ async fn check_get_any() {
 }
 
 #[tokio::test]
+async fn preserves_records_order() {
+    const RANGE_FROM: usize = 100;
+    const RANGE_TO: usize = 9000;
+
+    let mut inmem = InMemoryIndex::<KeyType>::new();
+    (RANGE_FROM..RANGE_TO)
+        .map(|i| i.into())
+        .for_each(|key: KeyType| {
+            let rh1 = RecordHeader::new(key.to_vec(), 1, 1, 1);
+            let rh2 = RecordHeader::new(key.to_vec(), 2, 2, 2);
+            inmem.insert(key, vec![rh1, rh2]);
+        });
+    let meta = vec![META_VALUE; META_SIZE];
+    let findex = BPTreeFileIndex::<KeyType>::from_records(
+        &Path::new("/tmp/latest_bptree_index.b"),
+        None,
+        &inmem,
+        meta,
+        true,
+        0,
+    )
+    .await
+    .expect("Can't create file index");
+    let (deser, _) = findex.get_records_headers(0).await.expect("Can't create index from file");
+    for (k, v) in deser.iter() {
+        assert!(v.last().is_some(), "Records are missing for key {:?}", k);
+        assert_eq!(v.last().unwrap().data_size(), 2, "Order of records is wrong");
+    }
+}
+
+#[tokio::test]
 async fn check_get() {
     const MAX_AMOUNT: usize = 3;
     const RANGE_FROM: usize = 100;
