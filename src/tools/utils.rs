@@ -134,10 +134,10 @@ where
 {
     let headers = match header.version() {
         5 => block_on(async {
-            let index = block_on(BPTreeFileIndex::<K>::from_file(
+            let index = BPTreeFileIndex::<K>::from_file(
                 FileName::from_path(path)?,
                 None,
-            ))??;
+            ).await?;
             let res = index.get_records_headers(index.blob_size()).await?;
             AnyResult::<_>::Ok(res.0)
         })?,
