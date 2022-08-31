@@ -348,6 +348,7 @@ impl SimpleFileIndex {
                 meta.len(),
                 hash,
                 blob_size,
+                header.key_size(),
             );
             serialize_into(buf.as_mut_slice(), &header)?;
             Ok(Some((header, buf)))

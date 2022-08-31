@@ -227,8 +227,9 @@ where
             self.header.record_header_size,
             self.header.records_count,
             self.meta.len(),
-            hash,
-            self.header.blob_size
+            hash,            
+            self.header.blob_size,
+            self.header.key_size,
         );
         serialize_into(buf.as_mut_slice(), &header)?;
         Ok((header, self.metadata, buf))
