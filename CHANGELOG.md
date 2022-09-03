@@ -10,7 +10,7 @@ Pearl changelog
 
 
 #### Fixed
-- Correct blob size comparison in index validation
+- Correct blob size comparison in index validation (#179)
 
 #### Updated
 
