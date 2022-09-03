@@ -133,7 +133,9 @@ where
             })
             .map(|mut headers| {
                 for val in headers.values_mut() {
-                    val.reverse();
+                    if val.len() > 1 {
+                        val.reverse();
+                    }
                 }
                 headers
             })
