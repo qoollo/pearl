@@ -50,7 +50,7 @@ pub fn validate_blob(path: &Path) -> AnyResult<()> {
     let mut reader = BlobReader::from_path(&path)?;
     reader.read_header()?;
     while !reader.is_eof() {
-        reader.read_record(true)?;
+        reader.read_record(false)?;
     }
     Ok(())
 }
