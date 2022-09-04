@@ -7,6 +7,7 @@ Pearl changelog
 
 
 #### Changed
+- Update rust edition (#175)
 
 
 #### Fixed

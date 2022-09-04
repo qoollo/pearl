@@ -12,7 +12,7 @@ authors = [
     "Pavel Yakushin <p.yakushin@qoollo.com>",
     "Kirill Bushminkin <kbushminkin@gmail.com>",
 ]
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 
 [profile.release]
