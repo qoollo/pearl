@@ -92,12 +92,12 @@ where
         } else {
             self.fsyncdata()
                 .await
-                .with_context(|| "Blob file dump failed!")?;
+                .with_context(|| format!("Blob file dump failed! Blob file: {:?}", self.name.to_path()))?;
 
             self.index
                 .dump(self.file_size())
                 .await
-                .with_context(|| "Blob index file dump failed!")
+                .with_context(|| format!("Blob index file dump failed! Blob file: {:?}", self.name.to_path()))
         }
     }
 
@@ -127,7 +127,7 @@ where
 
         let header = Header::from_file(&name, ioring.clone())
             .await
-            .context("failed to read blob header")?;
+            .with_context(|| format!("failed to read blob header. Blob file: {:?}", path))?;
 
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
@@ -146,7 +146,7 @@ where
                 if let Some(io_error) = error.downcast_ref::<IOError>() {
                     match io_error.kind() {
                         IOErrorKind::PermissionDenied | IOErrorKind::Other => {
-                            warn!("index cannot be regenerated due to error: {}", io_error);
+                            warn!("index for file '{:?}' cannot be regenerated due to an error: {}", path, io_error);
                             return Err(error);
                         }
                         _ => {}
@@ -174,7 +174,7 @@ where
         if is_index_corrupted || size as u64 > header_size {
             blob.try_regenerate_index()
                 .await
-                .context("failed to regenerate index")?;
+                .with_context(|| format!("failed to regenerate index for blob file: {:?}", path))?;
         } else {
             warn!("empty or corrupted blob: {:?}", path);
         }
@@ -208,7 +208,7 @@ where
         let raw_r = self
             .raw_records()
             .await
-            .context("failed to read raw records")?;
+            .with_context(|| format!("failed to read raw records from blob {:?}", self.name.to_path()))?;
         debug!("raw records loaded");
         if let Some(headers) = raw_r.load().await.with_context(|| {
             format!(
@@ -267,7 +267,7 @@ where
         let buf = entry
             .load()
             .await
-            .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?
+            .with_context(|| format!("failed to read key {:?} with meta {:?} from blob {:?}", key, meta, self.name.to_path()))?
             .into_data();
         debug!("blob read any entry loaded bytes: {}", buf.len());
         Ok(buf)
@@ -323,7 +323,7 @@ where
                 .index
                 .get_any(key)
                 .await
-                .with_context(|| "blob index get any failed")?
+                .with_context(|| format!("index get any failed for blob: {:?}", self.name.to_path()))?
             {
                 let entry = Entry::new(header, self.file.clone());
                 debug!("blob, get any entry, bloom true no meta, entry found");
