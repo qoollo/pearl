@@ -7,7 +7,7 @@ Pearl changelog
 
 
 #### Changed
-
+- File name added to error messages in Blob struct (#183)
 
 #### Fixed
 
