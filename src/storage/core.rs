@@ -238,10 +238,9 @@ where
     /// ```no_run
     /// use pearl::{Builder, Storage, UnitKey};
     ///
-    /// async fn write_data() {
+    /// async fn write_data(storage: Storage<UnitKey>) {
     ///     let key = UnitKey::default();
     ///     let data = b"async written to blob".to_vec();
-    ///     let storage: Storage<UnitKey> = Builder::new().build().unwrap();
     ///     storage.write(key, data).await;
     /// }
     /// ```
@@ -258,11 +257,10 @@ where
     /// ```no_run
     /// use pearl::{Builder, Meta, Storage, UnitKey};
     ///
-    /// async fn write_data() {
+    /// async fn write_data(storage: Storage<UnitKey>) {
     ///     let key = UnitKey::default();
     ///     let data = b"async written to blob".to_vec();
     ///     let mut meta = Meta::new();
-    ///     let storage: Storage<UnitKey> = Builder::new().build().unwrap();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
     ///     storage.write_with(&key, data, meta).await;
     /// }
@@ -370,9 +368,8 @@ where
     /// ```no_run
     /// use pearl::{Builder, Meta, Storage, UnitKey};
     ///
-    /// async fn read_data() {
+    /// async fn read_data(storage: Storage<UnitKey>) {
     ///     let key = UnitKey::default();
-    ///     let storage: Storage<UnitKey> = Builder::new().build().unwrap();
     ///     let data = storage.read(key).await;
     /// }
     /// ```
@@ -392,11 +389,10 @@ where
     /// ```no_run
     /// use pearl::{Builder, Meta, Storage, UnitKey};
     ///
-    /// async fn read_data() {
+    /// async fn read_data(storage: Storage<UnitKey>) {
     ///     let key = UnitKey::default();
     ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
-    ///     let storage: Storage<UnitKey> = Builder::new().build().unwrap();
     ///     let data = storage.read_with(&key, &meta).await;
     /// }
     /// ```
@@ -536,9 +532,7 @@ where
     /// ```no_run
     /// use pearl::{Builder, Storage, UnitKey};
     ///
-    /// async fn check_blobs_count() {
-    ///     let mut storage: Storage<UnitKey> = Builder::new().build().unwrap();
-    ///     storage.init().await;
+    /// async fn check_blobs_count(storage: Storage<UnitKey>) {
     ///     assert_eq!(storage.blobs_count().await, 1);
     /// }
     /// ```
