@@ -106,7 +106,7 @@ impl BlobReader {
     }
 
     pub(crate) fn read_record(&mut self, skip_wrong: bool) -> AnyResult<Record> {
-        if skip_wrong {
+        if !skip_wrong {
             return self.read_single_record();
         }
         match self.read_single_record() {
