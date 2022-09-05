@@ -11,7 +11,7 @@ Pearl changelog
 
 
 #### Fixed
-
+- Returning error when validating blob with corrupted records (#180)
 
 #### Updated
 
