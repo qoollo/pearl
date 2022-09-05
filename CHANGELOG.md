@@ -9,8 +9,8 @@ Pearl changelog
 #### Changed
 - Update rust edition (#175)
 
-
 #### Fixed
+- Correct blob size comparison in index validation (#179)
 - Returning error when validating blob with corrupted records (#180)
 
 #### Updated
