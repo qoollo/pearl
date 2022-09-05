@@ -8,9 +8,12 @@ Pearl changelog
 
 #### Changed
 - File name added to error messages in Blob struct (#183)
+- Update rust edition (#175)
 
 #### Fixed
-
+- Fix order of records after bptree deserialization (#181)
+- Correct blob size comparison in index validation (#179)
+- Returning error when validating blob with corrupted records (#180)
 
 #### Updated
 
