@@ -92,12 +92,12 @@ where
         } else {
             self.fsyncdata()
                 .await
-                .with_context(|| format!("Blob file dump failed! Blob file: {:?}", self.name.to_path()))?;
+                .with_context(|| format!("blob file dump failed: {:?}", self.name.to_path()))?;
 
             self.index
                 .dump(self.file_size())
                 .await
-                .with_context(|| format!("Blob index file dump failed! Blob file: {:?}", self.name.to_path()))
+                .with_context(|| format!("index file dump failed, associated blob file: {:?}", self.name.to_path()))
         }
     }
 
