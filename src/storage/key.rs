@@ -54,41 +54,41 @@ impl From<Vec<u8>> for VectorKey {
 }
 
 impl PartialOrd for VectorKey {
-    fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
-        Some(Ordering::Equal)
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(&rhs.0)
     }
 }
 
 impl Ord for VectorKey {
-    fn cmp(&self, _: &Self) -> Ordering {
-        Ordering::Equal
+    fn cmp(&self, rhs: &Self) -> Ordering {
+        self.0.cmp(&rhs.0)
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct UnitRefKey<'a>(&'a [u8]);
+pub struct SliceKey<'a>(&'a [u8]);
 
-impl<'a> From<&'a [u8]> for UnitRefKey<'a> {
+impl<'a> From<&'a [u8]> for SliceKey<'a> {
     fn from(v: &'a [u8]) -> Self {
         Self(v)
     }
 }
 
-impl<'a> PartialOrd for UnitRefKey<'a> {
-    fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
-        Some(Ordering::Equal)
+impl<'a> PartialOrd for SliceKey<'a> {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(rhs.0)
     }
 }
 
-impl<'a> Ord for UnitRefKey<'a> {
-    fn cmp(&self, _: &Self) -> Ordering {
-        Ordering::Equal
+impl<'a> Ord for SliceKey<'a> {
+    fn cmp(&self, rhs: &Self) -> Ordering {
+        self.0.cmp(rhs.0)
     }
 }
 
-impl<'a> RefKey<'a> for UnitRefKey<'a> {}
+impl<'a> RefKey<'a> for SliceKey<'a> {}
 
 impl<'a> Key<'a> for VectorKey {
     const LEN: u16 = 1;
-    type Ref = UnitRefKey<'a>;
+    type Ref = SliceKey<'a>;
 }
