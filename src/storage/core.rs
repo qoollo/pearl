@@ -19,11 +19,11 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 /// # Examples
 ///
 /// ```no_run
-/// use pearl::{Storage, Builder, Key, UnitKey};
+/// use pearl::{Storage, Builder, Key, VectorKey};
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     let mut storage: Storage<UnitKey> = Builder::new()
+///     let mut storage: Storage<VectorKey> = Builder::new()
 ///         .work_dir("/tmp/pearl/")
 ///         .max_blob_size(1_000_000)
 ///         .max_data_in_blob(1_000_000_000)
@@ -236,10 +236,10 @@ where
     /// creation
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Storage, UnitKey};
+    /// use pearl::{Builder, Storage, VectorKey};
     ///
-    /// async fn write_data(storage: Storage<UnitKey>) {
-    ///     let key = UnitKey::default();
+    /// async fn write_data(storage: Storage<VectorKey>) {
+    ///     let key = VectorKey::default();
     ///     let data = b"async written to blob".to_vec();
     ///     storage.write(key, data).await;
     /// }
@@ -255,10 +255,10 @@ where
     /// Similar to [`write`] but with metadata
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Meta, Storage, UnitKey};
+    /// use pearl::{Builder, Meta, Storage, VectorKey};
     ///
-    /// async fn write_data(storage: Storage<UnitKey>) {
-    ///     let key = UnitKey::default();
+    /// async fn write_data(storage: Storage<VectorKey>) {
+    ///     let key = VectorKey::default();
     ///     let data = b"async written to blob".to_vec();
     ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
@@ -366,10 +366,10 @@ where
     /// Reads the first found data matching given key.
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Meta, Storage, UnitKey};
+    /// use pearl::{Builder, Meta, Storage, VectorKey};
     ///
-    /// async fn read_data(storage: Storage<UnitKey>) {
-    ///     let key = UnitKey::default();
+    /// async fn read_data(storage: Storage<VectorKey>) {
+    ///     let key = VectorKey::default();
     ///     let data = storage.read(key).await;
     /// }
     /// ```
@@ -387,10 +387,10 @@ where
     /// Reads data matching given key and metadata
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Meta, Storage, UnitKey};
+    /// use pearl::{Builder, Meta, Storage, VectorKey};
     ///
-    /// async fn read_data(storage: Storage<UnitKey>) {
-    ///     let key = UnitKey::default();
+    /// async fn read_data(storage: Storage<VectorKey>) {
+    ///     let key = VectorKey::default();
     ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
     ///     let data = storage.read_with(&key, &meta).await;
@@ -530,9 +530,9 @@ where
     /// It locks on inner structure, so it much slower than `next_blob_id`.
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Storage, UnitKey};
+    /// use pearl::{Builder, Storage, VectorKey};
     ///
-    /// async fn check_blobs_count(storage: Storage<UnitKey>) {
+    /// async fn check_blobs_count(storage: Storage<VectorKey>) {
     ///     assert_eq!(storage.blobs_count().await, 1);
     /// }
     /// ```
@@ -1138,30 +1138,6 @@ where
     }
 }
 
-/// Trait `Key`
-pub trait Key<'a>:
-    AsRef<[u8]> + From<Vec<u8>> + Debug + Clone + Send + Sync + Ord + Default
-{
-    /// Key must have fixed length
-    const LEN: u16;
-
-    /// Reference type for zero-copy key creation
-    type Ref: RefKey<'a>;
-
-    /// Convert `Self` into `Vec<u8>`
-    fn to_vec(&self) -> Vec<u8> {
-        self.as_ref().to_vec()
-    }
-
-    /// Convert `Self` to `Self::Ref`
-    fn as_ref_key(&'a self) -> Self::Ref {
-        Self::Ref::from(self.as_ref())
-    }
-}
-
-/// Trait for reference key type
-pub trait RefKey<'a>: Ord + From<&'a [u8]> {}
-
 #[async_trait::async_trait]
 impl<K> BloomProvider<K> for Storage<K>
 where
@@ -1227,72 +1203,4 @@ where
         let closed = safe.blobs.read().await.filter_memory_allocated().await;
         active + closed
     }
-}
-
-/// Key for demonstration purposes
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UnitKey(Vec<u8>);
-
-impl AsRef<UnitKey> for UnitKey {
-    fn as_ref(&self) -> &UnitKey {
-        self
-    }
-}
-
-impl Default for UnitKey {
-    fn default() -> Self {
-        Self([0].to_vec())
-    }
-}
-
-impl AsRef<[u8]> for UnitKey {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl From<Vec<u8>> for UnitKey {
-    fn from(v: Vec<u8>) -> Self {
-        Self(v)
-    }
-}
-
-impl PartialOrd for UnitKey {
-    fn partial_cmp(&self, _: &Self) -> Option<CmpOrdering> {
-        Some(CmpOrdering::Equal)
-    }
-}
-
-impl Ord for UnitKey {
-    fn cmp(&self, _: &Self) -> CmpOrdering {
-        CmpOrdering::Equal
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct UnitRefKey<'a>(&'a [u8]);
-
-impl<'a> From<&'a [u8]> for UnitRefKey<'a> {
-    fn from(v: &'a [u8]) -> Self {
-        Self(v)
-    }
-}
-
-impl<'a> PartialOrd for UnitRefKey<'a> {
-    fn partial_cmp(&self, _: &Self) -> Option<CmpOrdering> {
-        Some(CmpOrdering::Equal)
-    }
-}
-
-impl<'a> Ord for UnitRefKey<'a> {
-    fn cmp(&self, _: &Self) -> CmpOrdering {
-        CmpOrdering::Equal
-    }
-}
-
-impl<'a> RefKey<'a> for UnitRefKey<'a> {}
-
-impl<'a> Key<'a> for UnitKey {
-    const LEN: u16 = 1;
-    type Ref = UnitRefKey<'a>;
 }

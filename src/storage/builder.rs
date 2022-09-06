@@ -13,9 +13,9 @@ use super::prelude::*;
 ///
 /// # Example
 /// ```no_run
-/// use pearl::{Builder, Storage, UnitKey};
+/// use pearl::{Builder, Storage, VectorKey};
 ///
-/// let storage: Storage<UnitKey> = Builder::new()
+/// let storage: Storage<VectorKey> = Builder::new()
 ///         .blob_file_name_prefix("benchmark")
 ///         .max_blob_size(10_000_000)
 ///         .max_data_in_blob(1_000)

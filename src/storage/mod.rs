@@ -3,10 +3,12 @@ mod config;
 mod core;
 mod observer;
 mod observer_worker;
+mod key;
 
 pub use self::{
     builder::Builder,
-    core::{Key, RefKey, Storage, UnitKey},
+    core::Storage,
+    key::{Key, RefKey, VectorKey},
     observer::ActiveBlobPred,
     observer::ActiveBlobStat,
 };
