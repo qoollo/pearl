@@ -265,14 +265,13 @@ where
         match &mut self.inner {
             State::InMemory(headers) => {
                 debug!("blob index simple push bloom filter add");
-                let key = h.key().to_vec().into();
+                let key = h.key().into();
                 self.filter.add(&key);
                 debug!("blob index simple push key: {:?}", h.key());
                 let mem = self
                     .mem
                     .as_mut()
                     .expect("No memory info in `InMemory` State");
-                let key = h.key().to_vec().into();
                 if let Some(v) = headers.get_mut(&key) {
                     let old_capacity = v.capacity();
                     v.push(h);

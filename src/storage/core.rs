@@ -1132,7 +1132,7 @@ where
 
 /// Trait `Key`
 pub trait Key<'a>:
-    AsRef<[u8]> + From<Vec<u8>> + Debug + Clone + Send + Sync + Ord + Default
+    AsRef<[u8]> + From<Vec<u8>> + From<&'a [u8]> + Debug + Clone + Send + Sync + Ord + Default
 {
     /// Key must have fixed length
     const LEN: u16;
