@@ -42,8 +42,8 @@ pub(crate) struct IndexStruct<FileIndex, K>
 where
     for<'a> K: Key<'a>,
 {
-    mem: Option<MemoryAttrs>,
-    filter: CombinedFilter<K>,
+    mem: parking_lot::RwLock<Option<MemoryAttrs>>,
+    filter: parking_lot::RwLock<CombinedFilter<K>>,
     bloom_offset: Option<u64>,
     params: IndexParams,
     inner: State<FileIndex, K>,
@@ -64,9 +64,9 @@ pub(crate) struct MemoryAttrs {
 
 pub type InMemoryIndex<K> = BTreeMap<K, Vec<RecordHeader>>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) enum State<FileIndex, K> {
-    InMemory(InMemoryIndex<K>),
+    InMemory(parking_lot::RwLock<InMemoryIndex<K>>),
     OnDisk(FileIndex),
 }
 
@@ -82,12 +82,12 @@ where
         } else {
             None
         };
-        let mem = Some(Default::default());
+        let mem = parking_lot::RwLock::new(Some(Default::default()));
         Self {
             params,
-            filter: CombinedFilter::new(bloom_filter, RangeFilter::new()),
+            filter: parking_lot::RwLock::new(CombinedFilter::new(bloom_filter, RangeFilter::new())),
             bloom_offset: None,
-            inner: State::InMemory(BTreeMap::new()),
+            inner: State::InMemory(parking_lot::RwLock::new(BTreeMap::new())),
             mem,
             name,
             ioring,
@@ -95,21 +95,21 @@ where
     }
 
     pub(crate) fn clear(&mut self) {
-        self.inner = State::InMemory(BTreeMap::new());
-        self.mem = Some(Default::default());
-        self.filter.clear_filter();
+        self.inner = State::InMemory(parking_lot::RwLock::new(BTreeMap::new()));
+        self.mem = parking_lot::RwLock::new(Some(Default::default()));
+        self.filter.write().clear_filter();
     }
 
-    pub fn offload_filter(&mut self) -> usize {
+    pub fn offload_filter(&self) -> usize {
         if self.on_disk() {
-            self.filter.offload_filter()
+            self.filter.write().offload_filter()
         } else {
             0
         }
     }
 
-    pub fn get_filter(&self) -> &CombinedFilter<K> {
-        &self.filter
+    pub fn get_filter(&self) -> CombinedFilter<K> {
+        self.filter.read().clone()
     }
 
     pub(crate) fn name(&self) -> &FileName {
@@ -137,9 +137,9 @@ where
         trace!("index restored successfuly");
         let index = Self {
             inner: State::OnDisk(findex),
-            mem: None,
+            mem: parking_lot::RwLock::new(None),
             name,
-            filter: CombinedFilter::new(bloom_filter, range_filter),
+            filter: parking_lot::RwLock::new(CombinedFilter::new(bloom_filter, range_filter)),
             bloom_offset: Some(bloom_offset as u64),
             params,
             ioring,
@@ -153,6 +153,7 @@ where
 
     async fn dump_in_memory(&mut self, blob_size: u64) -> Result<usize> {
         if let State::InMemory(headers) = &self.inner {
+            let headers = headers.read().clone();
             if headers.len() == 0 {
                 return Ok(0);
             }
@@ -162,7 +163,7 @@ where
             let findex = FileIndex::from_records(
                 &self.name.to_path(),
                 self.ioring.clone(),
-                headers,
+                &headers,
                 meta_buf,
                 self.params.recreate_file,
                 blob_size,
@@ -170,7 +171,7 @@ where
             .await?;
             let size = findex.file_size() as usize;
             self.inner = State::OnDisk(findex);
-            self.mem = None;
+            self.mem = parking_lot::RwLock::new(None);
             Ok(size)
         } else {
             Ok(0)
@@ -178,10 +179,10 @@ where
     }
 
     fn serialize_filters(&self) -> Result<(Vec<u8>, usize)> {
-        let range_buf = self.filter.range().to_raw()?;
+        let filter = self.filter.read();
+        let range_buf = filter.range().to_raw()?;
         let range_buf_size = range_buf.len() as u64;
-        let bloom_buf = self
-            .filter
+        let bloom_buf = filter
             .bloom()
             .as_ref()
             .map_or(Bloom::default().to_raw(), |bloom| bloom.to_raw())?;
@@ -204,8 +205,8 @@ where
 
     async fn load_in_memory(&mut self, findex: FileIndex, blob_size: u64) -> Result<()> {
         let (record_headers, records_count) = findex.get_records_headers(blob_size).await?;
-        self.mem = Some(compute_mem_attrs(&record_headers, records_count));
-        self.inner = State::InMemory(record_headers);
+        self.mem = parking_lot::RwLock::new(Some(compute_mem_attrs(&record_headers, records_count)));
+        self.inner = State::InMemory(parking_lot::RwLock::new(record_headers));
         let meta_buf = findex.read_meta().await?;
         let (bloom_filter, range_filter, _) = Self::deserialize_filters(&meta_buf)?;
         let bloom_filter = if self.params.bloom_is_on {
@@ -213,17 +214,16 @@ where
         } else {
             None
         };
-        self.filter = CombinedFilter::new(bloom_filter, range_filter);
+        self.filter = parking_lot::RwLock::new(CombinedFilter::new(bloom_filter, range_filter));
         self.bloom_offset = None;
         Ok(())
     }
 
     pub(crate) fn memory_used(&self) -> usize {
         if let State::InMemory(data) = &self.inner {
-            let mem = self
-                .mem
-                .as_ref()
-                .expect("No memory info in `InMemory` State");
+            let data = data.read();
+            let mem_read = self.mem.read();
+            let mem = mem_read.as_ref().expect("No memory info in `InMemory` State");
             trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
             mem.record_header_size, mem.records_allocated, data.len(), mem.btree_entry_size
             );
@@ -260,16 +260,19 @@ where
         self.get_any(key).await.map(|h| h.is_some())
     }
 
-    fn push(&mut self, h: RecordHeader) -> Result<()> {
+    fn push(&self, h: RecordHeader) -> Result<()> {
         debug!("blob index simple push");
-        match &mut self.inner {
+        match &self.inner {
             State::InMemory(headers) => {
+                let mut headers = headers.write();
                 debug!("blob index simple push bloom filter add");
                 let key = h.key().to_vec().into();
-                self.filter.add(&key);
+                self.filter.write().add(&key);
                 debug!("blob index simple push key: {:?}", h.key());
-                let mem = self
+                let mut mem_write = self
                     .mem
+                    .write();
+                let mut mem = (mem_write)
                     .as_mut()
                     .expect("No memory info in `InMemory` State");
                 let key = h.key().to_vec().into();
@@ -280,7 +283,7 @@ where
                     mem.records_allocated += v.capacity() - old_capacity;
                 } else {
                     if mem.records_count == 0 {
-                        set_key_related_fields::<K>(mem);
+                        set_key_related_fields::<K>(&mut mem);
                     }
                     let v = vec![h];
                     mem.records_allocated += v.capacity(); // capacity == 1
@@ -298,7 +301,7 @@ where
 
     async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
         match &self.inner {
-            State::InMemory(headers) => Ok(headers.get(key).cloned()),
+            State::InMemory(headers) => Ok(headers.read().get(key).cloned()),
             State::OnDisk(findex) => findex.find_by_key(key).await,
         }
     }
@@ -307,6 +310,7 @@ where
         debug!("index get any");
         match &self.inner {
             State::InMemory(headers) => {
+                let headers = headers.read();
                 debug!("index get any in memory headers: {}", headers.len());
                 // in memory indexes with same key are stored in ascending order, so the last
                 // by adding time record is last in list (in b+tree disk index it's first)
@@ -337,18 +341,21 @@ where
     fn count(&self) -> usize {
         match self.inner {
             State::OnDisk(ref findex) => findex.records_count(),
-            State::InMemory(_) => self
-                .mem
-                .as_ref()
-                .map(|mem| mem.records_count)
-                .expect("No memory info in `InMemory` State"),
+            State::InMemory(_) => {
+                let mem_read = self.mem.read();
+                mem_read.as_ref().map(|mem| mem.records_count)
+                    .expect("No memory info in `InMemory` State")
+            },
         }
     }
 
     fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
         debug!("mark all as deleted by {:?} key", key);
         match &mut self.inner {
-            State::InMemory(headers) => Ok(Self::mark_all_as_deleted_in_memory(headers, key)),
+            State::InMemory(headers) => Ok(Self::mark_all_as_deleted_in_memory(
+                &mut *headers.write(),
+                key,
+            )),
             State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
                 "Index is closed, delete is unavalaible".to_string(),
             ))

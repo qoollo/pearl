@@ -28,7 +28,7 @@ mod prelude {
 pub(crate) trait IndexTrait<K>: Send + Sync {
     async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>>;
-    fn push(&mut self, h: RecordHeader) -> Result<()>;
+    fn push(&self, h: RecordHeader) -> Result<()>;
     async fn contains_key(&self, key: &K) -> Result<bool>;
     fn count(&self) -> usize;
     async fn dump(&mut self, blob_size: u64) -> Result<usize>;

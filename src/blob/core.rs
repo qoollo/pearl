@@ -21,7 +21,7 @@ where
     for<'a> K: Key<'a>,
 {
     header: Header,
-    index: Index<K>,
+    index: Arc<RwLock<Index<K>>>,
     name: FileName,
     file: File,
     current_offset: Arc<Mutex<u64>>,
@@ -50,7 +50,7 @@ where
         let header = Header::new();
         let mut blob = Self {
             header,
-            index,
+            index: Arc::new(RwLock::new(index)),
             name,
             file,
             current_offset,
@@ -87,24 +87,35 @@ where
     }
 
     pub(crate) async fn dump(&mut self) -> Result<usize> {
-        if self.index.on_disk() {
+        if self.index.read().await.on_disk() {
             Ok(0) // 0 bytes dumped
         } else {
+            let mut write = self.index.write().await;
+            if write.on_disk() {
+                return Ok(0);
+            }
             self.fsyncdata()
                 .await
                 .with_context(|| "Blob file dump failed!")?;
 
-            self.index
+            write
                 .dump(self.file_size())
                 .await
                 .with_context(|| "Blob index file dump failed!")
         }
     }
 
-    pub(crate) async fn load_index(&mut self) -> Result<()> {
-        if let Err(e) = self.index.load(self.file_size()).await {
-            warn!("error loading index: {}, regenerating", e);
-            self.index.clear();
+    pub(crate) async fn load_index(&self) -> Result<()> {
+        let mut regenerate = false;
+        {
+            let mut write = self.index.write().await;
+            if let Err(e) = write.load(self.file_size()).await {
+                warn!("error loading index: {}, regenerating", e);
+                write.clear();
+                regenerate = true;
+            }
+        }
+        if regenerate {
             self.try_regenerate_index().await?;
         }
         Ok(())
@@ -162,11 +173,11 @@ where
         trace!("index initialized");
         let header_size = bincode::serialized_size(&header)?;
         let created_at = file.created_at()?;
-        let mut blob = Self {
+        let blob = Self {
             header,
             file,
             name,
-            index,
+            index: Arc::new(RwLock::new(index)),
             current_offset: Arc::new(Mutex::new(size)),
             created_at,
         };
@@ -198,9 +209,10 @@ where
         .context("failed to create iterator for raw records")
     }
 
-    pub(crate) async fn try_regenerate_index(&mut self) -> Result<()> {
+    pub(crate) async fn try_regenerate_index(&self) -> Result<()> {
         info!("try regenerate index for blob: {}", self.name);
-        if self.index.on_disk() {
+        let write = self.index.read().await;
+        if write.on_disk() {
             debug!("index already updated");
             return Ok(());
         }
@@ -218,10 +230,10 @@ where
         })? {
             let headers = filter_deleted_headers(headers);
             for header in headers {
-                self.index.push(header).context("index push failed")?;
+                write.push(header).context("index push failed")?;
             }
         }
-        debug!("index successfully generated: {}", self.index.name());
+        debug!("index successfully generated: {}", write.name());
         Ok(())
     }
 
@@ -229,7 +241,7 @@ where
         // @TODO implement
     }
 
-    pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
+    pub(crate) async fn write(&self, mut record: Record) -> Result<()> {
         debug!("blob write");
         let mut offset = self.current_offset.lock().await;
         debug!("blob write record offset: {}", *offset);
@@ -247,7 +259,7 @@ where
                     _ => e.into(),
                 }
             })? as u64;
-        self.index.push(record.header().clone())?;
+        self.index.read().await.push(record.header().clone())?;
         *offset += bytes_written;
         Ok(())
     }
@@ -275,22 +287,23 @@ where
 
     #[inline]
     pub(crate) async fn read_all_entries(&self, key: &K) -> Result<Option<Vec<Entry>>> {
-        let headers = self.index.get_all(key).await?;
+        let headers = self.index.read().await.get_all(key).await?;
         Ok(headers.map(|h| {
             debug!("blob core read all {} headers", h.len());
             Self::headers_to_entries(h, &self.file)
         }))
     }
 
-    pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
-        if self.index.get_any(key).await?.is_some() {
-            let on_disk = self.index.on_disk();
+    pub(crate) async fn mark_all_as_deleted(&self, key: &K) -> Result<Option<u64>> {
+        let index = self.index.write().await;
+        if index.get_any(key).await?.is_some() {
+            let on_disk = index.on_disk();
             if on_disk {
                 self.load_index().await?;
             }
             let record = Record::deleted(key)?;
             self.write(record).await?;
-            let res = self.index.mark_all_as_deleted(key)?;
+            let res = self.index.write().await.mark_all_as_deleted(key)?;
             Ok(res)
         } else {
             Ok(None)
@@ -321,6 +334,8 @@ where
             debug!("blob get any entry bloom true no meta");
             if let Some(header) = self
                 .index
+                .read()
+                .await
                 .get_any(key)
                 .await
                 .with_context(|| "blob index get any failed")?
@@ -335,7 +350,7 @@ where
     }
 
     async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<Option<Entry>> {
-        let headers = self.index.get_all(key).await?;
+        let headers = self.index.read().await.get_all(key).await?;
         if let Some(headers) = headers {
             let entries = Self::headers_to_entries(headers, &self.file);
             self.filter_entries(entries, meta).await
@@ -365,8 +380,8 @@ where
         self.file.size()
     }
 
-    pub(crate) fn records_count(&self) -> usize {
-        self.index.count()
+    pub(crate) async fn records_count(&self) -> usize {
+        self.index.read().await.count()
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
@@ -378,12 +393,12 @@ where
         self.name.id
     }
 
-    pub(crate) fn index_memory(&self) -> usize {
-        self.index.memory_used()
+    pub(crate) async fn index_memory(&self) -> usize {
+        self.index.read().await.memory_used()
     }
 
-    pub(crate) fn disk_used(&self) -> u64 {
-        self.file_size() + self.index.disk_used()
+    pub(crate) async fn disk_used(&self) -> u64 {
+        self.file_size() + self.index.read().await.disk_used()
     }
 }
 
@@ -561,26 +576,27 @@ where
 {
     type Filter = CombinedFilter<K>;
     async fn check_filter(&self, item: &K) -> FilterResult {
-        self.index.get_filter().contains(&self.index, item).await
+        let index = self.index.read().await;
+        index.get_filter().contains(&*index, item).await
     }
 
     fn check_filter_fast(&self, item: &K) -> FilterResult {
-        self.index.get_filter().contains_fast(item)
+        FilterResult::NeedAdditionalCheck
     }
 
     async fn offload_buffer(&mut self, _: usize, _: usize) -> usize {
-        self.index.offload_filter()
+        self.index.write().await.offload_filter()
     }
 
     async fn get_filter(&self) -> Option<Self::Filter> {
-        Some(self.index.get_filter().clone())
+        Some(self.index.read().await.get_filter().clone())
     }
 
     fn get_filter_fast(&self) -> Option<&Self::Filter> {
-        Some(self.index.get_filter())
+        None
     }
 
     async fn filter_memory_allocated(&self) -> usize {
-        self.index.get_filter().memory_allocated()
+        self.index.read().await.get_filter().memory_allocated()
     }
 }
