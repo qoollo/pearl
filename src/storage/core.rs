@@ -19,11 +19,11 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 /// # Examples
 ///
 /// ```no_run
-/// use pearl::{Storage, Builder, Key, VectorKey};
+/// use pearl::{Storage, Builder, Key, ArrayKey};
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     let mut storage: Storage<VectorKey> = Builder::new()
+///     let mut storage: Storage<ArrayKey<8>> = Builder::new()
 ///         .work_dir("/tmp/pearl/")
 ///         .max_blob_size(1_000_000)
 ///         .max_data_in_blob(1_000_000_000)
@@ -236,10 +236,10 @@ where
     /// creation
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Storage, VectorKey};
+    /// use pearl::{Builder, Storage, ArrayKey};
     ///
-    /// async fn write_data(storage: Storage<VectorKey>) {
-    ///     let key = VectorKey::default();
+    /// async fn write_data(storage: Storage<ArrayKey<8>>) {
+    ///     let key = ArrayKey::<8>::default();
     ///     let data = b"async written to blob".to_vec();
     ///     storage.write(key, data).await;
     /// }
@@ -255,10 +255,10 @@ where
     /// Similar to [`write`] but with metadata
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Meta, Storage, VectorKey};
+    /// use pearl::{Builder, Meta, Storage, ArrayKey};
     ///
-    /// async fn write_data(storage: Storage<VectorKey>) {
-    ///     let key = VectorKey::default();
+    /// async fn write_data(storage: Storage<ArrayKey<8>>) {
+    ///     let key = ArrayKey::<8>::default();
     ///     let data = b"async written to blob".to_vec();
     ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
@@ -366,10 +366,10 @@ where
     /// Reads the first found data matching given key.
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Meta, Storage, VectorKey};
+    /// use pearl::{Builder, Meta, Storage, ArrayKey};
     ///
-    /// async fn read_data(storage: Storage<VectorKey>) {
-    ///     let key = VectorKey::default();
+    /// async fn read_data(storage: Storage<ArrayKey<8>>) {
+    ///     let key = ArrayKey::<8>::default();
     ///     let data = storage.read(key).await;
     /// }
     /// ```
@@ -387,10 +387,10 @@ where
     /// Reads data matching given key and metadata
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Meta, Storage, VectorKey};
+    /// use pearl::{Builder, Meta, Storage, ArrayKey};
     ///
-    /// async fn read_data(storage: Storage<VectorKey>) {
-    ///     let key = VectorKey::default();
+    /// async fn read_data(storage: Storage<ArrayKey<8>>) {
+    ///     let key = ArrayKey::<8>::default();
     ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
     ///     let data = storage.read_with(&key, &meta).await;
@@ -530,9 +530,9 @@ where
     /// It locks on inner structure, so it much slower than `next_blob_id`.
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Storage, VectorKey};
+    /// use pearl::{Builder, Storage, ArrayKey};
     ///
-    /// async fn check_blobs_count(storage: Storage<VectorKey>) {
+    /// async fn check_blobs_count(storage: Storage<ArrayKey<8>>) {
     ///     assert_eq!(storage.blobs_count().await, 1);
     /// }
     /// ```

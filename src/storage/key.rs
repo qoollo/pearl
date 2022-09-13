@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::cmp::Ordering;
+use std::convert::TryInto;
 
 /// Trait `Key`
 pub trait Key<'a>:
@@ -27,39 +28,39 @@ pub trait RefKey<'a>: Ord + From<&'a [u8]> {}
 
 /// Key for demonstration purposes
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct VectorKey(Vec<u8>);
+pub struct ArrayKey<const N: usize>([u8; N]);
 
-impl AsRef<VectorKey> for VectorKey {
-    fn as_ref(&self) -> &VectorKey {
+impl<const N: usize> AsRef<ArrayKey<N>> for ArrayKey<N> {
+    fn as_ref(&self) -> &ArrayKey<N> {
         self
     }
 }
 
-impl Default for VectorKey {
+impl<const N: usize> Default for ArrayKey<N> {
     fn default() -> Self {
-        Self([0].to_vec())
+        Self([0; N])
     }
 }
 
-impl AsRef<[u8]> for VectorKey {
+impl<const N: usize> AsRef<[u8]> for ArrayKey<N> {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl From<Vec<u8>> for VectorKey {
+impl<const N: usize> From<Vec<u8>> for ArrayKey<N> {
     fn from(v: Vec<u8>) -> Self {
-        Self(v)
+        Self(v.try_into().expect("size mismatch"))
     }
 }
 
-impl PartialOrd for VectorKey {
+impl<const N: usize> PartialOrd for ArrayKey<N> {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         self.0.partial_cmp(&rhs.0)
     }
 }
 
-impl Ord for VectorKey {
+impl<const N: usize> Ord for ArrayKey<N> {
     fn cmp(&self, rhs: &Self) -> Ordering {
         self.0.cmp(&rhs.0)
     }
@@ -88,7 +89,7 @@ impl<'a> Ord for SliceKey<'a> {
 
 impl<'a> RefKey<'a> for SliceKey<'a> {}
 
-impl<'a> Key<'a> for VectorKey {
-    const LEN: u16 = 1;
+impl<'a, const N: usize> Key<'a> for ArrayKey<N> {
+    const LEN: u16 = N as u16;
     type Ref = SliceKey<'a>;
 }

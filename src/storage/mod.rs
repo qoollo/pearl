@@ -8,7 +8,7 @@ mod key;
 pub use self::{
     builder::Builder,
     core::Storage,
-    key::{Key, RefKey, VectorKey},
+    key::{Key, RefKey, ArrayKey},
     observer::ActiveBlobPred,
     observer::ActiveBlobStat,
 };

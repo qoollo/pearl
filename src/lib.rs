@@ -18,11 +18,11 @@
 //! For more advanced usage see the benchmark tool as the example
 //!
 //! ```no_run
-//! use pearl::{Storage, Builder, VectorKey};
+//! use pearl::{Storage, Builder, ArrayKey};
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let mut storage: Storage<VectorKey> = Builder::new()
+//!     let mut storage: Storage<ArrayKey<8>> = Builder::new()
 //!         .work_dir("/tmp/pearl/")
 //!         .max_blob_size(1_000_000)
 //!         .max_data_in_blob(1_000_000_000)
@@ -31,7 +31,7 @@
 //!         .build()
 //!         .unwrap();
 //!     storage.init().await.unwrap();
-//!     let key = VectorKey::default();
+//!     let key = ArrayKey::<8>::default();
 //!     let data = b"Hello World!".to_vec();
 //!     storage.write(key, data).await.unwrap();
 //! }
@@ -66,7 +66,7 @@ pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
-pub use storage::{Builder, Key, RefKey, Storage, VectorKey};
+pub use storage::{Builder, Key, RefKey, Storage, ArrayKey};
 
 mod prelude {
     use crc::{Crc, CRC_32_ISCSI};
