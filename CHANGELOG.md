@@ -14,6 +14,7 @@ Pearl changelog
 - Fix order of records after bptree deserialization (#181)
 - Correct blob size comparison in index validation (#179)
 - Returning error when validating blob with corrupted records (#180)
+- Fix excessive key conversion (#193)
 
 #### Updated
 
