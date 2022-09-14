@@ -9,6 +9,7 @@ Pearl changelog
 #### Changed
 - File name added to error messages in Blob struct (#183)
 - Update rust edition (#175)
+- Remove iterators from bloom filter (#194)
 
 #### Fixed
 - Fix order of records after bptree deserialization (#181)
