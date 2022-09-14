@@ -46,7 +46,7 @@ libc = "0.2"
 static_assertions = "1.1.0"
 
 [dependencies.tokio]
-version = "1.14"
+version = "1.21"
 features = ["fs", "io-util", "sync", "time", "rt", "macros", "rt-multi-thread"]
 
 [features]
