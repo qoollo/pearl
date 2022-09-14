@@ -41,7 +41,7 @@ serde = "1.0"
 serde_derive = "1.0"
 thiserror = "1.0"
 tokio-stream = "0.1"
-nix = "0.23.0"
+nix = "0.25.0"
 libc = "0.2"
 static_assertions = "1.1.0"
 
