@@ -266,10 +266,13 @@ impl Bloom {
     pub fn add(&mut self, item: impl AsRef<[u8]>) -> Result<()> {
         if let Some(inner) = &mut self.inner {
             let len = inner.len() as u64;
-            for h in Self::iter_indices_for_key(&self.hashers, len, item.as_ref()) {
-                *inner
-                    .get_mut(h as usize)
-                    .expect("impossible due to mod by len") = true;
+            for mut hasher in self.hashers.iter().cloned() {
+                hasher.write(item.as_ref());
+                if let Some(i) = hasher.finish().checked_rem(len) {
+                    *inner
+                        .get_mut(i as usize)
+                        .expect("impossible due to mod by len") = true;
+                }
             }
             Ok(())
         } else {
@@ -281,32 +284,22 @@ impl Bloom {
     pub fn contains_in_memory(&self, item: impl AsRef<[u8]>) -> Option<FilterResult> {
         if let Some(inner) = &self.inner {
             let len = inner.len() as u64;
-            // Check because .all on empty iterator returns true
+            // Check because NeedAdditionalCheck will be returned is self.hashers is empty
             if len == 0 {
                 return None;
             }
-            if Self::iter_indices_for_key(&self.hashers, len, item.as_ref())
-                .all(|i| *inner.get(i as usize).expect("unreachable"))
-            {
-                Some(FilterResult::NeedAdditionalCheck)
-            } else {
-                Some(FilterResult::NotContains)
+            for mut hasher in self.hashers.iter().cloned() {
+                hasher.write(item.as_ref());
+                if let Some(i) = hasher.finish().checked_rem(len) {
+                    if !*inner.get(i as usize).expect("unreachable") {
+                        return Some(FilterResult::NotContains);
+                    }
+                }
             }
+            Some(FilterResult::NeedAdditionalCheck)
         } else {
             None
         }
-    }
-
-    // Returns empty iterator on len == 0
-    fn iter_indices_for_key<'a>(
-        hashers: &'a Vec<AHasher>,
-        len: u64,
-        item: &'a [u8],
-    ) -> impl Iterator<Item = u64> + 'a {
-        hashers.iter().cloned().filter_map(move |mut hasher| {
-            hasher.write(item.as_ref());
-            hasher.finish().checked_rem(len)
-        })
     }
 
     /// Check filter by reading bits from file
