@@ -280,11 +280,7 @@ where
     pub async fn inactive_index_memory(&self) -> usize {
         let safe = self.inner.safe.read().await;
         let blobs = safe.blobs.read().await;
-        let mut res = 0;
-        for blob in blobs.iter() {
-            res += blob.index_memory().await;
-        }
-        res
+        blobs.iter().fold(0, |s, n| s + n.index_memory())
     }
 
     /// Get size in bytes of all freeable resources
@@ -348,7 +344,7 @@ where
             .max_data_in_blob()
             .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
         if active_blob.file_size() >= config_max_size
-            || active_blob.records_count().await as u64 >= config_max_count
+            || active_blob.records_count() as u64 >= config_max_count
         {
             // In case of current time being earlier than active blob's creation, error will contain the difference
             let dur = active_blob.created_at().elapsed().map_err(|e| e.duration());
@@ -546,7 +542,7 @@ where
     pub async fn active_index_memory(&self) -> usize {
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
-            ablob.index_memory().await
+            ablob.index_memory()
         } else {
             0
         }
@@ -556,12 +552,13 @@ where
     pub async fn disk_used(&self) -> u64 {
         let safe = self.inner.safe.read().await;
         let lock = safe.blobs.read().await;
-        let mut result = 0;
-        if let Some(b) = safe.active_blob.as_ref() {
-            result += b.disk_used().await;
-        }
+        let mut result = safe
+            .active_blob
+            .as_ref()
+            .map(|b| b.disk_used())
+            .unwrap_or_default();
         for blob in lock.iter() {
-            result += blob.disk_used().await;
+            result += blob.disk_used();
         }
         result
     }
@@ -645,7 +642,7 @@ where
     }
 
     async fn pop_active(blobs: &mut Vec<Blob<K>>, config: &Config) -> Result<Box<Blob<K>>> {
-        let active_blob = blobs
+        let mut active_blob = blobs
             .pop()
             .ok_or_else(|| {
                 let wd = config.work_dir();
@@ -1001,8 +998,8 @@ where
 
     pub(crate) async fn active_blob_stat(&self) -> Option<ActiveBlobStat> {
         if let Some(ablob) = self.safe.read().await.active_blob.as_ref() {
-            let records_count = ablob.records_count().await;
-            let index_memory = ablob.index_memory().await;
+            let records_count = ablob.records_count();
+            let index_memory = ablob.index_memory();
             let file_size = ablob.file_size() as usize;
             Some(ActiveBlobStat::new(records_count, index_memory, file_size))
         } else {
@@ -1048,11 +1045,7 @@ where
 
     async fn records_count_in_active_blob(&self) -> Option<usize> {
         let inner = self.safe.read().await;
-        if let Some(b) = inner.active_blob.as_ref() {
-            Some(b.records_count().await)
-        } else {
-            None
-        }
+        inner.active_blob.as_ref().map(|b| b.records_count())
     }
 
     async fn fsyncdata(&self) -> IOResult<()> {
@@ -1090,13 +1083,13 @@ where
         let mut results = Vec::new();
         let blobs = self.blobs.read().await;
         for blob in blobs.iter() {
-            let count = blob.records_count().await;
+            let count = blob.records_count();
             let value = (blob.id(), count);
             debug!("push: {:?}", value);
             results.push(value);
         }
         if let Some(blob) = self.active_blob.as_ref() {
-            let value = (blobs.len(), blob.records_count().await);
+            let value = (blobs.len(), blob.records_count());
             debug!("push: {:?}", value);
             results.push(value);
         }
