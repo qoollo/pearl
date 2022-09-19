@@ -9,6 +9,7 @@ Pearl changelog
 #### Changed
 - File name added to error messages in Blob struct (#183)
 - Update rust edition (#175)
+- Return delete or not found as distinct results (#208)
 
 #### Fixed
 - Fix docs (#177)
