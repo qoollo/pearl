@@ -440,6 +440,7 @@ where
                 future::ok(())
             })
             .await?;
+        let all_entries = filter_deleted(all_entries);
         debug!("storage core read all total {} entries", all_entries.len());
         Ok(all_entries)
     }
@@ -945,6 +946,44 @@ where
     }
 }
 
+fn filter_deleted(all_entries: Vec<Entry>) -> Vec<Entry> {
+    let mut last_removal_by_key = HashMap::new();
+    let mut last_created_by_key = HashMap::new();
+    for entry in all_entries.iter() {
+        let key = entry.header().key();
+        let created = entry.header().created();
+        if entry.header().is_deleted() {
+            last_removal_by_key
+                .entry(key)
+                .and_modify(|r| *r = std::cmp::max(*r, created))
+                .or_insert(created);
+        } else {
+            last_created_by_key
+                .entry(key)
+                .and_modify(|r| *r = std::cmp::max(*r, created))
+                .or_insert(created);
+        }
+    }
+    let flags: Vec<bool> = all_entries
+        .iter()
+        .map(|e| {
+            let key = e.header().key();
+            let last_removed = last_removal_by_key.get(key);
+            let last_created = last_created_by_key.get(key);
+            let is_deleted = last_removed.is_some()
+                && (last_created.is_none() || last_created.unwrap() < last_removed.unwrap());
+            !is_deleted
+        })
+        .collect();
+    let all_entries: Vec<_> = all_entries
+        .into_iter()
+        .zip(flags)
+        .filter(|(_, f)| *f)
+        .map(|(e, _)| e)
+        .collect();
+    all_entries
+}
+
 impl<K> Inner<K>
 where
     for<'a> K: Key<'a> + 'static,
@@ -1248,7 +1287,7 @@ impl<T> GetResult<T> {
     pub fn unwrap(self) -> T {
         match self {
             GetResult::Found(d) => d,
-            _ => panic!("Cannot unwrap empty result")
+            _ => panic!("Cannot unwrap empty result"),
         }
     }
 }
