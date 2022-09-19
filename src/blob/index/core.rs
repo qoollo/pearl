@@ -303,21 +303,30 @@ where
         }
     }
 
-    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
+    async fn get_any(&self, key: &K) -> Result<GetResult<RecordHeader>> {
         debug!("index get any");
-        match &self.inner {
+        let result = match &self.inner {
             State::InMemory(headers) => {
                 debug!("index get any in memory headers: {}", headers.len());
                 // in memory indexes with same key are stored in ascending order, so the last
                 // by adding time record is last in list (in b+tree disk index it's first)
-                Ok(headers.get(key).and_then(|h| h.last()).cloned())
+                headers.get(key).and_then(|h| h.last()).cloned()
             }
             State::OnDisk(findex) => {
                 debug!("index get any on disk");
                 let header = findex.get_any(key).await?;
-                Ok(header)
+                header
             }
-        }
+        };
+        Ok(if let Some(header) = result {
+            if header.is_deleted() {
+                GetResult::Deleted
+            } else {
+                GetResult::Found(header)
+            }
+        } else {
+            GetResult::NotFound
+        })
     }
 
     async fn dump(&mut self, blob_size: u64) -> Result<usize> {

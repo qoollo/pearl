@@ -379,7 +379,7 @@ where
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     /// [`read_with`]: Storage::read_with
     #[inline]
-    pub async fn read(&self, key: impl AsRef<K>) -> Result<Vec<u8>> {
+    pub async fn read(&self, key: impl AsRef<K>) -> Result<GetResult<Vec<u8>>> {
         let key = key.as_ref();
         debug!("storage read {:?}", key);
         self.read_with_optional_meta(key, None).await
@@ -401,7 +401,7 @@ where
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
-    pub async fn read_with(&self, key: impl AsRef<K>, meta: &Meta) -> Result<Vec<u8>> {
+    pub async fn read_with(&self, key: impl AsRef<K>, meta: &Meta) -> Result<GetResult<Vec<u8>>> {
         let key = key.as_ref();
         debug!("storage read with {:?}", key);
         self.read_with_optional_meta(key, Some(meta))
@@ -444,14 +444,20 @@ where
         Ok(all_entries)
     }
 
-    async fn read_with_optional_meta(&self, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn read_with_optional_meta(
+        &self,
+        key: &K,
+        meta: Option<&Meta>,
+    ) -> Result<GetResult<Vec<u8>>> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
             match ablob.read_any(key, meta, true).await {
                 Ok(data) => {
-                    debug!("storage read with optional meta active blob returned data");
-                    return Ok(data);
+                    if data.is_some() {
+                        debug!("storage read with optional meta active blob returned data");
+                        return Ok(data);
+                    }
                 }
                 Err(e) => debug!("read with optional meta active blob returned: {:#?}", e),
             }
@@ -459,7 +465,11 @@ where
         Self::get_any_data(&safe, key, meta).await
     }
 
-    async fn get_data_last(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_last(
+        safe: &Safe<K>,
+        key: &K,
+        meta: Option<&Meta>,
+    ) -> Result<GetResult<Vec<u8>>> {
         let blobs = safe.blobs.read().await;
         let possible_blobs = blobs
             .iter_possible_childs_rev(key)
@@ -485,26 +495,31 @@ where
             .map(|blob| blob.data.read_any(key, meta, false))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
-        let mut task = stream.skip_while(Result::is_err);
-        task.next().await.ok_or_else(Error::not_found)?
+        let mut task = stream.skip_while(|r| if let Ok(h) = r { !h.is_some() } else { true });
+        task.next().await.unwrap_or(Ok(GetResult::NotFound))
     }
 
     #[allow(dead_code)]
-    async fn get_data_any(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_any(
+        safe: &Safe<K>,
+        key: &K,
+        meta: Option<&Meta>,
+    ) -> Result<GetResult<Vec<u8>>> {
         let blobs = safe.blobs.read().await;
         let stream: FuturesUnordered<_> = blobs
             .iter_possible_childs_rev(key)
             .map(|blob| blob.1.data.read_any(key, meta, true))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
-        let mut task = stream.skip_while(Result::is_err);
-        task.next()
-            .await
-            .ok_or_else(Error::not_found)?
-            .with_context(|| "no results in closed blobs")
+        let mut task = stream.skip_while(|r| if let Ok(h) = r { !h.is_some() } else { true });
+        task.next().await.unwrap_or(Ok(GetResult::NotFound))
     }
 
-    async fn get_any_data(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_any_data(
+        safe: &Safe<K>,
+        key: &K,
+        meta: Option<&Meta>,
+    ) -> Result<GetResult<Vec<u8>>> {
         Self::get_data_last(safe, key, meta).await
     }
 
@@ -1202,5 +1217,38 @@ where
 
         let closed = safe.blobs.read().await.filter_memory_allocated().await;
         active + closed
+    }
+}
+
+/// Result of get operations
+#[derive(Debug)]
+pub enum GetResult<T> {
+    /// Data was found
+    Found(T),
+    /// Data was deleted
+    Deleted,
+    /// Data was not found
+    NotFound,
+}
+
+impl<T> GetResult<T> {
+    pub(crate) fn is_some(&self) -> bool {
+        matches!(self, GetResult::Found(_))
+    }
+
+    pub(crate) fn map<Y>(self, f: impl FnOnce(T) -> Y) -> GetResult<Y> {
+        match self {
+            GetResult::Found(d) => GetResult::Found(f(d)),
+            GetResult::Deleted => GetResult::Deleted,
+            GetResult::NotFound => GetResult::NotFound,
+        }
+    }
+
+    /// Unwrap into data, panics if no data is set
+    pub fn unwrap(self) -> T {
+        match self {
+            GetResult::Found(d) => d,
+            _ => panic!("Cannot unwrap empty result")
+        }
     }
 }

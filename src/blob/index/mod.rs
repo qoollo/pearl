@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, storage::GetResult};
 
 mod bptree;
 mod core;
@@ -14,7 +14,7 @@ use header::IndexHeader;
 
 pub(crate) use self::core::{
     FileIndexTrait, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,
-    INDEX_HEADER_MAGIC_BYTE,
+    INDEX_HEADER_MAGIC_BYTE
 };
 pub(crate) use super::prelude::*;
 pub(crate) use crate::filter::range::RangeFilter;
@@ -27,7 +27,7 @@ mod prelude {
 #[async_trait::async_trait]
 pub(crate) trait IndexTrait<K>: Send + Sync {
     async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
-    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>>;
+    async fn get_any(&self, key: &K) -> Result<GetResult<RecordHeader>>;
     fn push(&mut self, h: RecordHeader) -> Result<()>;
     async fn contains_key(&self, key: &K) -> Result<bool>;
     fn count(&self) -> usize;

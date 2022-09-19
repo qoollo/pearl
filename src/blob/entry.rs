@@ -63,4 +63,8 @@ impl Entry {
             blob_file,
         }
     }
+
+    pub(crate) fn header(&self) -> &RecordHeader {
+        &self.header
+    }
 }

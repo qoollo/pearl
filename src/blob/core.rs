@@ -4,6 +4,7 @@ use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
 use crate::filter::{CombinedFilter, FilterTrait};
+use crate::storage::GetResult;
 
 use super::prelude::*;
 
@@ -94,10 +95,12 @@ where
                 .await
                 .with_context(|| format!("blob file dump failed: {:?}", self.name.to_path()))?;
 
-            self.index
-                .dump(self.file_size())
-                .await
-                .with_context(|| format!("index file dump failed, associated blob file: {:?}", self.name.to_path()))
+            self.index.dump(self.file_size()).await.with_context(|| {
+                format!(
+                    "index file dump failed, associated blob file: {:?}",
+                    self.name.to_path()
+                )
+            })
         }
     }
 
@@ -146,7 +149,10 @@ where
                 if let Some(io_error) = error.downcast_ref::<IOError>() {
                     match io_error.kind() {
                         IOErrorKind::PermissionDenied | IOErrorKind::Other => {
-                            warn!("index for file '{:?}' cannot be regenerated due to an error: {}", path, io_error);
+                            warn!(
+                                "index for file '{:?}' cannot be regenerated due to an error: {}",
+                                path, io_error
+                            );
                             return Err(error);
                         }
                         _ => {}
@@ -205,10 +211,12 @@ where
             return Ok(());
         }
         debug!("index file missed");
-        let raw_r = self
-            .raw_records()
-            .await
-            .with_context(|| format!("failed to read raw records from blob {:?}", self.name.to_path()))?;
+        let raw_r = self.raw_records().await.with_context(|| {
+            format!(
+                "failed to read raw records from blob {:?}",
+                self.name.to_path()
+            )
+        })?;
         debug!("raw records loaded");
         if let Some(headers) = raw_r.load().await.with_context(|| {
             format!(
@@ -257,20 +265,30 @@ where
         key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<GetResult<Vec<u8>>> {
         debug!("blob read any");
-        let entry = self
-            .get_entry(key, meta, check_filters)
-            .await?
-            .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
-        debug!("blob read any entry found");
-        let buf = entry
-            .load()
-            .await
-            .with_context(|| format!("failed to read key {:?} with meta {:?} from blob {:?}", key, meta, self.name.to_path()))?
-            .into_data();
-        debug!("blob read any entry loaded bytes: {}", buf.len());
-        Ok(buf)
+        let entry = self.get_entry(key, meta, check_filters).await?;
+        match entry {
+            GetResult::Found(entry) => {
+                debug!("blob read any entry found");
+                let buf = entry
+                    .load()
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "failed to read key {:?} with meta {:?} from blob {:?}",
+                            key,
+                            meta,
+                            self.name.to_path()
+                        )
+                    })?
+                    .into_data();
+                debug!("blob read any entry loaded bytes: {}", buf.len());
+                Ok(GetResult::Found(buf))
+            },
+            GetResult::Deleted => Ok(GetResult::Deleted),
+            GetResult::NotFound => Ok(GetResult::NotFound),
+        }
     }
 
     #[inline]
@@ -309,48 +327,52 @@ where
         key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
-    ) -> Result<Option<Entry>> {
+    ) -> Result<GetResult<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
         if check_filters && self.check_filter(key).await == FilterResult::NotContains {
             debug!("Key was filtered out by filters");
-            Ok(None)
+            Ok(GetResult::NotFound)
         } else if let Some(meta) = meta {
             debug!("blob get any entry meta: {:?}", meta);
             self.get_entry_with_meta(key, meta).await
         } else {
             debug!("blob get any entry bloom true no meta");
-            if let Some(header) = self
+            Ok(self
                 .index
                 .get_any(key)
                 .await
-                .with_context(|| format!("index get any failed for blob: {:?}", self.name.to_path()))?
-            {
-                let entry = Entry::new(header, self.file.clone());
-                debug!("blob, get any entry, bloom true no meta, entry found");
-                Ok(Some(entry))
-            } else {
-                Ok(None)
-            }
+                .with_context(|| {
+                    format!("index get any failed for blob: {:?}", self.name.to_path())
+                })?
+                .map(|header| {
+                    let entry = Entry::new(header, self.file.clone());
+                    debug!("blob, get any entry, bloom true no meta, entry found");
+                    entry
+                }))
         }
     }
 
-    async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<Option<Entry>> {
+    async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<GetResult<Entry>> {
         let headers = self.index.get_all(key).await?;
         if let Some(headers) = headers {
             let entries = Self::headers_to_entries(headers, &self.file);
             self.filter_entries(entries, meta).await
         } else {
-            Ok(None)
+            Ok(GetResult::NotFound)
         }
     }
 
-    async fn filter_entries(&self, entries: Vec<Entry>, meta: &Meta) -> Result<Option<Entry>> {
+    async fn filter_entries(&self, entries: Vec<Entry>, meta: &Meta) -> Result<GetResult<Entry>> {
         for mut entry in entries {
             if Some(meta) == entry.load_meta().await? {
-                return Ok(Some(entry));
+                return Ok(if entry.header().is_deleted() {
+                    GetResult::Deleted
+                } else {
+                    GetResult::Found(entry)
+                });
             }
         }
-        Ok(None)
+        Ok(GetResult::NotFound)
     }
 
     pub(crate) async fn contains(&self, key: &K, meta: Option<&Meta>) -> Result<bool> {
