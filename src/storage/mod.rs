@@ -7,7 +7,7 @@ mod key;
 
 pub use self::{
     builder::Builder,
-    core::{Storage, GetResult},
+    core::{Storage, ReadResult},
     key::{Key, RefKey, ArrayKey},
     observer::ActiveBlobPred,
     observer::ActiveBlobStat,

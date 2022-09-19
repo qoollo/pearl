@@ -379,7 +379,7 @@ where
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     /// [`read_with`]: Storage::read_with
     #[inline]
-    pub async fn read(&self, key: impl AsRef<K>) -> Result<GetResult<Vec<u8>>> {
+    pub async fn read(&self, key: impl AsRef<K>) -> Result<ReadResult<Vec<u8>>> {
         let key = key.as_ref();
         debug!("storage read {:?}", key);
         self.read_with_optional_meta(key, None).await
@@ -401,7 +401,7 @@ where
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
-    pub async fn read_with(&self, key: impl AsRef<K>, meta: &Meta) -> Result<GetResult<Vec<u8>>> {
+    pub async fn read_with(&self, key: impl AsRef<K>, meta: &Meta) -> Result<ReadResult<Vec<u8>>> {
         let key = key.as_ref();
         debug!("storage read with {:?}", key);
         self.read_with_optional_meta(key, Some(meta))
@@ -449,7 +449,7 @@ where
         &self,
         key: &K,
         meta: Option<&Meta>,
-    ) -> Result<GetResult<Vec<u8>>> {
+    ) -> Result<ReadResult<Vec<u8>>> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
@@ -470,7 +470,7 @@ where
         safe: &Safe<K>,
         key: &K,
         meta: Option<&Meta>,
-    ) -> Result<GetResult<Vec<u8>>> {
+    ) -> Result<ReadResult<Vec<u8>>> {
         let blobs = safe.blobs.read().await;
         let possible_blobs = blobs
             .iter_possible_childs_rev(key)
@@ -497,7 +497,7 @@ where
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(|r| if let Ok(h) = r { !h.is_some() } else { true });
-        task.next().await.unwrap_or(Ok(GetResult::NotFound))
+        task.next().await.unwrap_or(Ok(ReadResult::NotFound))
     }
 
     #[allow(dead_code)]
@@ -505,7 +505,7 @@ where
         safe: &Safe<K>,
         key: &K,
         meta: Option<&Meta>,
-    ) -> Result<GetResult<Vec<u8>>> {
+    ) -> Result<ReadResult<Vec<u8>>> {
         let blobs = safe.blobs.read().await;
         let stream: FuturesUnordered<_> = blobs
             .iter_possible_childs_rev(key)
@@ -513,14 +513,14 @@ where
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(|r| if let Ok(h) = r { !h.is_some() } else { true });
-        task.next().await.unwrap_or(Ok(GetResult::NotFound))
+        task.next().await.unwrap_or(Ok(ReadResult::NotFound))
     }
 
     async fn get_any_data(
         safe: &Safe<K>,
         key: &K,
         meta: Option<&Meta>,
-    ) -> Result<GetResult<Vec<u8>>> {
+    ) -> Result<ReadResult<Vec<u8>>> {
         Self::get_data_last(safe, key, meta).await
     }
 
@@ -1259,9 +1259,9 @@ where
     }
 }
 
-/// Result of get operations
+/// Result of read operations
 #[derive(Debug)]
-pub enum GetResult<T> {
+pub enum ReadResult<T> {
     /// Data was found
     Found(T),
     /// Data was deleted
@@ -1270,23 +1270,23 @@ pub enum GetResult<T> {
     NotFound,
 }
 
-impl<T> GetResult<T> {
+impl<T> ReadResult<T> {
     pub(crate) fn is_some(&self) -> bool {
-        matches!(self, GetResult::Found(_))
+        matches!(self, ReadResult::Found(_))
     }
 
-    pub(crate) fn map<Y>(self, f: impl FnOnce(T) -> Y) -> GetResult<Y> {
+    pub(crate) fn map<Y>(self, f: impl FnOnce(T) -> Y) -> ReadResult<Y> {
         match self {
-            GetResult::Found(d) => GetResult::Found(f(d)),
-            GetResult::Deleted => GetResult::Deleted,
-            GetResult::NotFound => GetResult::NotFound,
+            ReadResult::Found(d) => ReadResult::Found(f(d)),
+            ReadResult::Deleted => ReadResult::Deleted,
+            ReadResult::NotFound => ReadResult::NotFound,
         }
     }
 
     /// Unwrap into data, panics if no data is set
     pub fn unwrap(self) -> T {
         match self {
-            GetResult::Found(d) => d,
+            ReadResult::Found(d) => d,
             _ => panic!("Cannot unwrap empty result"),
         }
     }

@@ -7,7 +7,7 @@ use futures::{
     stream::{futures_unordered::FuturesUnordered, FuturesOrdered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
-use pearl::{BloomProvider, Builder, Meta, Storage, GetResult};
+use pearl::{BloomProvider, Builder, Meta, Storage, ReadResult};
 use rand::{seq::SliceRandom, Rng};
 use std::{
     fs,
@@ -79,7 +79,7 @@ async fn test_storage_read_write() {
     let data = b"test data string";
     write_one(&storage, 1234, data, None).await.unwrap();
     let new_data = storage.read(KeyTest::new(key)).await.unwrap();
-    assert!(matches!(new_data, GetResult::Found(_)));
+    assert!(matches!(new_data, ReadResult::Found(_)));
     assert_eq!(new_data.unwrap(), data);
     common::clean(storage, path).await.unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -222,7 +222,7 @@ async fn test_on_disk_index() -> Result<()> {
     assert!(path.join("test.1.blob").exists());
     info!("read {}", read_key);
     let new_data = storage.read(KeyTest::new(read_key)).await.unwrap();
-    assert!(matches!(new_data, GetResult::Found(_)));
+    assert!(matches!(new_data, ReadResult::Found(_)));
     assert_eq!(new_data.unwrap(), data);
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
     common::clean(storage, path).await
@@ -417,8 +417,8 @@ async fn test_read_with() {
     let data_read = storage.read(&key).await.unwrap();
     debug!("read finished");
     // data_read - last record, data_read_with - first record with "1.0" meta
-    assert!(matches!(data_read_with, GetResult::Found(_)));
-    assert!(matches!(data_read, GetResult::Found(_)));
+    assert!(matches!(data_read_with, ReadResult::Found(_)));
+    assert!(matches!(data_read, ReadResult::Found(_)));
     let data_read_with = data_read_with.unwrap();
     assert_ne!(data_read_with, data_read.unwrap());
     assert_eq!(data_read_with, data1);
@@ -1037,7 +1037,7 @@ async fn test_in_memory_and_disk_records_retrieval() -> Result<()> {
 
     for key in keys {
         let record = storage.read(KeyTest::new(key)).await?;
-        assert!(matches!(record, GetResult::Found(_)));
+        assert!(matches!(record, ReadResult::Found(_)));
         assert_eq!(record.unwrap(), records[key as usize * 2 + 1]);
     }
 

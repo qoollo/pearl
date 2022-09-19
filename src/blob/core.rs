@@ -4,7 +4,7 @@ use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
 use crate::filter::{CombinedFilter, FilterTrait};
-use crate::storage::GetResult;
+use crate::storage::ReadResult;
 
 use super::prelude::*;
 
@@ -265,11 +265,11 @@ where
         key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
-    ) -> Result<GetResult<Vec<u8>>> {
+    ) -> Result<ReadResult<Vec<u8>>> {
         debug!("blob read any");
         let entry = self.get_entry(key, meta, check_filters).await?;
         match entry {
-            GetResult::Found(entry) => {
+            ReadResult::Found(entry) => {
                 debug!("blob read any entry found");
                 let buf = entry
                     .load()
@@ -284,10 +284,10 @@ where
                     })?
                     .into_data();
                 debug!("blob read any entry loaded bytes: {}", buf.len());
-                Ok(GetResult::Found(buf))
+                Ok(ReadResult::Found(buf))
             },
-            GetResult::Deleted => Ok(GetResult::Deleted),
-            GetResult::NotFound => Ok(GetResult::NotFound),
+            ReadResult::Deleted => Ok(ReadResult::Deleted),
+            ReadResult::NotFound => Ok(ReadResult::NotFound),
         }
     }
 
@@ -327,11 +327,11 @@ where
         key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
-    ) -> Result<GetResult<Entry>> {
+    ) -> Result<ReadResult<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
         if check_filters && self.check_filter(key).await == FilterResult::NotContains {
             debug!("Key was filtered out by filters");
-            Ok(GetResult::NotFound)
+            Ok(ReadResult::NotFound)
         } else if let Some(meta) = meta {
             debug!("blob get any entry meta: {:?}", meta);
             self.get_entry_with_meta(key, meta).await
@@ -352,27 +352,27 @@ where
         }
     }
 
-    async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<GetResult<Entry>> {
+    async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<ReadResult<Entry>> {
         let headers = self.index.get_all(key).await?;
         if let Some(headers) = headers {
             let entries = Self::headers_to_entries(headers, &self.file);
             self.filter_entries(entries, meta).await
         } else {
-            Ok(GetResult::NotFound)
+            Ok(ReadResult::NotFound)
         }
     }
 
-    async fn filter_entries(&self, entries: Vec<Entry>, meta: &Meta) -> Result<GetResult<Entry>> {
+    async fn filter_entries(&self, entries: Vec<Entry>, meta: &Meta) -> Result<ReadResult<Entry>> {
         for mut entry in entries {
             if Some(meta) == entry.load_meta().await? {
                 return Ok(if entry.header().is_deleted() {
-                    GetResult::Deleted
+                    ReadResult::Deleted
                 } else {
-                    GetResult::Found(entry)
+                    ReadResult::Found(entry)
                 });
             }
         }
-        Ok(GetResult::NotFound)
+        Ok(ReadResult::NotFound)
     }
 
     pub(crate) async fn contains(&self, key: &K, meta: Option<&Meta>) -> Result<bool> {

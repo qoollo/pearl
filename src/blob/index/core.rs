@@ -303,7 +303,7 @@ where
         }
     }
 
-    async fn get_any(&self, key: &K) -> Result<GetResult<RecordHeader>> {
+    async fn get_any(&self, key: &K) -> Result<ReadResult<RecordHeader>> {
         debug!("index get any");
         let result = match &self.inner {
             State::InMemory(headers) => {
@@ -320,12 +320,12 @@ where
         };
         Ok(if let Some(header) = result {
             if header.is_deleted() {
-                GetResult::Deleted
+                ReadResult::Deleted
             } else {
-                GetResult::Found(header)
+                ReadResult::Found(header)
             }
         } else {
-            GetResult::NotFound
+            ReadResult::NotFound
         })
     }
 
