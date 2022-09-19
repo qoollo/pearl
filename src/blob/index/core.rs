@@ -320,7 +320,10 @@ where
                 debug!("index get any in memory headers: {}", headers.len());
                 // in memory indexes with same key are stored in ascending order, so the last
                 // by adding time record is last in list (in b+tree disk index it's first)
-                Ok(headers.get(key).and_then(|h| h.last()).cloned())
+                Ok(headers
+                    .get(key)
+                    .and_then(|h| h.iter().filter(|h| !h.is_deleted()).last())
+                    .cloned())
             }
             State::OnDisk(findex) => {
                 debug!("index get any on disk");
