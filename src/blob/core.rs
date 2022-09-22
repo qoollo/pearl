@@ -375,10 +375,10 @@ where
         Ok(ReadResult::NotFound)
     }
 
-    pub(crate) async fn contains(&self, key: &K, meta: Option<&Meta>) -> Result<bool> {
+    pub(crate) async fn contains(&self, key: &K, meta: Option<&Meta>) -> Result<ReadResult<()>> {
         debug!("blob contains");
-        let contains = self.get_entry(key, meta, true).await?.is_some();
-        debug!("blob contains any: {}", contains);
+        let contains = self.get_entry(key, meta, true).await?.map(|_| ());
+        debug!("blob contains any: {:?}", contains);
         Ok(contains)
     }
 

@@ -304,7 +304,12 @@ where
         if self.try_create_active_blob().await.is_ok() {
             info!("Active blob was set during write operation");
         }
-        if !self.inner.config.allow_duplicates() && self.contains_with(key, meta.as_ref()).await? {
+        if !self.inner.config.allow_duplicates()
+            && matches!(
+                self.contains_with(key, meta.as_ref()).await?,
+                ReadResult::Found(_)
+            )
+        {
             warn!(
                 "record with key {:?} and meta {:?} exists",
                 key.as_ref(),
@@ -797,25 +802,27 @@ where
     /// `contains` returns either "definitely in storage" or "definitely not".
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn contains(&self, key: impl AsRef<K>) -> Result<bool> {
+    pub async fn contains(&self, key: impl AsRef<K>) -> Result<ReadResult<()>> {
         self.contains_with(key.as_ref(), None).await
     }
 
-    async fn contains_with(&self, key: &K, meta: Option<&Meta>) -> Result<bool> {
+    async fn contains_with(&self, key: &K, meta: Option<&Meta>) -> Result<ReadResult<()>> {
         let inner = self.inner.safe.read().await;
         if let Some(active_blob) = &inner.active_blob {
-            if active_blob.contains(key, meta).await? {
-                return Ok(true);
+            let res = active_blob.contains(key, meta).await?;
+            if !matches!(res, ReadResult::NotFound) {
+                return Ok(res);
             }
         }
         let blobs = inner.blobs.read().await;
         for blob in blobs.iter_possible_childs(key) {
-            if blob.1.data.contains(key, meta).await? {
-                return Ok(true);
+            let res = blob.1.data.contains(key, meta).await?;
+            if !matches!(res, ReadResult::NotFound) {
+                return Ok(res);
             }
         }
 
-        Ok(false)
+        Ok(ReadResult::NotFound)
     }
 
     /// `check_filters` is used to check whether a key is in storage.
@@ -1275,7 +1282,8 @@ impl<T> ReadResult<T> {
         matches!(self, ReadResult::Found(_))
     }
 
-    pub(crate) fn map<Y>(self, f: impl FnOnce(T) -> Y) -> ReadResult<Y> {
+    /// Map data if it exists
+    pub fn map<Y>(self, f: impl FnOnce(T) -> Y) -> ReadResult<Y> {
         match self {
             ReadResult::Found(d) => ReadResult::Found(f(d)),
             ReadResult::Deleted => ReadResult::Deleted,
