@@ -135,7 +135,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<Key, Filter, Child> BloomProvider<Key> for HierarchicalFilters<Key, Filter, Child>
+impl<Key, Filter, Child> BloomProvider<Key> for HierarchicalFilters<Key, Filter, ASRwLock<Child>>
 where
     Key: Sync + Send,
     Child: BloomProvider<Key>,
@@ -145,7 +145,7 @@ where
     async fn check_filter(&self, item: &Key) -> FilterResult {
         let res = self
             .iter_possible_childs(item)
-            .map(|(_, leaf)| leaf.data.check_filter(item))
+            .map(|(_, leaf)| async move { leaf.data.read().await.check_filter(item).await })
             .collect::<FuturesUnordered<_>>()
             .fold(FilterResult::NotContains, |acc, x| acc + x)
             .await;
@@ -175,6 +175,8 @@ where
             }
             freed += child
                 .data
+                .write()
+                .await
                 .offload_buffer(needed_memory - freed, level)
                 .await;
         }
@@ -229,7 +231,7 @@ where
             }
         }
         for child in self.children.iter().flatten() {
-            allocated += child.data.filter_memory_allocated().await;
+            allocated += child.data.read().await.filter_memory_allocated().await;
         }
         allocated
     }
@@ -242,14 +244,14 @@ where
     }
 }
 
-impl<Key, Filter, Child> HierarchicalFilters<Key, Filter, Child>
+impl<Key, Filter, Child> HierarchicalFilters<Key, Filter, ASRwLock<Child>>
 where
     Key: Sync + Send,
     Child: BloomProvider<Key, Filter = Filter>,
     Filter: FilterTrait<Key>,
 {
     /// Create collection from vec
-    pub async fn from_vec(group_size: usize, level: usize, childs: Vec<Child>) -> Self {
+    pub async fn from_vec(group_size: usize, level: usize, childs: Vec<ASRwLock<Child>>) -> Self {
         let mut ret = Self::new(group_size, level);
         for child in childs {
             ret.push(child).await;
@@ -276,7 +278,7 @@ where
     }
 
     /// Add child to collection
-    pub async fn push(&mut self, child: Child) -> ChildId {
+    pub async fn push(&mut self, child: ASRwLock<Child>) -> ChildId {
         if self.children.len() < self.group_size {
             // Add child to root child list
             let res = self.add_child(self.root, child).await;
@@ -309,33 +311,34 @@ where
     }
 
     // Add child to node and adds child filter data to node and it's parents
-    async fn add_child(&mut self, node: InnerId, child: Child) -> ChildId {
-        let item_filter = Self::get_filter_from_child(&child).await;
-        let inner_id = self.inner.len();
+    async fn add_child(&mut self, node: InnerId, child: ASRwLock<Child>) -> ChildId {
         let child_id = self.children.len();
-        self.inner.push(Some(Inner::Leaf(InnerLeaf {
-            parent: node,
-            leaf: child_id,
-        })));
+        {
+            let read = child.read().await;
+            let item_filter = Self::get_filter_from_child(&read).await;
+            let inner_id = self.inner.len();
+            self.inner.push(Some(Inner::Leaf(InnerLeaf {
+                parent: node,
+                leaf: child_id,
+            })));
 
-        let mut parent = {
-            let node = self.get_mut(node);
-            if node.children.is_empty() {
-                Self::init_filter_from_cow(&mut node.filter, &item_filter);
-            } else {
+            let mut parent = {
+                let node = self.get_mut(node);
+                if node.children.is_empty() {
+                    Self::init_filter_from_cow(&mut node.filter, &item_filter);
+                } else {
+                    Self::add_filter_from_cow(&mut node.filter, &item_filter);
+                }
+                node.children.push(inner_id);
+                node.parent
+            };
+
+            while let Some(id) = parent {
+                let node = self.get_mut(id);
                 Self::add_filter_from_cow(&mut node.filter, &item_filter);
+                parent = node.parent;
             }
-            node.children.push(inner_id);
-            node.parent
-        };
-
-        while let Some(id) = parent {
-            let node = self.get_mut(id);
-            Self::add_filter_from_cow(&mut node.filter, &item_filter);
-            parent = node.parent;
         }
-
-        drop(item_filter);
         let child = Leaf {
             data: child,
             parent: node,
@@ -349,7 +352,7 @@ where
     }
 
     /// Extends conatiner with values
-    pub async fn extend(&mut self, values: Vec<Child>) {
+    pub async fn extend(&mut self, values: Vec<ASRwLock<Child>>) {
         for child in values {
             self.push(child).await;
         }
