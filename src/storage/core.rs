@@ -61,7 +61,7 @@ where
     for<'a> K: Key<'a>,
 {
     pub(crate) active_blob: Option<Box<ASRwLock<Blob<K>>>>,
-    pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, ASRwLock<Blob<K>>>>>,
+    pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
 }
 
 async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
@@ -284,11 +284,7 @@ where
     pub async fn inactive_index_memory(&self) -> usize {
         let safe = self.inner.safe.read().await;
         let blobs = safe.blobs.read().await;
-        let mut result = 0;
-        for blob in blobs.iter() {
-            result += blob.read().await.index_memory();
-        }
-        result
+        blobs.iter().fold(0, |s, n| s + n.index_memory())
     }
 
     /// Get size in bytes of all freeable resources
@@ -435,7 +431,7 @@ where
         let blobs = safe.blobs.read().await;
         let entries_closed_blobs = blobs
             .iter_possible_childs(key)
-            .map(|b| async move { b.1.data.read().await.read_all_entries(key).await })
+            .map(|b| b.1.data.read_all_entries(key))
             .collect::<FuturesUnordered<_>>();
         entries_closed_blobs
             .try_filter_map(future::ok)
@@ -469,10 +465,7 @@ where
         let possible_blobs = blobs
             .iter_possible_childs_rev(key)
             .map(|(id, blob)| async move {
-                if !matches!(
-                    blob.data.read().await.check_filter(key).await,
-                    FilterResult::NotContains
-                ) {
+                if !matches!(blob.data.check_filter(key).await, FilterResult::NotContains) {
                     Some(id)
                 } else {
                     None
@@ -490,7 +483,7 @@ where
         let stream: FuturesOrdered<_> = possible_blobs
             .into_iter()
             .filter_map(|id| blobs.get_child(id))
-            .map(|blob| async move { blob.data.read().await.read_any(key, meta, false).await })
+            .map(|blob| blob.data.read_any(key, meta, false))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
@@ -502,7 +495,7 @@ where
         let blobs = safe.blobs.read().await;
         let stream: FuturesUnordered<_> = blobs
             .iter_possible_childs_rev(key)
-            .map(|blob| async move { blob.1.data.read().await.read_any(key, meta, true).await })
+            .map(|blob| blob.1.data.read_any(key, meta, true))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
@@ -574,7 +567,7 @@ where
             result += ablob.read().await.disk_used();
         }
         for blob in lock.iter() {
-            result += blob.read().await.disk_used();
+            result += blob.disk_used();
         }
         result
     }
@@ -649,12 +642,9 @@ where
 
         let mut safe = self.inner.safe.write().await;
         safe.active_blob = active_blob;
-        *safe.blobs.write().await = HierarchicalFilters::from_vec(
-            self.inner.config.bloom_filter_group_size(),
-            1,
-            blobs.into_iter().map(|b| ASRwLock::new(b)).collect(),
-        )
-        .await;
+        *safe.blobs.write().await =
+            HierarchicalFilters::from_vec(self.inner.config.bloom_filter_group_size(), 1, blobs)
+                .await;
         self.inner
             .next_blob_id
             .store(safe.max_id().await.map_or(0, |i| i + 1), ORD);
@@ -806,7 +796,7 @@ where
         }
         let blobs = inner.blobs.read().await;
         for blob in blobs.iter_possible_childs(key) {
-            if blob.1.data.read().await.contains(key, meta).await? {
+            if blob.1.data.contains(key, meta).await? {
                 return Ok(true);
             }
         }
@@ -833,24 +823,22 @@ where
         }
 
         let blobs = inner.blobs.read().await;
-        let mut offloaded = vec![];
-        for blob in blobs.iter() {
-            let read = blob.read().await;
-            if read
-                .get_filter_fast()
-                .map_or(false, |filter| filter.is_filter_offloaded())
-            {
-                offloaded.push(blob);
-            } else {
-                if read.check_filter_fast(key) == FilterResult::NeedAdditionalCheck {
-                    return Some(true);
-                }
-            }
+        let (offloaded, in_memory): (Vec<&Blob<K>>, Vec<&Blob<K>>) =
+            blobs.iter().partition(|blob| {
+                blob.get_filter_fast()
+                    .map_or(false, |filter| filter.is_filter_offloaded())
+            });
+
+        let in_closed = in_memory
+            .iter()
+            .any(|blob| blob.check_filter_fast(key) == FilterResult::NeedAdditionalCheck);
+        if in_closed {
+            return Some(true);
         }
 
         let in_closed_offloaded = offloaded
             .iter()
-            .map(|blob| async move { blob.read().await.check_filter(key).await })
+            .map(|blob| blob.check_filter(key))
             .collect::<FuturesUnordered<_>>()
             .any(|value| value == FilterResult::NeedAdditionalCheck)
             .await;
@@ -913,7 +901,7 @@ where
         let mut blobs = safe.blobs.write().await;
         let entries_closed_blobs = blobs
             .iter_mut()
-            .map(|b| Blob::mark_all_as_deleted(b, key))
+            .map(|b| b.mark_all_as_deleted(key))
             .collect::<FuturesUnordered<_>>();
         let total = entries_closed_blobs
             .filter_map(|result| match result {
@@ -964,9 +952,9 @@ where
         }
         let mut safe = self.safe.write().await;
         if let None = safe.active_blob {
-            let blob_opt = safe.blobs.write().await.pop().map(|b| Box::new(b));
+            let blob_opt = safe.blobs.write().await.pop().map(|b| b.boxed());
             if let Some(blob) = blob_opt {
-                safe.active_blob = Some(blob);
+                safe.active_blob = Some(Box::new(ASRwLock::new(*blob)));
                 Ok(())
             } else {
                 Err(Error::uninitialized().into())
@@ -1002,8 +990,9 @@ where
         } else {
             // always true
             if let Some(ablob) = safe.active_blob.take() {
-                ablob.read().await.fsyncdata().await?;
-                safe.blobs.write().await.push(*ablob).await;
+                let ablob = (*ablob).into_inner();
+                ablob.fsyncdata().await?;
+                safe.blobs.write().await.push(ablob).await;
             }
             Ok(())
         }
@@ -1099,10 +1088,8 @@ where
         if let Some(ablob) = self.active_blob.as_ref() {
             id = Some(ablob.read().await.id());
         }
-        if let Some(blob) = self.blobs.read().await.last() {
-            id = id.max(Some(blob.read().await.id()))
-        }
-        id
+        let blobs_max_id = self.blobs.read().await.last().map(|x| x.id());
+        id.max(blobs_max_id)
     }
 
     async fn records_count(&self) -> usize {
@@ -1114,7 +1101,6 @@ where
         let mut results = Vec::new();
         let blobs = self.blobs.read().await;
         for blob in blobs.iter() {
-            let blob = blob.read().await;
             let count = blob.records_count();
             let value = (blob.id(), count);
             debug!("push: {:?}", value);
@@ -1138,7 +1124,7 @@ where
     pub(crate) async fn replace_active_blob(&mut self, blob: Box<ASRwLock<Blob<K>>>) -> Result<()> {
         let old_active = self.active_blob.replace(blob);
         if let Some(blob) = old_active {
-            self.blobs.write().await.push(*blob).await;
+            self.blobs.write().await.push(blob.into_inner()).await;
         }
         Ok(())
     }
@@ -1147,10 +1133,9 @@ where
         let blobs = self.blobs.clone();
         tokio::spawn(async move {
             trace!("acquire blobs write to dump old blobs");
-            let write_blobs = blobs.read().await;
+            let mut write_blobs = blobs.write().await;
             trace!("dump old blobs");
-            for blob in write_blobs.iter() {
-                let mut blob = blob.write().await;
+            for blob in write_blobs.iter_mut() {
                 trace!("dumping old blob");
                 let _ = sem.acquire().await;
                 trace!("acquired sem for dumping old blobs");

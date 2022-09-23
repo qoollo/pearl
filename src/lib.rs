@@ -111,8 +111,4 @@ mod prelude {
         sync::{RwLock, Semaphore},
     };
     pub(crate) use tokio_stream::StreamExt;
-    pub(crate) use async_std::sync::{
-        RwLock as ASRwLock, RwLockUpgradableReadGuard as ASRwLockUpgradableReadGuard,
-        RwLockWriteGuard as ASRwLockWriteGuard,
-    };
 }
