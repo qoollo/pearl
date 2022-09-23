@@ -1,5 +1,6 @@
 use std::time::SystemTime;
 
+use async_std::sync::RwLockUpgradableReadGuard;
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
@@ -24,7 +25,7 @@ where
     index: Index<K>,
     name: FileName,
     file: File,
-    current_offset: Arc<Mutex<u64>>,
+    current_offset: u64,
     created_at: SystemTime,
 }
 
@@ -46,14 +47,13 @@ where
     ) -> Result<Self> {
         let file = File::create(name.to_path(), ioring.clone()).await?;
         let index = Self::create_index(name.clone(), ioring, index_config);
-        let current_offset = Arc::new(Mutex::new(0));
         let header = Header::new();
         let mut blob = Self {
             header,
             index,
             name,
             file,
-            current_offset,
+            current_offset: 0,
             created_at: SystemTime::now(),
         };
         blob.write_header().await?;
@@ -70,9 +70,8 @@ where
 
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
-        let mut offset = self.current_offset.lock().await;
         let bytes_written = self.file.write_append(&buf).await? as u64;
-        *offset = bytes_written;
+        self.current_offset = bytes_written;
         Ok(())
     }
 
@@ -167,7 +166,7 @@ where
             file,
             name,
             index,
-            current_offset: Arc::new(Mutex::new(size)),
+            current_offset: size,
             created_at,
         };
         trace!("call update index");
@@ -229,13 +228,20 @@ where
         // @TODO implement
     }
 
-    pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
+    pub(crate) async fn write(blob: &ASRwLock<Self>, record: Record) -> Result<()> {
         debug!("blob write");
-        let mut offset = self.current_offset.lock().await;
-        debug!("blob write record offset: {}", *offset);
-        record.set_offset(*offset)?;
+        let blob = blob.upgradable_read().await;
+        Self::write_locked(blob, record).await
+    }
+
+    async fn write_locked(
+        blob: ASRwLockUpgradableReadGuard<'_, Blob<K>>,
+        mut record: Record,
+    ) -> Result<()> {
+        debug!("blob write record offset: {}", blob.current_offset);
+        record.set_offset(blob.current_offset)?;
         let buf = record.to_raw()?;
-        let bytes_written = self
+        let bytes_written = blob
             .file
             .write_append(&buf)
             .await
@@ -247,8 +253,9 @@ where
                     _ => e.into(),
                 }
             })? as u64;
-        self.index.push(record.header().clone())?;
-        *offset += bytes_written;
+        let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
+        blob.index.push(record.header().clone())?;
+        blob.current_offset += bytes_written;
         Ok(())
     }
 
@@ -282,15 +289,17 @@ where
         }))
     }
 
-    pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
-        if self.index.get_any(key).await?.is_some() {
-            let on_disk = self.index.on_disk();
+    pub(crate) async fn mark_all_as_deleted(blob: &ASRwLock<Self>, key: &K) -> Result<Option<u64>> {
+        let mut write = blob.write().await;
+        if write.index.get_any(key).await?.is_some() {
+            let on_disk = write.index.on_disk();
             if on_disk {
-                self.load_index().await?;
+                write.load_index().await?;
             }
             let record = Record::deleted(key)?;
-            self.write(record).await?;
-            let res = self.index.mark_all_as_deleted(key)?;
+            let upgr = ASRwLockWriteGuard::downgrade_to_upgradable(write);
+            Self::write_locked(upgr, record).await?;
+            let res = blob.write().await.index.mark_all_as_deleted(key)?;
             Ok(res)
         } else {
             Ok(None)

@@ -46,6 +46,8 @@ extern crate anyhow;
 
 extern crate ring;
 
+extern crate async_std;
+
 /// Basic info about current build.
 pub mod build_info;
 
