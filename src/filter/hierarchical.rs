@@ -60,6 +60,19 @@ pub struct Leaf<T> {
     pub data: T,
 }
 
+impl<T> Leaf<T> {
+    pub(crate) async fn map_async<Y, F, R>(self, f: F) -> Leaf<Y>
+    where
+        F: Fn(T) -> R,
+        R: futures::Future<Output = Y>,
+    {
+        Leaf::<Y> {
+            parent: self.parent,
+            data: f(self.data).await,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct InnerNode<Key, Filter> {
     filter: Option<Filter>,
@@ -421,6 +434,26 @@ impl<Key, Filter, Child> HierarchicalFilters<Key, Filter, Child> {
     /// Returns children elements as Vec
     pub fn into_vec(self) -> Vec<Leaf<Child>> {
         self.children.into_iter().flatten().collect()
+    }
+
+    pub(crate) async fn for_each<F, R>(&mut self, f: F)
+    where
+        F: Fn(Child) -> R + Copy,
+        R: futures::Future<Output = Child>,
+    {
+        self.children = self
+            .children
+            .drain(..)
+            .map(|o| async move {
+                if let Some(c) = o {
+                    Some(c.map_async(f).await)
+                } else {
+                    None
+                }
+            })
+            .collect::<FuturesUnordered<_>>()
+            .collect::<Vec<_>>()
+            .await;
     }
 
     fn root(&self) -> &InnerNode<Key, Filter> {

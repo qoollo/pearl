@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicU64;
+
 use crate::{
     error::ValidationErrorKind,
     filter::{CombinedFilter, FilterTrait},
@@ -899,24 +901,26 @@ where
     async fn mark_all_as_deleted_closed(&self, key: &K) -> Result<u64> {
         let safe = self.inner.safe.write().await;
         let mut blobs = safe.blobs.write().await;
-        let entries_closed_blobs = blobs
-            .iter_mut()
-            .map(|b| b.mark_all_as_deleted(key))
-            .collect::<FuturesUnordered<_>>();
-        let total = entries_closed_blobs
-            .filter_map(|result| match result {
-                Ok(count) => count,
-                Err(error) => {
-                    warn!("failed to delete records: {}", error);
-                    None
+        let count = AtomicU64::new(0);
+        blobs
+            .for_each(|b| async {
+                let rwlock = ASRwLock::new(b);
+                let result = Blob::mark_all_as_deleted(&rwlock, key).await;
+                match result {
+                    Ok(cnt) => {
+                        count.fetch_add(cnt.unwrap_or(0), Ordering::Release);
+                    }
+                    Err(err) => warn!("failed to delete records: {}", err),
                 }
+                rwlock.into_inner()
             })
-            .fold(0, |a, b| a + b)
             .await;
-        debug!("{} deleted from closed blobs", total);
+        let count = count.load(Ordering::Relaxed);
+        debug!("{} deleted from closed blobs", count);
         self.observer.defer_dump_old_blob_indexes().await;
-        Ok(total)
+        Ok(count)
     }
+
     async fn mark_all_as_deleted_active(&self, key: &K) -> Result<u64> {
         let mut safe = self.inner.safe.write().await;
         let active_blob = safe.active_blob.as_deref_mut();
