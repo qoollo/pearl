@@ -905,7 +905,7 @@ async fn test_mark_as_deleted_single() {
         sleep(Duration::from_millis(64)).await;
     }
     storage.mark_all_as_deleted(&delete_key).await.unwrap();
-    assert!(!storage.contains(delete_key).await.unwrap());
+    assert!(!matches!(storage.contains(delete_key).await.unwrap(), ReadResult::Found(_)));
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
