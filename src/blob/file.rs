@@ -93,7 +93,7 @@ impl File {
     async fn write_at_sync(&self, offset: u64, buf: &[u8]) -> IOResult<usize> {
         let buf = buf.to_vec();
         let file = self.no_lock_fd.clone();
-        Self::blocking_call(move || file.write_at(&buf, offset)).await
+        Self::blocking_call(move || file.write_all_at(&buf, offset)).await
     }
 
     pub(crate) async fn read_all(&self) -> Result<Vec<u8>> {
