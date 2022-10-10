@@ -903,7 +903,7 @@ where
             .collect::<FuturesUnordered<_>>();
         let total = entries_closed_blobs
             .filter_map(|result| match result {
-                Ok(count) => count,
+                Ok(count) => Some(count),
                 Err(error) => {
                     warn!("failed to delete records: {}", error);
                     None
@@ -920,7 +920,7 @@ where
         let mut safe = self.inner.safe.write().await;
         let active_blob = safe.active_blob.as_deref_mut();
         let count = if let Some(active_blob) = active_blob {
-            let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
+            let count = active_blob.mark_all_as_deleted(key).await?;
             debug!("{} deleted from active blob", count);
             count
         } else {

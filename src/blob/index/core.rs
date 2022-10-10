@@ -247,15 +247,17 @@ where
     fn mark_all_as_deleted_in_memory(
         headers: &mut InMemoryIndex<K>,
         key: &K,
-    ) -> Result<Option<u64>> {
+        default_header: RecordHeader,
+    ) -> Result<u64> {
         debug!("headers: {}", headers.len());
         if let Some(v) = headers.get_mut(key) {
             for h in v.iter_mut() {
                 h.mark_as_deleted()?
             }
-            Ok(Some(v.len() as u64))
+            Ok(v.len() as u64)
         } else {
-            Ok(None)
+            headers.insert(key.clone(), vec![default_header]);
+            Ok(1)
         }
     }
 }
@@ -355,10 +357,12 @@ where
         }
     }
 
-    fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
+    fn mark_all_as_deleted(&mut self, key: &K, default_header: RecordHeader) -> Result<u64> {
         debug!("mark all as deleted by {:?} key", key);
         match &mut self.inner {
-            State::InMemory(headers) => Self::mark_all_as_deleted_in_memory(headers, key),
+            State::InMemory(headers) => {
+                Self::mark_all_as_deleted_in_memory(headers, key, default_header)
+            }
             State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
                 "Index is closed, delete is unavalaible".to_string(),
             ))
