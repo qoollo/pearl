@@ -822,14 +822,14 @@ where
         let inner = self.inner.safe.read().await;
         if let Some(active_blob) = &inner.active_blob {
             let res = active_blob.contains(key, meta).await?;
-            if !matches!(res, ReadResult::NotFound) {
+            if res.is_meaningful() {
                 return Ok(res);
             }
         }
         let blobs = inner.blobs.read().await;
         for blob in blobs.iter_possible_childs(key) {
             let res = blob.1.data.contains(key, meta).await?;
-            if !matches!(res, ReadResult::NotFound) {
+            if res.is_meaningful() {
                 return Ok(res);
             }
         }
