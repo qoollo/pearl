@@ -300,8 +300,12 @@ where
         }))
     }
 
-    pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
-        if self.index.get_any(key).await?.is_meaningful() {
+    pub(crate) async fn mark_all_as_deleted(
+        &mut self,
+        key: &K,
+        force_write: bool,
+    ) -> Result<Option<u64>> {
+        if force_write || self.index.get_any(key).await?.is_meaningful() {
             let on_disk = self.index.on_disk();
             if on_disk {
                 self.load_index().await?;

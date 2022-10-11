@@ -921,9 +921,11 @@ where
     /// Mark as deleted entries with matching key
     /// # Errors
     /// Fails after any disk IO errors.
-    pub async fn mark_all_as_deleted(&self, key: impl AsRef<K>) -> Result<u64> {
+    pub async fn mark_all_as_deleted(&self, key: impl AsRef<K>, force_write: bool) -> Result<u64> {
         let mut total = 0;
-        total += self.mark_all_as_deleted_active(key.as_ref()).await?;
+        total += self
+            .mark_all_as_deleted_active(key.as_ref(), force_write)
+            .await?;
         total += self.mark_all_as_deleted_closed(key.as_ref()).await?;
         debug!("{} deleted total", total);
         Ok(total)
@@ -934,7 +936,7 @@ where
         let mut blobs = safe.blobs.write().await;
         let entries_closed_blobs = blobs
             .iter_mut()
-            .map(|b| b.mark_all_as_deleted(key))
+            .map(|b| b.mark_all_as_deleted(key, false))
             .collect::<FuturesUnordered<_>>();
         let total = entries_closed_blobs
             .filter_map(|result| match result {
@@ -951,11 +953,14 @@ where
         Ok(total)
     }
 
-    async fn mark_all_as_deleted_active(&self, key: &K) -> Result<u64> {
+    async fn mark_all_as_deleted_active(&self, key: &K, force_write: bool) -> Result<u64> {
         let mut safe = self.inner.safe.write().await;
         let active_blob = safe.active_blob.as_deref_mut();
         let count = if let Some(active_blob) = active_blob {
-            let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
+            let count = active_blob
+                .mark_all_as_deleted(key, force_write)
+                .await?
+                .unwrap_or(0);
             debug!("{} deleted from active blob", count);
             count
         } else {

@@ -7,7 +7,7 @@ use futures::{
     stream::{futures_unordered::FuturesUnordered, FuturesOrdered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
-use pearl::{BloomProvider, Builder, Meta, Storage, ReadResult};
+use pearl::{BloomProvider, Builder, Meta, ReadResult, Storage};
 use rand::{seq::SliceRandom, Rng};
 use std::{
     fs,
@@ -904,8 +904,14 @@ async fn test_mark_as_deleted_single() {
         write_one(&storage, *key, data, None).await.unwrap();
         sleep(Duration::from_millis(64)).await;
     }
-    storage.mark_all_as_deleted(&delete_key).await.unwrap();
-    assert!(!matches!(storage.contains(delete_key).await.unwrap(), ReadResult::Found(_)));
+    storage
+        .mark_all_as_deleted(&delete_key, false)
+        .await
+        .unwrap();
+    assert!(!matches!(
+        storage.contains(delete_key).await.unwrap(),
+        ReadResult::Found(_)
+    ));
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
@@ -925,7 +931,10 @@ async fn test_mark_as_deleted_deferred_dump() {
 
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let update_time = std::fs::metadata(&path.join("test.0.index")).expect("metadata");
-    storage.mark_all_as_deleted(&delete_key).await.unwrap();
+    storage
+        .mark_all_as_deleted(&delete_key, false)
+        .await
+        .unwrap();
 
     sleep(MIN_DEFER_TIME / 2).await;
     let new_update_time = std::fs::metadata(&path.join("test.0.index")).expect("metadata");
