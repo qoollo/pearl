@@ -954,6 +954,11 @@ where
     }
 
     async fn mark_all_as_deleted_active(&self, key: &K, force_write: bool) -> Result<u64> {
+        if force_write {
+            if self.try_create_active_blob().await.is_ok() {
+                debug!("created active blob during delete");
+            }
+        }
         let mut safe = self.inner.safe.write().await;
         let active_blob = safe.active_blob.as_deref_mut();
         let count = if let Some(active_blob) = active_blob {
