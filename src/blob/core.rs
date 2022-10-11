@@ -285,7 +285,7 @@ where
                     .into_data();
                 debug!("blob read any entry loaded bytes: {}", buf.len());
                 Ok(ReadResult::Found(buf))
-            },
+            }
             ReadResult::Deleted => Ok(ReadResult::Deleted),
             ReadResult::NotFound => Ok(ReadResult::NotFound),
         }
@@ -301,7 +301,7 @@ where
     }
 
     pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
-        if self.index.get_any(key).await?.is_some() {
+        if self.index.get_any(key).await?.is_meaningful() {
             let on_disk = self.index.on_disk();
             if on_disk {
                 self.load_index().await?;

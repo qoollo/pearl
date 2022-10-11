@@ -257,7 +257,7 @@ where
     for<'a> K: Key<'a>,
 {
     async fn contains_key(&self, key: &K) -> Result<bool> {
-        self.get_any(key).await.map(|h| h.is_some())
+        self.get_any(key).await.map(|h| h.is_meaningful())
     }
 
     fn push(&mut self, h: RecordHeader) -> Result<()> {

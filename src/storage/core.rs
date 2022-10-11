@@ -460,7 +460,7 @@ where
         if let Some(ablob) = safe.active_blob.as_ref() {
             match ablob.read_any(key, meta, true).await {
                 Ok(data) => {
-                    if data.is_some() {
+                    if data.is_meaningful() {
                         debug!("storage read with optional meta active blob returned data");
                         return Ok(data);
                     }
@@ -501,7 +501,13 @@ where
             .map(|blob| blob.data.read_any(key, meta, false))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
-        let mut task = stream.skip_while(|r| if let Ok(h) = r { !h.is_some() } else { true });
+        let mut task = stream.skip_while(|r| {
+            if let Ok(h) = r {
+                !h.is_meaningful()
+            } else {
+                true
+            }
+        });
         task.next().await.unwrap_or(Ok(ReadResult::NotFound))
     }
 
@@ -517,7 +523,13 @@ where
             .map(|blob| blob.1.data.read_any(key, meta, true))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
-        let mut task = stream.skip_while(|r| if let Ok(h) = r { !h.is_some() } else { true });
+        let mut task = stream.skip_while(|r| {
+            if let Ok(h) = r {
+                !h.is_meaningful()
+            } else {
+                true
+            }
+        });
         task.next().await.unwrap_or(Ok(ReadResult::NotFound))
     }
 
@@ -1278,8 +1290,8 @@ pub enum ReadResult<T> {
 }
 
 impl<T> ReadResult<T> {
-    pub(crate) fn is_some(&self) -> bool {
-        matches!(self, ReadResult::Found(_))
+    pub(crate) fn is_meaningful(&self) -> bool {
+        !matches!(self, ReadResult::NotFound)
     }
 
     /// Map data if it exists
