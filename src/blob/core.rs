@@ -379,9 +379,12 @@ where
         Ok(ReadResult::NotFound)
     }
 
-    pub(crate) async fn contains(&self, key: &K, meta: Option<&Meta>) -> Result<ReadResult<()>> {
+    pub(crate) async fn contains(&self, key: &K, meta: Option<&Meta>) -> Result<ReadResult<u64>> {
         debug!("blob contains");
-        let contains = self.get_entry(key, meta, true).await?.map(|_| ());
+        let contains = self
+            .get_entry(key, meta, true)
+            .await?
+            .map(|e| e.header().created());
         debug!("blob contains any: {:?}", contains);
         Ok(contains)
     }

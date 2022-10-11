@@ -812,13 +812,14 @@ where
     /// `contains` is used to check whether a key is in storage.
     /// Slower than `check_bloom`, because doesn't prevent disk IO operations.
     /// `contains` returns either "definitely in storage" or "definitely not".
+    /// Also returns creation timestamp
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn contains(&self, key: impl AsRef<K>) -> Result<ReadResult<()>> {
+    pub async fn contains(&self, key: impl AsRef<K>) -> Result<ReadResult<u64>> {
         self.contains_with(key.as_ref(), None).await
     }
 
-    async fn contains_with(&self, key: &K, meta: Option<&Meta>) -> Result<ReadResult<()>> {
+    async fn contains_with(&self, key: &K, meta: Option<&Meta>) -> Result<ReadResult<u64>> {
         let inner = self.inner.safe.read().await;
         if let Some(active_blob) = &inner.active_blob {
             let res = active_blob.contains(key, meta).await?;
