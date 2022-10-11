@@ -1283,8 +1283,8 @@ where
 pub enum ReadResult<T> {
     /// Data was found
     Found(T),
-    /// Data was deleted
-    Deleted,
+    /// Data was deleted, contains creation timestamp
+    Deleted(u64),
     /// Data was not found
     NotFound,
 }
@@ -1298,7 +1298,7 @@ impl<T> ReadResult<T> {
     pub fn map<Y>(self, f: impl FnOnce(T) -> Y) -> ReadResult<Y> {
         match self {
             ReadResult::Found(d) => ReadResult::Found(f(d)),
-            ReadResult::Deleted => ReadResult::Deleted,
+            ReadResult::Deleted(ts) => ReadResult::Deleted(ts),
             ReadResult::NotFound => ReadResult::NotFound,
         }
     }

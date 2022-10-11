@@ -320,7 +320,7 @@ where
         };
         Ok(if let Some(header) = result {
             if header.is_deleted() {
-                ReadResult::Deleted
+                ReadResult::Deleted(header.created())
             } else {
                 ReadResult::Found(header)
             }

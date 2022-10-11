@@ -286,7 +286,7 @@ where
                 debug!("blob read any entry loaded bytes: {}", buf.len());
                 Ok(ReadResult::Found(buf))
             }
-            ReadResult::Deleted => Ok(ReadResult::Deleted),
+            ReadResult::Deleted(ts) => Ok(ReadResult::Deleted(ts)),
             ReadResult::NotFound => Ok(ReadResult::NotFound),
         }
     }
@@ -366,7 +366,7 @@ where
         for mut entry in entries {
             if Some(meta) == entry.load_meta().await? {
                 return Ok(if entry.header().is_deleted() {
-                    ReadResult::Deleted
+                    ReadResult::Deleted(entry.header().created())
                 } else {
                     ReadResult::Found(entry)
                 });
