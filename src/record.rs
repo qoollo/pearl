@@ -110,7 +110,7 @@ impl Record {
     }
 
     pub(crate) async fn write_to_file(&self, file: &File) -> Result<u64> {
-        if self.data.len() < MAX_SINGLE_PASS_DATA_SIZE {
+        if self.data.len() <= MAX_SINGLE_PASS_DATA_SIZE {
             self.write_single_pass(file).await
         } else {
             self.write_double_pass(file).await
