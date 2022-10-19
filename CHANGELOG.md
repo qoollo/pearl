@@ -4,7 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Special handling for large data write (#192)
 
 #### Changed
 - File name added to error messages in Blob struct (#183)
