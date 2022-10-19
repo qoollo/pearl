@@ -1,7 +1,10 @@
+use futures::TryFutureExt;
+
 use crate::{blob::File, error::ValidationErrorKind, prelude::*};
 
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 const DELETE_FLAG: u8 = 0x01;
+const MAX_SINGLE_PASS_DATA_SIZE: usize = 4 * 1024;
 
 #[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
 pub struct Record {
@@ -106,30 +109,42 @@ impl Record {
         &self.header
     }
 
-    /// # Description
-    /// Serialize record to bytes
-    pub fn to_raw(&self) -> bincode::Result<Vec<u8>> {
+    pub(crate) async fn write_to_file(&self, file: &File) -> Result<u64> {
+        if self.data.len() < MAX_SINGLE_PASS_DATA_SIZE {
+            self.write_single_pass(file).await
+        } else {
+            self.write_double_pass(file).await
+        }
+    }
+
+    async fn write_single_pass(&self, file: &File) -> Result<u64> {
         let mut buf = self.header.to_raw()?;
-        trace!("raw header: len: {}", buf.len());
         let raw_meta = self.meta.to_raw()?;
         buf.extend(&raw_meta);
         buf.extend(&self.data);
-        Ok(buf)
+        Self::process_file_result(file.write_append(&buf).await)
     }
 
-    pub(crate) async fn write_to_file(&self, file: &File) -> Result<u64> {
-        let raw = self.to_raw()?;
-        file.write_append(&raw)
-            .await
-            .map(|x| x as u64)
-            .map_err(|e| -> anyhow::Error {
-                match e.kind() {
-                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
-                        Error::file_unavailable(kind).into()
-                    }
-                    _ => e.into(),
+    async fn write_double_pass(&self, file: &File) -> Result<u64> {
+        let mut buf = self.header.to_raw()?;
+        let raw_meta = self.meta.to_raw()?;
+        buf.extend(&raw_meta);
+        Self::process_file_result(
+            file.write_append(&buf)
+                .and_then(|x| async move { file.write_append(&self.data).await.map(|y| x + y) })
+                .await,
+        )
+    }
+
+    fn process_file_result(result: std::result::Result<usize, std::io::Error>) -> Result<u64> {
+        result.map(|x| x as u64).map_err(|e| -> anyhow::Error {
+            match e.kind() {
+                kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
+                    Error::file_unavailable(kind).into()
                 }
-            })
+                _ => e.into(),
+            }
+        })
     }
 
     pub(crate) fn deleted<K>(key: &K) -> bincode::Result<Self>
