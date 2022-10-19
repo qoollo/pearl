@@ -1,4 +1,4 @@
-use crate::{error::ValidationErrorKind, prelude::*};
+use crate::{blob::File, error::ValidationErrorKind, prelude::*};
 
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 const DELETE_FLAG: u8 = 0x01;
@@ -115,6 +115,21 @@ impl Record {
         buf.extend(&raw_meta);
         buf.extend(&self.data);
         Ok(buf)
+    }
+
+    pub(crate) async fn write_to_file(&self, file: &File) -> Result<u64> {
+        let raw = self.to_raw()?;
+        file.write_append(&raw)
+            .await
+            .map(|x| x as u64)
+            .map_err(|e| -> anyhow::Error {
+                match e.kind() {
+                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
+                        Error::file_unavailable(kind).into()
+                    }
+                    _ => e.into(),
+                }
+            })
     }
 
     pub(crate) fn deleted<K>(key: &K) -> bincode::Result<Self>

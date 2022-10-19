@@ -94,10 +94,12 @@ where
                 .await
                 .with_context(|| format!("blob file dump failed: {:?}", self.name.to_path()))?;
 
-            self.index
-                .dump(self.file_size())
-                .await
-                .with_context(|| format!("index file dump failed, associated blob file: {:?}", self.name.to_path()))
+            self.index.dump(self.file_size()).await.with_context(|| {
+                format!(
+                    "index file dump failed, associated blob file: {:?}",
+                    self.name.to_path()
+                )
+            })
         }
     }
 
@@ -146,7 +148,10 @@ where
                 if let Some(io_error) = error.downcast_ref::<IOError>() {
                     match io_error.kind() {
                         IOErrorKind::PermissionDenied | IOErrorKind::Other => {
-                            warn!("index for file '{:?}' cannot be regenerated due to an error: {}", path, io_error);
+                            warn!(
+                                "index for file '{:?}' cannot be regenerated due to an error: {}",
+                                path, io_error
+                            );
                             return Err(error);
                         }
                         _ => {}
@@ -205,10 +210,12 @@ where
             return Ok(());
         }
         debug!("index file missed");
-        let raw_r = self
-            .raw_records()
-            .await
-            .with_context(|| format!("failed to read raw records from blob {:?}", self.name.to_path()))?;
+        let raw_r = self.raw_records().await.with_context(|| {
+            format!(
+                "failed to read raw records from blob {:?}",
+                self.name.to_path()
+            )
+        })?;
         debug!("raw records loaded");
         if let Some(headers) = raw_r.load().await.with_context(|| {
             format!(
@@ -234,19 +241,7 @@ where
         let mut offset = self.current_offset.lock().await;
         debug!("blob write record offset: {}", *offset);
         record.set_offset(*offset)?;
-        let buf = record.to_raw()?;
-        let bytes_written = self
-            .file
-            .write_append(&buf)
-            .await
-            .map_err(|e| -> anyhow::Error {
-                match e.kind() {
-                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
-                        Error::file_unavailable(kind).into()
-                    }
-                    _ => e.into(),
-                }
-            })? as u64;
+        let bytes_written = record.write_to_file(&self.file).await?;
         self.index.push(record.header().clone())?;
         *offset += bytes_written;
         Ok(())
@@ -267,7 +262,14 @@ where
         let buf = entry
             .load()
             .await
-            .with_context(|| format!("failed to read key {:?} with meta {:?} from blob {:?}", key, meta, self.name.to_path()))?
+            .with_context(|| {
+                format!(
+                    "failed to read key {:?} with meta {:?} from blob {:?}",
+                    key,
+                    meta,
+                    self.name.to_path()
+                )
+            })?
             .into_data();
         debug!("blob read any entry loaded bytes: {}", buf.len());
         Ok(buf)
@@ -319,12 +321,9 @@ where
             self.get_entry_with_meta(key, meta).await
         } else {
             debug!("blob get any entry bloom true no meta");
-            if let Some(header) = self
-                .index
-                .get_any(key)
-                .await
-                .with_context(|| format!("index get any failed for blob: {:?}", self.name.to_path()))?
-            {
+            if let Some(header) = self.index.get_any(key).await.with_context(|| {
+                format!("index get any failed for blob: {:?}", self.name.to_path())
+            })? {
                 let entry = Entry::new(header, self.file.clone());
                 debug!("blob, get any entry, bloom true no meta, entry found");
                 Ok(Some(entry))
