@@ -1,3 +1,5 @@
+use std::io::Cursor;
+
 use futures::TryFutureExt;
 
 use crate::{blob::File, error::ValidationErrorKind, prelude::*};
@@ -68,13 +70,13 @@ impl Meta {
     }
 
     #[inline]
-    fn serialized_size(&self) -> bincode::Result<u64> {
-        serialized_size(&self)
+    fn serialized_size(&self) -> u64 {
+        serialized_size(&self).expect("serialized_size")
     }
 
     #[inline]
-    pub(crate) fn to_raw(&self) -> bincode::Result<Vec<u8>> {
-        serialize(&self)
+    pub(crate) fn to_raw_into(&self, writer: impl std::io::Write) -> bincode::Result<()> {
+        serialize_into(writer, &self)
     }
 
     /// Get attribute.
@@ -98,7 +100,7 @@ impl Record {
         for<'a> K: Key<'a>,
     {
         let key = key.as_ref().to_vec();
-        let meta_size = meta.serialized_size()?;
+        let meta_size = meta.serialized_size();
         let data_checksum = CRC32C.checksum(&data);
         let header = Header::new(key, meta_size, data.len() as u64, data_checksum);
         Ok(Self { header, meta, data })
@@ -117,18 +119,22 @@ impl Record {
         }
     }
 
+    fn create_header_meta_buffer(&self) -> Result<Vec<u8>> {
+        let size = self.header.serialized_size() + self.meta.serialized_size();
+        let mut c = Cursor::new(Vec::with_capacity(size as usize));
+        self.header.to_raw_into(&mut c)?;
+        self.meta.to_raw_into(&mut c)?;
+        Ok(c.into_inner())
+    }
+
     async fn write_single_pass(&self, file: &File) -> Result<u64> {
-        let mut buf = self.header.to_raw()?;
-        let raw_meta = self.meta.to_raw()?;
-        buf.extend(&raw_meta);
+        let mut buf = self.create_header_meta_buffer()?;
         buf.extend(&self.data);
         Self::process_file_result(file.write_append(&buf).await)
     }
 
     async fn write_double_pass(&self, file: &File) -> Result<u64> {
-        let mut buf = self.header.to_raw()?;
-        let raw_meta = self.meta.to_raw()?;
-        buf.extend(&raw_meta);
+        let buf = self.create_header_meta_buffer()?;
         Self::process_file_result(
             file.write_append(&buf)
                 .and_then(|x| async move { file.write_append(&self.data).await.map(|y| x + y) })
@@ -238,6 +244,11 @@ impl Header {
     #[inline]
     pub(crate) fn to_raw(&self) -> bincode::Result<Vec<u8>> {
         serialize(&self)
+    }
+
+    #[inline]
+    pub(crate) fn to_raw_into(&self, writer: impl std::io::Write) -> bincode::Result<()> {
+        serialize_into(writer, &self)
     }
 
     #[inline]
