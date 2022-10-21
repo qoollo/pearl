@@ -9,6 +9,7 @@ Pearl changelog
 #### Changed
 - File name added to error messages in Blob struct (#183)
 - Update rust edition (#175)
+- Use bytes for arguments (#191)
 
 #### Fixed
 - Fix docs (#177)
