@@ -4,6 +4,7 @@ use crate::{
 };
 
 use super::prelude::*;
+use bytes::Bytes;
 use futures::stream::FuturesOrdered;
 use tokio::fs::{create_dir, create_dir_all};
 
@@ -240,7 +241,7 @@ where
     ///
     /// async fn write_data(storage: Storage<ArrayKey<8>>) {
     ///     let key = ArrayKey::<8>::default();
-    ///     let data = b"async written to blob".to_vec();
+    ///     let data = b"async written to blob".to_vec().into();
     ///     storage.write(key, data).await;
     /// }
     /// ```
@@ -248,7 +249,7 @@ where
     /// Fails with the same errors as [`write_with`]
     ///
     /// [`write_with`]: Storage::write_with
-    pub async fn write(&self, key: impl AsRef<K>, value: Vec<u8>) -> Result<()> {
+    pub async fn write(&self, key: impl AsRef<K>, value: Bytes) -> Result<()> {
         self.write_with_optional_meta(key, value, None).await
     }
 
@@ -259,7 +260,7 @@ where
     ///
     /// async fn write_data(storage: Storage<ArrayKey<8>>) {
     ///     let key = ArrayKey::<8>::default();
-    ///     let data = b"async written to blob".to_vec();
+    ///     let data = b"async written to blob".to_vec().into();
     ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
     ///     storage.write_with(&key, data, meta).await;
@@ -267,7 +268,7 @@ where
     /// ```
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
-    pub async fn write_with(&self, key: impl AsRef<K>, value: Vec<u8>, meta: Meta) -> Result<()> {
+    pub async fn write_with(&self, key: impl AsRef<K>, value: Bytes, meta: Meta) -> Result<()> {
         self.write_with_optional_meta(key, value, Some(meta)).await
     }
 
@@ -295,7 +296,7 @@ where
     async fn write_with_optional_meta(
         &self,
         key: impl AsRef<K>,
-        value: Vec<u8>,
+        value: Bytes,
         meta: Option<Meta>,
     ) -> Result<()> {
         let key = key.as_ref();

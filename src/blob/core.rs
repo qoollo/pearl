@@ -270,7 +270,7 @@ where
             .with_context(|| format!("failed to read key {:?} with meta {:?} from blob {:?}", key, meta, self.name.to_path()))?
             .into_data();
         debug!("blob read any entry loaded bytes: {}", buf.len());
-        Ok(buf)
+        Ok(buf.into())
     }
 
     #[inline]

@@ -44,6 +44,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate anyhow;
 
+extern crate bytes;
 extern crate ring;
 
 /// Basic info about current build.
@@ -66,7 +67,7 @@ pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
-pub use storage::{Builder, Key, RefKey, Storage, ArrayKey};
+pub use storage::{ArrayKey, Builder, Key, RefKey, Storage};
 
 mod prelude {
     use crc::{Crc, CRC_32_ISCSI};
