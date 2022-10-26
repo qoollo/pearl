@@ -80,7 +80,7 @@ async fn test_storage_read_write() {
     let data = b"test data string";
     write_one(&storage, 1234, data, None).await.unwrap();
     let new_data = storage.read(KeyTest::new(key)).await.unwrap();
-    assert_eq!(new_data, data);
+    assert_eq!(new_data.to_vec(), data);
     common::clean(storage, path).await.unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
@@ -420,7 +420,7 @@ async fn test_read_with() {
     debug!("read finished");
     // data_read - last record, data_read_with - first record with "1.0" meta
     assert_ne!(data_read_with, data_read);
-    assert_eq!(data_read_with, data1);
+    assert_eq!(data_read_with.to_vec(), data1);
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }

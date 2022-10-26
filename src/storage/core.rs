@@ -380,7 +380,7 @@ where
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     /// [`read_with`]: Storage::read_with
     #[inline]
-    pub async fn read(&self, key: impl AsRef<K>) -> Result<Vec<u8>> {
+    pub async fn read(&self, key: impl AsRef<K>) -> Result<Bytes> {
         let key = key.as_ref();
         debug!("storage read {:?}", key);
         self.read_with_optional_meta(key, None).await
@@ -402,7 +402,7 @@ where
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
-    pub async fn read_with(&self, key: impl AsRef<K>, meta: &Meta) -> Result<Vec<u8>> {
+    pub async fn read_with(&self, key: impl AsRef<K>, meta: &Meta) -> Result<Bytes> {
         let key = key.as_ref();
         debug!("storage read with {:?}", key);
         self.read_with_optional_meta(key, Some(meta))
@@ -445,7 +445,7 @@ where
         Ok(all_entries)
     }
 
-    async fn read_with_optional_meta(&self, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn read_with_optional_meta(&self, key: &K, meta: Option<&Meta>) -> Result<Bytes> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
@@ -460,7 +460,7 @@ where
         Self::get_any_data(&safe, key, meta).await
     }
 
-    async fn get_data_last(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_last(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Bytes> {
         let blobs = safe.blobs.read().await;
         let possible_blobs = blobs
             .iter_possible_childs_rev(key)
@@ -491,7 +491,7 @@ where
     }
 
     #[allow(dead_code)]
-    async fn get_data_any(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_any(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Bytes> {
         let blobs = safe.blobs.read().await;
         let stream: FuturesUnordered<_> = blobs
             .iter_possible_childs_rev(key)
@@ -505,7 +505,7 @@ where
             .with_context(|| "no results in closed blobs")
     }
 
-    async fn get_any_data(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_any_data(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Bytes> {
         Self::get_data_last(safe, key, meta).await
     }
 

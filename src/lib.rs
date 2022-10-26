@@ -33,7 +33,7 @@
 //!     storage.init().await.unwrap();
 //!     let key = ArrayKey::<8>::default();
 //!     let data = b"Hello World!".to_vec();
-//!     storage.write(key, data).await.unwrap();
+//!     storage.write(key, data.into()).await.unwrap();
 //! }
 //! ```
 
