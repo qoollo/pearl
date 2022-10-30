@@ -4,7 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Corrupted blobs count calculation (#464)
 
 #### Changed
 - File name added to error messages in Blob struct (#183)
