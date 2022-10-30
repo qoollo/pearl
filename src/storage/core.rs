@@ -53,6 +53,7 @@ where
     pub(crate) safe: Arc<RwLock<Safe<K>>>,
     next_blob_id: Arc<AtomicUsize>,
     pub(crate) ioring: Option<Rio>,
+    pub(crate) corrupted_blobs: Arc<AtomicUsize>,
 }
 
 #[derive(Debug)]
@@ -546,6 +547,11 @@ where
         }
     }
 
+    /// `blob_count` returns exact number of corrupted blobs.
+    pub async fn corrupted_blobs_count(&self) -> usize {
+        self.inner.corrupted_blobs.load(Ordering::Relaxed)
+    }
+
     /// `active_index_memory` returns the amount of memory used by blob to store active indices
     pub async fn active_index_memory(&self) -> usize {
         let safe = self.inner.safe.read().await;
@@ -615,7 +621,7 @@ where
     async fn init_from_existing(&mut self, files: Vec<DirEntry>, with_active: bool) -> Result<()> {
         trace!("init from existing: {:#?}", files);
         let disk_access_sem = self.observer.get_dump_sem();
-        let mut blobs = Self::read_blobs(
+        let (mut blobs, corrupted_count) = Self::read_blobs(
             &files,
             self.inner.ioring.clone(),
             disk_access_sem,
@@ -623,6 +629,8 @@ where
         )
         .await
         .context("failed to read blobs")?;
+
+        self.inner.corrupted_blobs.store(corrupted_count, Ordering::Relaxed);
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
@@ -667,7 +675,9 @@ where
         ioring: Option<Rio>,
         disk_access_sem: Arc<Semaphore>,
         config: &Config,
-    ) -> Result<Vec<Blob<K>>> {
+    ) -> Result<(Vec<Blob<K>>, usize)> {
+        let mut corrupted = Self::count_old_corrupted_blobs(files, config).await;
+
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
         debug!("read {} entities", dir_content.len());
@@ -680,6 +690,7 @@ where
                 None
             }
         });
+
         debug!("init blobs from found files");
         let mut futures: FuturesUnordered<_> = blob_files
             .map(|file| async {
@@ -710,13 +721,37 @@ where
                             .with_context(|| {
                                 anyhow!(format!("failed to save corrupted blob {:?}", file))
                             })?;
+                        corrupted += 1;
                     } else {
                         return Err(e.context(msg));
                     }
                 }
             }
         }
-        Ok(blobs)
+        Ok((blobs, corrupted))
+    }
+
+    async fn count_old_corrupted_blobs(files: &[DirEntry], config: &Config) -> usize {
+        let dir_content = files.iter().map(DirEntry::path);
+        let dirs = dir_content.filter(|path| 
+            path.is_dir() && path.ends_with(config.corrupted_dir_name()));
+        
+        let mut corrupted = 0;
+        for dir in dirs {
+            let contents = read_dir(dir).await;
+            if let Ok(mut contents) = contents {
+                while let Ok(Some(file)) = contents.next_entry().await {
+                    let path = file.path();
+                    let extension = path.extension();
+                    if let Some(ext) = extension.and_then(|ext| ext.to_str()) {
+                        if path.is_file() && ext == BLOB_FILE_EXTENSION {
+                            corrupted += 1;
+                        }   
+                    }
+                }
+            }
+        }
+        corrupted
     }
 
     fn should_save_corrupted_blob(error: &anyhow::Error) -> bool {
@@ -940,6 +975,7 @@ where
             config,
             next_blob_id: Arc::new(AtomicUsize::new(0)),
             ioring,
+            corrupted_blobs: Arc::new(AtomicUsize::new(0)),
         }
     }
 
