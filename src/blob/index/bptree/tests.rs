@@ -58,7 +58,7 @@ impl Into<usize> for KeyType {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn serialize_deserialize_file() {
     let mut inmem = InMemoryIndex::<KeyType>::new();
     (0..10000).map(|i| i.into()).for_each(|key: KeyType| {
@@ -83,7 +83,7 @@ async fn serialize_deserialize_file() {
     assert_eq!(inmem, inmem_after);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn blob_size_invalidation() {
     let filename = "/tmp/bptree_index.0.index";
     let mut inmem = InMemoryIndex::<KeyType>::new();
@@ -117,7 +117,7 @@ async fn blob_size_invalidation() {
         }
     ));
 }
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn magic_byte_corruption() {
     let filename = "/tmp/bptree_index.0.index";
     let mut inmem = InMemoryIndex::<KeyType>::new();
@@ -167,7 +167,7 @@ async fn magic_byte_corruption() {
     ));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn check_get_any() {
     const RANGE_FROM: usize = 100;
     const RANGE_TO: usize = 9000;
@@ -215,7 +215,7 @@ async fn check_get_any() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn preserves_records_order() {
     const RANGE_FROM: usize = 100;
     const RANGE_TO: usize = 9000;
@@ -239,14 +239,21 @@ async fn preserves_records_order() {
     )
     .await
     .expect("Can't create file index");
-    let (deser, _) = findex.get_records_headers(0).await.expect("Can't create index from file");
+    let (deser, _) = findex
+        .get_records_headers(0)
+        .await
+        .expect("Can't create index from file");
     for (k, v) in deser.iter() {
         assert!(v.last().is_some(), "Records are missing for key {:?}", k);
-        assert_eq!(v.last().unwrap().data_size(), 2, "Order of records is wrong");
+        assert_eq!(
+            v.last().unwrap().data_size(),
+            2,
+            "Order of records is wrong"
+        );
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn check_get() {
     const MAX_AMOUNT: usize = 3;
     const RANGE_FROM: usize = 100;
