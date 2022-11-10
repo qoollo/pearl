@@ -7,6 +7,8 @@ use nix::{errno::Errno, fcntl::FcntlArg};
 
 use super::prelude::*;
 
+const MAX_SYNC_OPERATION_SIZE: usize = 100_000;
+
 #[derive(Debug, Clone)]
 pub struct File {
     ioring: Option<Rio>,
@@ -93,7 +95,11 @@ impl File {
     async fn write_at_sync(&self, offset: u64, buf: &[u8]) -> IOResult<usize> {
         let buf = buf.to_vec();
         let file = self.no_lock_fd.clone();
-        Self::blocking_call(move || file.write_at(&buf, offset)).await
+        if buf.len() <= MAX_SYNC_OPERATION_SIZE {
+            Self::inplace_call(move || file.write_at(&buf, offset))
+        } else {
+            Self::blocking_call(move || file.write_at(&buf, offset)).await
+        }
     }
 
     pub(crate) async fn read_all(&self) -> Result<Vec<u8>> {
@@ -114,11 +120,18 @@ impl File {
         let file = self.no_lock_fd.clone();
         let mut new_buf = buf.to_vec();
 
-        let (count, new_buf) = Self::blocking_call(move || {
-            file.read_at(&mut new_buf, offset)
-                .map(|count| (count, new_buf))
-        })
-        .await?;
+        let (count, new_buf) = if buf.len() <= MAX_SYNC_OPERATION_SIZE {
+            Self::inplace_call(move || {
+                file.read_at(&mut new_buf, offset)
+                    .map(|count| (count, new_buf))
+            })
+        } else {
+            Self::blocking_call(move || {
+                file.read_at(&mut new_buf, offset)
+                    .map(|count| (count, new_buf))
+            })
+            .await
+        }?;
         buf.clone_from_slice(new_buf.as_slice());
         Ok(count)
     }
@@ -212,6 +225,14 @@ impl File {
         tokio::task::spawn_blocking(move || f())
             .await
             .expect("spawned blocking task failed")
+    }
+
+    fn inplace_call<F, R>(f: F) -> R
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        tokio::task::block_in_place(move || f())
     }
 
     pub(crate) fn created_at(&self) -> Result<SystemTime> {
