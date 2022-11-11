@@ -7,6 +7,9 @@ use nix::{errno::Errno, fcntl::FcntlArg};
 
 use super::prelude::*;
 
+// This size was selected based on results of tests
+// These tests were performed on 8-core machine with HDD
+// Results are confirmed on 8 and 80 threads, for put and get
 const MAX_SYNC_OPERATION_SIZE: usize = 100_000;
 
 #[derive(Debug, Clone)]
