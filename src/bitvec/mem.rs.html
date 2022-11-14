@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/mem.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mem.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../bitvec/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/mem.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mem.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../bitvec/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -205,12 +200,12 @@ values, but are unable to be used in buffer type parameters.
 [`BitMemory`]: crate::mem::BitMemory
 [`BitRegister`]: crate::mem::BitRegister
 [`bitvec`]: crate
-!*/</span>
+!*/
 
-<span class="kw">use</span> <span class="ident">core::mem</span>;
+</span><span class="kw">use </span>core::mem;
 
-<span class="kw">use</span> <span class="ident">funty::IsUnsigned</span>;
-<span class="kw">use</span> <span class="ident">radium::marker::BitOps</span>;
+<span class="kw">use </span>funty::IsUnsigned;
+<span class="kw">use </span>radium::marker::BitOps;
 
 <span class="doccomment">/** Description of an integer memory element.
 
@@ -220,14 +215,14 @@ This trait has **no** bearing on the processor instructions or registers used to
 interact with memory. It solely describes integers that can exist on a system.
 
 This trait cannot be implemented outside this crate.
-**/</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">BitMemory</span>: <span class="ident">IsUnsigned</span> <span class="op">+</span> <span class="ident">seal::Sealed</span> {
-	<span class="doccomment">/// The number of bits required to store an index in the range `0 .. BITS`.</span>
-	<span class="kw">const</span> <span class="ident">INDX</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::BITS</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">u8</span>;
+**/
+</span><span class="kw">pub trait </span>BitMemory: IsUnsigned + seal::Sealed {
+	<span class="doccomment">/// The number of bits required to store an index in the range `0 .. BITS`.
+	</span><span class="kw">const </span>INDX: u8 = <span class="self">Self</span>::BITS.trailing_zeros() <span class="kw">as </span>u8;
 
-	<span class="doccomment">/// A mask over all bits that can be used as an index within the element.</span>
-	<span class="doccomment">/// This is the value with the least significant `INDX`-many bits set high.</span>
-	<span class="kw">const</span> <span class="ident">MASK</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="number">1</span>;
+	<span class="doccomment">/// A mask over all bits that can be used as an index within the element.
+	/// This is the value with the least significant `INDX`-many bits set high.
+	</span><span class="kw">const </span>MASK: u8 = <span class="self">Self</span>::BITS <span class="kw">as </span>u8 - <span class="number">1</span>;
 }
 
 <span class="doccomment">/** Description of a processor register.
@@ -236,46 +231,46 @@ This trait provides information used to describe processor registers. It only
 needs to contain constant values for `1` and `!0`; the rest of its information
 is contained in the presence or absence of its implementation on particular
 integers.
-**/</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">BitRegister</span>: <span class="ident">BitMemory</span> <span class="op">+</span> <span class="ident">BitOps</span> {
-	<span class="doccomment">/// The literal `1`.</span>
-	<span class="kw">const</span> <span class="ident">ONE</span>: <span class="self">Self</span>;
-	<span class="doccomment">/// The literal `!0`.</span>
-	<span class="kw">const</span> <span class="ident">ALL</span>: <span class="self">Self</span>;
+**/
+</span><span class="kw">pub trait </span>BitRegister: BitMemory + BitOps {
+	<span class="doccomment">/// The literal `1`.
+	</span><span class="kw">const </span>ONE: <span class="self">Self</span>;
+	<span class="doccomment">/// The literal `!0`.
+	</span><span class="kw">const </span>ALL: <span class="self">Self</span>;
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">memory</span> {
-	($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ident</span>),<span class="op">+</span> $(,)<span class="question-mark">?</span>) =&gt; { $(
-		<span class="kw">impl</span> <span class="ident">BitMemory</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span> {}
-		<span class="kw">impl</span> <span class="ident">seal::Sealed</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span> {}
-	)<span class="op">+</span> };
+<span class="macro">macro_rules! </span>memory {
+	($(<span class="macro-nonterminal">$t</span>:ident),+ $(,)<span class="question-mark">?</span>) =&gt; { $(
+		<span class="kw">impl </span>BitMemory <span class="kw">for </span><span class="macro-nonterminal">$t </span>{}
+		<span class="kw">impl </span>seal::Sealed <span class="kw">for </span><span class="macro-nonterminal">$t </span>{}
+	)+ };
 }
 
-<span class="macro">memory!</span>(<span class="ident">u8</span>, <span class="ident">u16</span>, <span class="ident">u32</span>, <span class="ident">u64</span>, <span class="ident">u128</span>, <span class="ident">usize</span>);
+<span class="macro">memory!</span>(u8, u16, u32, u64, u128, usize);
 
-<span class="macro">macro_rules!</span> <span class="ident">register</span> {
-	($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ident</span>),<span class="op">+</span> $(,)<span class="question-mark">?</span>) =&gt; { $(
-		<span class="kw">impl</span> <span class="ident">BitRegister</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span> {
-			<span class="kw">const</span> <span class="ident">ONE</span>: <span class="self">Self</span> <span class="op">=</span> <span class="number">1</span>;
-			<span class="kw">const</span> <span class="ident">ALL</span>: <span class="self">Self</span> <span class="op">=</span> <span class="op">!</span><span class="number">0</span>;
+<span class="macro">macro_rules! </span>register {
+	($(<span class="macro-nonterminal">$t</span>:ident),+ $(,)<span class="question-mark">?</span>) =&gt; { $(
+		<span class="kw">impl </span>BitRegister <span class="kw">for </span><span class="macro-nonterminal">$t </span>{
+			<span class="kw">const </span>ONE: <span class="self">Self </span>= <span class="number">1</span>;
+			<span class="kw">const </span>ALL: <span class="self">Self </span>= !<span class="number">0</span>;
 		}
-	)<span class="op">+</span> };
+	)+ };
 }
 
-<span class="macro">register!</span>(<span class="ident">u8</span>, <span class="ident">u16</span>, <span class="ident">u32</span>);
+<span class="macro">register!</span>(u8, u16, u32);
 
 <span class="doccomment">/** `u64` can only be used as a register on processors whose word size is at
 least 64 bits.
 
 This implementation is not present on targets with 32-bit processor words.
-**/</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;64&quot;</span>)]</span>
-<span class="kw">impl</span> <span class="ident">BitRegister</span> <span class="kw">for</span> <span class="ident">u64</span> {
-	<span class="kw">const</span> <span class="ident">ALL</span>: <span class="self">Self</span> <span class="op">=</span> <span class="op">!</span><span class="number">0</span>;
-	<span class="kw">const</span> <span class="ident">ONE</span>: <span class="self">Self</span> <span class="op">=</span> <span class="number">1</span>;
+**/
+</span><span class="attribute">#[cfg(target_pointer_width = <span class="string">&quot;64&quot;</span>)]
+</span><span class="kw">impl </span>BitRegister <span class="kw">for </span>u64 {
+	<span class="kw">const </span>ALL: <span class="self">Self </span>= !<span class="number">0</span>;
+	<span class="kw">const </span>ONE: <span class="self">Self </span>= <span class="number">1</span>;
 }
 
-<span class="macro">register!</span>(<span class="ident">usize</span>);
+<span class="macro">register!</span>(usize);
 
 <span class="doccomment">/** Computes the number of elements required to store some number of bits.
 
@@ -289,11 +284,11 @@ The number of elements `T` required to store `bits`.
 
 As this is a const function, when `bits` is a constant expression, this can be
 used to compute the size of an array type `[T; elts(bits)]`.
-**/</span>
-<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">elts</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">bits</span>: <span class="ident">usize</span>) -&gt; <span class="ident">usize</span> {
-	<span class="kw">let</span> <span class="ident">width</span> <span class="op">=</span> <span class="ident">mem::size_of</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>() <span class="op">*</span> <span class="number">8</span>;
-	<span class="ident">bits</span> <span class="op">/</span> <span class="ident">width</span> <span class="op">+</span> (<span class="ident">bits</span> <span class="op">%</span> <span class="ident">width</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span>) <span class="kw">as</span> <span class="ident">usize</span>
+**/
+</span><span class="attribute">#[doc(hidden)]
+</span><span class="kw">pub const fn </span>elts&lt;T&gt;(bits: usize) -&gt; usize {
+	<span class="kw">let </span>width = mem::size_of::&lt;T&gt;() * <span class="number">8</span>;
+	bits / width + (bits % width != <span class="number">0</span>) <span class="kw">as </span>usize
 }
 
 <span class="doccomment">/** Tests that a type is aligned to at least its size.
@@ -309,10 +304,10 @@ hold for the pointer representation to correctly function.
 # Returns
 
 `0` if the alignment is at least the size; `1` if the alignment is less.
-**/</span>
-<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">aligned_to_size</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>() -&gt; <span class="ident">usize</span> {
-	(<span class="ident">mem::align_of</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>() <span class="op">&lt;</span> <span class="ident">mem::size_of</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>()) <span class="kw">as</span> <span class="ident">usize</span>
+**/
+</span><span class="attribute">#[doc(hidden)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const fn </span>aligned_to_size&lt;T&gt;() -&gt; usize {
+	(mem::align_of::&lt;T&gt;() &lt; mem::size_of::&lt;T&gt;()) <span class="kw">as </span>usize
 }
 
 <span class="doccomment">/** Tests whether two types have compatible layouts.
@@ -331,50 +326,49 @@ Zero if `A` and `B` have equal alignments and sizes, non-zero if they do not.
 This function is designed to be used in the expression
 `const CHECK: [(): 0] = [(); cmp_layout::&lt;A, B&gt;()];`. It will cause a compiler
 error if the conditions do not hold.
-**/</span>
-<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">cmp_layout</span><span class="op">&lt;</span><span class="ident">A</span>, <span class="ident">B</span><span class="op">&gt;</span>() -&gt; <span class="ident">usize</span> {
-	(<span class="ident">mem::align_of</span>::<span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">mem::align_of</span>::<span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>()) <span class="kw">as</span> <span class="ident">usize</span>
-		<span class="op">+</span> (<span class="ident">mem::size_of</span>::<span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">mem::size_of</span>::<span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>()) <span class="kw">as</span> <span class="ident">usize</span>
+**/
+</span><span class="attribute">#[doc(hidden)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const fn </span>cmp_layout&lt;A, B&gt;() -&gt; usize {
+	(mem::align_of::&lt;A&gt;() != mem::align_of::&lt;B&gt;()) <span class="kw">as </span>usize
+		+ (mem::size_of::&lt;A&gt;() != mem::size_of::&lt;B&gt;()) <span class="kw">as </span>usize
 }
 
-<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-<span class="kw">mod</span> <span class="ident">seal</span> {
-	<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-	<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Sealed</span> {}
+<span class="attribute">#[doc(hidden)]
+</span><span class="kw">mod </span>seal {
+	<span class="attribute">#[doc(hidden)]
+	</span><span class="kw">pub trait </span>Sealed {}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-	<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-	<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::access</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+	<span class="kw">use super</span>::<span class="kw-2">*</span>;
+	<span class="kw">use </span><span class="kw">crate</span>::access::<span class="kw-2">*</span>;
 
-	<span class="attribute">#[<span class="ident">test</span>]</span>
-	<span class="kw">fn</span> <span class="ident">integer_properties</span>() {
-		<span class="macro">assert_eq!</span>(<span class="ident">aligned_to_size</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>(), <span class="number">0</span>);
-		<span class="macro">assert_eq!</span>(<span class="ident">aligned_to_size</span>::<span class="op">&lt;</span><span class="ident">BitSafeU8</span><span class="op">&gt;</span>(), <span class="number">0</span>);
-		<span class="macro">assert_eq!</span>(<span class="ident">cmp_layout</span>::<span class="op">&lt;</span><span class="ident">u8</span>, <span class="ident">BitSafeU8</span><span class="op">&gt;</span>(), <span class="number">0</span>);
+	<span class="attribute">#[test]
+	</span><span class="kw">fn </span>integer_properties() {
+		<span class="macro">assert_eq!</span>(aligned_to_size::&lt;u8&gt;(), <span class="number">0</span>);
+		<span class="macro">assert_eq!</span>(aligned_to_size::&lt;BitSafeU8&gt;(), <span class="number">0</span>);
+		<span class="macro">assert_eq!</span>(cmp_layout::&lt;u8, BitSafeU8&gt;(), <span class="number">0</span>);
 
-		<span class="macro">assert_eq!</span>(<span class="ident">aligned_to_size</span>::<span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span>(), <span class="number">0</span>);
-		<span class="macro">assert_eq!</span>(<span class="ident">aligned_to_size</span>::<span class="op">&lt;</span><span class="ident">BitSafeU16</span><span class="op">&gt;</span>(), <span class="number">0</span>);
-		<span class="macro">assert_eq!</span>(<span class="ident">cmp_layout</span>::<span class="op">&lt;</span><span class="ident">u16</span>, <span class="ident">BitSafeU16</span><span class="op">&gt;</span>(), <span class="number">0</span>);
+		<span class="macro">assert_eq!</span>(aligned_to_size::&lt;u16&gt;(), <span class="number">0</span>);
+		<span class="macro">assert_eq!</span>(aligned_to_size::&lt;BitSafeU16&gt;(), <span class="number">0</span>);
+		<span class="macro">assert_eq!</span>(cmp_layout::&lt;u16, BitSafeU16&gt;(), <span class="number">0</span>);
 
-		<span class="macro">assert_eq!</span>(<span class="ident">aligned_to_size</span>::<span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>(), <span class="number">0</span>);
-		<span class="macro">assert_eq!</span>(<span class="ident">aligned_to_size</span>::<span class="op">&lt;</span><span class="ident">BitSafeU32</span><span class="op">&gt;</span>(), <span class="number">0</span>);
-		<span class="macro">assert_eq!</span>(<span class="ident">cmp_layout</span>::<span class="op">&lt;</span><span class="ident">u32</span>, <span class="ident">BitSafeU32</span><span class="op">&gt;</span>(), <span class="number">0</span>);
+		<span class="macro">assert_eq!</span>(aligned_to_size::&lt;u32&gt;(), <span class="number">0</span>);
+		<span class="macro">assert_eq!</span>(aligned_to_size::&lt;BitSafeU32&gt;(), <span class="number">0</span>);
+		<span class="macro">assert_eq!</span>(cmp_layout::&lt;u32, BitSafeU32&gt;(), <span class="number">0</span>);
 
-		<span class="macro">assert_eq!</span>(<span class="ident">aligned_to_size</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>(), <span class="number">0</span>);
-		<span class="macro">assert_eq!</span>(<span class="ident">aligned_to_size</span>::<span class="op">&lt;</span><span class="ident">BitSafeUsize</span><span class="op">&gt;</span>(), <span class="number">0</span>);
-		<span class="macro">assert_eq!</span>(<span class="ident">cmp_layout</span>::<span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">BitSafeUsize</span><span class="op">&gt;</span>(), <span class="number">0</span>);
+		<span class="macro">assert_eq!</span>(aligned_to_size::&lt;usize&gt;(), <span class="number">0</span>);
+		<span class="macro">assert_eq!</span>(aligned_to_size::&lt;BitSafeUsize&gt;(), <span class="number">0</span>);
+		<span class="macro">assert_eq!</span>(cmp_layout::&lt;usize, BitSafeUsize&gt;(), <span class="number">0</span>);
 
-		<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;64&quot;</span>)]</span>
-		{
-			<span class="macro">assert_eq!</span>(<span class="ident">aligned_to_size</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>(), <span class="number">0</span>);
-			<span class="macro">assert_eq!</span>(<span class="ident">aligned_to_size</span>::<span class="op">&lt;</span><span class="ident">BitSafeU64</span><span class="op">&gt;</span>(), <span class="number">0</span>);
-			<span class="macro">assert_eq!</span>(<span class="ident">cmp_layout</span>::<span class="op">&lt;</span><span class="ident">u64</span>, <span class="ident">BitSafeU64</span><span class="op">&gt;</span>(), <span class="number">0</span>);
+		<span class="attribute">#[cfg(target_pointer_width = <span class="string">&quot;64&quot;</span>)]
+		</span>{
+			<span class="macro">assert_eq!</span>(aligned_to_size::&lt;u64&gt;(), <span class="number">0</span>);
+			<span class="macro">assert_eq!</span>(aligned_to_size::&lt;BitSafeU64&gt;(), <span class="number">0</span>);
+			<span class="macro">assert_eq!</span>(cmp_layout::&lt;u64, BitSafeU64&gt;(), <span class="number">0</span>);
 		}
 	}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

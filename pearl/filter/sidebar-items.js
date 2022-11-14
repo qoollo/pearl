@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["FilterResult","Filter result"]],"mod":[["bloom","Bloom filter"],["hierarchical","Hierarchical"],["range","Range filter"],["traits","Traits"]],"struct":[["CombinedFilter","Combined bloom and range filter"]]});
+window.SIDEBAR_ITEMS = {"enum":[["FilterResult","Filter result"]],"mod":[["bloom","Bloom filter"],["hierarchical","Hierarchical"],["range","Range filter"],["traits","Traits"]],"struct":[["CombinedFilter","Combined bloom and range filter"]]};

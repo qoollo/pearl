@@ -1,11 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/io_uring/constants.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>constants.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container">
-                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../rio/index.html">
-                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/io_uring/constants.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>constants.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container">
+                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../rio/index.html">
+                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -67,68 +62,67 @@
 <span id="60">60</span>
 <span id="61">61</span>
 <span id="62">62</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_NOP</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_READV</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_WRITEV</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_FSYNC</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">3</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_READ_FIXED</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">4</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_WRITE_FIXED</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">5</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_POLL_ADD</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">6</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_POLL_REMOVE</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">7</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_SYNC_FILE_RANGE</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">8</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_SENDMSG</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">9</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_RECVMSG</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_TIMEOUT</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">11</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_TIMEOUT_REMOVE</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">12</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_ACCEPT</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">13</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_ASYNC_CANCEL</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">14</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_LINK_TIMEOUT</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">15</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_CONNECT</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">16</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_FALLOCATE</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">17</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_OPENAT</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">18</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_CLOSE</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">19</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_FILES_UPDATE</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">20</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_STATX</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">21</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_READ</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">22</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_WRITE</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">23</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_FADVISE</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">24</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_MADVISE</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">25</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_SEND</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">26</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_RECV</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">27</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_OPENAT2</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">28</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OP_LAST</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">29</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IOSQE_FIXED_FILE</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IOSQE_IO_DRAIN</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IOSQE_IO_LINK</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">4</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IOSQE_IO_HARDLINK</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">8</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IOSQE_ASYNC</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">16</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IOSQE_PERSONALITY</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">32</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_SETUP_IOPOLL</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_SETUP_SQPOLL</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_SETUP_SQ_AFF</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">4</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_SETUP_CQSIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">8</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_SETUP_CLAMP</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">16</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_FSYNC_DATASYNC</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_TIMEOUT_ABS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OFF_SQ_RING</span>: <span class="ident">i64</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OFF_CQ_RING</span>: <span class="ident">i64</span> <span class="op">=</span> <span class="number">0x0800_0000</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_OFF_SQES</span>: <span class="ident">i64</span> <span class="op">=</span> <span class="number">0x1000_0000</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_SQ_NEED_WAKEUP</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_ENTER_GETEVENTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_ENTER_SQ_WAKEUP</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_FEAT_SINGLE_MMAP</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_FEAT_NODROP</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_FEAT_SUBMIT_STABLE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">4</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_FEAT_RW_CUR_POS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">8</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_REGISTER_BUFFERS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_UNREGISTER_BUFFERS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_REGISTER_FILES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_UNREGISTER_FILES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">3</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_REGISTER_EVENTFD</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">4</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_UNREGISTER_EVENTFD</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_REGISTER_FILES_UPDATE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">6</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IORING_REGISTER_EVENTFD_ASYNC</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
+</pre><pre class="rust"><code><span class="attribute">#![allow(unused)]
+</span><span class="kw">pub const </span>IORING_OP_NOP: u8 = <span class="number">0</span>;
+<span class="kw">pub const </span>IORING_OP_READV: u8 = <span class="number">1</span>;
+<span class="kw">pub const </span>IORING_OP_WRITEV: u8 = <span class="number">2</span>;
+<span class="kw">pub const </span>IORING_OP_FSYNC: u8 = <span class="number">3</span>;
+<span class="kw">pub const </span>IORING_OP_READ_FIXED: u8 = <span class="number">4</span>;
+<span class="kw">pub const </span>IORING_OP_WRITE_FIXED: u8 = <span class="number">5</span>;
+<span class="kw">pub const </span>IORING_OP_POLL_ADD: u8 = <span class="number">6</span>;
+<span class="kw">pub const </span>IORING_OP_POLL_REMOVE: u8 = <span class="number">7</span>;
+<span class="kw">pub const </span>IORING_OP_SYNC_FILE_RANGE: u8 = <span class="number">8</span>;
+<span class="kw">pub const </span>IORING_OP_SENDMSG: u8 = <span class="number">9</span>;
+<span class="kw">pub const </span>IORING_OP_RECVMSG: u8 = <span class="number">10</span>;
+<span class="kw">pub const </span>IORING_OP_TIMEOUT: u8 = <span class="number">11</span>;
+<span class="kw">pub const </span>IORING_OP_TIMEOUT_REMOVE: u8 = <span class="number">12</span>;
+<span class="kw">pub const </span>IORING_OP_ACCEPT: u8 = <span class="number">13</span>;
+<span class="kw">pub const </span>IORING_OP_ASYNC_CANCEL: u8 = <span class="number">14</span>;
+<span class="kw">pub const </span>IORING_OP_LINK_TIMEOUT: u8 = <span class="number">15</span>;
+<span class="kw">pub const </span>IORING_OP_CONNECT: u8 = <span class="number">16</span>;
+<span class="kw">pub const </span>IORING_OP_FALLOCATE: u8 = <span class="number">17</span>;
+<span class="kw">pub const </span>IORING_OP_OPENAT: u8 = <span class="number">18</span>;
+<span class="kw">pub const </span>IORING_OP_CLOSE: u8 = <span class="number">19</span>;
+<span class="kw">pub const </span>IORING_OP_FILES_UPDATE: u8 = <span class="number">20</span>;
+<span class="kw">pub const </span>IORING_OP_STATX: u8 = <span class="number">21</span>;
+<span class="kw">pub const </span>IORING_OP_READ: u8 = <span class="number">22</span>;
+<span class="kw">pub const </span>IORING_OP_WRITE: u8 = <span class="number">23</span>;
+<span class="kw">pub const </span>IORING_OP_FADVISE: u8 = <span class="number">24</span>;
+<span class="kw">pub const </span>IORING_OP_MADVISE: u8 = <span class="number">25</span>;
+<span class="kw">pub const </span>IORING_OP_SEND: u8 = <span class="number">26</span>;
+<span class="kw">pub const </span>IORING_OP_RECV: u8 = <span class="number">27</span>;
+<span class="kw">pub const </span>IORING_OP_OPENAT2: u8 = <span class="number">28</span>;
+<span class="kw">pub const </span>IORING_OP_LAST: u8 = <span class="number">29</span>;
+<span class="kw">pub const </span>IOSQE_FIXED_FILE: u8 = <span class="number">1</span>;
+<span class="kw">pub const </span>IOSQE_IO_DRAIN: u8 = <span class="number">2</span>;
+<span class="kw">pub const </span>IOSQE_IO_LINK: u8 = <span class="number">4</span>;
+<span class="kw">pub const </span>IOSQE_IO_HARDLINK: u8 = <span class="number">8</span>;
+<span class="kw">pub const </span>IOSQE_ASYNC: u8 = <span class="number">16</span>;
+<span class="kw">pub const </span>IOSQE_PERSONALITY: u8 = <span class="number">32</span>;
+<span class="kw">pub const </span>IORING_SETUP_IOPOLL: u32 = <span class="number">1</span>;
+<span class="kw">pub const </span>IORING_SETUP_SQPOLL: u32 = <span class="number">2</span>;
+<span class="kw">pub const </span>IORING_SETUP_SQ_AFF: u32 = <span class="number">4</span>;
+<span class="kw">pub const </span>IORING_SETUP_CQSIZE: u32 = <span class="number">8</span>;
+<span class="kw">pub const </span>IORING_SETUP_CLAMP: u32 = <span class="number">16</span>;
+<span class="kw">pub const </span>IORING_FSYNC_DATASYNC: u8 = <span class="number">1</span>;
+<span class="kw">pub const </span>IORING_TIMEOUT_ABS: u32 = <span class="number">1</span>;
+<span class="kw">pub const </span>IORING_OFF_SQ_RING: i64 = <span class="number">0</span>;
+<span class="kw">pub const </span>IORING_OFF_CQ_RING: i64 = <span class="number">0x0800_0000</span>;
+<span class="kw">pub const </span>IORING_OFF_SQES: i64 = <span class="number">0x1000_0000</span>;
+<span class="kw">pub const </span>IORING_SQ_NEED_WAKEUP: u32 = <span class="number">1</span>;
+<span class="kw">pub const </span>IORING_ENTER_GETEVENTS: u32 = <span class="number">1</span>;
+<span class="kw">pub const </span>IORING_ENTER_SQ_WAKEUP: u32 = <span class="number">2</span>;
+<span class="kw">pub const </span>IORING_FEAT_SINGLE_MMAP: u32 = <span class="number">1</span>;
+<span class="kw">pub const </span>IORING_FEAT_NODROP: u32 = <span class="number">2</span>;
+<span class="kw">pub const </span>IORING_FEAT_SUBMIT_STABLE: u32 = <span class="number">4</span>;
+<span class="kw">pub const </span>IORING_FEAT_RW_CUR_POS: u32 = <span class="number">8</span>;
+<span class="kw">pub const </span>IORING_REGISTER_BUFFERS: u32 = <span class="number">0</span>;
+<span class="kw">pub const </span>IORING_UNREGISTER_BUFFERS: u32 = <span class="number">1</span>;
+<span class="kw">pub const </span>IORING_REGISTER_FILES: u32 = <span class="number">2</span>;
+<span class="kw">pub const </span>IORING_UNREGISTER_FILES: u32 = <span class="number">3</span>;
+<span class="kw">pub const </span>IORING_REGISTER_EVENTFD: u32 = <span class="number">4</span>;
+<span class="kw">pub const </span>IORING_UNREGISTER_EVENTFD: u32 = <span class="number">5</span>;
+<span class="kw">pub const </span>IORING_REGISTER_FILES_UPDATE: u32 = <span class="number">6</span>;
+<span class="kw">pub const </span>IORING_REGISTER_EVENTFD_ASYNC: u32 = <span class="number">7</span>;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

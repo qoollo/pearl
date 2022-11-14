@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/ptr/single.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>single.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/ptr/single.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>single.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1583,62 +1578,62 @@
 <span id="1578">1578</span>
 <span id="1579">1579</span>
 <span id="1580">1580</span>
-</pre><pre class="rust"><code><span class="doccomment">//! A pointer to a single bit.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! A pointer to a single bit.
 
-<span class="kw">use</span> <span class="ident">core</span>::{
-	<span class="ident">any</span>,
-	<span class="ident">cmp</span>,
-	<span class="ident">convert</span>::{
-		<span class="ident">Infallible</span>,
-		<span class="ident">TryFrom</span>,
-		<span class="ident">TryInto</span>,
+</span><span class="kw">use </span>core::{
+	any,
+	cmp,
+	convert::{
+		Infallible,
+		TryFrom,
+		TryInto,
 	},
-	<span class="ident">fmt</span>::{
+	fmt::{
 		<span class="self">self</span>,
-		<span class="ident">Debug</span>,
-		<span class="ident">Display</span>,
-		<span class="ident">Formatter</span>,
-		<span class="ident">Pointer</span>,
+		Debug,
+		Display,
+		Formatter,
+		Pointer,
 	},
-	<span class="ident">hash</span>::{
-		<span class="ident">Hash</span>,
-		<span class="ident">Hasher</span>,
+	hash::{
+		Hash,
+		Hasher,
 	},
-	<span class="ident">marker::PhantomData</span>,
-	<span class="ident">ptr</span>,
+	marker::PhantomData,
+	ptr,
 };
 
-<span class="kw">use</span> <span class="ident">funty::IsNumber</span>;
-<span class="kw">use</span> <span class="ident">wyz</span>::{
-	<span class="ident">comu::Frozen</span>,
-	<span class="ident">fmt::FmtForward</span>,
+<span class="kw">use </span>funty::IsNumber;
+<span class="kw">use </span>wyz::{
+	comu::Frozen,
+	fmt::FmtForward,
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::{
-	<span class="ident">Address</span>,
-	<span class="ident">AddressExt</span>,
-	<span class="ident">BitPtrRange</span>,
-	<span class="ident">BitRef</span>,
-	<span class="ident">BitSpan</span>,
-	<span class="ident">BitSpanError</span>,
-	<span class="ident">Const</span>,
-	<span class="ident">MisalignError</span>,
-	<span class="ident">Mut</span>,
-	<span class="ident">Mutability</span>,
-	<span class="ident">NullPtrError</span>,
+<span class="kw">use super</span>::{
+	Address,
+	AddressExt,
+	BitPtrRange,
+	BitRef,
+	BitSpan,
+	BitSpanError,
+	Const,
+	MisalignError,
+	Mut,
+	Mutability,
+	NullPtrError,
 };
-<span class="kw">use</span> <span class="kw">crate</span>::{
-	<span class="ident">access::BitAccess</span>,
-	<span class="ident">devel</span> <span class="kw">as</span> <span class="ident">dvl</span>,
-	<span class="ident">index</span>::{
-		<span class="ident">BitIdx</span>,
-		<span class="ident">BitIdxError</span>,
+<span class="kw">use crate</span>::{
+	access::BitAccess,
+	devel <span class="kw">as </span>dvl,
+	index::{
+		BitIdx,
+		BitIdxError,
 	},
-	<span class="ident">order</span>::{
-		<span class="ident">BitOrder</span>,
-		<span class="ident">Lsb0</span>,
+	order::{
+		BitOrder,
+		Lsb0,
 	},
-	<span class="ident">store::BitStore</span>,
+	store::BitStore,
 };
 
 <span class="doccomment">/** Pointer to an individual bit in a memory element. Analagous to `*bool`.
@@ -1687,1482 +1682,1481 @@ These pointers can never be null, or misaligned.
 
 [`bitvec`]: crate
 [`bitvec::ptr`]: crate::ptr
-**/</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>, <span class="ident">packed</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span> <span class="op">=</span> <span class="ident">Lsb0</span>, <span class="ident">T</span> <span class="op">=</span> <span class="ident">usize</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="attribute">#[repr(C, packed)]
+</span><span class="kw">pub struct </span>BitPtr&lt;M, O = Lsb0, T = usize&gt;
+<span class="kw">where
+	</span>M: Mutability,
+	O: BitOrder,
+	T: BitStore,
 {
-	<span class="doccomment">/// Memory addresses must be well-aligned and non-null.</span>
-	<span class="ident">addr</span>: <span class="ident">Address</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">T</span><span class="op">&gt;</span>,
-	<span class="doccomment">/// The index of the referent bit within `*addr`.</span>
-	<span class="ident">head</span>: <span class="ident">BitIdx</span><span class="op">&lt;</span><span class="ident">T::Mem</span><span class="op">&gt;</span>,
-	<span class="doccomment">/// The ordering used to select the bit at `head` in `*addr`.</span>
-	<span class="ident">_ord</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">O</span><span class="op">&gt;</span>,
+	<span class="doccomment">/// Memory addresses must be well-aligned and non-null.
+	</span>addr: Address&lt;M, T&gt;,
+	<span class="doccomment">/// The index of the referent bit within `*addr`.
+	</span>head: BitIdx&lt;T::Mem&gt;,
+	<span class="doccomment">/// The ordering used to select the bit at `head` in `*addr`.
+	</span>_ord: PhantomData&lt;O&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;M, O, T&gt; BitPtr&lt;M, O, T&gt;
+<span class="kw">where
+	</span>M: Mutability,
+	O: BitOrder,
+	T: BitStore,
 {
-	<span class="doccomment">/// The dangling pointer. This selects the starting bit of the `T` dangling</span>
-	<span class="doccomment">/// address.</span>
-	<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DANGLING</span>: <span class="self">Self</span> <span class="op">=</span> <span class="self">Self</span> {
-		<span class="ident">addr</span>: <span class="ident">Address::DANGLING</span>,
-		<span class="ident">head</span>: <span class="ident">BitIdx::ZERO</span>,
-		<span class="ident">_ord</span>: <span class="ident">PhantomData</span>,
+	<span class="doccomment">/// The dangling pointer. This selects the starting bit of the `T` dangling
+	/// address.
+	</span><span class="kw">pub const </span>DANGLING: <span class="self">Self </span>= <span class="self">Self </span>{
+		addr: Address::DANGLING,
+		head: BitIdx::ZERO,
+		_ord: PhantomData,
 	};
 
-	<span class="doccomment">/// Loads the address field, sidestepping any alignment problems.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This is the only safe way to access `(&amp;self).addr`. Do not perform field</span>
-	<span class="doccomment">/// access on `.addr` through a reference except through this method.</span>
-	<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Address</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="kw">unsafe</span> { <span class="macro">ptr::addr_of!</span>(<span class="self">self</span>.<span class="ident">addr</span>).<span class="ident">read_unaligned</span>() }
+	<span class="doccomment">/// Loads the address field, sidestepping any alignment problems.
+	///
+	/// This is the only safe way to access `(&amp;self).addr`. Do not perform field
+	/// access on `.addr` through a reference except through this method.
+	</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_addr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Address&lt;M, T&gt; {
+		<span class="kw">unsafe </span>{ <span class="macro">ptr::addr_of!</span>(<span class="self">self</span>.addr).read_unaligned() }
 	}
 
-	<span class="doccomment">/// Tries to construct a `BitPtr` from a memory location and a bit index.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Type Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `A`: This accepts anything that may be used as a memory address.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `addr`: The memory address to use in the `BitPtr`. If this value</span>
-	<span class="doccomment">///   violates the [`Address`] rules, then its conversion error will be</span>
-	<span class="doccomment">///   returned.</span>
-	<span class="doccomment">/// - `head`: The index of the bit in `*addr` that this pointer selects. If</span>
-	<span class="doccomment">///   this value violates the [`BitIdx`] rules, then its conversion error</span>
-	<span class="doccomment">///   will be returned.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// A new `BitPtr`, selecting the memory location `addr` and the bit `head`.</span>
-	<span class="doccomment">/// If either `addr` or `head` are invalid values, then this propagates</span>
-	<span class="doccomment">/// their error.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`Address`]: crate::ptr::Address</span>
-	<span class="doccomment">/// [`BitIdx`]: crate::index::BitIdx</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_new</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>(<span class="ident">addr</span>: <span class="ident">A</span>, <span class="ident">head</span>: <span class="ident">u8</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span>
-	<span class="kw">where</span>
-		<span class="ident">A</span>: <span class="ident">TryInto</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-		<span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">A::Error</span><span class="op">&gt;</span>,
+	<span class="doccomment">/// Tries to construct a `BitPtr` from a memory location and a bit index.
+	///
+	/// # Type Parameters
+	///
+	/// - `A`: This accepts anything that may be used as a memory address.
+	///
+	/// # Parameters
+	///
+	/// - `addr`: The memory address to use in the `BitPtr`. If this value
+	///   violates the [`Address`] rules, then its conversion error will be
+	///   returned.
+	/// - `head`: The index of the bit in `*addr` that this pointer selects. If
+	///   this value violates the [`BitIdx`] rules, then its conversion error
+	///   will be returned.
+	///
+	/// # Returns
+	///
+	/// A new `BitPtr`, selecting the memory location `addr` and the bit `head`.
+	/// If either `addr` or `head` are invalid values, then this propagates
+	/// their error.
+	///
+	/// [`Address`]: crate::ptr::Address
+	/// [`BitIdx`]: crate::index::BitIdx
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub fn </span>try_new&lt;A&gt;(addr: A, head: u8) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, BitPtrError&lt;T&gt;&gt;
+	<span class="kw">where
+		</span>A: TryInto&lt;Address&lt;M, T&gt;&gt;,
+		BitPtrError&lt;T&gt;: From&lt;A::Error&gt;,
 	{
-		<span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">addr</span>.<span class="ident">try_into</span>()<span class="question-mark">?</span>, <span class="ident">BitIdx::new</span>(<span class="ident">head</span>)<span class="question-mark">?</span>))
+		<span class="prelude-val">Ok</span>(<span class="self">Self</span>::new(addr.try_into()<span class="question-mark">?</span>, BitIdx::new(head)<span class="question-mark">?</span>))
 	}
 
-	<span class="doccomment">/// Constructs a `BitPtr` from a memory location and a bit index.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Since this requires that the address and bit index are already</span>
-	<span class="doccomment">/// well-formed, it can assemble the `BitPtr` without inspecting their</span>
-	<span class="doccomment">/// values.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `addr`: A well-formed memory address of `T`.</span>
-	<span class="doccomment">/// - `head`: A well-formed bit index within `T`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// A `BitPtr` selecting the `head` bit in the location `addr`.</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">addr</span>: <span class="ident">Address</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">head</span>: <span class="ident">BitIdx</span><span class="op">&lt;</span><span class="ident">T::Mem</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-		<span class="self">Self</span> {
-			<span class="ident">addr</span>,
-			<span class="ident">head</span>,
-			<span class="ident">_ord</span>: <span class="ident">PhantomData</span>,
+	<span class="doccomment">/// Constructs a `BitPtr` from a memory location and a bit index.
+	///
+	/// Since this requires that the address and bit index are already
+	/// well-formed, it can assemble the `BitPtr` without inspecting their
+	/// values.
+	///
+	/// # Parameters
+	///
+	/// - `addr`: A well-formed memory address of `T`.
+	/// - `head`: A well-formed bit index within `T`.
+	///
+	/// # Returns
+	///
+	/// A `BitPtr` selecting the `head` bit in the location `addr`.
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub fn </span>new(addr: Address&lt;M, T&gt;, head: BitIdx&lt;T::Mem&gt;) -&gt; <span class="self">Self </span>{
+		<span class="self">Self </span>{
+			addr,
+			head,
+			_ord: PhantomData,
 		}
 	}
 
-	<span class="doccomment">/// Decomposes the pointer into its element address and bit index.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `self`</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `.0`: The memory address in which the referent bit is located.</span>
-	<span class="doccomment">/// - `.1`: The index of the referent bit within `*.0`.</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">raw_parts</span>(<span class="self">self</span>) -&gt; (<span class="ident">Address</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">BitIdx</span><span class="op">&lt;</span><span class="ident">T::Mem</span><span class="op">&gt;</span>) {
-		(<span class="self">self</span>.<span class="ident">addr</span>, <span class="self">self</span>.<span class="ident">head</span>)
+	<span class="doccomment">/// Decomposes the pointer into its element address and bit index.
+	///
+	/// # Parameters
+	///
+	/// - `self`
+	///
+	/// # Returns
+	///
+	/// - `.0`: The memory address in which the referent bit is located.
+	/// - `.1`: The index of the referent bit within `*.0`.
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub fn </span>raw_parts(<span class="self">self</span>) -&gt; (Address&lt;M, T&gt;, BitIdx&lt;T::Mem&gt;) {
+		(<span class="self">self</span>.addr, <span class="self">self</span>.head)
 	}
 
-	<span class="doccomment">/// Gets just the head counter.</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;alloc&quot;</span>)]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">head</span>(<span class="self">self</span>) -&gt; <span class="ident">BitIdx</span><span class="op">&lt;</span><span class="ident">T::Mem</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">head</span>
+	<span class="doccomment">/// Gets just the head counter.
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(feature = <span class="string">&quot;alloc&quot;</span>)]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>head(<span class="self">self</span>) -&gt; BitIdx&lt;T::Mem&gt; {
+		<span class="self">self</span>.head
 	}
 
-	<span class="doccomment">/// Produces a `BitSpan`, starting at `self` and running for `bits`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `self`: The base bit-address of the returned span descriptor.</span>
-	<span class="doccomment">/// - `bits`: The length in bits of the returned span descriptor.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This returns an error if the combination of `self` and `bits` violates</span>
-	<span class="doccomment">/// any of `BitSpan`’s requirements; otherwise, it encodes `self` and `bits`</span>
-	<span class="doccomment">/// into a span descriptor and returns it. Conversion into a `BitSlice`</span>
-	<span class="doccomment">/// pointer or reference is left to the caller.</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">span</span>(
+	<span class="doccomment">/// Produces a `BitSpan`, starting at `self` and running for `bits`.
+	///
+	/// # Parameters
+	///
+	/// - `self`: The base bit-address of the returned span descriptor.
+	/// - `bits`: The length in bits of the returned span descriptor.
+	///
+	/// # Returns
+	///
+	/// This returns an error if the combination of `self` and `bits` violates
+	/// any of `BitSpan`’s requirements; otherwise, it encodes `self` and `bits`
+	/// into a span descriptor and returns it. Conversion into a `BitSlice`
+	/// pointer or reference is left to the caller.
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>span(
 		<span class="self">self</span>,
-		<span class="ident">bits</span>: <span class="ident">usize</span>,
-	) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BitSpan</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">BitSpanError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-		<span class="ident">BitSpan::new</span>(<span class="self">self</span>.<span class="ident">addr</span>, <span class="self">self</span>.<span class="ident">head</span>, <span class="ident">bits</span>)
+		bits: usize,
+	) -&gt; <span class="prelude-ty">Result</span>&lt;BitSpan&lt;M, O, T&gt;, BitSpanError&lt;T&gt;&gt; {
+		BitSpan::new(<span class="self">self</span>.addr, <span class="self">self</span>.head, bits)
 	}
 
-	<span class="doccomment">/// Produces a `BitSpan`, starting at `self` and running for `bits`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This does not perform any validity checking; it only encodes the</span>
-	<span class="doccomment">/// arguments into a `BitSpan`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `self`: The base bit-address of the returned span descriptor.</span>
-	<span class="doccomment">/// - `bits`: The length in bits of the returned span descriptor.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// `self` and `bits` encoded into a `BitSpan`. This `BitSpan` may be</span>
-	<span class="doccomment">/// semantically invalid, and it may have modulated its length.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This should only be called with values that had previously been</span>
-	<span class="doccomment">/// extracted from a `BitSpan`.</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">span_unchecked</span>(<span class="self">self</span>, <span class="ident">bits</span>: <span class="ident">usize</span>) -&gt; <span class="ident">BitSpan</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="ident">BitSpan::new_unchecked</span>(<span class="self">self</span>.<span class="ident">addr</span>, <span class="self">self</span>.<span class="ident">head</span>, <span class="ident">bits</span>)
+	<span class="doccomment">/// Produces a `BitSpan`, starting at `self` and running for `bits`.
+	///
+	/// This does not perform any validity checking; it only encodes the
+	/// arguments into a `BitSpan`.
+	///
+	/// # Parameters
+	///
+	/// - `self`: The base bit-address of the returned span descriptor.
+	/// - `bits`: The length in bits of the returned span descriptor.
+	///
+	/// # Returns
+	///
+	/// `self` and `bits` encoded into a `BitSpan`. This `BitSpan` may be
+	/// semantically invalid, and it may have modulated its length.
+	///
+	/// # Safety
+	///
+	/// This should only be called with values that had previously been
+	/// extracted from a `BitSpan`.
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe fn </span>span_unchecked(<span class="self">self</span>, bits: usize) -&gt; BitSpan&lt;M, O, T&gt; {
+		BitSpan::new_unchecked(<span class="self">self</span>.addr, <span class="self">self</span>.head, bits)
 	}
 
-	<span class="doccomment">/// Produces a pointer range starting at `self` and running for `count`</span>
-	<span class="doccomment">/// bits.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This calls `self.add(count)`, then bundles the resulting pointer as the</span>
-	<span class="doccomment">/// high end of the produced range.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `self`: The starting pointer of the produced range.</span>
-	<span class="doccomment">/// - `count`: The number of bits that the produced range includes.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// A half-open range of pointers, beginning at (and including) `self`,</span>
-	<span class="doccomment">/// running for `count` bits, and ending at (and excluding)</span>
-	<span class="doccomment">/// `self.add(count)`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// `count` cannot violate the constraints in [`add`].</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`add`]: Self::add</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">range</span>(<span class="self">self</span>, <span class="ident">count</span>: <span class="ident">usize</span>) -&gt; <span class="ident">BitPtrRange</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="ident">BitPtrRange</span> {
-			<span class="ident">start</span>: <span class="self">self</span>,
-			<span class="ident">end</span>: <span class="self">self</span>.<span class="ident">add</span>(<span class="ident">count</span>),
+	<span class="doccomment">/// Produces a pointer range starting at `self` and running for `count`
+	/// bits.
+	///
+	/// This calls `self.add(count)`, then bundles the resulting pointer as the
+	/// high end of the produced range.
+	///
+	/// # Parameters
+	///
+	/// - `self`: The starting pointer of the produced range.
+	/// - `count`: The number of bits that the produced range includes.
+	///
+	/// # Returns
+	///
+	/// A half-open range of pointers, beginning at (and including) `self`,
+	/// running for `count` bits, and ending at (and excluding)
+	/// `self.add(count)`.
+	///
+	/// # Safety
+	///
+	/// `count` cannot violate the constraints in [`add`].
+	///
+	/// [`add`]: Self::add
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub unsafe fn </span>range(<span class="self">self</span>, count: usize) -&gt; BitPtrRange&lt;M, O, T&gt; {
+		BitPtrRange {
+			start: <span class="self">self</span>,
+			end: <span class="self">self</span>.add(count),
 		}
 	}
 
-	<span class="doccomment">/// Converts a bit-pointer into a proxy bit-reference.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The pointer must be valid to dereference.</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">into_bitref</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="self">self</span>) -&gt; <span class="ident">BitRef</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="ident">BitRef::from_bitptr</span>(<span class="self">self</span>)
+	<span class="doccomment">/// Converts a bit-pointer into a proxy bit-reference.
+	///
+	/// # Safety
+	///
+	/// The pointer must be valid to dereference.
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub unsafe fn </span>into_bitref&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="self">self</span>) -&gt; BitRef&lt;<span class="lifetime">&#39;a</span>, M, O, T&gt; {
+		BitRef::from_bitptr(<span class="self">self</span>)
 	}
 
-	<span class="doccomment">/// Removes write permissions from a bit-pointer.</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">immut</span>(<span class="self">self</span>) -&gt; <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="self">Self</span> { <span class="ident">addr</span>, <span class="ident">head</span>, .. } <span class="op">=</span> <span class="self">self</span>;
-		<span class="ident">BitPtr</span> {
-			<span class="ident">addr</span>: <span class="ident">addr</span>.<span class="ident">immut</span>(),
-			<span class="ident">head</span>,
-			..<span class="ident">BitPtr::DANGLING</span>
+	<span class="doccomment">/// Removes write permissions from a bit-pointer.
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub fn </span>immut(<span class="self">self</span>) -&gt; BitPtr&lt;Const, O, T&gt; {
+		<span class="kw">let </span><span class="self">Self </span>{ addr, head, .. } = <span class="self">self</span>;
+		BitPtr {
+			addr: addr.immut(),
+			head,
+			..BitPtr::DANGLING
 		}
 	}
 
-	<span class="doccomment">/// Adds write permissions to a bit-pointer.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This pointer must have been derived from a `*mut` pointer.</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">assert_mut</span>(<span class="self">self</span>) -&gt; <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="self">Self</span> { <span class="ident">addr</span>, <span class="ident">head</span>, .. } <span class="op">=</span> <span class="self">self</span>;
-		<span class="ident">BitPtr</span> {
-			<span class="ident">addr</span>: <span class="ident">addr</span>.<span class="ident">assert_mut</span>(),
-			<span class="ident">head</span>,
-			..<span class="ident">BitPtr::DANGLING</span>
+	<span class="doccomment">/// Adds write permissions to a bit-pointer.
+	///
+	/// # Safety
+	///
+	/// This pointer must have been derived from a `*mut` pointer.
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub unsafe fn </span>assert_mut(<span class="self">self</span>) -&gt; BitPtr&lt;Mut, O, T&gt; {
+		<span class="kw">let </span><span class="self">Self </span>{ addr, head, .. } = <span class="self">self</span>;
+		BitPtr {
+			addr: addr.assert_mut(),
+			head,
+			..BitPtr::DANGLING
 		}
 	}
 
-	<span class="doccomment">/// Freezes the pointer, forbidding direct mutation.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This is used as a necessary prerequisite to all mutation of memory.</span>
-	<span class="doccomment">/// `BitPtr` uses an implementation scoped to `Frozen&lt;_&gt;` to perform</span>
-	<span class="doccomment">/// alias-aware writes; see below.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">freeze</span>(<span class="self">self</span>) -&gt; <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Frozen</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="self">Self</span> { <span class="ident">addr</span>, <span class="ident">head</span>, .. } <span class="op">=</span> <span class="self">self</span>;
-		<span class="ident">BitPtr</span> {
-			<span class="ident">addr</span>: <span class="ident">addr</span>.<span class="ident">freeze</span>(),
-			<span class="ident">head</span>,
-			..<span class="ident">BitPtr::DANGLING</span>
+	<span class="doccomment">/// Freezes the pointer, forbidding direct mutation.
+	///
+	/// This is used as a necessary prerequisite to all mutation of memory.
+	/// `BitPtr` uses an implementation scoped to `Frozen&lt;_&gt;` to perform
+	/// alias-aware writes; see below.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>freeze(<span class="self">self</span>) -&gt; BitPtr&lt;Frozen&lt;M&gt;, O, T&gt; {
+		<span class="kw">let </span><span class="self">Self </span>{ addr, head, .. } = <span class="self">self</span>;
+		BitPtr {
+			addr: addr.freeze(),
+			head,
+			..BitPtr::DANGLING
 		}
 	}
 
-	<span class="comment">//  `pointer` inherent API</span>
+	<span class="comment">//  `pointer` inherent API
 
-	<span class="doccomment">/// Tests if a bit-pointer is the null value.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This is always false, as `BitPtr` is a `NonNull` internally. Use</span>
-	<span class="doccomment">/// `Option&lt;BitPtr&gt;` to express the potential for a null pointer.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::is_null`](https://doc.rust-lang.org/std/primitive.pointer.html#method.is_null)</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="attribute">#[<span class="ident">deprecated</span> <span class="op">=</span> <span class="string">&quot;`BitPtr` is never null&quot;</span>]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_null</span>(<span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-		<span class="bool-val">false</span>
+	</span><span class="doccomment">/// Tests if a bit-pointer is the null value.
+	///
+	/// This is always false, as `BitPtr` is a `NonNull` internally. Use
+	/// `Option&lt;BitPtr&gt;` to express the potential for a null pointer.
+	///
+	/// # Original
+	///
+	/// [`pointer::is_null`](https://doc.rust-lang.org/std/primitive.pointer.html#method.is_null)
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	#[deprecated = <span class="string">&quot;`BitPtr` is never null&quot;</span>]
+	</span><span class="kw">pub fn </span>is_null(<span class="self">self</span>) -&gt; bool {
+		<span class="bool-val">false
+	</span>}
+
+	<span class="doccomment">/// Casts to a bit-pointer of another storage type, preserving the
+	/// bit-ordering and mutability permissions.
+	///
+	/// # Original
+	///
+	/// [`pointer::cast`](https://doc.rust-lang.org/std/primitive.pointer.html#method.cast)
+	///
+	/// # Behavior
+	///
+	/// This is not a free typecast! It encodes the pointer as a crate-internal
+	/// span descriptor, casts the span descriptor to the `U` storage element
+	/// parameter, then decodes the result. This preserves general correctness,
+	/// but will likely change both the virtual and physical bits addressed by
+	/// this pointer.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub fn </span>cast&lt;U&gt;(<span class="self">self</span>) -&gt; BitPtr&lt;M, O, U&gt;
+	<span class="kw">where </span>U: BitStore {
+		<span class="kw">let </span>(addr, head, <span class="kw">_</span>) =
+			<span class="kw">unsafe </span>{ <span class="self">self</span>.span_unchecked(<span class="number">1</span>) }.cast::&lt;U&gt;().raw_parts();
+		BitPtr::new(addr, head)
 	}
 
-	<span class="doccomment">/// Casts to a bit-pointer of another storage type, preserving the</span>
-	<span class="doccomment">/// bit-ordering and mutability permissions.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::cast`](https://doc.rust-lang.org/std/primitive.pointer.html#method.cast)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Behavior</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This is not a free typecast! It encodes the pointer as a crate-internal</span>
-	<span class="doccomment">/// span descriptor, casts the span descriptor to the `U` storage element</span>
-	<span class="doccomment">/// parameter, then decodes the result. This preserves general correctness,</span>
-	<span class="doccomment">/// but will likely change both the virtual and physical bits addressed by</span>
-	<span class="doccomment">/// this pointer.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cast</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="self">self</span>) -&gt; <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">U</span><span class="op">&gt;</span>
-	<span class="kw">where</span> <span class="ident">U</span>: <span class="ident">BitStore</span> {
-		<span class="kw">let</span> (<span class="ident">addr</span>, <span class="ident">head</span>, <span class="kw">_</span>) <span class="op">=</span>
-			<span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">span_unchecked</span>(<span class="number">1</span>) }.<span class="ident">cast</span>::<span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>().<span class="ident">raw_parts</span>();
-		<span class="ident">BitPtr::new</span>(<span class="ident">addr</span>, <span class="ident">head</span>)
+	<span class="doccomment">/// Produces a proxy reference to the referent bit.
+	///
+	/// Because `BitPtr` is a non-null, well-aligned, pointer, this never
+	/// returns `None`.
+	///
+	/// # Original
+	///
+	/// [`pointer::as_ref`](https://doc.rust-lang.org/std/primitive.pointer.html#method.as_ref)
+	///
+	/// # API Differences
+	///
+	/// This produces a proxy type rather than a true reference. The proxy
+	/// implements `Deref&lt;Target = bool&gt;`, and can be converted to `&amp;bool` with
+	/// `&amp;*`.
+	///
+	/// # Safety
+	///
+	/// Since `BitPtr` does not permit null or misaligned pointers, this method
+	/// will always dereference the pointer, and you must ensure the following
+	/// conditions are met:
+	///
+	/// - the pointer must be dereferencable as defined in the standard library
+	///   documentation
+	/// - the pointer must point to an initialized instance of `T`
+	/// - you must ensure that no other pointer will race to modify the referent
+	///   location while this call is reading from memory to produce the proxy
+	///
+	/// # Examples
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let data = 1u8;
+	/// let ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;data);
+	/// let val = unsafe { ptr.as_ref() }.unwrap();
+	/// assert!(*val);
+	/// ```
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub unsafe fn </span>as_ref&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;BitRef&lt;<span class="lifetime">&#39;a</span>, Const, O, T&gt;&gt; {
+		<span class="prelude-val">Some</span>(BitRef::from_bitptr(<span class="self">self</span>.immut()))
 	}
 
-	<span class="doccomment">/// Produces a proxy reference to the referent bit.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Because `BitPtr` is a non-null, well-aligned, pointer, this never</span>
-	<span class="doccomment">/// returns `None`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::as_ref`](https://doc.rust-lang.org/std/primitive.pointer.html#method.as_ref)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # API Differences</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This produces a proxy type rather than a true reference. The proxy</span>
-	<span class="doccomment">/// implements `Deref&lt;Target = bool&gt;`, and can be converted to `&amp;bool` with</span>
-	<span class="doccomment">/// `&amp;*`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Since `BitPtr` does not permit null or misaligned pointers, this method</span>
-	<span class="doccomment">/// will always dereference the pointer, and you must ensure the following</span>
-	<span class="doccomment">/// conditions are met:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - the pointer must be dereferencable as defined in the standard library</span>
-	<span class="doccomment">///   documentation</span>
-	<span class="doccomment">/// - the pointer must point to an initialized instance of `T`</span>
-	<span class="doccomment">/// - you must ensure that no other pointer will race to modify the referent</span>
-	<span class="doccomment">///   location while this call is reading from memory to produce the proxy</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let data = 1u8;</span>
-	<span class="doccomment">/// let ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;data);</span>
-	<span class="doccomment">/// let val = unsafe { ptr.as_ref() }.unwrap();</span>
-	<span class="doccomment">/// assert!(*val);</span>
-	<span class="doccomment">/// ```</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">as_ref</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BitRef</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-		<span class="prelude-val">Some</span>(<span class="ident">BitRef::from_bitptr</span>(<span class="self">self</span>.<span class="ident">immut</span>()))
+	<span class="doccomment">/// Calculates the offset from a pointer.
+	///
+	/// `count` is in units of bits.
+	///
+	/// # Original
+	///
+	/// [`pointer::offset`](https://doc.rust-lang.org/std/primitive.pointer.html#method.offset)
+	///
+	/// # Safety
+	///
+	/// If any of the following conditions are violated, the result is Undefined
+	/// Behavior:
+	///
+	/// - Both the starting and resulting pointer must be either in bounds or
+	///   one byte past the end of the same allocated object. Note that in Rust,
+	///   every (stack-allocated) variable is considered a separate allocated
+	///   object.
+	/// - The computed offset, **in bytes**, cannot overflow an `isize`.
+	/// - The offset being in bounds cannot rely on “wrapping around” the
+	///   address space. That is, the infinite-precision sum, **in bytes** must
+	///   fit in a `usize`.
+	///
+	/// These pointers are almost always derived from [`BitSlice`] regions,
+	/// which have an encoding limitation that the high three bits of the length
+	/// counter are zero, so `bitvec` pointers are even less likely than
+	/// ordinary pointers to run afoul of these limitations.
+	///
+	/// Use [`wrapping_offset`] if you expect to risk hitting the high edge of
+	/// the address space.
+	///
+	/// # Examples
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let data = 5u8;
+	/// let ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;data);
+	/// assert!(unsafe { ptr.read() });
+	/// assert!(!unsafe { ptr.offset(1).read() });
+	/// assert!(unsafe { ptr.offset(2).read() });
+	/// ```
+	///
+	/// [`BitSlice`]: crate::slice::BitSlice
+	/// [`wrapping_offset`]: Self::wrapping_offset
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub unsafe fn </span>offset(<span class="self">self</span>, count: isize) -&gt; <span class="self">Self </span>{
+		<span class="kw">let </span>(elts, head) = <span class="self">self</span>.head.offset(count);
+		<span class="self">Self</span>::new(<span class="self">self</span>.addr.offset(elts), head)
 	}
 
-	<span class="doccomment">/// Calculates the offset from a pointer.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// `count` is in units of bits.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::offset`](https://doc.rust-lang.org/std/primitive.pointer.html#method.offset)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If any of the following conditions are violated, the result is Undefined</span>
-	<span class="doccomment">/// Behavior:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - Both the starting and resulting pointer must be either in bounds or</span>
-	<span class="doccomment">///   one byte past the end of the same allocated object. Note that in Rust,</span>
-	<span class="doccomment">///   every (stack-allocated) variable is considered a separate allocated</span>
-	<span class="doccomment">///   object.</span>
-	<span class="doccomment">/// - The computed offset, **in bytes**, cannot overflow an `isize`.</span>
-	<span class="doccomment">/// - The offset being in bounds cannot rely on “wrapping around” the</span>
-	<span class="doccomment">///   address space. That is, the infinite-precision sum, **in bytes** must</span>
-	<span class="doccomment">///   fit in a `usize`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// These pointers are almost always derived from [`BitSlice`] regions,</span>
-	<span class="doccomment">/// which have an encoding limitation that the high three bits of the length</span>
-	<span class="doccomment">/// counter are zero, so `bitvec` pointers are even less likely than</span>
-	<span class="doccomment">/// ordinary pointers to run afoul of these limitations.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Use [`wrapping_offset`] if you expect to risk hitting the high edge of</span>
-	<span class="doccomment">/// the address space.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let data = 5u8;</span>
-	<span class="doccomment">/// let ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;data);</span>
-	<span class="doccomment">/// assert!(unsafe { ptr.read() });</span>
-	<span class="doccomment">/// assert!(!unsafe { ptr.offset(1).read() });</span>
-	<span class="doccomment">/// assert!(unsafe { ptr.offset(2).read() });</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`BitSlice`]: crate::slice::BitSlice</span>
-	<span class="doccomment">/// [`wrapping_offset`]: Self::wrapping_offset</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">offset</span>(<span class="self">self</span>, <span class="ident">count</span>: <span class="ident">isize</span>) -&gt; <span class="self">Self</span> {
-		<span class="kw">let</span> (<span class="ident">elts</span>, <span class="ident">head</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">head</span>.<span class="ident">offset</span>(<span class="ident">count</span>);
-		<span class="ident"><span class="self">Self</span>::new</span>(<span class="self">self</span>.<span class="ident">addr</span>.<span class="ident">offset</span>(<span class="ident">elts</span>), <span class="ident">head</span>)
+	<span class="doccomment">/// Calculates the offset from a pointer using wrapping arithmetic.
+	///
+	/// `count` is in units of bits.
+	///
+	/// # Original
+	///
+	/// [`pointer::wrapping_offset`](https://doc.rust/lang.org/std/primitive.pointer.html#method.wrapping_offset)
+	///
+	/// # Safety
+	///
+	/// The resulting pointer does not need to be in bounds, but it is
+	/// potentially hazardous to dereference.
+	///
+	/// In particular, the resulting pointer remains attached to the same
+	/// allocated object that `self` points to. It may *not* be used to access a
+	/// different allocated object. Note that in Rust, every (stack-allocated)
+	/// variable is considered a separate allocated object.
+	///
+	/// In other words, `x.wrapping_offset((y as usize).wrapping_sub(x as
+	/// usize)` is not the same as `y`, and dereferencing it is undefined
+	/// behavior unless `x` and `y` point into the same allocated object.
+	///
+	/// Compared to [`offset`], this method basically delays the requirement of
+	/// staying within the same allocated object: [`offset`] is immediate
+	/// Undefined Behavior when crossing object boundaries; `wrapping_offset`
+	/// produces a pointer but still leads to Undefined Behavior if that pointer
+	/// is dereferenced. [`offset`] can be optimized better and is thus
+	/// preferable in performance-sensitive code.
+	///
+	/// If you need to cross object boundaries, destructure this pointer into
+	/// its base address and bit index, cast the base address to an integer, and
+	/// do the arithmetic in the purely integer space.
+	///
+	/// # Examples
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let data = 0u8;
+	/// let mut ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;data);
+	/// let end = ptr.wrapping_offset(8);
+	/// while ptr &lt; end {
+	///   # #[cfg(feature = &quot;std&quot;)] {
+	///   println!(&quot;{}&quot;, unsafe { ptr.read() });
+	///   # }
+	///   ptr = ptr.wrapping_offset(3);
+	/// }
+	/// ```
+	///
+	/// [`offset`]: Self::offset
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub fn </span>wrapping_offset(<span class="self">self</span>, count: isize) -&gt; <span class="self">Self </span>{
+		<span class="kw">let </span>(elts, head) = <span class="self">self</span>.head.offset(count);
+		<span class="self">Self</span>::new(<span class="self">self</span>.addr.wrapping_offset(elts), head)
 	}
 
-	<span class="doccomment">/// Calculates the offset from a pointer using wrapping arithmetic.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// `count` is in units of bits.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::wrapping_offset`](https://doc.rust/lang.org/std/primitive.pointer.html#method.wrapping_offset)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The resulting pointer does not need to be in bounds, but it is</span>
-	<span class="doccomment">/// potentially hazardous to dereference.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// In particular, the resulting pointer remains attached to the same</span>
-	<span class="doccomment">/// allocated object that `self` points to. It may *not* be used to access a</span>
-	<span class="doccomment">/// different allocated object. Note that in Rust, every (stack-allocated)</span>
-	<span class="doccomment">/// variable is considered a separate allocated object.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// In other words, `x.wrapping_offset((y as usize).wrapping_sub(x as</span>
-	<span class="doccomment">/// usize)` is not the same as `y`, and dereferencing it is undefined</span>
-	<span class="doccomment">/// behavior unless `x` and `y` point into the same allocated object.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Compared to [`offset`], this method basically delays the requirement of</span>
-	<span class="doccomment">/// staying within the same allocated object: [`offset`] is immediate</span>
-	<span class="doccomment">/// Undefined Behavior when crossing object boundaries; `wrapping_offset`</span>
-	<span class="doccomment">/// produces a pointer but still leads to Undefined Behavior if that pointer</span>
-	<span class="doccomment">/// is dereferenced. [`offset`] can be optimized better and is thus</span>
-	<span class="doccomment">/// preferable in performance-sensitive code.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If you need to cross object boundaries, destructure this pointer into</span>
-	<span class="doccomment">/// its base address and bit index, cast the base address to an integer, and</span>
-	<span class="doccomment">/// do the arithmetic in the purely integer space.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let data = 0u8;</span>
-	<span class="doccomment">/// let mut ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;data);</span>
-	<span class="doccomment">/// let end = ptr.wrapping_offset(8);</span>
-	<span class="doccomment">/// while ptr &lt; end {</span>
-	<span class="doccomment">///   # #[cfg(feature = &quot;std&quot;)] {</span>
-	<span class="doccomment">///   println!(&quot;{}&quot;, unsafe { ptr.read() });</span>
-	<span class="doccomment">///   # }</span>
-	<span class="doccomment">///   ptr = ptr.wrapping_offset(3);</span>
-	<span class="doccomment">/// }</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`offset`]: Self::offset</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wrapping_offset</span>(<span class="self">self</span>, <span class="ident">count</span>: <span class="ident">isize</span>) -&gt; <span class="self">Self</span> {
-		<span class="kw">let</span> (<span class="ident">elts</span>, <span class="ident">head</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">head</span>.<span class="ident">offset</span>(<span class="ident">count</span>);
-		<span class="ident"><span class="self">Self</span>::new</span>(<span class="self">self</span>.<span class="ident">addr</span>.<span class="ident">wrapping_offset</span>(<span class="ident">elts</span>), <span class="ident">head</span>)
-	}
-
-	<span class="doccomment">/// Calculates the distance between two pointers. The returned value is in</span>
-	<span class="doccomment">/// units of bits.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This function is the inverse of [`offset`].</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::offset`](https://doc.rust-lang.org/std/primitive.pointer.html#method.offset_from)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If any of the following conditions are violated, the result is Undefined</span>
-	<span class="doccomment">/// Behavior:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - Both the starting and other pointer must be either in bounds or one</span>
-	<span class="doccomment">///   byte past the end of the same allocated object. Note that in Rust,</span>
-	<span class="doccomment">///   every (stack-allocated) variable is considered a separate allocated</span>
-	<span class="doccomment">///   object.</span>
-	<span class="doccomment">/// - Both pointers must be *derived from* a pointer to the same object.</span>
-	<span class="doccomment">/// - The distance between the pointers, **in bytes**, cannot overflow an</span>
-	<span class="doccomment">///   `isize`.</span>
-	<span class="doccomment">/// - The distance being in bounds cannot rely on “wrapping around” the</span>
-	<span class="doccomment">///   address space.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// These pointers are almost always derived from [`BitSlice`] regions,</span>
-	<span class="doccomment">/// which have an encoding limitation that the high three bits of the length</span>
-	<span class="doccomment">/// counter are zero, so `bitvec` pointers are even less likely than</span>
-	<span class="doccomment">/// ordinary pointers to run afoul of these limitations.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Basic usage:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let data = 0u16;</span>
-	<span class="doccomment">/// let base = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;data);</span>
-	<span class="doccomment">/// let low = unsafe { base.add(5) };</span>
-	<span class="doccomment">/// let high = unsafe { low.add(6) };</span>
-	<span class="doccomment">/// unsafe {</span>
-	<span class="doccomment">///   assert_eq!(high.offset_from(low), 6);</span>
-	<span class="doccomment">///   assert_eq!(low.offset_from(high), -6);</span>
-	<span class="doccomment">///   assert_eq!(low.offset(6), high);</span>
-	<span class="doccomment">///   assert_eq!(high.offset(-6), low);</span>
-	<span class="doccomment">/// }</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// *Incorrect* usage:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust,no_run</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let a = 0u8;</span>
-	<span class="doccomment">/// let b = !0u8;</span>
-	<span class="doccomment">/// let a_ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;a);</span>
-	<span class="doccomment">/// let b_ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;b);</span>
-	<span class="doccomment">/// let diff = (b_ptr.pointer() as isize)</span>
-	<span class="doccomment">///   .wrapping_sub(a_ptr.pointer() as isize)</span>
-	<span class="doccomment">///   // Remember: raw pointers are byte-addressed,</span>
-	<span class="doccomment">///   // but these are bit-addressed.</span>
-	<span class="doccomment">///   .wrapping_mul(8);</span>
-	<span class="doccomment">/// // Create a pointer to `b`, derived from `a`.</span>
-	<span class="doccomment">/// let b_ptr_2 = a_ptr.wrapping_offset(diff);</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// // The pointers are *arithmetically* equal now</span>
-	<span class="doccomment">/// assert_eq!(b_ptr, b_ptr_2);</span>
-	<span class="doccomment">/// // Undefined Behavior!</span>
-	<span class="doccomment">/// unsafe {</span>
-	<span class="doccomment">///   b_ptr_2.offset_from(b_ptr);</span>
-	<span class="doccomment">/// }</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`BitSlice`]: crate::slice::BitSlice</span>
-	<span class="doccomment">/// [`offset`]: Self::offset</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">offset_from</span>(<span class="self">self</span>, <span class="ident">origin</span>: <span class="self">Self</span>) -&gt; <span class="ident">isize</span> {
+	<span class="doccomment">/// Calculates the distance between two pointers. The returned value is in
+	/// units of bits.
+	///
+	/// This function is the inverse of [`offset`].
+	///
+	/// # Original
+	///
+	/// [`pointer::offset`](https://doc.rust-lang.org/std/primitive.pointer.html#method.offset_from)
+	///
+	/// # Safety
+	///
+	/// If any of the following conditions are violated, the result is Undefined
+	/// Behavior:
+	///
+	/// - Both the starting and other pointer must be either in bounds or one
+	///   byte past the end of the same allocated object. Note that in Rust,
+	///   every (stack-allocated) variable is considered a separate allocated
+	///   object.
+	/// - Both pointers must be *derived from* a pointer to the same object.
+	/// - The distance between the pointers, **in bytes**, cannot overflow an
+	///   `isize`.
+	/// - The distance being in bounds cannot rely on “wrapping around” the
+	///   address space.
+	///
+	/// These pointers are almost always derived from [`BitSlice`] regions,
+	/// which have an encoding limitation that the high three bits of the length
+	/// counter are zero, so `bitvec` pointers are even less likely than
+	/// ordinary pointers to run afoul of these limitations.
+	///
+	/// # Examples
+	///
+	/// Basic usage:
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let data = 0u16;
+	/// let base = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;data);
+	/// let low = unsafe { base.add(5) };
+	/// let high = unsafe { low.add(6) };
+	/// unsafe {
+	///   assert_eq!(high.offset_from(low), 6);
+	///   assert_eq!(low.offset_from(high), -6);
+	///   assert_eq!(low.offset(6), high);
+	///   assert_eq!(high.offset(-6), low);
+	/// }
+	/// ```
+	///
+	/// *Incorrect* usage:
+	///
+	/// ```rust,no_run
+	/// use bitvec::prelude::*;
+	///
+	/// let a = 0u8;
+	/// let b = !0u8;
+	/// let a_ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;a);
+	/// let b_ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;b);
+	/// let diff = (b_ptr.pointer() as isize)
+	///   .wrapping_sub(a_ptr.pointer() as isize)
+	///   // Remember: raw pointers are byte-addressed,
+	///   // but these are bit-addressed.
+	///   .wrapping_mul(8);
+	/// // Create a pointer to `b`, derived from `a`.
+	/// let b_ptr_2 = a_ptr.wrapping_offset(diff);
+	///
+	/// // The pointers are *arithmetically* equal now
+	/// assert_eq!(b_ptr, b_ptr_2);
+	/// // Undefined Behavior!
+	/// unsafe {
+	///   b_ptr_2.offset_from(b_ptr);
+	/// }
+	/// ```
+	///
+	/// [`BitSlice`]: crate::slice::BitSlice
+	/// [`offset`]: Self::offset
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub unsafe fn </span>offset_from(<span class="self">self</span>, origin: <span class="self">Self</span>) -&gt; isize {
 		<span class="comment">/* Miri complains when performing this arithmetic on pointers. To avoid
 		both its costs, and the implicit scaling present in pointer arithmetic,
 		this uses pure numeric arithmetic on the address values.
-		*/</span>
-		(<span class="self">self</span>.<span class="ident">addr</span>
-			.<span class="ident">to_const</span>() <span class="kw">as</span> <span class="ident">usize</span>)
-			.<span class="ident">wrapping_sub</span>(<span class="ident">origin</span>.<span class="ident">addr</span>.<span class="ident">to_const</span>()<span class="kw">as</span> <span class="ident">usize</span>)
-			<span class="comment">//  Pointers step by `T`, but **address values** step by `u8`.</span>
-			.<span class="ident">wrapping_mul</span>(<span class="op">&lt;</span><span class="ident">u8</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">usize</span>)
-			<span class="comment">//  `self.head` moves the end farther from origin,</span>
-			.<span class="ident">wrapping_add</span>(<span class="self">self</span>.<span class="ident">head</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>)
-			<span class="comment">//  and `origin.head` moves the origin closer to the end.</span>
-			.<span class="ident">wrapping_sub</span>(<span class="ident">origin</span>.<span class="ident">head</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>) <span class="kw">as</span> <span class="ident">isize</span>
+		*/
+		</span>(<span class="self">self</span>.addr
+			.to_const() <span class="kw">as </span>usize)
+			.wrapping_sub(origin.addr.to_const()<span class="kw">as </span>usize)
+			<span class="comment">//  Pointers step by `T`, but **address values** step by `u8`.
+			</span>.wrapping_mul(&lt;u8 <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>usize)
+			<span class="comment">//  `self.head` moves the end farther from origin,
+			</span>.wrapping_add(<span class="self">self</span>.head.into_inner() <span class="kw">as </span>usize)
+			<span class="comment">//  and `origin.head` moves the origin closer to the end.
+			</span>.wrapping_sub(origin.head.into_inner() <span class="kw">as </span>usize) <span class="kw">as </span>isize
 	}
 
-	<span class="doccomment">/// Calculates the offset from a pointer (convenience for `.offset(count as</span>
-	<span class="doccomment">/// isize)`).</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// `count` is in units of bits.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::add`](https://doc.rust-lang.org/std/primitive.pointer.html#method.add)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`offset`].</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`offset`]: Self::offset</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">add</span>(<span class="self">self</span>, <span class="ident">count</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-		<span class="self">self</span>.<span class="ident">offset</span>(<span class="ident">count</span> <span class="kw">as</span> <span class="ident">isize</span>)
+	<span class="doccomment">/// Calculates the offset from a pointer (convenience for `.offset(count as
+	/// isize)`).
+	///
+	/// `count` is in units of bits.
+	///
+	/// # Original
+	///
+	/// [`pointer::add`](https://doc.rust-lang.org/std/primitive.pointer.html#method.add)
+	///
+	/// # Safety
+	///
+	/// See [`offset`].
+	///
+	/// [`offset`]: Self::offset
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub unsafe fn </span>add(<span class="self">self</span>, count: usize) -&gt; <span class="self">Self </span>{
+		<span class="self">self</span>.offset(count <span class="kw">as </span>isize)
 	}
 
-	<span class="doccomment">/// Calculates the offset from a pointer (convenience for `.offset((count as</span>
-	<span class="doccomment">/// isize).wrapping_neg())`).</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// `count` is in units of bits.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::sub`](https://doc.rust-lang.org/std/primitive.pointer.html#method.sub)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`offset`].</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`offset`]: Self::offset</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">sub</span>(<span class="self">self</span>, <span class="ident">count</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-		<span class="self">self</span>.<span class="ident">offset</span>((<span class="ident">count</span> <span class="kw">as</span> <span class="ident">isize</span>).<span class="ident">wrapping_neg</span>())
+	<span class="doccomment">/// Calculates the offset from a pointer (convenience for `.offset((count as
+	/// isize).wrapping_neg())`).
+	///
+	/// `count` is in units of bits.
+	///
+	/// # Original
+	///
+	/// [`pointer::sub`](https://doc.rust-lang.org/std/primitive.pointer.html#method.sub)
+	///
+	/// # Safety
+	///
+	/// See [`offset`].
+	///
+	/// [`offset`]: Self::offset
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub unsafe fn </span>sub(<span class="self">self</span>, count: usize) -&gt; <span class="self">Self </span>{
+		<span class="self">self</span>.offset((count <span class="kw">as </span>isize).wrapping_neg())
 	}
 
-	<span class="doccomment">/// Calculates the offset from a pointer using wrapping arithmetic</span>
-	<span class="doccomment">/// (convenience for `.wrapping_offset(count as isize)`).</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::wrapping_add`](https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_add)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`wrapping_offset`].</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`wrapping_offset`]: Self::wrapping_offset</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wrapping_add</span>(<span class="self">self</span>, <span class="ident">count</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-		<span class="self">self</span>.<span class="ident">wrapping_offset</span>(<span class="ident">count</span> <span class="kw">as</span> <span class="ident">isize</span>)
+	<span class="doccomment">/// Calculates the offset from a pointer using wrapping arithmetic
+	/// (convenience for `.wrapping_offset(count as isize)`).
+	///
+	/// # Original
+	///
+	/// [`pointer::wrapping_add`](https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_add)
+	///
+	/// # Safety
+	///
+	/// See [`wrapping_offset`].
+	///
+	/// [`wrapping_offset`]: Self::wrapping_offset
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub fn </span>wrapping_add(<span class="self">self</span>, count: usize) -&gt; <span class="self">Self </span>{
+		<span class="self">self</span>.wrapping_offset(count <span class="kw">as </span>isize)
 	}
 
-	<span class="doccomment">/// Calculates the offset from a pointer using wrapping arithmetic</span>
-	<span class="doccomment">/// (convenience for `.wrapping_offset((count as isize).wrapping_neg())`).</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::wrapping_sub`](https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_sub)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`wrapping_offset`].</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`wrapping_offset`]: Self::wrapping_offset</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wrapping_sub</span>(<span class="self">self</span>, <span class="ident">count</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-		<span class="self">self</span>.<span class="ident">wrapping_offset</span>((<span class="ident">count</span> <span class="kw">as</span> <span class="ident">isize</span>).<span class="ident">wrapping_neg</span>())
+	<span class="doccomment">/// Calculates the offset from a pointer using wrapping arithmetic
+	/// (convenience for `.wrapping_offset((count as isize).wrapping_neg())`).
+	///
+	/// # Original
+	///
+	/// [`pointer::wrapping_sub`](https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_sub)
+	///
+	/// # Safety
+	///
+	/// See [`wrapping_offset`].
+	///
+	/// [`wrapping_offset`]: Self::wrapping_offset
+	</span><span class="attribute">#[inline]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub fn </span>wrapping_sub(<span class="self">self</span>, count: usize) -&gt; <span class="self">Self </span>{
+		<span class="self">self</span>.wrapping_offset((count <span class="kw">as </span>isize).wrapping_neg())
 	}
 
-	<span class="doccomment">/// Reads the bit from `*self`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::read`](https://doc.rust-lang.org/std/primitive.pointer.html#method.read)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`ptr::read`] for safety concerns and examples.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`ptr::read`]: crate::ptr::read</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-		(<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">addr</span>.<span class="ident">to_const</span>())
-			.<span class="ident">load_value</span>()
-			.<span class="ident">get_bit</span>::<span class="op">&lt;</span><span class="ident">O</span><span class="op">&gt;</span>(<span class="self">self</span>.<span class="ident">head</span>)
+	<span class="doccomment">/// Reads the bit from `*self`.
+	///
+	/// # Original
+	///
+	/// [`pointer::read`](https://doc.rust-lang.org/std/primitive.pointer.html#method.read)
+	///
+	/// # Safety
+	///
+	/// See [`ptr::read`] for safety concerns and examples.
+	///
+	/// [`ptr::read`]: crate::ptr::read
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub unsafe fn </span>read(<span class="self">self</span>) -&gt; bool {
+		(<span class="kw-2">&amp;*</span><span class="self">self</span>.addr.to_const())
+			.load_value()
+			.get_bit::&lt;O&gt;(<span class="self">self</span>.head)
 	}
 
-	<span class="doccomment">/// Performs a volatile read of the bit from `self`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Volatile operations are intended to act on I/O memory, and are</span>
-	<span class="doccomment">/// guaranteed to not be elided or reördered by the compiler across other</span>
-	<span class="doccomment">/// volatile operations.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::read_volatile`](https://doc.rust-lang.org/std/primitive.pointer.html#method.read_volatile)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`ptr::read_volatile`] for safety concerns and examples.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`ptr::read_volatile`]: crate::ptr::read_volatile</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">read_volatile</span>(<span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-		<span class="self">self</span>.<span class="ident">addr</span>.<span class="ident">to_const</span>().<span class="ident">read_volatile</span>().<span class="ident">get_bit</span>::<span class="op">&lt;</span><span class="ident">O</span><span class="op">&gt;</span>(<span class="self">self</span>.<span class="ident">head</span>)
+	<span class="doccomment">/// Performs a volatile read of the bit from `self`.
+	///
+	/// Volatile operations are intended to act on I/O memory, and are
+	/// guaranteed to not be elided or reördered by the compiler across other
+	/// volatile operations.
+	///
+	/// # Original
+	///
+	/// [`pointer::read_volatile`](https://doc.rust-lang.org/std/primitive.pointer.html#method.read_volatile)
+	///
+	/// # Safety
+	///
+	/// See [`ptr::read_volatile`] for safety concerns and examples.
+	///
+	/// [`ptr::read_volatile`]: crate::ptr::read_volatile
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub unsafe fn </span>read_volatile(<span class="self">self</span>) -&gt; bool {
+		<span class="self">self</span>.addr.to_const().read_volatile().get_bit::&lt;O&gt;(<span class="self">self</span>.head)
 	}
 
-	<span class="doccomment">/// Copies `count` bits from `self` to `dest`. The source and destination</span>
-	<span class="doccomment">/// may overlap.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// NOTE: this has the *same* argument order as [`ptr::copy`].</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::copy_to`](https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_to)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`ptr::copy`] for safety concerns and examples.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`ptr::copy`]: crate::ptr::copy</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">copy_to</span><span class="op">&lt;</span><span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">dest</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>, <span class="ident">count</span>: <span class="ident">usize</span>)
-	<span class="kw">where</span>
-		<span class="ident">O2</span>: <span class="ident">BitOrder</span>,
-		<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+	<span class="doccomment">/// Copies `count` bits from `self` to `dest`. The source and destination
+	/// may overlap.
+	///
+	/// NOTE: this has the *same* argument order as [`ptr::copy`].
+	///
+	/// # Original
+	///
+	/// [`pointer::copy_to`](https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_to)
+	///
+	/// # Safety
+	///
+	/// See [`ptr::copy`] for safety concerns and examples.
+	///
+	/// [`ptr::copy`]: crate::ptr::copy
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub unsafe fn </span>copy_to&lt;O2, T2&gt;(<span class="self">self</span>, dest: BitPtr&lt;Mut, O2, T2&gt;, count: usize)
+	<span class="kw">where
+		</span>O2: BitOrder,
+		T2: BitStore,
 	{
-		<span class="comment">//  If the orderings match, then overlap is permitted and defined.</span>
-		<span class="kw">if</span> <span class="ident">dvl::match_order</span>::<span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">O2</span><span class="op">&gt;</span>() {
-			<span class="kw">let</span> (<span class="ident">addr</span>, <span class="ident">head</span>) <span class="op">=</span> <span class="ident">dest</span>.<span class="ident">raw_parts</span>();
-			<span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">BitPtr</span>::<span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O</span>, <span class="ident">T2</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">addr</span>, <span class="ident">head</span>);
-			<span class="kw">let</span> <span class="ident">src_pair</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">range</span>(<span class="ident">count</span>);
+		<span class="comment">//  If the orderings match, then overlap is permitted and defined.
+		</span><span class="kw">if </span>dvl::match_order::&lt;O, O2&gt;() {
+			<span class="kw">let </span>(addr, head) = dest.raw_parts();
+			<span class="kw">let </span>dst = BitPtr::&lt;Mut, O, T2&gt;::new(addr, head);
+			<span class="kw">let </span>src_pair = <span class="self">self</span>.range(count);
 
-			<span class="kw">let</span> <span class="ident">rev</span> <span class="op">=</span> <span class="ident">src_pair</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">dst</span>);
-			<span class="kw">let</span> <span class="ident">iter</span> <span class="op">=</span> <span class="ident">src_pair</span>.<span class="ident">zip</span>(<span class="ident">dest</span>.<span class="ident">range</span>(<span class="ident">count</span>));
-			<span class="kw">if</span> <span class="ident">rev</span> {
-				<span class="kw">for</span> (<span class="ident">from</span>, <span class="ident">to</span>) <span class="kw">in</span> <span class="ident">iter</span>.<span class="ident">rev</span>() {
-					<span class="ident">to</span>.<span class="ident">write</span>(<span class="ident">from</span>.<span class="ident">read</span>());
+			<span class="kw">let </span>rev = src_pair.contains(<span class="kw-2">&amp;</span>dst);
+			<span class="kw">let </span>iter = src_pair.zip(dest.range(count));
+			<span class="kw">if </span>rev {
+				<span class="kw">for </span>(from, to) <span class="kw">in </span>iter.rev() {
+					to.write(from.read());
 				}
 			}
-			<span class="kw">else</span> {
-				<span class="kw">for</span> (<span class="ident">from</span>, <span class="ident">to</span>) <span class="kw">in</span> <span class="ident">iter</span> {
-					<span class="ident">to</span>.<span class="ident">write</span>(<span class="ident">from</span>.<span class="ident">read</span>());
+			<span class="kw">else </span>{
+				<span class="kw">for </span>(from, to) <span class="kw">in </span>iter {
+					to.write(from.read());
 				}
 			}
 		}
-		<span class="kw">else</span> {
-			<span class="comment">//  If the orderings differ, then it is undefined behavior to</span>
-			<span class="comment">//  overlap in  memory.</span>
-			<span class="self">self</span>.<span class="ident">copy_to_nonoverlapping</span>(<span class="ident">dest</span>, <span class="ident">count</span>);
+		<span class="kw">else </span>{
+			<span class="comment">//  If the orderings differ, then it is undefined behavior to
+			//  overlap in  memory.
+			</span><span class="self">self</span>.copy_to_nonoverlapping(dest, count);
 		}
 	}
 
-	<span class="doccomment">/// Copies `count` bits from `self` to `dest`. The source and destination</span>
-	<span class="doccomment">/// may *not* overlap.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// NOTE: this has the *same* argument order as</span>
-	<span class="doccomment">/// [`ptr::copy_nonoverlapping`].</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::copy_to_nonoverlapping`](https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_to_nonoverlapping)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`ptr::copy_nonoverlapping`](crate::ptr::copy_nonoverlapping)</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">copy_to_nonoverlapping</span><span class="op">&lt;</span><span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>(
+	<span class="doccomment">/// Copies `count` bits from `self` to `dest`. The source and destination
+	/// may *not* overlap.
+	///
+	/// NOTE: this has the *same* argument order as
+	/// [`ptr::copy_nonoverlapping`].
+	///
+	/// # Original
+	///
+	/// [`pointer::copy_to_nonoverlapping`](https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_to_nonoverlapping)
+	///
+	/// # Safety
+	///
+	/// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
+	///
+	/// [`ptr::copy_nonoverlapping`](crate::ptr::copy_nonoverlapping)
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub unsafe fn </span>copy_to_nonoverlapping&lt;O2, T2&gt;(
 		<span class="self">self</span>,
-		<span class="ident">dest</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>,
-		<span class="ident">count</span>: <span class="ident">usize</span>,
-	) <span class="kw">where</span>
-		<span class="ident">O2</span>: <span class="ident">BitOrder</span>,
-		<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+		dest: BitPtr&lt;Mut, O2, T2&gt;,
+		count: usize,
+	) <span class="kw">where
+		</span>O2: BitOrder,
+		T2: BitStore,
 	{
-		<span class="kw">for</span> (<span class="ident">from</span>, <span class="ident">to</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">range</span>(<span class="ident">count</span>).<span class="ident">zip</span>(<span class="ident">dest</span>.<span class="ident">range</span>(<span class="ident">count</span>)) {
-			<span class="ident">to</span>.<span class="ident">write</span>(<span class="ident">from</span>.<span class="ident">read</span>());
+		<span class="kw">for </span>(from, to) <span class="kw">in </span><span class="self">self</span>.range(count).zip(dest.range(count)) {
+			to.write(from.read());
 		}
 	}
 
-	<span class="doccomment">/// Computes the offset (in bits) that needs to be applied to the pointer in</span>
-	<span class="doccomment">/// order to make it aligned to `align`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// “Alignment” here means that the pointer is selecting the start bit of a</span>
-	<span class="doccomment">/// memory location whose address satisfies the requested alignment.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// `align` is measured in **bytes**. If you wish to align your bit-pointer</span>
-	<span class="doccomment">/// to a specific fraction (½, ¼, or ⅛ of one byte), please file an issue</span>
-	<span class="doccomment">/// and this functionality will be added to [`BitIdx`].</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::align_offset`](https://doc.rust-lang.org/std/primitive.pointer.html#method.align_offset)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If the base-element address of the pointer is already aligned to</span>
-	<span class="doccomment">/// `align`, then this will return the bit-offset required to select the</span>
-	<span class="doccomment">/// first bit of the successor element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If it is not possible to align the pointer, the implementation returns</span>
-	<span class="doccomment">/// `usize::MAX`. It is permissible for the implementation to *always*</span>
-	<span class="doccomment">/// return `usize::MAX`. Only your algorithm’s performance can depend on</span>
-	<span class="doccomment">/// getting a usable offset here, not its correctness.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The offset is expressed in number of bits, and not `T` elements or</span>
-	<span class="doccomment">/// bytes. The value returned can be used with the [`wrapping_add`] method.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// There are no guarantees whatsoëver that offsetting the pointer will not</span>
-	<span class="doccomment">/// overflow or go beyond the allocation that the pointer points into. It is</span>
-	<span class="doccomment">/// up to the caller to ensure that the returned offset is correct in all</span>
-	<span class="doccomment">/// terms other than alignment.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Panics</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The function panics if `align` is not a power-of-two.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let data = [0u8; 3];</span>
-	<span class="doccomment">/// let ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;data[0]);</span>
-	<span class="doccomment">/// let ptr = unsafe { ptr.add(2) };</span>
-	<span class="doccomment">/// let count = ptr.align_offset(2);</span>
-	<span class="doccomment">/// assert!(count &gt; 0);</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`BitIdx`]: crate::index::BitIdx</span>
-	<span class="doccomment">/// [`wrapping_add`]: Self::wrapping_add</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">align_offset</span>(<span class="self">self</span>, <span class="ident">align</span>: <span class="ident">usize</span>) -&gt; <span class="ident">usize</span> {
-		<span class="kw">let</span> <span class="ident">width</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">usize</span>;
-		<span class="kw">match</span> (
-			<span class="self">self</span>.<span class="ident">addr</span>.<span class="ident">to_const</span>().<span class="ident">align_offset</span>(<span class="ident">align</span>),
-			<span class="self">self</span>.<span class="ident">head</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>,
+	<span class="doccomment">/// Computes the offset (in bits) that needs to be applied to the pointer in
+	/// order to make it aligned to `align`.
+	///
+	/// “Alignment” here means that the pointer is selecting the start bit of a
+	/// memory location whose address satisfies the requested alignment.
+	///
+	/// `align` is measured in **bytes**. If you wish to align your bit-pointer
+	/// to a specific fraction (½, ¼, or ⅛ of one byte), please file an issue
+	/// and this functionality will be added to [`BitIdx`].
+	///
+	/// # Original
+	///
+	/// [`pointer::align_offset`](https://doc.rust-lang.org/std/primitive.pointer.html#method.align_offset)
+	///
+	/// If the base-element address of the pointer is already aligned to
+	/// `align`, then this will return the bit-offset required to select the
+	/// first bit of the successor element.
+	///
+	/// If it is not possible to align the pointer, the implementation returns
+	/// `usize::MAX`. It is permissible for the implementation to *always*
+	/// return `usize::MAX`. Only your algorithm’s performance can depend on
+	/// getting a usable offset here, not its correctness.
+	///
+	/// The offset is expressed in number of bits, and not `T` elements or
+	/// bytes. The value returned can be used with the [`wrapping_add`] method.
+	///
+	/// # Safety
+	///
+	/// There are no guarantees whatsoëver that offsetting the pointer will not
+	/// overflow or go beyond the allocation that the pointer points into. It is
+	/// up to the caller to ensure that the returned offset is correct in all
+	/// terms other than alignment.
+	///
+	/// # Panics
+	///
+	/// The function panics if `align` is not a power-of-two.
+	///
+	/// # Examples
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let data = [0u8; 3];
+	/// let ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_ref(&amp;data[0]);
+	/// let ptr = unsafe { ptr.add(2) };
+	/// let count = ptr.align_offset(2);
+	/// assert!(count &gt; 0);
+	/// ```
+	///
+	/// [`BitIdx`]: crate::index::BitIdx
+	/// [`wrapping_add`]: Self::wrapping_add
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub fn </span>align_offset(<span class="self">self</span>, align: usize) -&gt; usize {
+		<span class="kw">let </span>width = &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>usize;
+		<span class="kw">match </span>(
+			<span class="self">self</span>.addr.to_const().align_offset(align),
+			<span class="self">self</span>.head.into_inner() <span class="kw">as </span>usize,
 		) {
 			(<span class="number">0</span>, <span class="number">0</span>) =&gt; <span class="number">0</span>,
-			(<span class="number">0</span>, <span class="ident">head</span>) =&gt; <span class="ident">align</span> <span class="op">*</span> <span class="number">8</span> <span class="op">-</span> <span class="ident">head</span>,
-			(<span class="ident">usize::MAX</span>, <span class="kw">_</span>) =&gt; <span class="op">!</span><span class="number">0</span>,
-			(<span class="ident">elts</span>, <span class="ident">head</span>) =&gt; <span class="ident">elts</span>.<span class="ident">wrapping_mul</span>(<span class="ident">width</span>).<span class="ident">wrapping_sub</span>(<span class="ident">head</span>),
+			(<span class="number">0</span>, head) =&gt; align * <span class="number">8 </span>- head,
+			(usize::MAX, <span class="kw">_</span>) =&gt; !<span class="number">0</span>,
+			(elts, head) =&gt; elts.wrapping_mul(width).wrapping_sub(head),
 		}
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;O, T&gt; BitPtr&lt;Const, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="doccomment">/// Constructs a `BitPtr` from an element reference.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `elem`: A borrowed memory element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// A read-only bit-pointer to the zeroth bit in the `*elem` location.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_ref</span>(<span class="ident">elem</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>) -&gt; <span class="self">Self</span> {
-		<span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">elem</span>.<span class="ident">into</span>(), <span class="ident">BitIdx::ZERO</span>)
+	<span class="doccomment">/// Constructs a `BitPtr` from an element reference.
+	///
+	/// # Parameters
+	///
+	/// - `elem`: A borrowed memory element.
+	///
+	/// # Returns
+	///
+	/// A read-only bit-pointer to the zeroth bit in the `*elem` location.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub fn </span>from_ref(elem: <span class="kw-2">&amp;</span>T) -&gt; <span class="self">Self </span>{
+		<span class="self">Self</span>::new(elem.into(), BitIdx::ZERO)
 	}
 
-	<span class="doccomment">/// Attempts to construct a `BitPtr` from an element location.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `elem`: A read-only element address.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// A read-only bit-pointer to the zeroth bit in the `*elem` location, if</span>
-	<span class="doccomment">/// `elem` is well-formed.</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_ptr</span>(<span class="ident">elem</span>: <span class="kw-2">*const</span> <span class="ident">T</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-		<span class="ident"><span class="self">Self</span>::try_new</span>(<span class="ident">elem</span>, <span class="number">0</span>)
+	<span class="doccomment">/// Attempts to construct a `BitPtr` from an element location.
+	///
+	/// # Parameters
+	///
+	/// - `elem`: A read-only element address.
+	///
+	/// # Returns
+	///
+	/// A read-only bit-pointer to the zeroth bit in the `*elem` location, if
+	/// `elem` is well-formed.
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub fn </span>from_ptr(elem: <span class="kw-2">*const </span>T) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, BitPtrError&lt;T&gt;&gt; {
+		<span class="self">Self</span>::try_new(elem, <span class="number">0</span>)
 	}
 
-	<span class="doccomment">/// Constructs a `BitPtr` from a slice reference.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This differs from [`from_ref`] in that the returned pointer keeps its</span>
-	<span class="doccomment">/// provenance over the entire slice, whereas producing a pointer to the</span>
-	<span class="doccomment">/// base bit of a slice with `BitPtr::from_ref(&amp;slice[0])` narrows its</span>
-	<span class="doccomment">/// provenance to only the `slice[0]` element, and calling [`add`] to leave</span>
-	<span class="doccomment">/// that element, even remaining in the slice, may cause UB.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `slice`: An immutabily borrowed slice of memory.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// A read-only bit-pointer to the zeroth bit in the base location of the</span>
-	<span class="doccomment">/// slice.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This pointer has provenance over the entire `slice`, and may safely use</span>
-	<span class="doccomment">/// [`add`] to traverse memory elements as long as it stays within the</span>
-	<span class="doccomment">/// slice.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`add`]: Self::add</span>
-	<span class="doccomment">/// [`from_ref`]: Self::from_ref</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_slice</span>(<span class="ident">slice</span>: <span class="kw-2">&amp;</span>[<span class="ident">T</span>]) -&gt; <span class="self">Self</span> {
-		<span class="ident"><span class="self">Self</span>::new</span>(<span class="kw">unsafe</span> { <span class="ident">slice</span>.<span class="ident">as_ptr</span>().<span class="ident">force_wrap</span>() }, <span class="ident">BitIdx::ZERO</span>)
+	<span class="doccomment">/// Constructs a `BitPtr` from a slice reference.
+	///
+	/// This differs from [`from_ref`] in that the returned pointer keeps its
+	/// provenance over the entire slice, whereas producing a pointer to the
+	/// base bit of a slice with `BitPtr::from_ref(&amp;slice[0])` narrows its
+	/// provenance to only the `slice[0]` element, and calling [`add`] to leave
+	/// that element, even remaining in the slice, may cause UB.
+	///
+	/// # Parameters
+	///
+	/// - `slice`: An immutabily borrowed slice of memory.
+	///
+	/// # Returns
+	///
+	/// A read-only bit-pointer to the zeroth bit in the base location of the
+	/// slice.
+	///
+	/// This pointer has provenance over the entire `slice`, and may safely use
+	/// [`add`] to traverse memory elements as long as it stays within the
+	/// slice.
+	///
+	/// [`add`]: Self::add
+	/// [`from_ref`]: Self::from_ref
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub fn </span>from_slice(slice: <span class="kw-2">&amp;</span>[T]) -&gt; <span class="self">Self </span>{
+		<span class="self">Self</span>::new(<span class="kw">unsafe </span>{ slice.as_ptr().force_wrap() }, BitIdx::ZERO)
 	}
 
-	<span class="doccomment">/// Gets the pointer to the base memory location containing the referent</span>
-	<span class="doccomment">/// bit.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pointer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">*const</span> <span class="ident">T</span> {
-		<span class="self">self</span>.<span class="ident">get_addr</span>().<span class="ident">to_const</span>()
+	<span class="doccomment">/// Gets the pointer to the base memory location containing the referent
+	/// bit.
+	</span><span class="attribute">#[inline]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub fn </span>pointer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">*const </span>T {
+		<span class="self">self</span>.get_addr().to_const()
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;O, T&gt; BitPtr&lt;Mut, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="doccomment">/// Constructs a `BitPtr` from an element reference.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `elem`: A mutably borrowed memory element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// A write-capable bit-pointer to the zeroth bit in the `*elem` location.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Note that even if `elem` is an address within a contiguous array or</span>
-	<span class="doccomment">/// slice, the returned bit-pointer only has provenance for the `elem`</span>
-	<span class="doccomment">/// location, and no other.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The exclusive borrow of `elem` is released after this function returns.</span>
-	<span class="doccomment">/// However, you must not use any other pointer than that returned by this</span>
-	<span class="doccomment">/// function to view or modify `*elem`, unless the `T` type supports aliased</span>
-	<span class="doccomment">/// mutation.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_mut</span>(<span class="ident">elem</span>: <span class="kw-2">&amp;mut</span> <span class="ident">T</span>) -&gt; <span class="self">Self</span> {
-		<span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">elem</span>.<span class="ident">into</span>(), <span class="ident">BitIdx::ZERO</span>)
+	<span class="doccomment">/// Constructs a `BitPtr` from an element reference.
+	///
+	/// # Parameters
+	///
+	/// - `elem`: A mutably borrowed memory element.
+	///
+	/// # Returns
+	///
+	/// A write-capable bit-pointer to the zeroth bit in the `*elem` location.
+	///
+	/// Note that even if `elem` is an address within a contiguous array or
+	/// slice, the returned bit-pointer only has provenance for the `elem`
+	/// location, and no other.
+	///
+	/// # Safety
+	///
+	/// The exclusive borrow of `elem` is released after this function returns.
+	/// However, you must not use any other pointer than that returned by this
+	/// function to view or modify `*elem`, unless the `T` type supports aliased
+	/// mutation.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub fn </span>from_mut(elem: <span class="kw-2">&amp;mut </span>T) -&gt; <span class="self">Self </span>{
+		<span class="self">Self</span>::new(elem.into(), BitIdx::ZERO)
 	}
 
-	<span class="doccomment">/// Attempts to construct a `BitPtr` from an element location.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `elem`: A write-capable element address.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// A write-capable bit-pointer to the zeroth bit in the `*elem` location,</span>
-	<span class="doccomment">/// if `elem` is well-formed.</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_mut_ptr</span>(<span class="ident">elem</span>: <span class="kw-2">*mut</span> <span class="ident">T</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-		<span class="ident"><span class="self">Self</span>::try_new</span>(<span class="ident">elem</span>, <span class="number">0</span>)
+	<span class="doccomment">/// Attempts to construct a `BitPtr` from an element location.
+	///
+	/// # Parameters
+	///
+	/// - `elem`: A write-capable element address.
+	///
+	/// # Returns
+	///
+	/// A write-capable bit-pointer to the zeroth bit in the `*elem` location,
+	/// if `elem` is well-formed.
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub fn </span>from_mut_ptr(elem: <span class="kw-2">*mut </span>T) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, BitPtrError&lt;T&gt;&gt; {
+		<span class="self">Self</span>::try_new(elem, <span class="number">0</span>)
 	}
 
-	<span class="doccomment">/// Constructs a `BitPtr` from a slice reference.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This differs from [`from_mut`] in that the returned pointer keeps its</span>
-	<span class="doccomment">/// provenance over the entire slice, whereas producing a pointer to the</span>
-	<span class="doccomment">/// base bit of a slice with `BitPtr::from_mut(&amp;mut slice[0])` narrows its</span>
-	<span class="doccomment">/// provenance to only the `slice[0]` element, and calling [`add`] to leave</span>
-	<span class="doccomment">/// that element, even remaining in the slice, may cause UB.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `slice`: A mutabily borrowed slice of memory.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// A write-capable bit-pointer to the zeroth bit in the base location of</span>
-	<span class="doccomment">/// the slice.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This pointer has provenance over the entire `slice`, and may safely use</span>
-	<span class="doccomment">/// [`add`] to traverse memory elements as long as it stays within the</span>
-	<span class="doccomment">/// slice.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`add`]: Self::add</span>
-	<span class="doccomment">/// [`from_mut`]: Self::from_mut</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_mut_slice</span>(<span class="ident">slice</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">T</span>]) -&gt; <span class="self">Self</span> {
-		<span class="ident"><span class="self">Self</span>::new</span>(<span class="kw">unsafe</span> { <span class="ident">slice</span>.<span class="ident">as_mut_ptr</span>().<span class="ident">force_wrap</span>() }, <span class="ident">BitIdx::ZERO</span>)
+	<span class="doccomment">/// Constructs a `BitPtr` from a slice reference.
+	///
+	/// This differs from [`from_mut`] in that the returned pointer keeps its
+	/// provenance over the entire slice, whereas producing a pointer to the
+	/// base bit of a slice with `BitPtr::from_mut(&amp;mut slice[0])` narrows its
+	/// provenance to only the `slice[0]` element, and calling [`add`] to leave
+	/// that element, even remaining in the slice, may cause UB.
+	///
+	/// # Parameters
+	///
+	/// - `slice`: A mutabily borrowed slice of memory.
+	///
+	/// # Returns
+	///
+	/// A write-capable bit-pointer to the zeroth bit in the base location of
+	/// the slice.
+	///
+	/// This pointer has provenance over the entire `slice`, and may safely use
+	/// [`add`] to traverse memory elements as long as it stays within the
+	/// slice.
+	///
+	/// [`add`]: Self::add
+	/// [`from_mut`]: Self::from_mut
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub fn </span>from_mut_slice(slice: <span class="kw-2">&amp;mut </span>[T]) -&gt; <span class="self">Self </span>{
+		<span class="self">Self</span>::new(<span class="kw">unsafe </span>{ slice.as_mut_ptr().force_wrap() }, BitIdx::ZERO)
 	}
 
-	<span class="doccomment">/// Gets the pointer to the base memory location containing the referent</span>
-	<span class="doccomment">/// bit.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pointer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">*mut</span> <span class="ident">T</span> {
-		<span class="self">self</span>.<span class="ident">get_addr</span>().<span class="ident">to_mut</span>()
+	<span class="doccomment">/// Gets the pointer to the base memory location containing the referent
+	/// bit.
+	</span><span class="attribute">#[inline]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub fn </span>pointer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">*mut </span>T {
+		<span class="self">self</span>.get_addr().to_mut()
 	}
 
-	<span class="comment">//  `pointer` fundamental inherent API</span>
+	<span class="comment">//  `pointer` fundamental inherent API
 
-	<span class="doccomment">/// Produces a proxy mutable reference to the referent bit.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Because `BitPtr` is a non-null, well-aligned, pointer, this never</span>
-	<span class="doccomment">/// returns `None`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::as_mut`](https://doc.rust-lang.org/std/primitive.pointer.html#method.as_mut)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # API Differences</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This produces a proxy type rather than a true reference. The proxy</span>
-	<span class="doccomment">/// implements `DerefMut&lt;Target = bool&gt;`, and can be converted to `&amp;mut</span>
-	<span class="doccomment">/// bool` with `&amp;mut *`. Writes to the proxy are not reflected in the</span>
-	<span class="doccomment">/// proxied location until the proxy is destroyed, either through `Drop` or</span>
-	<span class="doccomment">/// with its [`set`] method.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The proxy must be bound as `mut` in order to write through the binding.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Since `BitPtr` does not permit null or misaligned pointers, this method</span>
-	<span class="doccomment">/// will always dereference the pointer and you must ensure the following</span>
-	<span class="doccomment">/// conditions are met:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - the pointer must be dereferencable as defined in the standard library</span>
-	<span class="doccomment">///   documentation</span>
-	<span class="doccomment">/// - the pointer must point to an initialized instance of `T`</span>
-	<span class="doccomment">/// - you must ensure that no other pointer will race to modify the referent</span>
-	<span class="doccomment">///   location while this call is reading from memory to produce the proxy</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let mut data = 0u8;</span>
-	<span class="doccomment">/// let ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_mut(&amp;mut data);</span>
-	<span class="doccomment">/// let mut val = unsafe { ptr.as_mut() }.unwrap();</span>
-	<span class="doccomment">/// assert!(!*val);</span>
-	<span class="doccomment">/// *val = true;</span>
-	<span class="doccomment">/// assert!(*val);</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`set`]: crate::ptr::BitRef::set</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">as_mut</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BitRef</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Mut</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-		<span class="prelude-val">Some</span>(<span class="ident">BitRef::from_bitptr</span>(<span class="self">self</span>))
+	</span><span class="doccomment">/// Produces a proxy mutable reference to the referent bit.
+	///
+	/// Because `BitPtr` is a non-null, well-aligned, pointer, this never
+	/// returns `None`.
+	///
+	/// # Original
+	///
+	/// [`pointer::as_mut`](https://doc.rust-lang.org/std/primitive.pointer.html#method.as_mut)
+	///
+	/// # API Differences
+	///
+	/// This produces a proxy type rather than a true reference. The proxy
+	/// implements `DerefMut&lt;Target = bool&gt;`, and can be converted to `&amp;mut
+	/// bool` with `&amp;mut *`. Writes to the proxy are not reflected in the
+	/// proxied location until the proxy is destroyed, either through `Drop` or
+	/// with its [`set`] method.
+	///
+	/// The proxy must be bound as `mut` in order to write through the binding.
+	///
+	/// # Safety
+	///
+	/// Since `BitPtr` does not permit null or misaligned pointers, this method
+	/// will always dereference the pointer and you must ensure the following
+	/// conditions are met:
+	///
+	/// - the pointer must be dereferencable as defined in the standard library
+	///   documentation
+	/// - the pointer must point to an initialized instance of `T`
+	/// - you must ensure that no other pointer will race to modify the referent
+	///   location while this call is reading from memory to produce the proxy
+	///
+	/// # Examples
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let mut data = 0u8;
+	/// let ptr = BitPtr::&lt;_, Lsb0, _&gt;::from_mut(&amp;mut data);
+	/// let mut val = unsafe { ptr.as_mut() }.unwrap();
+	/// assert!(!*val);
+	/// *val = true;
+	/// assert!(*val);
+	/// ```
+	///
+	/// [`set`]: crate::ptr::BitRef::set
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub unsafe fn </span>as_mut&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;BitRef&lt;<span class="lifetime">&#39;a</span>, Mut, O, T&gt;&gt; {
+		<span class="prelude-val">Some</span>(BitRef::from_bitptr(<span class="self">self</span>))
 	}
 
-	<span class="doccomment">/// Copies `count` bits from `src` to `self`. The source and destination may</span>
-	<span class="doccomment">/// overlap.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Note: this has the *opposite* argument order of [`ptr::copy`].</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::copy_from`](https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_from)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`ptr::copy`] for safety concerns and examples.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`ptr::copy`]: crate::ptr::copy</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">copy_from</span><span class="op">&lt;</span><span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>(
+	<span class="doccomment">/// Copies `count` bits from `src` to `self`. The source and destination may
+	/// overlap.
+	///
+	/// Note: this has the *opposite* argument order of [`ptr::copy`].
+	///
+	/// # Original
+	///
+	/// [`pointer::copy_from`](https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_from)
+	///
+	/// # Safety
+	///
+	/// See [`ptr::copy`] for safety concerns and examples.
+	///
+	/// [`ptr::copy`]: crate::ptr::copy
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub unsafe fn </span>copy_from&lt;O2, T2&gt;(
 		<span class="self">self</span>,
-		<span class="ident">src</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>,
-		<span class="ident">count</span>: <span class="ident">usize</span>,
-	) <span class="kw">where</span>
-		<span class="ident">O2</span>: <span class="ident">BitOrder</span>,
-		<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+		src: BitPtr&lt;Const, O2, T2&gt;,
+		count: usize,
+	) <span class="kw">where
+		</span>O2: BitOrder,
+		T2: BitStore,
 	{
-		<span class="ident">src</span>.<span class="ident">copy_to</span>(<span class="self">self</span>, <span class="ident">count</span>);
+		src.copy_to(<span class="self">self</span>, count);
 	}
 
-	<span class="doccomment">/// Copies `count` bits from `src` to `self`. The source and destination may</span>
-	<span class="doccomment">/// *not* overlap.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// NOTE: this has the *opposite* argument order of</span>
-	<span class="doccomment">/// [`ptr::copy_nonoverlapping`].</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::copy_from_nonoverlapping`](https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_from_nonoverlapping)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">copy_from_nonoverlapping</span><span class="op">&lt;</span><span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>(
+	<span class="doccomment">/// Copies `count` bits from `src` to `self`. The source and destination may
+	/// *not* overlap.
+	///
+	/// NOTE: this has the *opposite* argument order of
+	/// [`ptr::copy_nonoverlapping`].
+	///
+	/// # Original
+	///
+	/// [`pointer::copy_from_nonoverlapping`](https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_from_nonoverlapping)
+	///
+	/// # Safety
+	///
+	/// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
+	///
+	/// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping
+	</span><span class="attribute">#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	</span><span class="kw">pub unsafe fn </span>copy_from_nonoverlapping&lt;O2, T2&gt;(
 		<span class="self">self</span>,
-		<span class="ident">src</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>,
-		<span class="ident">count</span>: <span class="ident">usize</span>,
-	) <span class="kw">where</span>
-		<span class="ident">O2</span>: <span class="ident">BitOrder</span>,
-		<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+		src: BitPtr&lt;Const, O2, T2&gt;,
+		count: usize,
+	) <span class="kw">where
+		</span>O2: BitOrder,
+		T2: BitStore,
 	{
-		<span class="ident">src</span>.<span class="ident">copy_to_nonoverlapping</span>(<span class="self">self</span>, <span class="ident">count</span>);
+		src.copy_to_nonoverlapping(<span class="self">self</span>, count);
 	}
 
-	<span class="doccomment">/// Overwrites a memory location with the given bit.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`ptr::write`] for safety concerns and examples.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::write`](https://doc.rust-lang.org/std/primitive.pointer.html#method.write)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`ptr::write`]: crate::ptr::write</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::clippy::missing_safety_doc</span>)]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">write</span>(<span class="self">self</span>, <span class="ident">value</span>: <span class="ident">bool</span>) {
-		<span class="self">self</span>.<span class="ident">replace</span>(<span class="ident">value</span>);
+	<span class="doccomment">/// Overwrites a memory location with the given bit.
+	///
+	/// See [`ptr::write`] for safety concerns and examples.
+	///
+	/// # Original
+	///
+	/// [`pointer::write`](https://doc.rust-lang.org/std/primitive.pointer.html#method.write)
+	///
+	/// [`ptr::write`]: crate::ptr::write
+	</span><span class="attribute">#[inline]
+	#[allow(clippy::clippy::missing_safety_doc)]
+	</span><span class="kw">pub unsafe fn </span>write(<span class="self">self</span>, value: bool) {
+		<span class="self">self</span>.replace(value);
 	}
 
-	<span class="doccomment">/// Performs a volatile write of a memory location with the given bit.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Because processors do not have single-bit write instructions, this must</span>
-	<span class="doccomment">/// perform a volatile read of the location, perform the bit modification</span>
-	<span class="doccomment">/// within the processor register, and then perform a volatile write back to</span>
-	<span class="doccomment">/// memory. These three steps are guaranteed to be sequential, but are not</span>
-	<span class="doccomment">/// guaranteed to be atomic.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Volatile operations are intended to act on I/O memory, and are</span>
-	<span class="doccomment">/// guaranteed to not be elided or reördered by the compiler across other</span>
-	<span class="doccomment">/// volatile operations.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::write_volatile`](https://doc.rust-lang.org/std/primitive.pointer.html#method.write_volatile)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`ptr::write_volatile`] for safety concerns and examples.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`ptr::write_volatile`]: crate::ptr::write_volatile</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">write_volatile</span>(<span class="self">self</span>, <span class="ident">val</span>: <span class="ident">bool</span>) {
-		<span class="kw">let</span> <span class="ident">select</span> <span class="op">=</span> <span class="ident">O::select</span>(<span class="self">self</span>.<span class="ident">head</span>).<span class="ident">into_inner</span>();
-		<span class="kw">let</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">addr</span>.<span class="ident">cast</span>::<span class="op">&lt;</span><span class="ident">T::Mem</span><span class="op">&gt;</span>().<span class="ident">to_mut</span>();
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tmp</span> <span class="op">=</span> <span class="ident">ptr</span>.<span class="ident">read_volatile</span>();
-		<span class="kw">if</span> <span class="ident">val</span> {
-			<span class="ident">tmp</span> <span class="op">|</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">select</span>;
+	<span class="doccomment">/// Performs a volatile write of a memory location with the given bit.
+	///
+	/// Because processors do not have single-bit write instructions, this must
+	/// perform a volatile read of the location, perform the bit modification
+	/// within the processor register, and then perform a volatile write back to
+	/// memory. These three steps are guaranteed to be sequential, but are not
+	/// guaranteed to be atomic.
+	///
+	/// Volatile operations are intended to act on I/O memory, and are
+	/// guaranteed to not be elided or reördered by the compiler across other
+	/// volatile operations.
+	///
+	/// # Original
+	///
+	/// [`pointer::write_volatile`](https://doc.rust-lang.org/std/primitive.pointer.html#method.write_volatile)
+	///
+	/// # Safety
+	///
+	/// See [`ptr::write_volatile`] for safety concerns and examples.
+	///
+	/// [`ptr::write_volatile`]: crate::ptr::write_volatile
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub unsafe fn </span>write_volatile(<span class="self">self</span>, val: bool) {
+		<span class="kw">let </span>select = O::select(<span class="self">self</span>.head).into_inner();
+		<span class="kw">let </span>ptr = <span class="self">self</span>.addr.cast::&lt;T::Mem&gt;().to_mut();
+		<span class="kw">let </span><span class="kw-2">mut </span>tmp = ptr.read_volatile();
+		<span class="kw">if </span>val {
+			tmp |= <span class="kw-2">&amp;</span>select;
 		}
-		<span class="kw">else</span> {
-			<span class="ident">tmp</span> <span class="op">&amp;=</span> <span class="kw-2">&amp;</span><span class="op">!</span><span class="ident">select</span>;
+		<span class="kw">else </span>{
+			tmp &amp;= <span class="kw-2">&amp;</span>!select;
 		}
-		<span class="ident">ptr</span>.<span class="ident">write_volatile</span>(<span class="ident">tmp</span>);
+		ptr.write_volatile(tmp);
 	}
 
-	<span class="doccomment">/// Replaces the bit at `*self` with `src`, returning the old bit.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::replace`](https://doc.rust-lang.org/std/primitive.pointer.html#method.replace)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`ptr::replace`] for safety concerns and examples.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`ptr::replace`]: crate::ptr::replace</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">replace</span>(<span class="self">self</span>, <span class="ident">src</span>: <span class="ident">bool</span>) -&gt; <span class="ident">bool</span> {
-		<span class="self">self</span>.<span class="ident">freeze</span>().<span class="ident">frozen_write_bit</span>(<span class="ident">src</span>)
+	<span class="doccomment">/// Replaces the bit at `*self` with `src`, returning the old bit.
+	///
+	/// # Original
+	///
+	/// [`pointer::replace`](https://doc.rust-lang.org/std/primitive.pointer.html#method.replace)
+	///
+	/// # Safety
+	///
+	/// See [`ptr::replace`] for safety concerns and examples.
+	///
+	/// [`ptr::replace`]: crate::ptr::replace
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub unsafe fn </span>replace(<span class="self">self</span>, src: bool) -&gt; bool {
+		<span class="self">self</span>.freeze().frozen_write_bit(src)
 	}
 
-	<span class="doccomment">/// Swaps the bits at two mutable locations. They may overlap.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`pointer::swap`](https://doc.rust-lang.org/std/primitive.pointer.html#method.swap)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See [`ptr::swap`] for safety concerns and examples.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`ptr::swap`]: crate::ptr::swap</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">swap</span><span class="op">&lt;</span><span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">with</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>)
-	<span class="kw">where</span>
-		<span class="ident">O2</span>: <span class="ident">BitOrder</span>,
-		<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+	<span class="doccomment">/// Swaps the bits at two mutable locations. They may overlap.
+	///
+	/// # Original
+	///
+	/// [`pointer::swap`](https://doc.rust-lang.org/std/primitive.pointer.html#method.swap)
+	///
+	/// # Safety
+	///
+	/// See [`ptr::swap`] for safety concerns and examples.
+	///
+	/// [`ptr::swap`]: crate::ptr::swap
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub unsafe fn </span>swap&lt;O2, T2&gt;(<span class="self">self</span>, with: BitPtr&lt;Mut, O2, T2&gt;)
+	<span class="kw">where
+		</span>O2: BitOrder,
+		T2: BitStore,
 	{
-		<span class="self">self</span>.<span class="ident">write</span>(<span class="ident">with</span>.<span class="ident">replace</span>(<span class="self">self</span>.<span class="ident">read</span>()));
+		<span class="self">self</span>.write(with.replace(<span class="self">self</span>.read()));
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Frozen</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;M, O, T&gt; BitPtr&lt;Frozen&lt;M&gt;, O, T&gt;
+<span class="kw">where
+	</span>M: Mutability,
+	O: BitOrder,
+	T: BitStore,
 {
-	<span class="doccomment">/// Writes to a bit in memory.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Safety</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The caller is responsible for ensuring that the referent bit is safe to</span>
-	<span class="doccomment">/// modify. `bitvec` uses `&amp;ref`/`*const` pointers for aliased write-capable</span>
-	<span class="doccomment">/// views, which the mutability tracking system currently does not support.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Once a pointer is frozen, even if it does *not* have write permissions</span>
-	<span class="doccomment">/// through either `Mut` or `Radium` in its start state, this method becomes</span>
-	<span class="doccomment">/// available. Use on incorrect pointers (f.ex. freezing an `&amp;u8`) is</span>
-	<span class="doccomment">/// undefined.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">frozen_write_bit</span>(<span class="self">self</span>, <span class="ident">value</span>: <span class="ident">bool</span>) -&gt; <span class="ident">bool</span> {
-		(<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">addr</span>.<span class="ident">cast</span>::<span class="op">&lt;</span><span class="ident">T::Access</span><span class="op">&gt;</span>().<span class="ident">to_const</span>())
-			.<span class="ident">write_bit</span>::<span class="op">&lt;</span><span class="ident">O</span><span class="op">&gt;</span>(<span class="self">self</span>.<span class="ident">head</span>, <span class="ident">value</span>)
+	<span class="doccomment">/// Writes to a bit in memory.
+	///
+	/// # Safety
+	///
+	/// The caller is responsible for ensuring that the referent bit is safe to
+	/// modify. `bitvec` uses `&amp;ref`/`*const` pointers for aliased write-capable
+	/// views, which the mutability tracking system currently does not support.
+	///
+	/// Once a pointer is frozen, even if it does *not* have write permissions
+	/// through either `Mut` or `Radium` in its start state, this method becomes
+	/// available. Use on incorrect pointers (f.ex. freezing an `&amp;u8`) is
+	/// undefined.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe fn </span>frozen_write_bit(<span class="self">self</span>, value: bool) -&gt; bool {
+		(<span class="kw-2">&amp;*</span><span class="self">self</span>.addr.cast::&lt;T::Access&gt;().to_const())
+			.write_bit::&lt;O&gt;(<span class="self">self</span>.head, value)
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Clone</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;M, O, T&gt; Clone <span class="kw">for </span>BitPtr&lt;M, O, T&gt;
+<span class="kw">where
+	</span>M: Mutability,
+	O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span> {
-		<span class="self">Self</span> {
-			<span class="ident">addr</span>: <span class="self">self</span>.<span class="ident">get_addr</span>(),
-			..<span class="kw-2">*</span><span class="self">self</span>
-		}
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+		<span class="self">Self </span>{
+			addr: <span class="self">self</span>.get_addr(),
+			..<span class="kw-2">*</span><span class="self">self
+		</span>}
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Eq</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;M, O, T&gt; Eq <span class="kw">for </span>BitPtr&lt;M, O, T&gt;
+<span class="kw">where
+	</span>M: Mutability,
+	O: BitOrder,
+	T: BitStore,
 {
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Ord</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;M, O, T&gt; Ord <span class="kw">for </span>BitPtr&lt;M, O, T&gt;
+<span class="kw">where
+	</span>M: Mutability,
+	O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">cmp::Ordering</span> {
-		<span class="self">self</span>.<span class="ident">partial_cmp</span>(<span class="ident">other</span>).<span class="ident">expect</span>(
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; cmp::Ordering {
+		<span class="self">self</span>.partial_cmp(other).expect(
 			<span class="string">&quot;BitPtr has a total ordering when type parameters are identical&quot;</span>,
 		)
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">M1</span>, <span class="ident">M2</span>, <span class="ident">O</span>, <span class="ident">T1</span>, <span class="ident">T2</span><span class="op">&gt;</span> <span class="ident">PartialEq</span><span class="op">&lt;</span><span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M2</span>, <span class="ident">O</span>, <span class="ident">T2</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M1</span>, <span class="ident">O</span>, <span class="ident">T1</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M1</span>: <span class="ident">Mutability</span>,
-	<span class="ident">M2</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T1</span>: <span class="ident">BitStore</span>,
-	<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;M1, M2, O, T1, T2&gt; PartialEq&lt;BitPtr&lt;M2, O, T2&gt;&gt; <span class="kw">for </span>BitPtr&lt;M1, O, T1&gt;
+<span class="kw">where
+	</span>M1: Mutability,
+	M2: Mutability,
+	O: BitOrder,
+	T1: BitStore,
+	T2: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M2</span>, <span class="ident">O</span>, <span class="ident">T2</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span> {
-		<span class="kw">if</span> <span class="op">!</span><span class="ident">dvl::match_store</span>::<span class="op">&lt;</span><span class="ident">T1::Mem</span>, <span class="ident">T2::Mem</span><span class="op">&gt;</span>() {
-			<span class="kw">return</span> <span class="bool-val">false</span>;
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitPtr&lt;M2, O, T2&gt;) -&gt; bool {
+		<span class="kw">if </span>!dvl::match_store::&lt;T1::Mem, T2::Mem&gt;() {
+			<span class="kw">return </span><span class="bool-val">false</span>;
 		}
-		<span class="self">self</span>.<span class="ident">get_addr</span>().<span class="ident">to_const</span>() <span class="kw">as</span> <span class="ident">usize</span>
-			<span class="op">==</span> <span class="ident">other</span>.<span class="ident">get_addr</span>().<span class="ident">to_const</span>() <span class="kw">as</span> <span class="ident">usize</span>
-			<span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">head</span>.<span class="ident">into_inner</span>() <span class="op">==</span> <span class="ident">other</span>.<span class="ident">head</span>.<span class="ident">into_inner</span>()
+		<span class="self">self</span>.get_addr().to_const() <span class="kw">as </span>usize
+			== other.get_addr().to_const() <span class="kw">as </span>usize
+			&amp;&amp; <span class="self">self</span>.head.into_inner() == other.head.into_inner()
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">M1</span>, <span class="ident">M2</span>, <span class="ident">O</span>, <span class="ident">T1</span>, <span class="ident">T2</span><span class="op">&gt;</span> <span class="ident">PartialOrd</span><span class="op">&lt;</span><span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M2</span>, <span class="ident">O</span>, <span class="ident">T2</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M1</span>, <span class="ident">O</span>, <span class="ident">T1</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M1</span>: <span class="ident">Mutability</span>,
-	<span class="ident">M2</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T1</span>: <span class="ident">BitStore</span>,
-	<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;M1, M2, O, T1, T2&gt; PartialOrd&lt;BitPtr&lt;M2, O, T2&gt;&gt; <span class="kw">for </span>BitPtr&lt;M1, O, T1&gt;
+<span class="kw">where
+	</span>M1: Mutability,
+	M2: Mutability,
+	O: BitOrder,
+	T1: BitStore,
+	T2: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">partial_cmp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M2</span>, <span class="ident">O</span>, <span class="ident">T2</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">cmp::Ordering</span><span class="op">&gt;</span> {
-		<span class="kw">if</span> <span class="op">!</span><span class="ident">dvl::match_store</span>::<span class="op">&lt;</span><span class="ident">T1::Mem</span>, <span class="ident">T2::Mem</span><span class="op">&gt;</span>() {
-			<span class="kw">return</span> <span class="prelude-val">None</span>;
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitPtr&lt;M2, O, T2&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;cmp::Ordering&gt; {
+		<span class="kw">if </span>!dvl::match_store::&lt;T1::Mem, T2::Mem&gt;() {
+			<span class="kw">return </span><span class="prelude-val">None</span>;
 		}
-		<span class="kw">match</span> (<span class="self">self</span>.<span class="ident">get_addr</span>().<span class="ident">to_const</span>() <span class="kw">as</span> <span class="ident">usize</span>)
-			.<span class="ident">cmp</span>(<span class="kw-2">&amp;</span>(<span class="ident">other</span>.<span class="ident">get_addr</span>().<span class="ident">to_const</span>() <span class="kw">as</span> <span class="ident">usize</span>))
+		<span class="kw">match </span>(<span class="self">self</span>.get_addr().to_const() <span class="kw">as </span>usize)
+			.cmp(<span class="kw-2">&amp;</span>(other.get_addr().to_const() <span class="kw">as </span>usize))
 		{
-			<span class="ident">cmp::Ordering::Equal</span> =&gt; {
-				<span class="self">self</span>.<span class="ident">head</span>.<span class="ident">into_inner</span>().<span class="ident">partial_cmp</span>(<span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="ident">head</span>.<span class="ident">into_inner</span>())
+			cmp::Ordering::Equal =&gt; {
+				<span class="self">self</span>.head.into_inner().partial_cmp(<span class="kw-2">&amp;</span>other.head.into_inner())
 			},
-			<span class="ident">ord</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">ord</span>),
+			ord =&gt; <span class="prelude-val">Some</span>(ord),
 		}
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;O, T&gt; From&lt;<span class="kw-2">&amp;</span>T&gt; <span class="kw">for </span>BitPtr&lt;Const, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">elem</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>) -&gt; <span class="self">Self</span> {
-		<span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">elem</span>.<span class="ident">into</span>(), <span class="ident">BitIdx::ZERO</span>)
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from(elem: <span class="kw-2">&amp;</span>T) -&gt; <span class="self">Self </span>{
+		<span class="self">Self</span>::new(elem.into(), BitIdx::ZERO)
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;O, T&gt; From&lt;<span class="kw-2">&amp;mut </span>T&gt; <span class="kw">for </span>BitPtr&lt;Mut, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">elem</span>: <span class="kw-2">&amp;mut</span> <span class="ident">T</span>) -&gt; <span class="self">Self</span> {
-		<span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">elem</span>.<span class="ident">into</span>(), <span class="ident">BitIdx::ZERO</span>)
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from(elem: <span class="kw-2">&amp;mut </span>T) -&gt; <span class="self">Self </span>{
+		<span class="self">Self</span>::new(elem.into(), BitIdx::ZERO)
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="kw-2">*const</span> <span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;O, T&gt; TryFrom&lt;<span class="kw-2">*const </span>T&gt; <span class="kw">for </span>BitPtr&lt;Const, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>;
+	<span class="kw">type </span>Error = BitPtrError&lt;T&gt;;
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">elem</span>: <span class="kw-2">*const</span> <span class="ident">T</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-		<span class="ident"><span class="self">Self</span>::try_new</span>(<span class="ident">elem</span>, <span class="number">0</span>)
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>try_from(elem: <span class="kw-2">*const </span>T) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+		<span class="self">Self</span>::try_new(elem, <span class="number">0</span>)
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="kw-2">*mut</span> <span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;O, T&gt; TryFrom&lt;<span class="kw-2">*mut </span>T&gt; <span class="kw">for </span>BitPtr&lt;Mut, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>;
+	<span class="kw">type </span>Error = BitPtrError&lt;T&gt;;
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">elem</span>: <span class="kw-2">*mut</span> <span class="ident">T</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-		<span class="ident"><span class="self">Self</span>::try_new</span>(<span class="ident">elem</span>, <span class="number">0</span>)
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>try_from(elem: <span class="kw-2">*mut </span>T) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+		<span class="self">Self</span>::try_new(elem, <span class="number">0</span>)
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;M, O, T&gt; Debug <span class="kw">for </span>BitPtr&lt;M, O, T&gt;
+<span class="kw">where
+	</span>M: Mutability,
+	O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>Formatter) -&gt; fmt::Result {
 		<span class="macro">write!</span>(
-			<span class="ident">fmt</span>,
+			fmt,
 			<span class="string">&quot;{} Bit&lt;{}, {}&gt;&quot;</span>,
-			<span class="ident">M::RENDER</span>,
-			<span class="ident">any::type_name</span>::<span class="op">&lt;</span><span class="ident">O</span><span class="op">&gt;</span>(),
-			<span class="ident">any::type_name</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(),
+			M::RENDER,
+			any::type_name::&lt;O&gt;(),
+			any::type_name::&lt;T&gt;(),
 		)<span class="question-mark">?</span>;
-		<span class="ident">Pointer::fmt</span>(<span class="self">self</span>, <span class="ident">fmt</span>)
+		Pointer::fmt(<span class="self">self</span>, fmt)
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Pointer</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;M, O, T&gt; Pointer <span class="kw">for </span>BitPtr&lt;M, O, T&gt;
+<span class="kw">where
+	</span>M: Mutability,
+	O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
-		<span class="ident">fmt</span>.<span class="ident">debug_tuple</span>(<span class="string">&quot;&quot;</span>)
-			.<span class="ident">field</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_addr</span>().<span class="ident">fmt_pointer</span>())
-			.<span class="ident">field</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">head</span>.<span class="ident">fmt_binary</span>())
-			.<span class="ident">finish</span>()
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>Formatter) -&gt; fmt::Result {
+		fmt.debug_tuple(<span class="string">&quot;&quot;</span>)
+			.field(<span class="kw-2">&amp;</span><span class="self">self</span>.get_addr().fmt_pointer())
+			.field(<span class="kw-2">&amp;</span><span class="self">self</span>.head.fmt_binary())
+			.finish()
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Hash</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;M, O, T&gt; Hash <span class="kw">for </span>BitPtr&lt;M, O, T&gt;
+<span class="kw">where
+	</span>M: Mutability,
+	O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">hash</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">H</span>)
-	<span class="kw">where</span> <span class="ident">H</span>: <span class="ident">Hasher</span> {
-		<span class="self">self</span>.<span class="ident">get_addr</span>().<span class="ident">hash</span>(<span class="ident">state</span>);
-		<span class="self">self</span>.<span class="ident">head</span>.<span class="ident">hash</span>(<span class="ident">state</span>);
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>hash&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H)
+	<span class="kw">where </span>H: Hasher {
+		<span class="self">self</span>.get_addr().hash(state);
+		<span class="self">self</span>.head.hash(state);
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Copy</span> <span class="kw">for</span> <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;M, O, T&gt; Copy <span class="kw">for </span>BitPtr&lt;M, O, T&gt;
+<span class="kw">where
+	</span>M: Mutability,
+	O: BitOrder,
+	T: BitStore,
 {
 }
 
-<span class="doccomment">/// Errors produced by invalid bit-pointer components.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">PartialOrd</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span> <span class="ident">T</span>: <span class="ident">BitStore</span>
+<span class="doccomment">/// Errors produced by invalid bit-pointer components.
+</span><span class="attribute">#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+</span><span class="kw">pub enum </span>BitPtrError&lt;T&gt;
+<span class="kw">where </span>T: BitStore
 {
-	<span class="doccomment">/// The null address was provided.</span>
-	<span class="ident">Null</span>(<span class="ident">NullPtrError</span>),
-	<span class="doccomment">/// The address was misaligned for the element type.</span>
-	<span class="ident">Misaligned</span>(<span class="ident">MisalignError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>),
-	<span class="doccomment">/// The bit index was invalid for the element type.</span>
-	<span class="ident">BadIndex</span>(<span class="ident">BitIdxError</span><span class="op">&lt;</span><span class="ident">T::Mem</span><span class="op">&gt;</span>),
+	<span class="doccomment">/// The null address was provided.
+	</span>Null(NullPtrError),
+	<span class="doccomment">/// The address was misaligned for the element type.
+	</span>Misaligned(MisalignError&lt;T&gt;),
+	<span class="doccomment">/// The bit index was invalid for the element type.
+	</span>BadIndex(BitIdxError&lt;T::Mem&gt;),
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">NullPtrError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span> <span class="ident">T</span>: <span class="ident">BitStore</span>
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;T&gt; From&lt;NullPtrError&gt; <span class="kw">for </span>BitPtrError&lt;T&gt;
+<span class="kw">where </span>T: BitStore
 {
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">err</span>: <span class="ident">NullPtrError</span>) -&gt; <span class="self">Self</span> {
-		<span class="ident"><span class="self">Self</span>::Null</span>(<span class="ident">err</span>)
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>from(err: NullPtrError) -&gt; <span class="self">Self </span>{
+		<span class="self">Self</span>::Null(err)
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MisalignError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span> <span class="ident">T</span>: <span class="ident">BitStore</span>
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;T&gt; From&lt;MisalignError&lt;T&gt;&gt; <span class="kw">for </span>BitPtrError&lt;T&gt;
+<span class="kw">where </span>T: BitStore
 {
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">err</span>: <span class="ident">MisalignError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-		<span class="ident"><span class="self">Self</span>::Misaligned</span>(<span class="ident">err</span>)
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>from(err: MisalignError&lt;T&gt;) -&gt; <span class="self">Self </span>{
+		<span class="self">Self</span>::Misaligned(err)
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">BitIdxError</span><span class="op">&lt;</span><span class="ident">T::Mem</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span> <span class="ident">T</span>: <span class="ident">BitStore</span>
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;T&gt; From&lt;BitIdxError&lt;T::Mem&gt;&gt; <span class="kw">for </span>BitPtrError&lt;T&gt;
+<span class="kw">where </span>T: BitStore
 {
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">err</span>: <span class="ident">BitIdxError</span><span class="op">&lt;</span><span class="ident">T::Mem</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-		<span class="ident"><span class="self">Self</span>::BadIndex</span>(<span class="ident">err</span>)
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>from(err: BitIdxError&lt;T::Mem&gt;) -&gt; <span class="self">Self </span>{
+		<span class="self">Self</span>::BadIndex(err)
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Infallible</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span> <span class="ident">T</span>: <span class="ident">BitStore</span>
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;T&gt; From&lt;Infallible&gt; <span class="kw">for </span>BitPtrError&lt;T&gt;
+<span class="kw">where </span>T: BitStore
 {
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">from</span>(<span class="kw">_</span>: <span class="ident">Infallible</span>) -&gt; <span class="self">Self</span> {
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>from(<span class="kw">_</span>: Infallible) -&gt; <span class="self">Self </span>{
 		<span class="macro">unreachable!</span>(<span class="string">&quot;Infallible errors can never be produced&quot;</span>);
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span> <span class="ident">T</span>: <span class="ident">BitStore</span>
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;T&gt; Display <span class="kw">for </span>BitPtrError&lt;T&gt;
+<span class="kw">where </span>T: BitStore
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
-		<span class="kw">match</span> <span class="self">self</span> {
-			<span class="ident"><span class="self">Self</span>::Null</span>(<span class="ident">err</span>) =&gt; <span class="ident">Display::fmt</span>(<span class="ident">err</span>, <span class="ident">fmt</span>),
-			<span class="ident"><span class="self">Self</span>::Misaligned</span>(<span class="ident">err</span>) =&gt; <span class="ident">Display::fmt</span>(<span class="ident">err</span>, <span class="ident">fmt</span>),
-			<span class="ident"><span class="self">Self</span>::BadIndex</span>(<span class="ident">err</span>) =&gt; <span class="ident">Display::fmt</span>(<span class="ident">err</span>, <span class="ident">fmt</span>),
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>Formatter) -&gt; fmt::Result {
+		<span class="kw">match </span><span class="self">self </span>{
+			<span class="self">Self</span>::Null(err) =&gt; Display::fmt(err, fmt),
+			<span class="self">Self</span>::Misaligned(err) =&gt; Display::fmt(err, fmt),
+			<span class="self">Self</span>::BadIndex(err) =&gt; Display::fmt(err, fmt),
 		}
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;std&quot;</span>)]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">std::error::Error</span> <span class="kw">for</span> <span class="ident">BitPtrError</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">T</span>: <span class="ident">BitStore</span>
+<span class="attribute">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
+</span><span class="kw">impl</span>&lt;T&gt; std::error::Error <span class="kw">for </span>BitPtrError&lt;T&gt; <span class="kw">where </span>T: BitStore
 {
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-	<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-	<span class="kw">use</span> <span class="kw">crate</span>::{
-		<span class="ident">prelude::Lsb0</span>,
-		<span class="ident">ptr::Const</span>,
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+	<span class="kw">use super</span>::<span class="kw-2">*</span>;
+	<span class="kw">use crate</span>::{
+		prelude::Lsb0,
+		ptr::Const,
 	};
 
-	<span class="attribute">#[<span class="ident">test</span>]</span>
-	<span class="kw">fn</span> <span class="ident">ctor</span>() {
-		<span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="number">0u16</span>;
-		<span class="kw">let</span> <span class="ident">head</span> <span class="op">=</span> <span class="number">5</span>;
+	<span class="attribute">#[test]
+	</span><span class="kw">fn </span>ctor() {
+		<span class="kw">let </span>data = <span class="number">0u16</span>;
+		<span class="kw">let </span>head = <span class="number">5</span>;
 
-		<span class="kw">let</span> <span class="ident">bitptr</span> <span class="op">=</span> <span class="ident">BitPtr</span>::<span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">Lsb0</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="ident">::try_new</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>, <span class="ident">head</span>).<span class="ident">unwrap</span>();
-		<span class="kw">let</span> (<span class="ident">addr</span>, <span class="ident">indx</span>) <span class="op">=</span> <span class="ident">bitptr</span>.<span class="ident">raw_parts</span>();
-		<span class="macro">assert_eq!</span>(<span class="ident">addr</span>.<span class="ident">to_const</span>(), <span class="kw-2">&amp;</span><span class="ident">data</span> <span class="kw">as</span> <span class="kw-2">*const</span> <span class="kw">_</span>);
-		<span class="macro">assert_eq!</span>(<span class="ident">indx</span>.<span class="ident">into_inner</span>(), <span class="ident">head</span>);
+		<span class="kw">let </span>bitptr = BitPtr::&lt;Const, Lsb0, <span class="kw">_</span>&gt;::try_new(<span class="kw-2">&amp;</span>data, head).unwrap();
+		<span class="kw">let </span>(addr, indx) = bitptr.raw_parts();
+		<span class="macro">assert_eq!</span>(addr.to_const(), <span class="kw-2">&amp;</span>data <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">_</span>);
+		<span class="macro">assert_eq!</span>(indx.into_inner(), head);
 	}
 
-	<span class="attribute">#[<span class="ident">test</span>]</span>
-	<span class="kw">fn</span> <span class="ident">bitref</span>() {
-		<span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="number">1u32</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="number">23</span>;
-		<span class="kw">let</span> <span class="ident">head</span> <span class="op">=</span> <span class="number">23</span>;
-		<span class="kw">let</span> <span class="ident">bitptr</span> <span class="op">=</span> <span class="ident">BitPtr</span>::<span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">Lsb0</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="ident">::try_new</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>, <span class="ident">head</span>).<span class="ident">unwrap</span>();
-		<span class="kw">let</span> <span class="ident">bitref</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">bitptr</span>.<span class="ident">as_ref</span>() }.<span class="ident">unwrap</span>();
-		<span class="macro">assert!</span>(<span class="kw-2">*</span><span class="ident">bitref</span>);
+	<span class="attribute">#[test]
+	</span><span class="kw">fn </span>bitref() {
+		<span class="kw">let </span>data = <span class="number">1u32 </span>&lt;&lt; <span class="number">23</span>;
+		<span class="kw">let </span>head = <span class="number">23</span>;
+		<span class="kw">let </span>bitptr = BitPtr::&lt;Const, Lsb0, <span class="kw">_</span>&gt;::try_new(<span class="kw-2">&amp;</span>data, head).unwrap();
+		<span class="kw">let </span>bitref = <span class="kw">unsafe </span>{ bitptr.as_ref() }.unwrap();
+		<span class="macro">assert!</span>(<span class="kw-2">*</span>bitref);
 	}
 
-	<span class="attribute">#[<span class="ident">test</span>]</span>
-	<span class="kw">fn</span> <span class="ident">assert_size</span>() {
+	<span class="attribute">#[test]
+	</span><span class="kw">fn </span>assert_size() {
 		<span class="macro">assert!</span>(
-			<span class="ident">core::mem::size_of</span>::<span class="op">&lt;</span><span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">Lsb0</span>, <span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>()
-				<span class="op">&lt;</span><span class="op">=</span> <span class="ident">core::mem::size_of</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>() <span class="op">+</span> <span class="ident">core::mem::size_of</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>(),
+			core::mem::size_of::&lt;BitPtr&lt;Const, Lsb0, u8&gt;&gt;()
+				&lt;= core::mem::size_of::&lt;usize&gt;() + core::mem::size_of::&lt;u8&gt;(),
 		);
 	}
 
-	<span class="attribute">#[<span class="ident">test</span>]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;alloc&quot;</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">format</span>() {
-		<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;std&quot;</span>))]</span>
-		<span class="kw">use</span> <span class="ident">alloc::format</span>;
+	<span class="attribute">#[test]
+	#[cfg(feature = <span class="string">&quot;alloc&quot;</span>)]
+	</span><span class="kw">fn </span>format() {
+		<span class="attribute">#[cfg(not(feature = <span class="string">&quot;std&quot;</span>))]
+		</span><span class="kw">use </span>alloc::format;
 
-		<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::order::Msb0</span>;
+		<span class="kw">use </span><span class="kw">crate</span>::order::Msb0;
 
-		<span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="number">0u16</span>;
-		<span class="kw">let</span> <span class="ident">bitptr</span> <span class="op">=</span> <span class="ident">BitPtr</span>::<span class="op">&lt;</span><span class="kw">_</span>, <span class="ident">Msb0</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="ident">::from_ref</span>(<span class="kw-2">&amp;</span><span class="ident">base</span>);
-		<span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="kw">unsafe</span> { <span class="ident">bitptr</span>.<span class="ident">add</span>(<span class="number">3</span>) });
-		<span class="kw">let</span> <span class="ident">render</span> <span class="op">=</span> <span class="macro">format!</span>(
+		<span class="kw">let </span>base = <span class="number">0u16</span>;
+		<span class="kw">let </span>bitptr = BitPtr::&lt;<span class="kw">_</span>, Msb0, <span class="kw">_</span>&gt;::from_ref(<span class="kw-2">&amp;</span>base);
+		<span class="kw">let </span>text = <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="kw">unsafe </span>{ bitptr.add(<span class="number">3</span>) });
+		<span class="kw">let </span>render = <span class="macro">format!</span>(
 			<span class="string">&quot;*const Bit&lt;bitvec::order::Msb0, u16&gt;({:p}, {:04b})&quot;</span>,
-			<span class="kw-2">&amp;</span><span class="ident">base</span> <span class="kw">as</span> <span class="kw-2">*const</span> <span class="ident">u16</span>, <span class="number">3</span>
-		);
-		<span class="macro">assert_eq!</span>(<span class="ident">text</span>, <span class="ident">render</span>);
+			<span class="kw-2">&amp;</span>base <span class="kw">as </span><span class="kw-2">*const </span>u16, <span class="number">3
+		</span>);
+		<span class="macro">assert_eq!</span>(text, render);
 	}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

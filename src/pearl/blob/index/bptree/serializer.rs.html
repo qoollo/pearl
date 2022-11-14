@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/index/bptree/serializer.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>serializer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script src="../../../../../crates.js"></script><script defer src="../../../../../main.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../pearl/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/index/bptree/serializer.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>serializer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../../normalize.css"><link rel="stylesheet" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../../dark.css" disabled><link rel="stylesheet" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../pearl/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -253,256 +248,255 @@
 <span id="248">248</span>
 <span id="249">249</span>
 <span id="250">250</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prelude</span>::<span class="kw-2">*</span>;
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">type</span> <span class="ident">MinKeyWithOffset</span> <span class="op">=</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">u64</span>);
-<span class="kw">type</span> <span class="ident">NodesWithLayerSize</span> <span class="op">=</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MinKeyWithOffset</span><span class="op">&gt;</span>, <span class="ident">u64</span>);
+<span class="kw">type </span>MinKeyWithOffset = (Vec&lt;u8&gt;, u64);
+<span class="kw">type </span>NodesWithLayerSize = (Vec&lt;MinKeyWithOffset&gt;, u64);
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct</span> <span class="ident">HeaderStage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span>HeaderStage&lt;<span class="lifetime">&#39;a</span>, K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;b</span>&gt; K: Key&lt;<span class="lifetime">&#39;b</span>&gt;,
 {
-    <span class="ident">headers_btree</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-    <span class="ident">header</span>: <span class="ident">IndexHeader</span>,
-    <span class="ident">meta</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    headers_btree: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>InMemoryIndex&lt;K&gt;,
+    header: IndexHeader,
+    meta: Vec&lt;u8&gt;,
 }
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct</span> <span class="ident">TreeStage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span>TreeStage&lt;<span class="lifetime">&#39;a</span>, K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;b</span>&gt; K: Key&lt;<span class="lifetime">&#39;b</span>&gt;,
 {
-    <span class="ident">headers_btree</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-    <span class="ident">metadata</span>: <span class="ident">TreeMeta</span>,
-    <span class="ident">header</span>: <span class="ident">IndexHeader</span>,
-    <span class="ident">meta_buf</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="ident">tree_buf</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="ident">headers_size</span>: <span class="ident">usize</span>,
-    <span class="ident">meta</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    headers_btree: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>InMemoryIndex&lt;K&gt;,
+    metadata: TreeMeta,
+    header: IndexHeader,
+    meta_buf: Vec&lt;u8&gt;,
+    tree_buf: Vec&lt;u8&gt;,
+    headers_size: usize,
+    meta: Vec&lt;u8&gt;,
 }
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span>Serializer&lt;<span class="lifetime">&#39;a</span>, K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;b</span>&gt; K: Key&lt;<span class="lifetime">&#39;b</span>&gt;,
 {
-    <span class="ident">headers_btree</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
+    headers_btree: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>InMemoryIndex&lt;K&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span><span class="op">&gt;</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, K&gt; Serializer&lt;<span class="lifetime">&#39;a</span>, K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;b</span>&gt; K: Key&lt;<span class="lifetime">&#39;b</span>&gt;,
 {
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">headers_btree</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">headers_btree</span> }
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new(headers_btree: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>InMemoryIndex&lt;K&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ headers_btree }
     }
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">header_stage</span>(<span class="self">self</span>, <span class="ident">meta</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">blob_size</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HeaderStage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">record_header</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">headers_btree</span>.<span class="ident">values</span>().<span class="ident">next</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">first</span>()) {
-            <span class="kw">let</span> <span class="ident">record_header_size</span> <span class="op">=</span> <span class="ident">record_header</span>.<span class="ident">serialized_size</span>().<span class="ident">try_into</span>()<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">headers_len</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">headers_btree</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">acc</span>, (<span class="ident">_k</span>, <span class="ident">v</span>)<span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">v</span>.<span class="ident">len</span>());
-            <span class="kw">let</span> <span class="ident">header</span> <span class="op">=</span> <span class="ident">IndexHeader::new</span>(<span class="ident">record_header_size</span>, <span class="ident">headers_len</span>, <span class="ident">meta</span>.<span class="ident">len</span>(), <span class="ident">blob_size</span>);
-            <span class="prelude-val">Ok</span>(<span class="ident">HeaderStage</span> {
-                <span class="ident">headers_btree</span>: <span class="self">self</span>.<span class="ident">headers_btree</span>,
-                <span class="ident">header</span>,
-                <span class="ident">meta</span>,
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>header_stage(<span class="self">self</span>, meta: Vec&lt;u8&gt;, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;HeaderStage&lt;<span class="lifetime">&#39;a</span>, K&gt;&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(record_header) = <span class="self">self</span>.headers_btree.values().next().and_then(|v| v.first()) {
+            <span class="kw">let </span>record_header_size = record_header.serialized_size().try_into()<span class="question-mark">?</span>;
+            <span class="kw">let </span>headers_len = <span class="self">self
+                </span>.headers_btree
+                .iter()
+                .fold(<span class="number">0</span>, |acc, (_k, v)| acc + v.len());
+            <span class="kw">let </span>header = IndexHeader::new(record_header_size, headers_len, meta.len(), blob_size);
+            <span class="prelude-val">Ok</span>(HeaderStage {
+                headers_btree: <span class="self">self</span>.headers_btree,
+                header,
+                meta,
             })
-        } <span class="kw">else</span> {
+        } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;BTree is empty, can&#39;t find info about key len!&quot;</span>))
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span><span class="op">&gt;</span> <span class="ident">HeaderStage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, K&gt; HeaderStage&lt;<span class="lifetime">&#39;a</span>, K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;b</span>&gt; K: Key&lt;<span class="lifetime">&#39;b</span>&gt; + <span class="lifetime">&#39;static</span>,
 {
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">tree_stage</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TreeStage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">hs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">serialized_size</span>()<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="ident">external_buf_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">meta_size</span>;
-        <span class="kw">let</span> <span class="ident">meta_and_buf_end</span> <span class="op">=</span> (<span class="ident">hs</span> <span class="op">+</span> <span class="ident">external_buf_size</span>) <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="kw">let</span> <span class="ident">headers_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">records_count</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">record_header_size</span>;
-        <span class="kw">let</span> <span class="ident">tree_offset</span> <span class="op">=</span> <span class="ident">meta_and_buf_end</span> <span class="op">+</span> <span class="ident">TreeMeta::serialized_size_default</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">tree_buf</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::serialize_bptree</span>(
-            <span class="self">self</span>.<span class="ident">headers_btree</span>,
-            <span class="ident">tree_offset</span>,
-            <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">record_header_size</span> <span class="kw">as</span> <span class="ident">u64</span>,
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>tree_stage(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;TreeStage&lt;<span class="lifetime">&#39;a</span>, K&gt;&gt; {
+        <span class="kw">let </span>hs = <span class="self">self</span>.header.serialized_size()<span class="question-mark">? </span><span class="kw">as </span>usize;
+        <span class="kw">let </span>external_buf_size = <span class="self">self</span>.header.meta_size;
+        <span class="kw">let </span>meta_and_buf_end = (hs + external_buf_size) <span class="kw">as </span>u64;
+        <span class="kw">let </span>headers_size = <span class="self">self</span>.header.records_count * <span class="self">self</span>.header.record_header_size;
+        <span class="kw">let </span>tree_offset = meta_and_buf_end + TreeMeta::serialized_size_default()<span class="question-mark">?</span>;
+        <span class="kw">let </span>tree_buf = <span class="self">Self</span>::serialize_bptree(
+            <span class="self">self</span>.headers_btree,
+            tree_offset,
+            <span class="self">self</span>.header.record_header_size <span class="kw">as </span>u64,
         )<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">leaves_offset</span> <span class="op">=</span> <span class="ident">tree_offset</span> <span class="op">+</span> <span class="ident">tree_buf</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="kw">let</span> <span class="ident">metadata</span> <span class="op">=</span> <span class="ident">TreeMeta::new</span>(<span class="ident">leaves_offset</span>, <span class="ident">tree_offset</span>);
-        <span class="kw">let</span> <span class="ident">meta_buf</span> <span class="op">=</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">metadata</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">TreeStage</span> {
-            <span class="ident">headers_btree</span>: <span class="self">self</span>.<span class="ident">headers_btree</span>,
-            <span class="ident">metadata</span>,
-            <span class="ident">meta_buf</span>,
-            <span class="ident">tree_buf</span>,
-            <span class="ident">header</span>: <span class="self">self</span>.<span class="ident">header</span>,
-            <span class="ident">headers_size</span>,
-            <span class="ident">meta</span>: <span class="self">self</span>.<span class="ident">meta</span>,
+        <span class="kw">let </span>leaves_offset = tree_offset + tree_buf.len() <span class="kw">as </span>u64;
+        <span class="kw">let </span>metadata = TreeMeta::new(leaves_offset, tree_offset);
+        <span class="kw">let </span>meta_buf = serialize(<span class="kw-2">&amp;</span>metadata)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(TreeStage {
+            headers_btree: <span class="self">self</span>.headers_btree,
+            metadata,
+            meta_buf,
+            tree_buf,
+            header: <span class="self">self</span>.header,
+            headers_size,
+            meta: <span class="self">self</span>.meta,
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">serialize_bptree</span>(
-        <span class="ident">btree</span>: <span class="kw-2">&amp;</span><span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-        <span class="ident">tree_offset</span>: <span class="ident">u64</span>,
-        <span class="ident">record_header_size</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaf_nodes_compressed</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">offset</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">remainder</span> <span class="op">=</span> <span class="ident">BLOCK_SIZE</span> <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">min_k</span> <span class="op">=</span> <span class="ident">btree</span>.<span class="ident">keys</span>().<span class="ident">next</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">min_o</span> <span class="op">=</span> <span class="ident">offset</span>;
-        <span class="kw">for</span> (<span class="ident">k</span>, <span class="ident">v</span>) <span class="kw">in</span> <span class="ident">btree</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="ident">remainder</span> <span class="op">&lt;</span> <span class="ident">record_header_size</span> {
-                <span class="ident">leaf_nodes_compressed</span>.<span class="ident">push</span>((<span class="ident">min_k</span>.<span class="ident">to_vec</span>(), <span class="ident">min_o</span>));
-                <span class="ident">min_k</span> <span class="op">=</span> <span class="ident">k</span>.<span class="ident">clone</span>();
-                <span class="ident">min_o</span> <span class="op">=</span> <span class="ident">offset</span>;
-                <span class="ident">remainder</span> <span class="op">=</span> <span class="ident">BLOCK_SIZE</span> <span class="kw">as</span> <span class="ident">u64</span>;
+    <span class="kw">fn </span>serialize_bptree(
+        btree: <span class="kw-2">&amp;</span>InMemoryIndex&lt;K&gt;,
+        tree_offset: u64,
+        record_header_size: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>leaf_nodes_compressed = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>remainder = BLOCK_SIZE <span class="kw">as </span>u64;
+        <span class="kw">let </span><span class="kw-2">mut </span>min_k = btree.keys().next().unwrap().clone();
+        <span class="kw">let </span><span class="kw-2">mut </span>min_o = offset;
+        <span class="kw">for </span>(k, v) <span class="kw">in </span>btree.iter() {
+            <span class="kw">if </span>remainder &lt; record_header_size {
+                leaf_nodes_compressed.push((min_k.to_vec(), min_o));
+                min_k = k.clone();
+                min_o = offset;
+                remainder = BLOCK_SIZE <span class="kw">as </span>u64;
             }
-            <span class="kw">let</span> <span class="ident">delta_size</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span> <span class="op">*</span> <span class="ident">record_header_size</span>;
-            <span class="ident">offset</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta_size</span>;
-            <span class="ident">remainder</span> <span class="op">=</span> <span class="ident">remainder</span>.<span class="ident">saturating_sub</span>(<span class="ident">delta_size</span>);
+            <span class="kw">let </span>delta_size = v.len() <span class="kw">as </span>u64 * record_header_size;
+            offset += delta_size;
+            remainder = remainder.saturating_sub(delta_size);
         }
-        <span class="ident">leaf_nodes_compressed</span>.<span class="ident">push</span>((<span class="ident">min_k</span>.<span class="ident">to_vec</span>(), <span class="ident">min_o</span>));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident"><span class="self">Self</span>::build_tree</span>(<span class="ident">leaf_nodes_compressed</span>, <span class="ident">tree_offset</span>, <span class="kw-2">&amp;mut</span> <span class="ident">buf</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">buf</span>)
+        leaf_nodes_compressed.push((min_k.to_vec(), min_o));
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
+        <span class="self">Self</span>::build_tree(leaf_nodes_compressed, tree_offset, <span class="kw-2">&amp;mut </span>buf)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(buf)
     }
 
-    <span class="kw">fn</span> <span class="ident">process_keys_portion</span>(
-        <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-        <span class="ident">nodes_portion</span>: <span class="kw-2">&amp;</span>[<span class="ident">MinKeyWithOffset</span>],
-        <span class="ident">shift</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">offsets_iter</span> <span class="op">=</span> <span class="ident">nodes_portion</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">offset</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">offset</span> <span class="op">+</span> <span class="ident">shift</span>);
-        <span class="kw">let</span> <span class="ident">keys_iter</span> <span class="op">=</span> <span class="ident">nodes_portion</span>[<span class="number">1</span>..].<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">k</span>.<span class="ident">as_ref</span>());
-        <span class="kw">let</span> <span class="ident">node_buf</span> <span class="op">=</span> <span class="ident">Node::new_serialized</span>(
-            <span class="ident">keys_iter</span>,
-            <span class="ident">offsets_iter</span>,
-            <span class="ident">nodes_portion</span>[<span class="number">0</span>].<span class="number">0</span>.<span class="ident">len</span>(),
-            <span class="ident">nodes_portion</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>,
+    <span class="kw">fn </span>process_keys_portion(
+        buf: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+        nodes_portion: <span class="kw-2">&amp;</span>[MinKeyWithOffset],
+        shift: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>offsets_iter = nodes_portion.iter().map(|(<span class="kw">_</span>, offset)| <span class="kw-2">*</span>offset + shift);
+        <span class="kw">let </span>keys_iter = nodes_portion[<span class="number">1</span>..].iter().map(|(k, <span class="kw">_</span>)| k.as_ref());
+        <span class="kw">let </span>node_buf = Node::new_serialized(
+            keys_iter,
+            offsets_iter,
+            nodes_portion[<span class="number">0</span>].<span class="number">0</span>.len(),
+            nodes_portion.len() - <span class="number">1</span>,
         )<span class="question-mark">?</span>;
-        <span class="ident">buf</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">node_buf</span>);
+        buf.extend_from_slice(<span class="kw-2">&amp;</span>node_buf);
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">build_tree</span>(
-        <span class="ident">nodes_arr</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MinKeyWithOffset</span><span class="op">&gt;</span>,
-        <span class="ident">tree_offset</span>: <span class="ident">u64</span>,
-        <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>build_tree(
+        nodes_arr: Vec&lt;MinKeyWithOffset&gt;,
+        tree_offset: u64,
+        buf: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="macro">assert!</span>(
-            <span class="op">!</span><span class="ident">nodes_arr</span>.<span class="ident">is_empty</span>(),
-            <span class="string">&quot;Impossible to build tree without nodes&quot;</span>
-        );
-        <span class="kw">if</span> <span class="ident">nodes_arr</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span> {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+            !nodes_arr.is_empty(),
+            <span class="string">&quot;Impossible to build tree without nodes&quot;
+        </span>);
+        <span class="kw">if </span>nodes_arr.len() == <span class="number">1 </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
-        <span class="kw">let</span> <span class="ident">max_amount</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::max_nonleaf_node_capacity</span>(<span class="ident">nodes_arr</span>[<span class="number">0</span>].<span class="number">0</span>.<span class="ident">len</span>());
-        <span class="kw">let</span> <span class="ident">min_amount</span> <span class="op">=</span> (<span class="ident">max_amount</span> <span class="op">-</span> <span class="number">1</span>) <span class="op">/</span> <span class="number">2</span> <span class="op">+</span> <span class="number">1</span>;
-        <span class="kw">let</span> (<span class="ident">new_nodes</span>, <span class="ident">layer_size</span>) <span class="op">=</span>
-            <span class="ident"><span class="self">Self</span>::collect_next_layer_nodes</span>(<span class="kw-2">&amp;</span><span class="ident">nodes_arr</span>, (<span class="ident">min_amount</span>, <span class="ident">max_amount</span>))<span class="question-mark">?</span>;
-        <span class="ident"><span class="self">Self</span>::build_tree</span>(<span class="ident">new_nodes</span>, <span class="ident">tree_offset</span>, <span class="ident">buf</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">base_offset</span> <span class="op">=</span> <span class="ident">tree_offset</span> <span class="op">+</span> <span class="ident">layer_size</span> <span class="op">+</span> <span class="ident">buf</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="ident"><span class="self">Self</span>::shift_all_and_write</span>(<span class="ident">buf</span>, <span class="kw-2">&amp;</span><span class="ident">nodes_arr</span>, <span class="ident">base_offset</span>, (<span class="ident">min_amount</span>, <span class="ident">max_amount</span>))
+        <span class="kw">let </span>max_amount = <span class="self">Self</span>::max_nonleaf_node_capacity(nodes_arr[<span class="number">0</span>].<span class="number">0</span>.len());
+        <span class="kw">let </span>min_amount = (max_amount - <span class="number">1</span>) / <span class="number">2 </span>+ <span class="number">1</span>;
+        <span class="kw">let </span>(new_nodes, layer_size) =
+            <span class="self">Self</span>::collect_next_layer_nodes(<span class="kw-2">&amp;</span>nodes_arr, (min_amount, max_amount))<span class="question-mark">?</span>;
+        <span class="self">Self</span>::build_tree(new_nodes, tree_offset, buf)<span class="question-mark">?</span>;
+        <span class="kw">let </span>base_offset = tree_offset + layer_size + buf.len() <span class="kw">as </span>u64;
+        <span class="self">Self</span>::shift_all_and_write(buf, <span class="kw-2">&amp;</span>nodes_arr, base_offset, (min_amount, max_amount))
     }
 
-    <span class="kw">fn</span> <span class="ident">shift_all_and_write</span>(
-        <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-        <span class="ident">nodes_arr</span>: <span class="kw-2">&amp;</span>[<span class="ident">MinKeyWithOffset</span>],
-        <span class="ident">base_offset</span>: <span class="ident">u64</span>,
-        (<span class="ident">min_amount</span>, <span class="ident">max_amount</span>): (<span class="ident">usize</span>, <span class="ident">usize</span>),
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">while</span> <span class="ident">nodes_arr</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">current</span> <span class="op">&gt;</span> <span class="ident">max_amount</span> {
-            <span class="comment">// amount == min_amount at least (if nodes_arr.len() - current == max_amount + 1)</span>
-            <span class="comment">// and min operation is necessary to have at least min_amount nodes left</span>
-            <span class="kw">let</span> <span class="ident">amount</span> <span class="op">=</span> <span class="ident">std::cmp::min</span>(<span class="ident">max_amount</span>, <span class="ident">nodes_arr</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">current</span> <span class="op">-</span> <span class="ident">min_amount</span>);
-            <span class="kw">let</span> <span class="ident">nodes_portion</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">nodes_arr</span>[<span class="ident">current</span>..(<span class="ident">current</span> <span class="op">+</span> <span class="ident">amount</span>)];
-            <span class="ident">current</span> <span class="op">+</span><span class="op">=</span> <span class="ident">amount</span>;
-            <span class="ident"><span class="self">Self</span>::process_keys_portion</span>(<span class="ident">buf</span>, <span class="ident">nodes_portion</span>, <span class="ident">base_offset</span>)<span class="question-mark">?</span>;
+    <span class="kw">fn </span>shift_all_and_write(
+        buf: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+        nodes_arr: <span class="kw-2">&amp;</span>[MinKeyWithOffset],
+        base_offset: u64,
+        (min_amount, max_amount): (usize, usize),
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>current = <span class="number">0</span>;
+        <span class="kw">while </span>nodes_arr.len() - current &gt; max_amount {
+            <span class="comment">// amount == min_amount at least (if nodes_arr.len() - current == max_amount + 1)
+            // and min operation is necessary to have at least min_amount nodes left
+            </span><span class="kw">let </span>amount = std::cmp::min(max_amount, nodes_arr.len() - current - min_amount);
+            <span class="kw">let </span>nodes_portion = <span class="kw-2">&amp;</span>nodes_arr[current..(current + amount)];
+            current += amount;
+            <span class="self">Self</span>::process_keys_portion(buf, nodes_portion, base_offset)<span class="question-mark">?</span>;
         }
-        <span class="comment">// min_amount &lt;= nodes left &lt;= max_amount</span>
-        <span class="kw">let</span> <span class="ident">nodes_portion</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">nodes_arr</span>[<span class="ident">current</span>..];
-        <span class="ident"><span class="self">Self</span>::process_keys_portion</span>(<span class="ident">buf</span>, <span class="ident">nodes_portion</span>, <span class="ident">base_offset</span>)<span class="question-mark">?</span>;
+        <span class="comment">// min_amount &lt;= nodes left &lt;= max_amount
+        </span><span class="kw">let </span>nodes_portion = <span class="kw-2">&amp;</span>nodes_arr[current..];
+        <span class="self">Self</span>::process_keys_portion(buf, nodes_portion, base_offset)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn</span> <span class="ident">collect_next_layer_nodes</span>(
-        <span class="ident">nodes_arr</span>: <span class="kw-2">&amp;</span>[<span class="ident">MinKeyWithOffset</span>],
-        (<span class="ident">min_amount</span>, <span class="ident">max_amount</span>): (<span class="ident">usize</span>, <span class="ident">usize</span>),
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodesWithLayerSize</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_nodes</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current_offset</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">while</span> <span class="ident">nodes_arr</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">current</span> <span class="op">&gt;</span> <span class="ident">max_amount</span> {
-            <span class="comment">// amount == min_amount at least (if nodes_arr.len() - current == max_amount + 1)</span>
-            <span class="comment">// and min operation is necessary to have at least min_amount nodes left</span>
-            <span class="kw">let</span> <span class="ident">amount</span> <span class="op">=</span> <span class="ident">std::cmp::min</span>(<span class="ident">max_amount</span>, <span class="ident">nodes_arr</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">current</span> <span class="op">-</span> <span class="ident">min_amount</span>);
-            <span class="kw">let</span> <span class="ident">nodes_portion</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">nodes_arr</span>[<span class="ident">current</span>..(<span class="ident">current</span> <span class="op">+</span> <span class="ident">amount</span>)];
-            <span class="ident">current</span> <span class="op">+</span><span class="op">=</span> <span class="ident">amount</span>;
-            <span class="kw">let</span> <span class="ident">compressed_node</span> <span class="op">=</span> (<span class="ident">nodes_portion</span>[<span class="number">0</span>].<span class="number">0</span>.<span class="ident">clone</span>(), <span class="ident">current_offset</span>);
-            <span class="ident">new_nodes</span>.<span class="ident">push</span>(<span class="ident">compressed_node</span>);
-            <span class="ident">current_offset</span> <span class="op">+</span><span class="op">=</span>
-                <span class="ident">Node::serialized_size_with_keys</span>(<span class="ident">nodes_portion</span>[<span class="number">0</span>].<span class="number">0</span>.<span class="ident">len</span>(), <span class="ident">nodes_portion</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">fn </span>collect_next_layer_nodes(
+        nodes_arr: <span class="kw-2">&amp;</span>[MinKeyWithOffset],
+        (min_amount, max_amount): (usize, usize),
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;NodesWithLayerSize&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>new_nodes = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>current = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>current_offset = <span class="number">0</span>;
+        <span class="kw">while </span>nodes_arr.len() - current &gt; max_amount {
+            <span class="comment">// amount == min_amount at least (if nodes_arr.len() - current == max_amount + 1)
+            // and min operation is necessary to have at least min_amount nodes left
+            </span><span class="kw">let </span>amount = std::cmp::min(max_amount, nodes_arr.len() - current - min_amount);
+            <span class="kw">let </span>nodes_portion = <span class="kw-2">&amp;</span>nodes_arr[current..(current + amount)];
+            current += amount;
+            <span class="kw">let </span>compressed_node = (nodes_portion[<span class="number">0</span>].<span class="number">0</span>.clone(), current_offset);
+            new_nodes.push(compressed_node);
+            current_offset +=
+                Node::serialized_size_with_keys(nodes_portion[<span class="number">0</span>].<span class="number">0</span>.len(), nodes_portion.len() - <span class="number">1</span>)<span class="question-mark">?</span>;
         }
-        <span class="comment">// min_amount &lt;= nodes left &lt;= max_amount</span>
-        <span class="kw">let</span> <span class="ident">nodes_portion</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">nodes_arr</span>[<span class="ident">current</span>..];
-        <span class="ident">new_nodes</span>.<span class="ident">push</span>((<span class="ident">nodes_portion</span>[<span class="number">0</span>].<span class="number">0</span>.<span class="ident">clone</span>(), <span class="ident">current_offset</span>));
-        <span class="kw">let</span> <span class="ident">layer_size</span> <span class="op">=</span> <span class="ident">current_offset</span>
-            <span class="op">+</span> <span class="ident">Node::serialized_size_with_keys</span>(<span class="ident">nodes_portion</span>[<span class="number">0</span>].<span class="number">0</span>.<span class="ident">len</span>(), <span class="ident">nodes_portion</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((<span class="ident">new_nodes</span>, <span class="ident">layer_size</span>))
+        <span class="comment">// min_amount &lt;= nodes left &lt;= max_amount
+        </span><span class="kw">let </span>nodes_portion = <span class="kw-2">&amp;</span>nodes_arr[current..];
+        new_nodes.push((nodes_portion[<span class="number">0</span>].<span class="number">0</span>.clone(), current_offset));
+        <span class="kw">let </span>layer_size = current_offset
+            + Node::serialized_size_with_keys(nodes_portion[<span class="number">0</span>].<span class="number">0</span>.len(), nodes_portion.len() - <span class="number">1</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((new_nodes, layer_size))
     }
 
-    <span class="kw">fn</span> <span class="ident">max_nonleaf_node_capacity</span>(<span class="ident">key_size</span>: <span class="ident">usize</span>) -&gt; <span class="ident">usize</span> {
-        <span class="kw">let</span> <span class="ident">offset_size</span> <span class="op">=</span> <span class="ident">std::mem::size_of</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>();
-        <span class="kw">let</span> <span class="ident">meta_size</span> <span class="op">=</span>
-            <span class="ident">NodeMeta::serialized_size_default</span>().<span class="ident">expect</span>(<span class="string">&quot;Can&#39;t retrieve default serialized size&quot;</span>);
-        (<span class="ident">BLOCK_SIZE</span> <span class="op">-</span> <span class="ident">meta_size</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">offset_size</span>) <span class="op">/</span> (<span class="ident">key_size</span> <span class="op">+</span> <span class="ident">offset_size</span>) <span class="op">+</span> <span class="number">1</span>
-    }
+    <span class="kw">fn </span>max_nonleaf_node_capacity(key_size: usize) -&gt; usize {
+        <span class="kw">let </span>offset_size = std::mem::size_of::&lt;u64&gt;();
+        <span class="kw">let </span>meta_size =
+            NodeMeta::serialized_size_default().expect(<span class="string">&quot;Can&#39;t retrieve default serialized size&quot;</span>);
+        (BLOCK_SIZE - meta_size <span class="kw">as </span>usize - offset_size) / (key_size + offset_size) + <span class="number">1
+    </span>}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span><span class="op">&gt;</span> <span class="ident">TreeStage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, K&gt; TreeStage&lt;<span class="lifetime">&#39;a</span>, K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;b</span>&gt; K: Key&lt;<span class="lifetime">&#39;b</span>&gt;,
 {
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">IndexHeader</span>, <span class="ident">TreeMeta</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">hs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">serialized_size</span>()<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="ident">fsize</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">meta_size</span>;
-        <span class="kw">let</span> <span class="ident">msize</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">meta_buf</span>.<span class="ident">len</span>();
-        <span class="kw">let</span> <span class="ident">data_size</span> <span class="op">=</span> <span class="ident">hs</span> <span class="op">+</span> <span class="ident">fsize</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">headers_size</span> <span class="op">+</span> <span class="ident">msize</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">tree_buf</span>.<span class="ident">len</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">data_size</span>);
-        <span class="ident">serialize_into</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">header</span>)<span class="question-mark">?</span>;
-        <span class="ident">buf</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">meta</span>);
-        <span class="ident">buf</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">meta_buf</span>);
-        <span class="ident">buf</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">tree_buf</span>);
-        <span class="ident"><span class="self">Self</span>::append_headers</span>(<span class="self">self</span>.<span class="ident">headers_btree</span>, <span class="kw-2">&amp;mut</span> <span class="ident">buf</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">get_hash</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>);
-        <span class="kw">let</span> <span class="ident">header</span> <span class="op">=</span> <span class="ident">IndexHeader::with_hash</span>(
-            <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">record_header_size</span>,
-            <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">records_count</span>,
-            <span class="self">self</span>.<span class="ident">meta</span>.<span class="ident">len</span>(),
-            <span class="ident">hash</span>,
-            <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">blob_size</span>
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(IndexHeader, TreeMeta, Vec&lt;u8&gt;)&gt; {
+        <span class="kw">let </span>hs = <span class="self">self</span>.header.serialized_size()<span class="question-mark">? </span><span class="kw">as </span>usize;
+        <span class="kw">let </span>fsize = <span class="self">self</span>.header.meta_size;
+        <span class="kw">let </span>msize = <span class="self">self</span>.meta_buf.len();
+        <span class="kw">let </span>data_size = hs + fsize + <span class="self">self</span>.headers_size + msize + <span class="self">self</span>.tree_buf.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::with_capacity(data_size);
+        serialize_into(<span class="kw-2">&amp;mut </span>buf, <span class="kw-2">&amp;</span><span class="self">self</span>.header)<span class="question-mark">?</span>;
+        buf.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.meta);
+        buf.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.meta_buf);
+        buf.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.tree_buf);
+        <span class="self">Self</span>::append_headers(<span class="self">self</span>.headers_btree, <span class="kw-2">&amp;mut </span>buf)<span class="question-mark">?</span>;
+        <span class="kw">let </span>hash = get_hash(<span class="kw-2">&amp;</span>buf);
+        <span class="kw">let </span>header = IndexHeader::with_hash(
+            <span class="self">self</span>.header.record_header_size,
+            <span class="self">self</span>.header.records_count,
+            <span class="self">self</span>.meta.len(),
+            hash,
+            <span class="self">self</span>.header.blob_size
         );
-        <span class="ident">serialize_into</span>(<span class="ident">buf</span>.<span class="ident">as_mut_slice</span>(), <span class="kw-2">&amp;</span><span class="ident">header</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((<span class="ident">header</span>, <span class="self">self</span>.<span class="ident">metadata</span>, <span class="ident">buf</span>))
+        serialize_into(buf.as_mut_slice(), <span class="kw-2">&amp;</span>header)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((header, <span class="self">self</span>.metadata, buf))
     }
 
-    <span class="kw">fn</span> <span class="ident">append_headers</span>(<span class="ident">headers_btree</span>: <span class="kw-2">&amp;</span><span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="comment">// headers are pushed in reversed order because it helps to perform something like update</span>
-        <span class="comment">// operation: the latest written (the first after reverse) record will be retrieved from file</span>
-        <span class="ident">headers_btree</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="ident">r</span>.<span class="number">1</span>.<span class="ident">iter</span>().<span class="ident">rev</span>())
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">h</span>))
-            .<span class="ident">try_fold</span>(<span class="ident">buf</span>, <span class="op">|</span><span class="ident">buf</span>, <span class="ident">h_buf</span><span class="op">|</span> -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> {
-                <span class="ident">buf</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">h_buf</span><span class="question-mark">?</span>);
-                <span class="prelude-val">Ok</span>(<span class="ident">buf</span>)
+    <span class="kw">fn </span>append_headers(headers_btree: <span class="kw-2">&amp;</span>InMemoryIndex&lt;K&gt;, buf: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="comment">// headers are pushed in reversed order because it helps to perform something like update
+        // operation: the latest written (the first after reverse) record will be retrieved from file
+        </span>headers_btree
+            .iter()
+            .flat_map(|r| r.<span class="number">1</span>.iter().rev())
+            .map(|h| serialize(<span class="kw-2">&amp;</span>h))
+            .try_fold(buf, |buf, h_buf| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>&gt; {
+                buf.extend_from_slice(<span class="kw-2">&amp;</span>h_buf<span class="question-mark">?</span>);
+                <span class="prelude-val">Ok</span>(buf)
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

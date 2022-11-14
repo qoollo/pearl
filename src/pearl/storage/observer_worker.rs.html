@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/storage/observer_worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>observer_worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/storage/observer_worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>observer_worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -233,142 +228,142 @@
 <span id="228">228</span>
 <span id="229">229</span>
 <span id="230">230</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">tokio</span>::{
-    <span class="ident">sync::mpsc</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>},
-    <span class="ident">sync::Semaphore</span>,
-    <span class="ident">time</span>::{<span class="ident">sleep</span>, <span class="ident">Instant</span>},
+<span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>tokio::{
+    sync::mpsc::{Receiver, Sender},
+    sync::Semaphore,
+    time::{sleep, Instant},
 };
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ObserverWorker</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ObserverWorker&lt;K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
 {
-    <span class="ident">inner</span>: <span class="ident">Inner</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-    <span class="ident">receiver</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span>,
-    <span class="ident">loopback_sender</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span>,
-    <span class="ident">dump_sem</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Semaphore</span><span class="op">&gt;</span>,
-    <span class="ident">async_oplock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span>()<span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">deferred</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DeferredEventData</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">deferred_min_duration</span>: <span class="ident">Duration</span>,
-    <span class="ident">deferred_max_duration</span>: <span class="ident">Duration</span>,
+    inner: Inner&lt;K&gt;,
+    receiver: Receiver&lt;Msg&gt;,
+    loopback_sender: Sender&lt;Msg&gt;,
+    dump_sem: Arc&lt;Semaphore&gt;,
+    async_oplock: Arc&lt;Mutex&lt;()&gt;&gt;,
+    deferred: Arc&lt;Mutex&lt;<span class="prelude-ty">Option</span>&lt;DeferredEventData&gt;&gt;&gt;,
+    deferred_min_duration: Duration,
+    deferred_max_duration: Duration,
 }
 
-<span class="kw">struct</span> <span class="ident">DeferredEventData</span> {
-    <span class="ident">first_time</span>: <span class="ident">Instant</span>,
-    <span class="ident">last_time</span>: <span class="ident">Instant</span>,
+<span class="kw">struct </span>DeferredEventData {
+    first_time: Instant,
+    last_time: Instant,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="ident">ObserverWorker</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">impl</span>&lt;K&gt; ObserverWorker&lt;K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static</span>,
 {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">receiver</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span>,
-        <span class="ident">loopback_sender</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span>,
-        <span class="ident">inner</span>: <span class="ident">Inner</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-        <span class="ident">dump_sem</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Semaphore</span><span class="op">&gt;</span>,
-        <span class="ident">async_oplock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span>()<span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">deferred_min_duration</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">config</span>.<span class="ident">deferred_min_time</span>().<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">deferred_max_duration</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">config</span>.<span class="ident">deferred_max_time</span>().<span class="ident">clone</span>();
-        <span class="self">Self</span> {
-            <span class="ident">inner</span>,
-            <span class="ident">receiver</span>,
-            <span class="ident">loopback_sender</span>,
-            <span class="ident">dump_sem</span>,
-            <span class="ident">async_oplock</span>,
-            <span class="ident">deferred</span>: <span class="ident">Arc::default</span>(),
-            <span class="ident">deferred_min_duration</span>,
-            <span class="ident">deferred_max_duration</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+        receiver: Receiver&lt;Msg&gt;,
+        loopback_sender: Sender&lt;Msg&gt;,
+        inner: Inner&lt;K&gt;,
+        dump_sem: Arc&lt;Semaphore&gt;,
+        async_oplock: Arc&lt;Mutex&lt;()&gt;&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>deferred_min_duration = inner.config.deferred_min_time().clone();
+        <span class="kw">let </span>deferred_max_duration = inner.config.deferred_max_time().clone();
+        <span class="self">Self </span>{
+            inner,
+            receiver,
+            loopback_sender,
+            dump_sem,
+            async_oplock,
+            deferred: Arc::default(),
+            deferred_min_duration,
+            deferred_max_duration,
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(<span class="kw-2">mut</span> <span class="self">self</span>) {
-        <span class="kw">loop</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">tick</span>().<span class="kw">await</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(<span class="kw-2">mut </span><span class="self">self</span>) {
+        <span class="kw">loop </span>{
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.tick().<span class="kw">await </span>{
                 <span class="macro">warn!</span>(<span class="string">&quot;active blob will no longer be updated, shutdown the system&quot;</span>);
-                <span class="macro">warn!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">e</span>);
+                <span class="macro">warn!</span>(<span class="string">&quot;{}&quot;</span>, e);
                 <span class="kw">break</span>;
             }
         }
         <span class="macro">info!</span>(<span class="string">&quot;observer stopped&quot;</span>);
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">tick</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">receiver</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">msg</span>) =&gt; <span class="self">self</span>.<span class="ident">process_msg</span>(<span class="ident">msg</span>).<span class="kw">await</span>,
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                    <span class="string">&quot;all observer connected to this worker are dropped, so worker is done&quot;</span>
-                        .<span class="ident">to_string</span>()
+    <span class="kw">async fn </span>tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">match </span><span class="self">self</span>.receiver.recv().<span class="kw">await </span>{
+            <span class="prelude-val">Some</span>(msg) =&gt; <span class="self">self</span>.process_msg(msg).<span class="kw">await</span>,
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                    <span class="string">&quot;all observer connected to this worker are dropped, so worker is done&quot;
+                        </span>.to_string()
                 ))
             }
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">process_msg</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident">Msg</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">predicate_wrapper</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>.<span class="ident">predicate</span>).<span class="kw">await</span> {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+    <span class="kw">async fn </span>process_msg(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg: Msg) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">if </span>!<span class="self">self</span>.predicate_wrapper(<span class="kw-2">&amp;</span>msg.predicate).<span class="kw">await </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
-        <span class="kw">let</span> <span class="ident">_lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">async_oplock</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">predicate_wrapper</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>.<span class="ident">predicate</span>).<span class="kw">await</span> {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+        <span class="kw">let </span>_lock = <span class="self">self</span>.async_oplock.lock().<span class="kw">await</span>;
+        <span class="kw">if </span>!<span class="self">self</span>.predicate_wrapper(<span class="kw-2">&amp;</span>msg.predicate).<span class="kw">await </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
-        <span class="kw">match</span> <span class="ident">msg</span>.<span class="ident">optype</span> {
-            <span class="ident">OperationType::ForceUpdateActiveBlob</span> =&gt; {
-                <span class="ident">update_active_blob</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">match </span>msg.optype {
+            OperationType::ForceUpdateActiveBlob =&gt; {
+                update_active_blob(<span class="kw-2">&amp;</span><span class="self">self</span>.inner).<span class="kw">await</span><span class="question-mark">?</span>;
             }
-            <span class="ident">OperationType::CloseActiveBlob</span> =&gt; {
-                <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">close_active_blob</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+            OperationType::CloseActiveBlob =&gt; {
+                <span class="self">self</span>.inner.close_active_blob().<span class="kw">await</span><span class="question-mark">?</span>;
             }
-            <span class="ident">OperationType::CreateActiveBlob</span> =&gt; {
-                <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">create_active_blob</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+            OperationType::CreateActiveBlob =&gt; {
+                <span class="self">self</span>.inner.create_active_blob().<span class="kw">await</span><span class="question-mark">?</span>;
             }
-            <span class="ident">OperationType::RestoreActiveBlob</span> =&gt; {
-                <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">restore_active_blob</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+            OperationType::RestoreActiveBlob =&gt; {
+                <span class="self">self</span>.inner.restore_active_blob().<span class="kw">await</span><span class="question-mark">?</span>;
             }
-            <span class="ident">OperationType::TryDumpBlobIndexes</span> =&gt; {
-                <span class="self">self</span>.<span class="ident">inner</span>
-                    .<span class="ident">try_dump_old_blob_indexes</span>(<span class="self">self</span>.<span class="ident">dump_sem</span>.<span class="ident">clone</span>())
+            OperationType::TryDumpBlobIndexes =&gt; {
+                <span class="self">self</span>.inner
+                    .try_dump_old_blob_indexes(<span class="self">self</span>.dump_sem.clone())
                     .<span class="kw">await</span>;
             }
-            <span class="ident">OperationType::TryUpdateActiveBlob</span> =&gt; {
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_update_active_blob</span>().<span class="kw">await</span><span class="question-mark">?</span> {
-                    <span class="self">self</span>.<span class="ident">inner</span>
-                        .<span class="ident">try_dump_old_blob_indexes</span>(<span class="self">self</span>.<span class="ident">dump_sem</span>.<span class="ident">clone</span>())
+            OperationType::TryUpdateActiveBlob =&gt; {
+                <span class="kw">if </span><span class="self">self</span>.try_update_active_blob().<span class="kw">await</span><span class="question-mark">? </span>{
+                    <span class="self">self</span>.inner
+                        .try_dump_old_blob_indexes(<span class="self">self</span>.dump_sem.clone())
                         .<span class="kw">await</span>;
                 }
             }
-            <span class="ident">OperationType::DeferredDumpBlobIndexes</span> =&gt; <span class="self">self</span>.<span class="ident">deffer_blob_indexes_dump</span>().<span class="kw">await</span><span class="question-mark">?</span>,
+            OperationType::DeferredDumpBlobIndexes =&gt; <span class="self">self</span>.deffer_blob_indexes_dump().<span class="kw">await</span><span class="question-mark">?</span>,
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">deffer_blob_indexes_dump</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">deferred</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">deferred</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">deferred</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="ident">deferred</span> {
-            <span class="ident">deferred</span>.<span class="ident">update_last_time</span>();
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">loopback_sender</span>.<span class="ident">clone</span>();
-            <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">DeferredEventData::new</span>();
-            <span class="kw-2">*</span><span class="ident">deferred</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">data</span>);
-            <span class="kw">let</span> <span class="ident">min</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">deferred_min_duration</span>.<span class="ident">clone</span>();
-            <span class="kw">let</span> <span class="ident">max</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">deferred_max_duration</span>.<span class="ident">clone</span>();
-            <span class="kw">let</span> <span class="ident">deferred_local</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">deferred</span>.<span class="ident">clone</span>();
-            <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-                <span class="kw">loop</span> {
-                    <span class="ident">sleep</span>(<span class="ident">min</span>).<span class="kw">await</span>;
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">deferred</span> <span class="op">=</span> <span class="ident">deferred_local</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-                    <span class="kw">if</span> <span class="ident">deferred</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">last_time</span>.<span class="ident">elapsed</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">min</span>
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">deferred</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">first_time</span>.<span class="ident">elapsed</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">max</span>
+    <span class="kw">async fn </span>deffer_blob_indexes_dump(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>deferred = <span class="self">self</span>.deferred.lock().<span class="kw">await</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>deferred) = <span class="kw-2">*</span>deferred {
+            deferred.update_last_time();
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>sender = <span class="self">self</span>.loopback_sender.clone();
+            <span class="kw">let </span>data = DeferredEventData::new();
+            <span class="kw-2">*</span>deferred = <span class="prelude-val">Some</span>(data);
+            <span class="kw">let </span>min = <span class="self">self</span>.deferred_min_duration.clone();
+            <span class="kw">let </span>max = <span class="self">self</span>.deferred_max_duration.clone();
+            <span class="kw">let </span>deferred_local = <span class="self">self</span>.deferred.clone();
+            tokio::spawn(<span class="kw">async move </span>{
+                <span class="kw">loop </span>{
+                    sleep(min).<span class="kw">await</span>;
+                    <span class="kw">let </span><span class="kw-2">mut </span>deferred = deferred_local.lock().<span class="kw">await</span>;
+                    <span class="kw">if </span>deferred.as_ref().unwrap().last_time.elapsed() &gt;= min
+                        || deferred.as_ref().unwrap().first_time.elapsed() &gt;= max
                     {
-                        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sender</span>
-                            .<span class="ident">send</span>(<span class="ident">Msg::new</span>(<span class="ident">OperationType::TryDumpBlobIndexes</span>, <span class="prelude-val">None</span>))
+                        <span class="kw">let _ </span>= sender
+                            .send(Msg::new(OperationType::TryDumpBlobIndexes, <span class="prelude-val">None</span>))
                             .<span class="kw">await</span>;
-                        <span class="kw-2">*</span><span class="ident">deferred</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+                        <span class="kw-2">*</span>deferred = <span class="prelude-val">None</span>;
                         <span class="kw">return</span>;
                     }
                 }
@@ -377,92 +372,91 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">predicate_wrapper</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">predicate</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ActiveBlobPred</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">predicate</span>) <span class="op">=</span> <span class="ident">predicate</span> {
-            <span class="ident">predicate</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">active_blob_stat</span>().<span class="kw">await</span>)
-        } <span class="kw">else</span> {
-            <span class="bool-val">true</span>
-        }
+    <span class="kw">async fn </span>predicate_wrapper(<span class="kw-2">&amp;</span><span class="self">self</span>, predicate: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;ActiveBlobPred&gt;) -&gt; bool {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(predicate) = predicate {
+            predicate(<span class="self">self</span>.inner.active_blob_stat().<span class="kw">await</span>)
+        } <span class="kw">else </span>{
+            <span class="bool-val">true
+        </span>}
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">try_update_active_blob</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">config_max_size</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">inner</span>
-            .<span class="ident">config</span>
-            .<span class="ident">max_blob_size</span>()
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Error::from</span>(<span class="ident">ErrorKind::Uninitialized</span>))<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">config_max_count</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">inner</span>
-            .<span class="ident">config</span>
-            .<span class="ident">max_data_in_blob</span>()
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Error::from</span>(<span class="ident">ErrorKind::Uninitialized</span>))<span class="question-mark">?</span>;
+    <span class="kw">async fn </span>try_update_active_blob(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+        <span class="kw">let </span>config_max_size = <span class="self">self
+            </span>.inner
+            .config
+            .max_blob_size()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))<span class="question-mark">?</span>;
+        <span class="kw">let </span>config_max_count = <span class="self">self
+            </span>.inner
+            .config
+            .max_data_in_blob()
+            .ok_or_else(|| Error::from(ErrorKind::Uninitialized))<span class="question-mark">?</span>;
 
         {
-            <span class="kw">let</span> <span class="ident">read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">safe</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-            <span class="kw">let</span> <span class="ident">active_blob</span> <span class="op">=</span> <span class="ident">read</span>.<span class="ident">active_blob</span>.<span class="ident">as_ref</span>();
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">active_blob</span>) <span class="op">=</span> <span class="ident">active_blob</span> {
-                <span class="kw">if</span> <span class="ident">active_blob</span>.<span class="ident">file_size</span>() <span class="op">&lt;</span> <span class="ident">config_max_size</span>
-                    <span class="op">&amp;&amp;</span> (<span class="ident">active_blob</span>.<span class="ident">records_count</span>() <span class="kw">as</span> <span class="ident">u64</span>) <span class="op">&lt;</span> <span class="ident">config_max_count</span>
+            <span class="kw">let </span>read = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
+            <span class="kw">let </span>active_blob = read.active_blob.as_ref();
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(active_blob) = active_blob {
+                <span class="kw">if </span>active_blob.file_size() &lt; config_max_size
+                    &amp;&amp; (active_blob.records_count() <span class="kw">as </span>u64) &lt; config_max_count
                 {
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
                 }
             }
         }
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">safe</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">active_blob</span> <span class="op">=</span> <span class="ident">write</span>.<span class="ident">active_blob</span>.<span class="ident">as_ref</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">active_blob</span>) <span class="op">=</span> <span class="ident">active_blob</span> {
-            <span class="kw">if</span> <span class="ident">active_blob</span>.<span class="ident">file_size</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">config_max_size</span>
-                <span class="op">|</span><span class="op">|</span> <span class="ident">active_blob</span>.<span class="ident">records_count</span>() <span class="kw">as</span> <span class="ident">u64</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">config_max_count</span>
+        <span class="kw">let </span><span class="kw-2">mut </span>write = <span class="self">self</span>.inner.safe.write().<span class="kw">await</span>;
+        <span class="kw">let </span>active_blob = write.active_blob.as_ref();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(active_blob) = active_blob {
+            <span class="kw">if </span>active_blob.file_size() &gt;= config_max_size
+                || active_blob.records_count() <span class="kw">as </span>u64 &gt;= config_max_count
             {
-                <span class="kw">let</span> <span class="ident">new_active</span> <span class="op">=</span> <span class="ident">get_new_active_blob</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="ident">write</span>.<span class="ident">replace_active_blob</span>(<span class="ident">new_active</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
+                <span class="kw">let </span>new_active = get_new_active_blob(<span class="kw-2">&amp;</span><span class="self">self</span>.inner).<span class="kw">await</span><span class="question-mark">?</span>;
+                write.replace_active_blob(new_active).<span class="kw">await</span><span class="question-mark">?</span>;
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
             }
         }
         <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
     }
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">update_active_blob</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>(<span class="ident">inner</span>: <span class="kw-2">&amp;</span><span class="ident">Inner</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">async fn </span>update_active_blob&lt;K&gt;(inner: <span class="kw-2">&amp;</span>Inner&lt;K&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static</span>,
 {
-    <span class="kw">let</span> <span class="ident">new_active</span> <span class="op">=</span> <span class="ident">get_new_active_blob</span>(<span class="ident">inner</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="ident">inner</span>
-        .<span class="ident">safe</span>
-        .<span class="ident">write</span>()
-        .<span class="kw">await</span>
-        .<span class="ident">replace_active_blob</span>(<span class="ident">new_active</span>)
+    <span class="kw">let </span>new_active = get_new_active_blob(inner).<span class="kw">await</span><span class="question-mark">?</span>;
+    inner
+        .safe
+        .write()
+        .<span class="kw">await
+        </span>.replace_active_blob(new_active)
         .<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_new_active_blob</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>(<span class="ident">inner</span>: <span class="kw-2">&amp;</span><span class="ident">Inner</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Blob</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">async fn </span>get_new_active_blob&lt;K&gt;(inner: <span class="kw-2">&amp;</span>Inner&lt;K&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;Blob&lt;K&gt;&gt;&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static</span>,
 {
-    <span class="kw">let</span> <span class="ident">next_name</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">next_blob_name</span>()<span class="question-mark">?</span>;
+    <span class="kw">let </span>next_name = inner.next_blob_name()<span class="question-mark">?</span>;
     <span class="macro">trace!</span>(<span class="string">&quot;obtaining new active blob&quot;</span>);
-    <span class="kw">let</span> <span class="ident">new_active</span> <span class="op">=</span> <span class="ident">Blob::open_new</span>(<span class="ident">next_name</span>, <span class="ident">inner</span>.<span class="ident">ioring</span>.<span class="ident">clone</span>(), <span class="ident">inner</span>.<span class="ident">config</span>.<span class="ident">index</span>())
-        .<span class="kw">await</span><span class="question-mark">?</span>
-        .<span class="ident">boxed</span>();
-    <span class="prelude-val">Ok</span>(<span class="ident">new_active</span>)
+    <span class="kw">let </span>new_active = Blob::open_new(next_name, inner.ioring.clone(), inner.config.index())
+        .<span class="kw">await</span><span class="question-mark">?
+        </span>.boxed();
+    <span class="prelude-val">Ok</span>(new_active)
 }
 
-<span class="kw">impl</span> <span class="ident">DeferredEventData</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="self">Self</span> {
-            <span class="ident">first_time</span>: <span class="ident">time</span>,
-            <span class="ident">last_time</span>: <span class="ident">time</span>,
+<span class="kw">impl </span>DeferredEventData {
+    <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>time = Instant::now();
+        <span class="self">Self </span>{
+            first_time: time,
+            last_time: time,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">update_last_time</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">last_time</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
+    <span class="kw">fn </span>update_last_time(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.last_time = Instant::now();
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

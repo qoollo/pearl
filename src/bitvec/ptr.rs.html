@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/ptr.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ptr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../bitvec/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/ptr.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ptr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../bitvec/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -847,192 +842,192 @@ allows them to be used on references.
 [`bitset&lt;N&gt;::reference`]: https://en.cppreference.com/w/cpp/utility/bitset/reference
 [`core::ptr`]: core::ptr
 [`pointer`]: https://doc.rust-lang.org/std/primitive.pointer.html
-!*/</span>
+!*/
 
-<span class="kw">use</span> <span class="ident">core::hash</span>::{
-	<span class="ident">Hash</span>,
-	<span class="ident">Hasher</span>,
+</span><span class="kw">use </span>core::hash::{
+	Hash,
+	Hasher,
 };
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-	<span class="ident">order::BitOrder</span>,
-	<span class="ident">slice::BitSlice</span>,
-	<span class="ident">store::BitStore</span>,
+<span class="kw">use crate</span>::{
+	order::BitOrder,
+	slice::BitSlice,
+	store::BitStore,
 };
 
-<span class="kw">mod</span> <span class="ident">address</span>;
-<span class="kw">mod</span> <span class="ident">proxy</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">range</span>;
-<span class="kw">mod</span> <span class="ident">single</span>;
-<span class="kw">mod</span> <span class="ident">span</span>;
+<span class="kw">mod </span>address;
+<span class="kw">mod </span>proxy;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>range;
+<span class="kw">mod </span>single;
+<span class="kw">mod </span>span;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="self">self</span>::{
-	<span class="ident">address::AddressExt</span>,
-	<span class="ident">span::BitSpan</span>,
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="self">self</span>::{
+	address::AddressExt,
+	span::BitSpan,
 };
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::{
-	<span class="ident">address</span>::{
-		<span class="ident">check_alignment</span>,
-		<span class="ident">Address</span>,
-		<span class="ident">Const</span>,
-		<span class="ident">MisalignError</span>,
-		<span class="ident">Mut</span>,
-		<span class="ident">Mutability</span>,
-		<span class="ident">NullPtrError</span>,
+<span class="kw">pub use </span><span class="self">self</span>::{
+	address::{
+		check_alignment,
+		Address,
+		Const,
+		MisalignError,
+		Mut,
+		Mutability,
+		NullPtrError,
 	},
-	<span class="ident">proxy::BitRef</span>,
-	<span class="ident">range::BitPtrRange</span>,
-	<span class="ident">single</span>::{
-		<span class="ident">BitPtr</span>,
-		<span class="ident">BitPtrError</span>,
+	proxy::BitRef,
+	range::BitPtrRange,
+	single::{
+		BitPtr,
+		BitPtrError,
 	},
-	<span class="ident">span::BitSpanError</span>,
+	span::BitSpanError,
 };
 
-<span class="doccomment">/// Copies `count` bits from `src` to `dst`. The source and destination may</span>
-<span class="doccomment">/// overlap.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// If the source and destination will *never* overlap, [`copy_nonoverlapping`]</span>
-<span class="doccomment">/// can be used instead.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// `copy` is semantically equivalent to C’s [`memmove`], but with the argument</span>
-<span class="doccomment">/// order swapped. Copying takes place as if the bits were copied from `src` to</span>
-<span class="doccomment">/// a temporary array, then copied from the array into `dst`.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Original</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// [`ptr::copy`](core::ptr::copy)</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # API Differences</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The pointers may differ in bit-ordering or storage element types. `bitvec`</span>
-<span class="doccomment">/// considers it Undefined Behavior for two pointer regions to overlap in memory</span>
-<span class="doccomment">/// if they have different bit-orderings, and so will only perform overlap</span>
-<span class="doccomment">/// detection when `O1` and `O2` match.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Safety</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Behavior is undefined if any of the following conditions are violated:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// - `src` must be [valid] for reads of `count` bits.</span>
-<span class="doccomment">/// - `dst` must be [valid] for writes of `count` bits.</span>
-<span class="doccomment">/// - `src` and `dst` must not overlap if they have different bit-ordering</span>
-<span class="doccomment">///   parameters.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The type parameters `T1` and `T2` are permitted to differ.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Examples</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Basic usage:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use bitvec::prelude::*;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let start = 0b1011u8;</span>
-<span class="doccomment">/// let mut end = 0u16;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// unsafe {</span>
-<span class="doccomment">///   bitvec::ptr::copy::&lt;Lsb0, Msb0, _, _&gt;(</span>
-<span class="doccomment">///     (&amp;start).into(),</span>
-<span class="doccomment">///     (&amp;mut end).into(),</span>
-<span class="doccomment">///     4,</span>
-<span class="doccomment">///   );</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">/// assert_eq!(end, 0b1101_0000__0000_0000);</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Overlapping regions:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use bitvec::prelude::*;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let mut x = 0b1111_0010u8;</span>
-<span class="doccomment">/// let src = BitPtr::&lt;_, Lsb0, _&gt;::from_mut(&amp;mut x);</span>
-<span class="doccomment">/// let dst = unsafe { src.add(2) };</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// unsafe {</span>
-<span class="doccomment">///   bitvec::ptr::copy(src.immut(), dst, 4);</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">/// assert_eq!(x, 0b1100_1010);</span>
-<span class="doccomment">/// //                ^^ ^^ bottom nibble moved here</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// [valid]: https://doc.rust-lang.org/std/ptr/index.html#safety</span>
-<span class="doccomment">/// [`copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping</span>
-<span class="doccomment">/// [`memmove`]: https://en.cppreference.com/w/c/string/byte/memmove</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">copy</span><span class="op">&lt;</span><span class="ident">O1</span>, <span class="ident">O2</span>, <span class="ident">T1</span>, <span class="ident">T2</span><span class="op">&gt;</span>(
-	<span class="ident">src</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O1</span>, <span class="ident">T1</span><span class="op">&gt;</span>,
-	<span class="ident">dst</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>,
-	<span class="ident">count</span>: <span class="ident">usize</span>,
-) <span class="kw">where</span>
-	<span class="ident">O1</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">O2</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T1</span>: <span class="ident">BitStore</span>,
-	<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+<span class="doccomment">/// Copies `count` bits from `src` to `dst`. The source and destination may
+/// overlap.
+///
+/// If the source and destination will *never* overlap, [`copy_nonoverlapping`]
+/// can be used instead.
+///
+/// `copy` is semantically equivalent to C’s [`memmove`], but with the argument
+/// order swapped. Copying takes place as if the bits were copied from `src` to
+/// a temporary array, then copied from the array into `dst`.
+///
+/// # Original
+///
+/// [`ptr::copy`](core::ptr::copy)
+///
+/// # API Differences
+///
+/// The pointers may differ in bit-ordering or storage element types. `bitvec`
+/// considers it Undefined Behavior for two pointer regions to overlap in memory
+/// if they have different bit-orderings, and so will only perform overlap
+/// detection when `O1` and `O2` match.
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// - `src` must be [valid] for reads of `count` bits.
+/// - `dst` must be [valid] for writes of `count` bits.
+/// - `src` and `dst` must not overlap if they have different bit-ordering
+///   parameters.
+///
+/// The type parameters `T1` and `T2` are permitted to differ.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```rust
+/// use bitvec::prelude::*;
+///
+/// let start = 0b1011u8;
+/// let mut end = 0u16;
+///
+/// unsafe {
+///   bitvec::ptr::copy::&lt;Lsb0, Msb0, _, _&gt;(
+///     (&amp;start).into(),
+///     (&amp;mut end).into(),
+///     4,
+///   );
+/// }
+/// assert_eq!(end, 0b1101_0000__0000_0000);
+/// ```
+///
+/// Overlapping regions:
+///
+/// ```rust
+/// use bitvec::prelude::*;
+///
+/// let mut x = 0b1111_0010u8;
+/// let src = BitPtr::&lt;_, Lsb0, _&gt;::from_mut(&amp;mut x);
+/// let dst = unsafe { src.add(2) };
+///
+/// unsafe {
+///   bitvec::ptr::copy(src.immut(), dst, 4);
+/// }
+/// assert_eq!(x, 0b1100_1010);
+/// //                ^^ ^^ bottom nibble moved here
+/// ```
+///
+/// [valid]: https://doc.rust-lang.org/std/ptr/index.html#safety
+/// [`copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping
+/// [`memmove`]: https://en.cppreference.com/w/c/string/byte/memmove
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+</span><span class="kw">pub unsafe fn </span>copy&lt;O1, O2, T1, T2&gt;(
+	src: BitPtr&lt;Const, O1, T1&gt;,
+	dst: BitPtr&lt;Mut, O2, T2&gt;,
+	count: usize,
+) <span class="kw">where
+	</span>O1: BitOrder,
+	O2: BitOrder,
+	T1: BitStore,
+	T2: BitStore,
 {
-	<span class="ident">src</span>.<span class="ident">copy_to</span>(<span class="ident">dst</span>, <span class="ident">count</span>);
+	src.copy_to(dst, count);
 }
 
-<span class="doccomment">/// Copies `count` bits from `src` to `dst`. The source and destination must</span>
-<span class="doccomment">/// *not* overlap.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// For regions of memory which might overlap, use [`copy`] instead.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// `copy_nonoverlapping` is semantically equivalent to C’s [`memcpy`], but with</span>
-<span class="doccomment">/// the argument order swapped.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Original</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// [`ptr::copy_nonoverlapping`](core::ptr::copy_nonoverlapping)</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # API Differences</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The pointers may differ in bit-ordering or storage element parameters.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Safety</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Behavior is undefined if any of the following conditions are violated:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// - `src` must be [valid] for reads of `count` bits.</span>
-<span class="doccomment">/// - `dst` must be [valid] for writes of `count` bits.</span>
-<span class="doccomment">/// - The region of memory beginning at `src` with a size of `count` bits must</span>
-<span class="doccomment">///   not overlap with the region of memory beginning at `dst` with the same</span>
-<span class="doccomment">///   size.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Examples</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use bitvec::prelude::*;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let mut data = 0b1011u8;</span>
-<span class="doccomment">/// let ptr = BitPtr::&lt;_, Msb0, _&gt;::from_mut(&amp;mut data);</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// unsafe {</span>
-<span class="doccomment">///   bitvec::ptr::copy_nonoverlapping(</span>
-<span class="doccomment">///     ptr.add(4).immut(),</span>
-<span class="doccomment">///     ptr,</span>
-<span class="doccomment">///     4,</span>
-<span class="doccomment">///   );</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">/// assert_eq!(data, 0b1011_1011);</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// [valid]: https://doc.rust-lang.org/std/ptr/index.html#safety</span>
-<span class="doccomment">/// [`copy`]: crate::ptr::copy</span>
-<span class="doccomment">/// [`memcpy`]: https://en.cppreference.com/w/c/string/byte/memcpy</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">copy_nonoverlapping</span><span class="op">&lt;</span><span class="ident">O1</span>, <span class="ident">O2</span>, <span class="ident">T1</span>, <span class="ident">T2</span><span class="op">&gt;</span>(
-	<span class="ident">src</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O1</span>, <span class="ident">T1</span><span class="op">&gt;</span>,
-	<span class="ident">dst</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>,
-	<span class="ident">count</span>: <span class="ident">usize</span>,
-) <span class="kw">where</span>
-	<span class="ident">O1</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">O2</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T1</span>: <span class="ident">BitStore</span>,
-	<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+<span class="doccomment">/// Copies `count` bits from `src` to `dst`. The source and destination must
+/// *not* overlap.
+///
+/// For regions of memory which might overlap, use [`copy`] instead.
+///
+/// `copy_nonoverlapping` is semantically equivalent to C’s [`memcpy`], but with
+/// the argument order swapped.
+///
+/// # Original
+///
+/// [`ptr::copy_nonoverlapping`](core::ptr::copy_nonoverlapping)
+///
+/// # API Differences
+///
+/// The pointers may differ in bit-ordering or storage element parameters.
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// - `src` must be [valid] for reads of `count` bits.
+/// - `dst` must be [valid] for writes of `count` bits.
+/// - The region of memory beginning at `src` with a size of `count` bits must
+///   not overlap with the region of memory beginning at `dst` with the same
+///   size.
+///
+/// # Examples
+///
+/// ```rust
+/// use bitvec::prelude::*;
+///
+/// let mut data = 0b1011u8;
+/// let ptr = BitPtr::&lt;_, Msb0, _&gt;::from_mut(&amp;mut data);
+///
+/// unsafe {
+///   bitvec::ptr::copy_nonoverlapping(
+///     ptr.add(4).immut(),
+///     ptr,
+///     4,
+///   );
+/// }
+/// assert_eq!(data, 0b1011_1011);
+/// ```
+///
+/// [valid]: https://doc.rust-lang.org/std/ptr/index.html#safety
+/// [`copy`]: crate::ptr::copy
+/// [`memcpy`]: https://en.cppreference.com/w/c/string/byte/memcpy
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+</span><span class="kw">pub unsafe fn </span>copy_nonoverlapping&lt;O1, O2, T1, T2&gt;(
+	src: BitPtr&lt;Const, O1, T1&gt;,
+	dst: BitPtr&lt;Mut, O2, T2&gt;,
+	count: usize,
+) <span class="kw">where
+	</span>O1: BitOrder,
+	O2: BitOrder,
+	T1: BitStore,
+	T2: BitStore,
 {
-	<span class="ident">src</span>.<span class="ident">copy_to_nonoverlapping</span>(<span class="ident">dst</span>, <span class="ident">count</span>);
+	src.copy_to_nonoverlapping(dst, count);
 }
 
 <span class="doccomment">/** Compares raw bit-pointers for equality.
@@ -1066,16 +1061,16 @@ let cell_ptr = bare_ptr.cast::&lt;Cell&lt;u8&gt;&gt;();
 
 assert!(bitvec::ptr::eq(bare_ptr, cell_ptr));
 ```
-**/</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eq</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T1</span>, <span class="ident">T2</span><span class="op">&gt;</span>(<span class="ident">a</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T1</span><span class="op">&gt;</span>, <span class="ident">b</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T2</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T1</span>: <span class="ident">BitStore</span>,
-	<span class="ident">T2</span>: <span class="ident">BitStore</span>,
-	<span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T1</span><span class="op">&gt;</span>: <span class="ident">PartialEq</span><span class="op">&lt;</span><span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T2</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+**/
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+</span><span class="kw">pub fn </span>eq&lt;O, T1, T2&gt;(a: BitPtr&lt;Const, O, T1&gt;, b: BitPtr&lt;Const, O, T2&gt;) -&gt; bool
+<span class="kw">where
+	</span>O: BitOrder,
+	T1: BitStore,
+	T2: BitStore,
+	BitPtr&lt;Const, O, T1&gt;: PartialEq&lt;BitPtr&lt;Const, O, T2&gt;&gt;,
 {
-	<span class="ident">a</span> <span class="op">==</span> <span class="ident">b</span>
+	a == b
 }
 
 <span class="doccomment">/** Hash a raw bit-pointer.
@@ -1086,16 +1081,16 @@ referent bit.
 # Original
 
 [`ptr::hash`](core::ptr::hash)
-**/</span>
-<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">hash</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">S</span><span class="op">&gt;</span>(<span class="ident">hashee</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">into</span>: <span class="kw-2">&amp;mut</span> <span class="ident">S</span>)
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-	<span class="ident">S</span>: <span class="ident">Hasher</span>,
+**/
+</span><span class="attribute">#[inline(always)]
+#[cfg(not(tarpaulin_include))]
+</span><span class="kw">pub fn </span>hash&lt;O, T, S&gt;(hashee: BitPtr&lt;Const, O, T&gt;, into: <span class="kw-2">&amp;mut </span>S)
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
+	S: Hasher,
 {
-	<span class="ident">hashee</span>.<span class="ident">hash</span>(<span class="ident">into</span>);
+	hashee.hash(into);
 }
 
 <span class="doccomment">/** Reads the bit from `src`.
@@ -1124,14 +1119,14 @@ assert!(unsafe {
 ```
 
 [valid]: https://doc.rust-lang.org/std/ptr/index.html#safety
-**/</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">read</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">src</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+</span><span class="kw">pub unsafe fn </span>read&lt;O, T&gt;(src: BitPtr&lt;Const, O, T&gt;) -&gt; bool
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="ident">src</span>.<span class="ident">read</span>()
+	src.read()
 }
 
 <span class="doccomment">/** Performs a volatile read of the bit from `src`.
@@ -1185,14 +1180,14 @@ unsafe {
 
 [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 [valid]: https://doc.rust-lang.org/core/ptr/index.html#safety
-**/</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">read_volatile</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">src</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+</span><span class="kw">pub unsafe fn </span>read_volatile&lt;O, T&gt;(src: BitPtr&lt;Const, O, T&gt;) -&gt; bool
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="ident">src</span>.<span class="ident">read_volatile</span>()
+	src.read_volatile()
 }
 
 <span class="doccomment">/** Moves `src` into the pointed `dst`, returning the previous `dst` bit.
@@ -1227,14 +1222,14 @@ assert_eq!(data, 0);
 
 [valid]: https://doc.rust-lang.org/std/ptr/index.html#safety
 [`BitPtr::replace`]: crate::ptr::BitRef::replace
-**/</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">replace</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">dst</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">src</span>: <span class="ident">bool</span>) -&gt; <span class="ident">bool</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+</span><span class="kw">pub unsafe fn </span>replace&lt;O, T&gt;(dst: BitPtr&lt;Mut, O, T&gt;, src: bool) -&gt; bool
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="ident">dst</span>.<span class="ident">replace</span>(<span class="ident">src</span>)
+	dst.replace(src)
 }
 
 <span class="doccomment">/** Forms a raw bit-slice from a bit-pointer and a length.
@@ -1261,17 +1256,17 @@ assert_eq!(unsafe { &amp;*bitslice }[2], true);
 ```
 
 [`slice::from_raw_parts`]: crate::slice::from_raw_parts
-**/</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bitslice_from_raw_parts</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>(
-	<span class="ident">data</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Const</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>,
-	<span class="ident">len</span>: <span class="ident">usize</span>,
-) -&gt; <span class="kw-2">*const</span> <span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+</span><span class="kw">pub fn </span>bitslice_from_raw_parts&lt;O, T&gt;(
+	data: BitPtr&lt;Const, O, T&gt;,
+	len: usize,
+) -&gt; <span class="kw-2">*const </span>BitSlice&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="kw">unsafe</span> { <span class="ident">data</span>.<span class="ident">span_unchecked</span>(<span class="ident">len</span>) }.<span class="ident">to_bitslice_ptr</span>()
+	<span class="kw">unsafe </span>{ data.span_unchecked(len) }.to_bitslice_ptr()
 }
 
 <span class="doccomment">/** Performs the same functionality as [`bitslice_from_raw_parts`], except that
@@ -1302,17 +1297,17 @@ assert!(unsafe { &amp;*bitslice }[0]);
 
 [`bitslice_from_raw_parts`]: crate::ptr::bitslice_from_raw_parts
 [`slice::from_raw_parts_mut`]: crate::slice::from_raw_parts_mut
-**/</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bitslice_from_raw_parts_mut</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>(
-	<span class="ident">data</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>,
-	<span class="ident">len</span>: <span class="ident">usize</span>,
-) -&gt; <span class="kw-2">*mut</span> <span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+</span><span class="kw">pub fn </span>bitslice_from_raw_parts_mut&lt;O, T&gt;(
+	data: BitPtr&lt;Mut, O, T&gt;,
+	len: usize,
+) -&gt; <span class="kw-2">*mut </span>BitSlice&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="kw">unsafe</span> { <span class="ident">data</span>.<span class="ident">span_unchecked</span>(<span class="ident">len</span>).<span class="ident">to_bitslice_ptr_mut</span>() }
+	<span class="kw">unsafe </span>{ data.span_unchecked(len).to_bitslice_ptr_mut() }
 }
 
 <span class="doccomment">/** Swaps the values at two mutable locations.
@@ -1350,18 +1345,18 @@ assert_eq!(data, 1);
 
 [valid]: https://doc.rust-lang.org/std/ptr/index.html#safety
 [`BitRef::swap`]: crate::ptr::BitRef::swap
-**/</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">swap</span><span class="op">&lt;</span><span class="ident">O1</span>, <span class="ident">O2</span>, <span class="ident">T1</span>, <span class="ident">T2</span><span class="op">&gt;</span>(
-	<span class="ident">x</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O1</span>, <span class="ident">T1</span><span class="op">&gt;</span>,
-	<span class="ident">y</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>,
-) <span class="kw">where</span>
-	<span class="ident">O1</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">O2</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T1</span>: <span class="ident">BitStore</span>,
-	<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+</span><span class="kw">pub unsafe fn </span>swap&lt;O1, O2, T1, T2&gt;(
+	x: BitPtr&lt;Mut, O1, T1&gt;,
+	y: BitPtr&lt;Mut, O2, T2&gt;,
+) <span class="kw">where
+	</span>O1: BitOrder,
+	O2: BitOrder,
+	T1: BitStore,
+	T2: BitStore,
 {
-	<span class="ident">x</span>.<span class="ident">swap</span>(<span class="ident">y</span>);
+	x.swap(y);
 }
 
 <span class="doccomment">/** Swaps `count` bits between the two regions of memory beginning at `x` and
@@ -1402,20 +1397,20 @@ assert_eq!(y, 0);
 ```
 
 [valid]: https://doc.rust-lang.org/std/ptr/index.html#safety
-**/</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">swap_nonoverlapping</span><span class="op">&lt;</span><span class="ident">O1</span>, <span class="ident">O2</span>, <span class="ident">T1</span>, <span class="ident">T2</span><span class="op">&gt;</span>(
-	<span class="ident">x</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O1</span>, <span class="ident">T1</span><span class="op">&gt;</span>,
-	<span class="ident">y</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span>,
-	<span class="ident">count</span>: <span class="ident">usize</span>,
-) <span class="kw">where</span>
-	<span class="ident">O1</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">O2</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T1</span>: <span class="ident">BitStore</span>,
-	<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+</span><span class="kw">pub unsafe fn </span>swap_nonoverlapping&lt;O1, O2, T1, T2&gt;(
+	x: BitPtr&lt;Mut, O1, T1&gt;,
+	y: BitPtr&lt;Mut, O2, T2&gt;,
+	count: usize,
+) <span class="kw">where
+	</span>O1: BitOrder,
+	O2: BitOrder,
+	T1: BitStore,
+	T2: BitStore,
 {
-	<span class="kw">for</span> (<span class="ident">a</span>, <span class="ident">b</span>) <span class="kw">in</span> <span class="ident">x</span>.<span class="ident">range</span>(<span class="ident">count</span>).<span class="ident">zip</span>(<span class="ident">y</span>.<span class="ident">range</span>(<span class="ident">count</span>)) {
-		<span class="ident">swap</span>(<span class="ident">a</span>, <span class="ident">b</span>);
+	<span class="kw">for </span>(a, b) <span class="kw">in </span>x.range(count).zip(y.range(count)) {
+		swap(a, b);
 	}
 }
 
@@ -1454,14 +1449,14 @@ assert_eq!(data, 4);
 
 [valid]: https://doc.rust-lang.org/std/ptr/index.html#safety
 [`core::ptr::write`]: core::ptr::write
-**/</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">write</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">dst</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">value</span>: <span class="ident">bool</span>)
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+</span><span class="kw">pub unsafe fn </span>write&lt;O, T&gt;(dst: BitPtr&lt;Mut, O, T&gt;, value: bool)
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="ident">dst</span>.<span class="ident">write</span>(<span class="ident">value</span>);
+	dst.write(value);
 }
 
 <span class="doccomment">/** Performs a volatile write of a memory location with the given bit.
@@ -1521,18 +1516,17 @@ unsafe {
 
 [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 [valid]: https://doc.rust-lang.org/core/ptr/index.html#safety
-**/</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">write_volatile</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">dst</span>: <span class="ident">BitPtr</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">value</span>: <span class="ident">bool</span>)
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+</span><span class="kw">pub unsafe fn </span>write_volatile&lt;O, T&gt;(dst: BitPtr&lt;Mut, O, T&gt;, value: bool)
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="ident">dst</span>.<span class="ident">write_volatile</span>(<span class="ident">value</span>);
+	dst.write_volatile(value);
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

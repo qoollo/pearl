@@ -1,11 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/io_uring/sq.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>sq.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container">
-                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../rio/index.html">
-                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/io_uring/sq.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>sq.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container">
+                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../rio/index.html">
+                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -224,225 +219,224 @@
 <span id="217">217</span>
 <span id="218">218</span>
 <span id="219">219</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#![allow(unsafe_code)]
 
-<span class="kw">use</span> <span class="ident">std::slice::from_raw_parts_mut</span>;
+</span><span class="kw">use </span>std::slice::from_raw_parts_mut;
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// Sprays uring submissions.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Sq</span> {
-    <span class="ident">khead</span>: <span class="kw-2">*mut</span> <span class="ident">AtomicU32</span>,
-    <span class="ident">ktail</span>: <span class="kw-2">*mut</span> <span class="ident">AtomicU32</span>,
-    <span class="ident">kring_mask</span>: <span class="kw-2">*mut</span> <span class="ident">u32</span>,
-    <span class="ident">kflags</span>: <span class="kw-2">*mut</span> <span class="ident">AtomicU32</span>,
-    <span class="ident">kdropped</span>: <span class="kw-2">*mut</span> <span class="ident">AtomicU32</span>,
-    <span class="ident">array</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="kw-2">mut</span> [<span class="ident">AtomicU32</span>],
-    <span class="ident">sqes</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="kw-2">mut</span> [<span class="ident">io_uring_sqe</span>],
-    <span class="ident">sqe_head</span>: <span class="ident">u32</span>,
-    <span class="ident">sqe_tail</span>: <span class="ident">u32</span>,
-    <span class="ident">ring_ptr</span>: <span class="kw-2">*const</span> <span class="ident">libc::c_void</span>,
-    <span class="ident">ring_mmap_sz</span>: <span class="ident">usize</span>,
-    <span class="ident">sqes_mmap_sz</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// Sprays uring submissions.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Sq {
+    khead: <span class="kw-2">*mut </span>AtomicU32,
+    ktail: <span class="kw-2">*mut </span>AtomicU32,
+    kring_mask: <span class="kw-2">*mut </span>u32,
+    kflags: <span class="kw-2">*mut </span>AtomicU32,
+    kdropped: <span class="kw-2">*mut </span>AtomicU32,
+    array: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="kw-2">mut </span>[AtomicU32],
+    sqes: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="kw-2">mut </span>[io_uring_sqe],
+    sqe_head: u32,
+    sqe_tail: u32,
+    ring_ptr: <span class="kw-2">*const </span>libc::c_void,
+    ring_mmap_sz: usize,
+    sqes_mmap_sz: usize,
 }
 
-<span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">Sq</span> {
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">unsafe</span> {
-            <span class="ident">libc::munmap</span>(
-                <span class="self">self</span>.<span class="ident">sqes</span>.<span class="ident">as_ptr</span>() <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="ident">libc::c_void</span>,
-                <span class="self">self</span>.<span class="ident">sqes_mmap_sz</span>,
+<span class="kw">impl </span>Drop <span class="kw">for </span>Sq {
+    <span class="attribute">#[allow(unsafe_code)]
+    </span><span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">unsafe </span>{
+            libc::munmap(
+                <span class="self">self</span>.sqes.as_ptr() <span class="kw">as </span><span class="kw-2">*mut </span>libc::c_void,
+                <span class="self">self</span>.sqes_mmap_sz,
             );
         }
-        <span class="kw">unsafe</span> {
-            <span class="ident">libc::munmap</span>(
-                <span class="self">self</span>.<span class="ident">ring_ptr</span> <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="ident">libc::c_void</span>,
-                <span class="self">self</span>.<span class="ident">ring_mmap_sz</span>,
+        <span class="kw">unsafe </span>{
+            libc::munmap(
+                <span class="self">self</span>.ring_ptr <span class="kw">as </span><span class="kw-2">*mut </span>libc::c_void,
+                <span class="self">self</span>.ring_mmap_sz,
             );
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Sq</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="ident">io_uring_params</span>,
-        <span class="ident">ring_fd</span>: <span class="ident">i32</span>,
-    ) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">Sq</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">sq_ring_mmap_sz</span> <span class="op">=</span> <span class="ident">params</span>.<span class="ident">sq_off</span>.<span class="ident">array</span> <span class="kw">as</span> <span class="ident">usize</span>
-            <span class="op">+</span> (<span class="ident">params</span>.<span class="ident">sq_entries</span> <span class="kw">as</span> <span class="ident">usize</span>
-                <span class="op">*</span> <span class="ident">std::mem::size_of</span>::<span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>());
+<span class="kw">impl </span>Sq {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+        params: <span class="kw-2">&amp;</span>io_uring_params,
+        ring_fd: i32,
+    ) -&gt; io::Result&lt;Sq&gt; {
+        <span class="kw">let </span>sq_ring_mmap_sz = params.sq_off.array <span class="kw">as </span>usize
+            + (params.sq_entries <span class="kw">as </span>usize
+                * std::mem::size_of::&lt;u32&gt;());
 
-        <span class="comment">// TODO IORING_FEAT_SINGLE_MMAP for sq</span>
+        <span class="comment">// TODO IORING_FEAT_SINGLE_MMAP for sq
 
-        <span class="kw">let</span> <span class="ident">sq_ring_ptr</span> <span class="op">=</span> <span class="ident">uring_mmap</span>(
-            <span class="ident">sq_ring_mmap_sz</span>,
-            <span class="ident">ring_fd</span>,
-            <span class="ident">IORING_OFF_SQ_RING</span>,
+        </span><span class="kw">let </span>sq_ring_ptr = uring_mmap(
+            sq_ring_mmap_sz,
+            ring_fd,
+            IORING_OFF_SQ_RING,
         )<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">sqes_mmap_sz</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">params</span>.<span class="ident">sq_entries</span>
-            <span class="kw">as</span> <span class="ident">usize</span>
-            <span class="op">*</span> <span class="ident">std::mem::size_of</span>::<span class="op">&lt;</span><span class="ident">io_uring_sqe</span><span class="op">&gt;</span>();
+        <span class="kw">let </span>sqes_mmap_sz: usize = params.sq_entries
+            <span class="kw">as </span>usize
+            * std::mem::size_of::&lt;io_uring_sqe&gt;();
 
-        <span class="kw">let</span> <span class="ident">sqes_ptr</span>: <span class="kw-2">*mut</span> <span class="ident">io_uring_sqe</span> <span class="op">=</span> <span class="ident">uring_mmap</span>(
-            <span class="ident">sqes_mmap_sz</span>,
-            <span class="ident">ring_fd</span>,
-            <span class="ident">IORING_OFF_SQES</span>,
-        )<span class="question-mark">?</span> <span class="kw">as</span> <span class="kw">_</span>;
+        <span class="kw">let </span>sqes_ptr: <span class="kw-2">*mut </span>io_uring_sqe = uring_mmap(
+            sqes_mmap_sz,
+            ring_fd,
+            IORING_OFF_SQES,
+        )<span class="question-mark">? </span><span class="kw">as _</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="kw">unsafe</span> {
-            <span class="ident">Sq</span> {
-                <span class="ident">sqe_head</span>: <span class="number">0</span>,
-                <span class="ident">sqe_tail</span>: <span class="number">0</span>,
-                <span class="ident">ring_ptr</span>: <span class="ident">sq_ring_ptr</span>,
-                <span class="ident">ring_mmap_sz</span>: <span class="ident">sq_ring_mmap_sz</span>,
-                <span class="ident">sqes_mmap_sz</span>,
-                <span class="ident">khead</span>: <span class="ident">sq_ring_ptr</span>
-                    .<span class="ident">add</span>(<span class="ident">params</span>.<span class="ident">sq_off</span>.<span class="ident">head</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                    <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="ident">AtomicU32</span>,
-                <span class="ident">ktail</span>: <span class="ident">sq_ring_ptr</span>
-                    .<span class="ident">add</span>(<span class="ident">params</span>.<span class="ident">sq_off</span>.<span class="ident">tail</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                    <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="ident">AtomicU32</span>,
-                <span class="ident">kring_mask</span>: <span class="ident">sq_ring_ptr</span>
-                    .<span class="ident">add</span>(<span class="ident">params</span>.<span class="ident">sq_off</span>.<span class="ident">ring_mask</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                    <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="ident">u32</span>,
-                <span class="ident">kflags</span>: <span class="ident">sq_ring_ptr</span>
-                    .<span class="ident">add</span>(<span class="ident">params</span>.<span class="ident">sq_off</span>.<span class="ident">flags</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                    <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="ident">AtomicU32</span>,
-                <span class="ident">kdropped</span>: <span class="ident">sq_ring_ptr</span>
-                    .<span class="ident">add</span>(<span class="ident">params</span>.<span class="ident">sq_off</span>.<span class="ident">dropped</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                    <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="ident">AtomicU32</span>,
-                <span class="ident">array</span>: <span class="ident">from_raw_parts_mut</span>(
-                    <span class="ident">sq_ring_ptr</span>
-                        .<span class="ident">add</span>(<span class="ident">params</span>.<span class="ident">sq_off</span>.<span class="ident">array</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                        <span class="kw">as</span> <span class="kw">_</span>,
-                    <span class="ident">params</span>.<span class="ident">sq_entries</span> <span class="kw">as</span> <span class="ident">usize</span>,
+        <span class="prelude-val">Ok</span>(<span class="kw">unsafe </span>{
+            Sq {
+                sqe_head: <span class="number">0</span>,
+                sqe_tail: <span class="number">0</span>,
+                ring_ptr: sq_ring_ptr,
+                ring_mmap_sz: sq_ring_mmap_sz,
+                sqes_mmap_sz,
+                khead: sq_ring_ptr
+                    .add(params.sq_off.head <span class="kw">as </span>usize)
+                    <span class="kw">as </span><span class="kw-2">*mut </span>AtomicU32,
+                ktail: sq_ring_ptr
+                    .add(params.sq_off.tail <span class="kw">as </span>usize)
+                    <span class="kw">as </span><span class="kw-2">*mut </span>AtomicU32,
+                kring_mask: sq_ring_ptr
+                    .add(params.sq_off.ring_mask <span class="kw">as </span>usize)
+                    <span class="kw">as </span><span class="kw-2">*mut </span>u32,
+                kflags: sq_ring_ptr
+                    .add(params.sq_off.flags <span class="kw">as </span>usize)
+                    <span class="kw">as </span><span class="kw-2">*mut </span>AtomicU32,
+                kdropped: sq_ring_ptr
+                    .add(params.sq_off.dropped <span class="kw">as </span>usize)
+                    <span class="kw">as </span><span class="kw-2">*mut </span>AtomicU32,
+                array: from_raw_parts_mut(
+                    sq_ring_ptr
+                        .add(params.sq_off.array <span class="kw">as </span>usize)
+                        <span class="kw">as _</span>,
+                    params.sq_entries <span class="kw">as </span>usize,
                 ),
-                <span class="ident">sqes</span>: <span class="ident">from_raw_parts_mut</span>(
-                    <span class="ident">sqes_ptr</span>,
-                    <span class="ident">params</span>.<span class="ident">sq_entries</span> <span class="kw">as</span> <span class="ident">usize</span>,
+                sqes: from_raw_parts_mut(
+                    sqes_ptr,
+                    params.sq_entries <span class="kw">as </span>usize,
                 ),
             }
         })
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_get_sqe</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">ring_flags</span>: <span class="ident">u32</span>,
-    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">io_uring_sqe</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">next</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sqe_tail</span> <span class="op">+</span> <span class="number">1</span>;
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_get_sqe(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        ring_flags: u32,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>io_uring_sqe&gt; {
+        <span class="kw">let </span>next = <span class="self">self</span>.sqe_tail + <span class="number">1</span>;
 
-        <span class="kw">let</span> <span class="ident">head</span> <span class="op">=</span>
-            <span class="kw">if</span> (<span class="ident">ring_flags</span> <span class="op">&amp;</span> <span class="ident">IORING_SETUP_SQPOLL</span>) <span class="op">==</span> <span class="number">0</span> {
-                <span class="comment">// non-polling mode</span>
-                <span class="self">self</span>.<span class="ident">sqe_head</span>
-            } <span class="kw">else</span> {
-                <span class="comment">// polling mode</span>
-                <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">khead</span> }.<span class="ident">load</span>(<span class="ident">Acquire</span>)
+        <span class="kw">let </span>head =
+            <span class="kw">if </span>(ring_flags &amp; IORING_SETUP_SQPOLL) == <span class="number">0 </span>{
+                <span class="comment">// non-polling mode
+                </span><span class="self">self</span>.sqe_head
+            } <span class="kw">else </span>{
+                <span class="comment">// polling mode
+                </span><span class="kw">unsafe </span>{ <span class="kw-2">&amp;*</span><span class="self">self</span>.khead }.load(Acquire)
             };
 
-        <span class="kw">if</span> <span class="ident">next</span> <span class="op">-</span> <span class="ident">head</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">sqes</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span> {
-            <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span>
-                <span class="self">self</span>.<span class="ident">sqe_tail</span> <span class="op">&amp;</span> <span class="kw">unsafe</span> { <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">kring_mask</span> };
-            <span class="kw">let</span> <span class="ident">sqe</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">sqes</span>[<span class="ident">idx</span> <span class="kw">as</span> <span class="ident">usize</span>];
-            <span class="self">self</span>.<span class="ident">sqe_tail</span> <span class="op">=</span> <span class="ident">next</span>;
+        <span class="kw">if </span>next - head &lt;= <span class="self">self</span>.sqes.len() <span class="kw">as </span>u32 {
+            <span class="kw">let </span>idx =
+                <span class="self">self</span>.sqe_tail &amp; <span class="kw">unsafe </span>{ <span class="kw-2">*</span><span class="self">self</span>.kring_mask };
+            <span class="kw">let </span>sqe = <span class="kw-2">&amp;mut </span><span class="self">self</span>.sqes[idx <span class="kw">as </span>usize];
+            <span class="self">self</span>.sqe_tail = next;
 
-            <span class="prelude-val">Some</span>(<span class="ident">sqe</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        }
+            <span class="prelude-val">Some</span>(sqe)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 
-    <span class="comment">// sets sq.array to point to current sq.sqe_head</span>
-    <span class="kw">fn</span> <span class="ident">flush</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">u32</span> {
-        <span class="kw">let</span> <span class="ident">mask</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">kring_mask</span> };
-        <span class="kw">let</span> <span class="ident">to_submit</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sqe_tail</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">sqe_head</span>;
+    <span class="comment">// sets sq.array to point to current sq.sqe_head
+    </span><span class="kw">fn </span>flush(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; u32 {
+        <span class="kw">let </span>mask: u32 = <span class="kw">unsafe </span>{ <span class="kw-2">*</span><span class="self">self</span>.kring_mask };
+        <span class="kw">let </span>to_submit = <span class="self">self</span>.sqe_tail - <span class="self">self</span>.sqe_head;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ktail</span> <span class="op">=</span>
-            <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">ktail</span> }.<span class="ident">load</span>(<span class="ident">Acquire</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>ktail =
+            <span class="kw">unsafe </span>{ <span class="kw-2">&amp;*</span><span class="self">self</span>.ktail }.load(Acquire);
 
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">to_submit</span> {
-            <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="ident">ktail</span> <span class="op">&amp;</span> <span class="ident">mask</span>;
-            <span class="self">self</span>.<span class="ident">array</span>[<span class="ident">index</span> <span class="kw">as</span> <span class="ident">usize</span>]
-                .<span class="ident">store</span>(<span class="self">self</span>.<span class="ident">sqe_head</span> <span class="op">&amp;</span> <span class="ident">mask</span>, <span class="ident">Release</span>);
-            <span class="ident">ktail</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-            <span class="self">self</span>.<span class="ident">sqe_head</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+        <span class="kw">for _ in </span><span class="number">0</span>..to_submit {
+            <span class="kw">let </span>index = ktail &amp; mask;
+            <span class="self">self</span>.array[index <span class="kw">as </span>usize]
+                .store(<span class="self">self</span>.sqe_head &amp; mask, Release);
+            ktail += <span class="number">1</span>;
+            <span class="self">self</span>.sqe_head += <span class="number">1</span>;
         }
 
-        <span class="kw">let</span> <span class="ident">swapped</span> <span class="op">=</span>
-            <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">ktail</span> }.<span class="ident">swap</span>(<span class="ident">ktail</span>, <span class="ident">Release</span>);
+        <span class="kw">let </span>swapped =
+            <span class="kw">unsafe </span>{ <span class="kw-2">&amp;*</span><span class="self">self</span>.ktail }.swap(ktail, Release);
 
-        <span class="macro">assert_eq!</span>(<span class="ident">swapped</span>, <span class="ident">ktail</span> <span class="op">-</span> <span class="ident">to_submit</span>);
+        <span class="macro">assert_eq!</span>(swapped, ktail - to_submit);
 
-        <span class="ident">to_submit</span>
+        to_submit
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">submit_all</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">ring_flags</span>: <span class="ident">u32</span>,
-        <span class="ident">ring_fd</span>: <span class="ident">i32</span>,
-    ) -&gt; <span class="ident">u64</span> {
-        <span class="kw">let</span> <span class="ident">submitted</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">ring_flags</span> <span class="op">&amp;</span> <span class="ident">IORING_SETUP_SQPOLL</span>
-            <span class="op">==</span> <span class="number">0</span>
-        {
-            <span class="comment">// non-SQPOLL mode, we need to use</span>
-            <span class="comment">// `enter` to submit our SQEs.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>submit_all(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        ring_flags: u32,
+        ring_fd: i32,
+    ) -&gt; u64 {
+        <span class="kw">let </span>submitted = <span class="kw">if </span>ring_flags &amp; IORING_SETUP_SQPOLL
+            == <span class="number">0
+        </span>{
+            <span class="comment">// non-SQPOLL mode, we need to use
+            // `enter` to submit our SQEs.
 
-            <span class="comment">// TODO for polling, keep flags at 0</span>
+            // TODO for polling, keep flags at 0
 
-            <span class="kw">let</span> <span class="ident">flags</span> <span class="op">=</span> <span class="ident">IORING_ENTER_GETEVENTS</span>;
-            <span class="kw">let</span> <span class="ident">flushed</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">flush</span>();
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_submit</span> <span class="op">=</span> <span class="ident">flushed</span>;
-            <span class="kw">while</span> <span class="ident">to_submit</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">Measure::new</span>(<span class="kw-2">&amp;</span><span class="ident">M</span>.<span class="ident">enter_sqe</span>);
-                <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident">enter</span>(
-                    <span class="ident">ring_fd</span>,
-                    <span class="ident">to_submit</span>,
+            </span><span class="kw">let </span>flags = IORING_ENTER_GETEVENTS;
+            <span class="kw">let </span>flushed = <span class="self">self</span>.flush();
+            <span class="kw">let </span><span class="kw-2">mut </span>to_submit = flushed;
+            <span class="kw">while </span>to_submit &gt; <span class="number">0 </span>{
+                <span class="kw">let _ </span>= Measure::new(<span class="kw-2">&amp;</span>M.enter_sqe);
+                <span class="kw">let </span>ret = enter(
+                    ring_fd,
+                    to_submit,
                     <span class="number">0</span>,
-                    <span class="ident">flags</span>,
-                    <span class="ident">std::ptr::null_mut</span>(),
+                    flags,
+                    std::ptr::null_mut(),
                 )
-                .<span class="ident">expect</span>(
+                .expect(
                     <span class="string">&quot;Failed to submit items to kernel via \
                      io_uring. This should never fail.&quot;</span>,
                 );
-                <span class="ident">to_submit</span> <span class="op">-</span><span class="op">=</span> <span class="ident">u32::try_from</span>(<span class="ident">ret</span>).<span class="ident">unwrap</span>();
+                to_submit -= u32::try_from(ret).unwrap();
             }
-            <span class="ident">flushed</span>
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">kflags</span> }.<span class="ident">load</span>(<span class="ident">Acquire</span>)
-            <span class="op">&amp;</span> <span class="ident">IORING_SQ_NEED_WAKEUP</span>
-            <span class="op">!</span><span class="op">=</span> <span class="number">0</span>
-        {
-            <span class="comment">// the kernel has signalled to us that the</span>
-            <span class="comment">// SQPOLL thread that checks the submission</span>
-            <span class="comment">// queue has terminated due to inactivity,</span>
-            <span class="comment">// and needs to be restarted.</span>
-            <span class="kw">let</span> <span class="ident">to_submit</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sqe_tail</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">sqe_head</span>;
-            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">Measure::new</span>(<span class="kw-2">&amp;</span><span class="ident">M</span>.<span class="ident">enter_sqe</span>);
-            <span class="ident">enter</span>(
-                <span class="ident">ring_fd</span>,
-                <span class="ident">to_submit</span>,
+            flushed
+        } <span class="kw">else if unsafe </span>{ <span class="kw-2">&amp;*</span><span class="self">self</span>.kflags }.load(Acquire)
+            &amp; IORING_SQ_NEED_WAKEUP
+            != <span class="number">0
+        </span>{
+            <span class="comment">// the kernel has signalled to us that the
+            // SQPOLL thread that checks the submission
+            // queue has terminated due to inactivity,
+            // and needs to be restarted.
+            </span><span class="kw">let </span>to_submit = <span class="self">self</span>.sqe_tail - <span class="self">self</span>.sqe_head;
+            <span class="kw">let _ </span>= Measure::new(<span class="kw-2">&amp;</span>M.enter_sqe);
+            enter(
+                ring_fd,
+                to_submit,
                 <span class="number">0</span>,
-                <span class="ident">IORING_ENTER_SQ_WAKEUP</span>,
-                <span class="ident">std::ptr::null_mut</span>(),
+                IORING_ENTER_SQ_WAKEUP,
+                std::ptr::null_mut(),
             )
-            .<span class="ident">expect</span>(
+            .expect(
                 <span class="string">&quot;Failed to wake up SQPOLL io_uring \
                  kernel thread. This should never fail.&quot;</span>,
             );
-            <span class="number">0</span>
-        } <span class="kw">else</span> {
-            <span class="number">0</span>
-        };
+            <span class="number">0
+        </span>} <span class="kw">else </span>{
+            <span class="number">0
+        </span>};
         <span class="macro">assert_eq!</span>(
-            <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">kdropped</span> }.<span class="ident">load</span>(<span class="ident">Relaxed</span>),
-            <span class="number">0</span>
-        );
-        <span class="ident">u64::from</span>(<span class="ident">submitted</span>)
+            <span class="kw">unsafe </span>{ <span class="kw-2">&amp;*</span><span class="self">self</span>.kdropped }.load(Relaxed),
+            <span class="number">0
+        </span>);
+        u64::from(submitted)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

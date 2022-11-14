@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/filter/bloom.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>bloom.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/filter/bloom.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>bloom.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -400,403 +395,402 @@
 <span id="395">395</span>
 <span id="396">396</span>
 <span id="397">397</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">ahash::AHasher</span>;
-<span class="kw">use</span> <span class="ident">bitvec::order::Lsb0</span>;
-<span class="kw">use</span> <span class="ident">bitvec::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">std::hash::Hasher</span>;
+</pre><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span>ahash::AHasher;
+<span class="kw">use </span>bitvec::order::Lsb0;
+<span class="kw">use </span>bitvec::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>std::hash::Hasher;
 
-<span class="comment">// All usizes in structures are serialized as u64 in binary</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="doccomment">/// Bloom filter</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Bloom</span> {
-    <span class="ident">inner</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">Lsb0</span>, <span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">bits_count</span>: <span class="ident">usize</span>,
-    <span class="ident">hashers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AHasher</span><span class="op">&gt;</span>,
-    <span class="ident">config</span>: <span class="ident">Config</span>,
+<span class="comment">// All usizes in structures are serialized as u64 in binary
+</span><span class="attribute">#[derive(Clone)]
+</span><span class="doccomment">/// Bloom filter
+</span><span class="kw">pub struct </span>Bloom {
+    inner: <span class="prelude-ty">Option</span>&lt;BitVec&lt;Lsb0, u64&gt;&gt;,
+    bits_count: usize,
+    hashers: Vec&lt;AHasher&gt;,
+    config: Config,
 }
 
-<span class="kw">impl</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Bloom</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">FmtResult</span> {
-        <span class="kw">struct</span> <span class="ident">InnerDebug</span>(<span class="ident">usize</span>, <span class="ident">usize</span>);
-        <span class="kw">impl</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">InnerDebug</span> {
-            <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">FmtResult</span> {
-                <span class="ident">f</span>.<span class="ident">write_fmt</span>(<span class="macro">format_args!</span>(<span class="string">&quot;{} ones from {}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>, <span class="self">self</span>.<span class="number">1</span>))
+<span class="kw">impl </span>Debug <span class="kw">for </span>Bloom {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; FmtResult {
+        <span class="kw">struct </span>InnerDebug(usize, usize);
+        <span class="kw">impl </span>Debug <span class="kw">for </span>InnerDebug {
+            <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; FmtResult {
+                f.write_fmt(<span class="macro">format_args!</span>(<span class="string">&quot;{} ones from {}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>, <span class="self">self</span>.<span class="number">1</span>))
             }
         }
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Bloom&quot;</span>)
-            .<span class="ident">field</span>(
+        f.debug_struct(<span class="string">&quot;Bloom&quot;</span>)
+            .field(
                 <span class="string">&quot;inner&quot;</span>,
-                <span class="kw-2">&amp;</span><span class="self">self</span>
-                    .<span class="ident">inner</span>
-                    .<span class="ident">as_ref</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">InnerDebug</span>(<span class="ident">x</span>.<span class="ident">count_ones</span>(), <span class="ident">x</span>.<span class="ident">len</span>())),
+                <span class="kw-2">&amp;</span><span class="self">self
+                    </span>.inner
+                    .as_ref()
+                    .map(|x| InnerDebug(x.count_ones(), x.len())),
             )
-            .<span class="ident">field</span>(<span class="string">&quot;bits_count&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">bits_count</span>)
-            .<span class="ident">finish</span>()
+            .field(<span class="string">&quot;bits_count&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.bits_count)
+            .finish()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Bloom</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">inner</span>: <span class="prelude-val">Some</span>(<span class="ident">Default::default</span>()),
-            <span class="ident">bits_count</span>: <span class="number">0</span>,
-            <span class="ident">hashers</span>: <span class="macro">vec!</span>[],
-            <span class="ident">config</span>: <span class="ident">Default::default</span>(),
+<span class="kw">impl </span>Default <span class="kw">for </span>Bloom {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            inner: <span class="prelude-val">Some</span>(Default::default()),
+            bits_count: <span class="number">0</span>,
+            hashers: <span class="macro">vec!</span>[],
+            config: Default::default(),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="ident">FilterTrait</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Bloom</span>
-<span class="kw">where</span>
-    <span class="ident">K</span>: <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Debug</span>,
+<span class="attribute">#[async_trait::async_trait]
+</span><span class="kw">impl</span>&lt;K&gt; FilterTrait&lt;K&gt; <span class="kw">for </span>Bloom
+<span class="kw">where
+    </span>K: AsRef&lt;[u8]&gt; + Sync + Send + Debug,
 {
-    <span class="kw">fn</span> <span class="ident">add</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">add</span>(<span class="ident">key</span>);
+    <span class="kw">fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) {
+        <span class="kw">let _ </span>= <span class="self">self</span>.add(key);
     }
 
-    <span class="kw">fn</span> <span class="ident">contains_fast</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="ident">FilterResult</span> {
-        <span class="self">self</span>.<span class="ident">contains_in_memory</span>(<span class="ident">key</span>).<span class="ident">unwrap_or_default</span>()
+    <span class="kw">fn </span>contains_fast(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; FilterResult {
+        <span class="self">self</span>.contains_in_memory(key).unwrap_or_default()
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">contains</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">BloomDataProvider</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">provider</span>: <span class="kw-2">&amp;</span><span class="ident">P</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="ident">FilterResult</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">res</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">contains_in_memory</span>(<span class="ident">key</span>) {
-            <span class="ident">res</span>
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">contains_in_file</span>(<span class="ident">provider</span>, <span class="ident">key</span>).<span class="kw">await</span>;
-            <span class="ident">res</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Failed to check filter for key {:?}: {}&quot;</span>, <span class="ident">key</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
+    <span class="kw">async fn </span>contains&lt;P: BloomDataProvider&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, provider: <span class="kw-2">&amp;</span>P, key: <span class="kw-2">&amp;</span>K) -&gt; FilterResult {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(res) = <span class="self">self</span>.contains_in_memory(key) {
+            res
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>res = <span class="self">self</span>.contains_in_file(provider, key).<span class="kw">await</span>;
+            res.map_err(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to check filter for key {:?}: {}&quot;</span>, key, e);
+                e
             })
-            .<span class="ident">unwrap_or_default</span>()
+            .unwrap_or_default()
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">offload_filter</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">offload_from_memory</span>()
+    <span class="kw">fn </span>offload_filter(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.offload_from_memory()
     }
 
-    <span class="kw">fn</span> <span class="ident">checked_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">checked_add_assign</span>(<span class="ident">other</span>)
+    <span class="kw">fn </span>checked_add_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        <span class="self">self</span>.checked_add_assign(other)
     }
 
-    <span class="kw">fn</span> <span class="ident">memory_allocated</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">memory_allocated</span>()
+    <span class="kw">fn </span>memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.memory_allocated()
     }
 
-    <span class="kw">fn</span> <span class="ident">clear_filter</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">clear</span>();
+    <span class="kw">fn </span>clear_filter(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.clear();
     }
 
-    <span class="kw">fn</span> <span class="ident">is_filter_offloaded</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">is_offloaded</span>()
+    <span class="kw">fn </span>is_filter_offloaded(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.is_offloaded()
     }
 }
 
-<span class="doccomment">/// Bloom filter configuration parameters.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Config</span> {
-    <span class="doccomment">/// records count in one blob.</span>
-    <span class="kw">pub</span> <span class="ident">elements</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// number of hash functions, the more hash functions.</span>
-    <span class="doccomment">/// you have, the slower bloom filter, and the quicker it fills up. If you</span>
-    <span class="doccomment">/// have too few, however, you may suffer too many false positives.</span>
-    <span class="kw">pub</span> <span class="ident">hashers_count</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// number of bits in the inner buffer.</span>
-    <span class="kw">pub</span> <span class="ident">max_buf_bits_count</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// filter buf increase value.</span>
-    <span class="kw">pub</span> <span class="ident">buf_increase_step</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// filter incrementally increases buffer</span>
-    <span class="doccomment">/// size by step and checks result false positive rate to be less than param.</span>
-    <span class="doccomment">/// It stops once buffer reaches size of max_buf_bits_count.</span>
-    <span class="kw">pub</span> <span class="ident">preferred_false_positive_rate</span>: <span class="ident">f64</span>,
+<span class="doccomment">/// Bloom filter configuration parameters.
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Config {
+    <span class="doccomment">/// records count in one blob.
+    </span><span class="kw">pub </span>elements: usize,
+    <span class="doccomment">/// number of hash functions, the more hash functions.
+    /// you have, the slower bloom filter, and the quicker it fills up. If you
+    /// have too few, however, you may suffer too many false positives.
+    </span><span class="kw">pub </span>hashers_count: usize,
+    <span class="doccomment">/// number of bits in the inner buffer.
+    </span><span class="kw">pub </span>max_buf_bits_count: usize,
+    <span class="doccomment">/// filter buf increase value.
+    </span><span class="kw">pub </span>buf_increase_step: usize,
+    <span class="doccomment">/// filter incrementally increases buffer
+    /// size by step and checks result false positive rate to be less than param.
+    /// It stops once buffer reaches size of max_buf_bits_count.
+    </span><span class="kw">pub </span>preferred_false_positive_rate: f64,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Save</span> {
-    <span class="ident">config</span>: <span class="ident">Config</span>,
-    <span class="ident">buf</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    <span class="ident">bits_count</span>: <span class="ident">usize</span>,
+<span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Save {
+    config: Config,
+    buf: Vec&lt;u64&gt;,
+    bits_count: usize,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Config</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">elements</span>: <span class="number">100_000</span>,
-            <span class="ident">hashers_count</span>: <span class="number">2</span>,
-            <span class="ident">max_buf_bits_count</span>: <span class="number">8_388_608</span>, <span class="comment">// 1Mb</span>
-            <span class="ident">buf_increase_step</span>: <span class="number">8196</span>,
-            <span class="ident">preferred_false_positive_rate</span>: <span class="number">0.001</span>,
+<span class="kw">impl </span>Default <span class="kw">for </span>Config {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            elements: <span class="number">100_000</span>,
+            hashers_count: <span class="number">2</span>,
+            max_buf_bits_count: <span class="number">8_388_608</span>, <span class="comment">// 1Mb
+            </span>buf_increase_step: <span class="number">8196</span>,
+            preferred_false_positive_rate: <span class="number">0.001</span>,
         }
     }
 }
 
-<span class="kw">fn</span> <span class="ident">m_from_fpr</span>(<span class="ident">fpr</span>: <span class="ident">f64</span>, <span class="ident">k</span>: <span class="ident">f64</span>, <span class="ident">n</span>: <span class="ident">f64</span>) -&gt; <span class="ident">f64</span> {
-    <span class="op">-</span><span class="ident">k</span> <span class="op">*</span> <span class="ident">n</span> <span class="op">/</span> (<span class="number">1_f64</span> <span class="op">-</span> <span class="ident">fpr</span>.<span class="ident">powf</span>(<span class="number">1_f64</span> <span class="op">/</span> <span class="ident">k</span>)).<span class="ident">ln</span>()
+<span class="kw">fn </span>m_from_fpr(fpr: f64, k: f64, n: f64) -&gt; f64 {
+    -k * n / (<span class="number">1_f64 </span>- fpr.powf(<span class="number">1_f64 </span>/ k)).ln()
 }
 
-<span class="kw">fn</span> <span class="ident">bits_count_from_formula</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>) -&gt; <span class="ident">usize</span> {
-    <span class="kw">let</span> <span class="ident">max_bit_count</span> <span class="op">=</span> <span class="ident">config</span>.<span class="ident">max_buf_bits_count</span>; <span class="comment">// 1Mb</span>
-    <span class="macro">trace!</span>(<span class="string">&quot;max bit count: {}&quot;</span>, <span class="ident">max_bit_count</span>);
-    <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">config</span>.<span class="ident">hashers_count</span>;
-    <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">config</span>.<span class="ident">elements</span> <span class="kw">as</span> <span class="ident">f64</span>;
-    <span class="macro">trace!</span>(<span class="string">&quot;bloom filter for {} elements&quot;</span>, <span class="ident">n</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bits_count</span> <span class="op">=</span> (<span class="ident">n</span> <span class="op">*</span> <span class="ident">k</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="number">2_f64</span>.<span class="ident">ln</span>()) <span class="kw">as</span> <span class="ident">usize</span>;
-    <span class="kw">let</span> <span class="ident">fpr</span> <span class="op">=</span> <span class="ident">config</span>.<span class="ident">preferred_false_positive_rate</span>;
-    <span class="ident">bits_count</span> <span class="op">=</span> <span class="ident">bits_count</span>.<span class="ident">max</span>(<span class="ident">max_bit_count</span>.<span class="ident">min</span>(<span class="ident">m_from_fpr</span>(<span class="ident">fpr</span>, <span class="ident">k</span> <span class="kw">as</span> <span class="ident">f64</span>, <span class="ident">n</span>) <span class="kw">as</span> <span class="ident">usize</span>));
-    <span class="ident">bits_count</span>
+<span class="kw">fn </span>bits_count_from_formula(config: <span class="kw-2">&amp;</span>Config) -&gt; usize {
+    <span class="kw">let </span>max_bit_count = config.max_buf_bits_count; <span class="comment">// 1Mb
+    </span><span class="macro">trace!</span>(<span class="string">&quot;max bit count: {}&quot;</span>, max_bit_count);
+    <span class="kw">let </span>k = config.hashers_count;
+    <span class="kw">let </span>n = config.elements <span class="kw">as </span>f64;
+    <span class="macro">trace!</span>(<span class="string">&quot;bloom filter for {} elements&quot;</span>, n);
+    <span class="kw">let </span><span class="kw-2">mut </span>bits_count = (n * k <span class="kw">as </span>f64 / <span class="number">2_f64</span>.ln()) <span class="kw">as </span>usize;
+    <span class="kw">let </span>fpr = config.preferred_false_positive_rate;
+    bits_count = bits_count.max(max_bit_count.min(m_from_fpr(fpr, k <span class="kw">as </span>f64, n) <span class="kw">as </span>usize));
+    bits_count
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-<span class="kw">fn</span> <span class="ident">false_positive_rate</span>(<span class="ident">k</span>: <span class="ident">f64</span>, <span class="ident">n</span>: <span class="ident">f64</span>, <span class="ident">m</span>: <span class="ident">f64</span>) -&gt; <span class="ident">f64</span> {
-    (<span class="number">1_f64</span> <span class="op">-</span> <span class="number">1_f64</span>.<span class="ident">exp</span>().<span class="ident">powf</span>(<span class="op">-</span><span class="ident">k</span> <span class="op">*</span> <span class="ident">n</span> <span class="op">/</span> <span class="ident">m</span>)).<span class="ident">powi</span>(<span class="ident">k</span> <span class="kw">as</span> <span class="ident">i32</span>)
+<span class="attribute">#[allow(dead_code)]
+</span><span class="kw">fn </span>false_positive_rate(k: f64, n: f64, m: f64) -&gt; f64 {
+    (<span class="number">1_f64 </span>- <span class="number">1_f64</span>.exp().powf(-k * n / m)).powi(k <span class="kw">as </span>i32)
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-<span class="kw">fn</span> <span class="ident">bits_count_via_iterations</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>) -&gt; <span class="ident">usize</span> {
-    <span class="kw">let</span> <span class="ident">max_bit_count</span> <span class="op">=</span> <span class="ident">config</span>.<span class="ident">max_buf_bits_count</span>; <span class="comment">// 1Mb</span>
-    <span class="macro">trace!</span>(<span class="string">&quot;max bit count: {}&quot;</span>, <span class="ident">max_bit_count</span>);
-    <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">config</span>.<span class="ident">hashers_count</span>;
-    <span class="kw">let</span> <span class="ident">elements</span> <span class="op">=</span> <span class="ident">config</span>.<span class="ident">elements</span> <span class="kw">as</span> <span class="ident">f64</span>;
-    <span class="macro">trace!</span>(<span class="string">&quot;bloom filter for {} elements&quot;</span>, <span class="ident">elements</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bits_count</span> <span class="op">=</span> (<span class="ident">elements</span> <span class="op">*</span> <span class="ident">k</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="number">2_f64</span>.<span class="ident">ln</span>()) <span class="kw">as</span> <span class="ident">usize</span>;
-    <span class="kw">let</span> <span class="ident">bits_step</span> <span class="op">=</span> <span class="ident">config</span>.<span class="ident">buf_increase_step</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fpr</span> <span class="op">=</span> <span class="number">1_f64</span>;
-    <span class="kw">while</span> <span class="ident">fpr</span> <span class="op">&gt;</span> <span class="ident">config</span>.<span class="ident">preferred_false_positive_rate</span> {
-        <span class="ident">fpr</span> <span class="op">=</span> <span class="ident">false_positive_rate</span>(<span class="ident">k</span> <span class="kw">as</span> <span class="ident">f64</span>, <span class="ident">elements</span>, <span class="ident">bits_count</span> <span class="kw">as</span> <span class="ident">f64</span>);
-        <span class="kw">if</span> <span class="ident">bits_count</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">max_bit_count</span> {
+<span class="attribute">#[allow(dead_code)]
+</span><span class="kw">fn </span>bits_count_via_iterations(config: <span class="kw-2">&amp;</span>Config) -&gt; usize {
+    <span class="kw">let </span>max_bit_count = config.max_buf_bits_count; <span class="comment">// 1Mb
+    </span><span class="macro">trace!</span>(<span class="string">&quot;max bit count: {}&quot;</span>, max_bit_count);
+    <span class="kw">let </span>k = config.hashers_count;
+    <span class="kw">let </span>elements = config.elements <span class="kw">as </span>f64;
+    <span class="macro">trace!</span>(<span class="string">&quot;bloom filter for {} elements&quot;</span>, elements);
+    <span class="kw">let </span><span class="kw-2">mut </span>bits_count = (elements * k <span class="kw">as </span>f64 / <span class="number">2_f64</span>.ln()) <span class="kw">as </span>usize;
+    <span class="kw">let </span>bits_step = config.buf_increase_step;
+    <span class="kw">let </span><span class="kw-2">mut </span>fpr = <span class="number">1_f64</span>;
+    <span class="kw">while </span>fpr &gt; config.preferred_false_positive_rate {
+        fpr = false_positive_rate(k <span class="kw">as </span>f64, elements, bits_count <span class="kw">as </span>f64);
+        <span class="kw">if </span>bits_count &gt;= max_bit_count {
             <span class="kw">break</span>;
-        } <span class="kw">else</span> {
-            <span class="ident">bits_count</span> <span class="op">=</span> <span class="ident">max_bit_count</span>.<span class="ident">min</span>(<span class="ident">bits_step</span> <span class="op">+</span> <span class="ident">bits_count</span>);
+        } <span class="kw">else </span>{
+            bits_count = max_bit_count.min(bits_step + bits_count);
         }
     }
-    <span class="ident">bits_count</span>
+    bits_count
 }
 
-<span class="kw">impl</span> <span class="ident">Bloom</span> {
-    <span class="doccomment">/// Create new bloom filter</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">config</span>: <span class="ident">Config</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">bits_count</span> <span class="op">=</span> <span class="ident">bits_count_from_formula</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>);
-        <span class="self">Self</span> {
-            <span class="ident">inner</span>: <span class="prelude-val">Some</span>(<span class="macro">bitvec!</span>[<span class="ident">Lsb0</span>, <span class="ident">u64</span>; <span class="number">0</span>; <span class="ident">bits_count</span>]),
-            <span class="ident">hashers</span>: <span class="ident"><span class="self">Self</span>::hashers</span>(<span class="ident">config</span>.<span class="ident">hashers_count</span>),
-            <span class="ident">config</span>,
-            <span class="ident">bits_count</span>,
+<span class="kw">impl </span>Bloom {
+    <span class="doccomment">/// Create new bloom filter
+    </span><span class="kw">pub fn </span>new(config: Config) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>bits_count = bits_count_from_formula(<span class="kw-2">&amp;</span>config);
+        <span class="self">Self </span>{
+            inner: <span class="prelude-val">Some</span>(<span class="macro">bitvec!</span>[Lsb0, u64; <span class="number">0</span>; bits_count]),
+            hashers: <span class="self">Self</span>::hashers(config.hashers_count),
+            config,
+            bits_count,
         }
     }
 
-    <span class="doccomment">/// Merge filters</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">Bloom</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> (<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">inner</span>, <span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="ident">inner</span>) {
-            (<span class="prelude-val">Some</span>(<span class="ident">inner</span>), <span class="prelude-val">Some</span>(<span class="ident">other_inner</span>)) <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="ident">other_inner</span>.<span class="ident">len</span>() =&gt; {
-                <span class="ident">inner</span>
-                    .<span class="ident">as_mut_raw_slice</span>()
-                    .<span class="ident">iter_mut</span>()
-                    .<span class="ident">zip</span>(<span class="ident">other_inner</span>.<span class="ident">as_raw_slice</span>())
-                    .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">a</span>, <span class="ident">b</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">a</span> <span class="op">|</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">b</span>);
-                <span class="bool-val">true</span>
-            }
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="doccomment">/// Merge filters
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>checked_add_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>Bloom) -&gt; bool {
+        <span class="kw">match </span>(<span class="kw-2">&amp;mut </span><span class="self">self</span>.inner, <span class="kw-2">&amp;</span>other.inner) {
+            (<span class="prelude-val">Some</span>(inner), <span class="prelude-val">Some</span>(other_inner)) <span class="kw">if </span>inner.len() == other_inner.len() =&gt; {
+                inner
+                    .as_mut_raw_slice()
+                    .iter_mut()
+                    .zip(other_inner.as_raw_slice())
+                    .for_each(|(a, b)| <span class="kw-2">*</span>a |= <span class="kw-2">*</span>b);
+                <span class="bool-val">true
+            </span>}
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="doccomment">/// Set in-memory filter buffer to zeroed array</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="macro">bitvec!</span>[<span class="ident">Lsb0</span>, <span class="ident">u64</span>; <span class="number">0</span>; <span class="self">self</span>.<span class="ident">bits_count</span>]);
+    <span class="doccomment">/// Set in-memory filter buffer to zeroed array
+    </span><span class="kw">pub fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.inner = <span class="prelude-val">Some</span>(<span class="macro">bitvec!</span>[Lsb0, u64; <span class="number">0</span>; <span class="self">self</span>.bits_count]);
     }
 
-    <span class="doccomment">/// Check if filter offloaded</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_offloaded</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">is_none</span>()
+    <span class="doccomment">/// Check if filter offloaded
+    </span><span class="kw">pub fn </span>is_offloaded(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.inner.is_none()
     }
 
-    <span class="doccomment">/// Clear in-memory filter buffer</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">offload_from_memory</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="kw">let</span> <span class="ident">freed</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">capacity</span>() <span class="op">/</span> <span class="number">8</span>).<span class="ident">unwrap_or</span>(<span class="number">0</span>);
-        <span class="self">self</span>.<span class="ident">inner</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-        <span class="ident">freed</span>
+    <span class="doccomment">/// Clear in-memory filter buffer
+    </span><span class="kw">pub fn </span>offload_from_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; usize {
+        <span class="kw">let </span>freed = <span class="self">self</span>.inner.as_ref().map(|x| x.capacity() / <span class="number">8</span>).unwrap_or(<span class="number">0</span>);
+        <span class="self">self</span>.inner = <span class="prelude-val">None</span>;
+        freed
     }
 
-    <span class="kw">fn</span> <span class="ident">hashers</span>(<span class="ident">k</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AHasher</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>hashers(k: usize) -&gt; Vec&lt;AHasher&gt; {
         <span class="macro">trace!</span>(<span class="string">&quot;@TODO create configurable hashers???&quot;</span>);
-        (<span class="number">0</span>..<span class="ident">k</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">AHasher::new_with_keys</span>((<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>) <span class="kw">as</span> <span class="ident">u128</span>, (<span class="ident">i</span> <span class="op">+</span> <span class="number">2</span>) <span class="kw">as</span> <span class="ident">u128</span>))
-            .<span class="ident">collect</span>()
+        (<span class="number">0</span>..k)
+            .map(|i| AHasher::new_with_keys((i + <span class="number">1</span>) <span class="kw">as </span>u128, (i + <span class="number">2</span>) <span class="kw">as </span>u128))
+            .collect()
     }
 
-    <span class="kw">fn</span> <span class="ident">save</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Save</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">Save</span> {
-                <span class="ident">config</span>: <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">clone</span>(),
-                <span class="ident">buf</span>: <span class="ident">inner</span>.<span class="ident">as_raw_slice</span>().<span class="ident">to_vec</span>(),
-                <span class="ident">bits_count</span>: <span class="ident">inner</span>.<span class="ident">len</span>(),
+    <span class="kw">fn </span>save(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Save&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(inner) = <span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            <span class="prelude-val">Some</span>(Save {
+                config: <span class="self">self</span>.config.clone(),
+                buf: inner.as_raw_slice().to_vec(),
+                bits_count: inner.len(),
             })
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
+    }
+
+    <span class="kw">fn </span>from(save: Save) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>inner = BitVec::from_vec(save.buf);
+        inner.truncate(save.bits_count);
+        <span class="self">Self </span>{
+            hashers: <span class="self">Self</span>::hashers(save.config.hashers_count),
+            config: save.config,
+            inner: <span class="prelude-val">Some</span>(inner),
+            bits_count: save.bits_count,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">save</span>: <span class="ident">Save</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">BitVec::from_vec</span>(<span class="ident">save</span>.<span class="ident">buf</span>);
-        <span class="ident">inner</span>.<span class="ident">truncate</span>(<span class="ident">save</span>.<span class="ident">bits_count</span>);
-        <span class="self">Self</span> {
-            <span class="ident">hashers</span>: <span class="ident"><span class="self">Self</span>::hashers</span>(<span class="ident">save</span>.<span class="ident">config</span>.<span class="ident">hashers_count</span>),
-            <span class="ident">config</span>: <span class="ident">save</span>.<span class="ident">config</span>,
-            <span class="ident">inner</span>: <span class="prelude-val">Some</span>(<span class="ident">inner</span>),
-            <span class="ident">bits_count</span>: <span class="ident">save</span>.<span class="ident">bits_count</span>,
-        }
+    <span class="doccomment">/// Serialize filter to bytes
+    </span><span class="kw">pub fn </span>to_raw(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+        <span class="kw">let </span>save = <span class="self">self
+            </span>.save()
+            .ok_or_else(|| <span class="macro">anyhow::anyhow!</span>(<span class="string">&quot;Filter buffer offloaded, can&#39;t serialize&quot;</span>))<span class="question-mark">?</span>;
+        bincode::serialize(<span class="kw-2">&amp;</span>save).map_err(Into::into)
     }
 
-    <span class="doccomment">/// Serialize filter to bytes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_raw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">save</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">save</span>()
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">anyhow::anyhow!</span>(<span class="string">&quot;Filter buffer offloaded, can&#39;t serialize&quot;</span>))<span class="question-mark">?</span>;
-        <span class="ident">bincode::serialize</span>(<span class="kw-2">&amp;</span><span class="ident">save</span>).<span class="ident">map_err</span>(<span class="ident">Into::into</span>)
+    <span class="doccomment">/// Deserialize filter from bytes
+    </span><span class="kw">pub fn </span>from_raw(buf: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span>save: Save = bincode::deserialize(buf)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::from(save))
     }
 
-    <span class="doccomment">/// Deserialize filter from bytes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_raw</span>(<span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">save</span>: <span class="ident">Save</span> <span class="op">=</span> <span class="ident">bincode::deserialize</span>(<span class="ident">buf</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::from</span>(<span class="ident">save</span>))
-    }
-
-    <span class="doccomment">/// Add value to filter</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">item</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>;
-            <span class="kw">for</span> <span class="ident">h</span> <span class="kw">in</span> <span class="ident"><span class="self">Self</span>::iter_indices_for_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">hashers</span>, <span class="ident">len</span>, <span class="ident">item</span>.<span class="ident">as_ref</span>()) {
-                <span class="kw-2">*</span><span class="ident">inner</span>
-                    .<span class="ident">get_mut</span>(<span class="ident">h</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;impossible due to mod by len&quot;</span>) <span class="op">=</span> <span class="bool-val">true</span>;
+    <span class="doccomment">/// Add value to filter
+    </span><span class="kw">pub fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, item: <span class="kw">impl </span>AsRef&lt;[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(inner) = <span class="kw-2">&amp;mut </span><span class="self">self</span>.inner {
+            <span class="kw">let </span>len = inner.len() <span class="kw">as </span>u64;
+            <span class="kw">for </span>h <span class="kw">in </span><span class="self">Self</span>::iter_indices_for_key(<span class="kw-2">&amp;</span><span class="self">self</span>.hashers, len, item.as_ref()) {
+                <span class="kw-2">*</span>inner
+                    .get_mut(h <span class="kw">as </span>usize)
+                    .expect(<span class="string">&quot;impossible due to mod by len&quot;</span>) = <span class="bool-val">true</span>;
             }
             <span class="prelude-val">Ok</span>(())
-        } <span class="kw">else</span> {
+        } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(<span class="macro">anyhow::anyhow!</span>(<span class="string">&quot;Can&#39;t add to in-file filter&quot;</span>))
         }
     }
 
-    <span class="doccomment">/// Check filter in-memory (if not offloaded)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">contains_in_memory</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">item</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">FilterResult</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>;
-            <span class="comment">// Check because .all on empty iterator returns true</span>
-            <span class="kw">if</span> <span class="ident">len</span> <span class="op">==</span> <span class="number">0</span> {
-                <span class="kw">return</span> <span class="prelude-val">None</span>;
+    <span class="doccomment">/// Check filter in-memory (if not offloaded)
+    </span><span class="kw">pub fn </span>contains_in_memory(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw">impl </span>AsRef&lt;[u8]&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;FilterResult&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(inner) = <span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            <span class="kw">let </span>len = inner.len() <span class="kw">as </span>u64;
+            <span class="comment">// Check because .all on empty iterator returns true
+            </span><span class="kw">if </span>len == <span class="number">0 </span>{
+                <span class="kw">return </span><span class="prelude-val">None</span>;
             }
-            <span class="kw">if</span> <span class="ident"><span class="self">Self</span>::iter_indices_for_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">hashers</span>, <span class="ident">len</span>, <span class="ident">item</span>.<span class="ident">as_ref</span>())
-                .<span class="ident">all</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">inner</span>.<span class="ident">get</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">expect</span>(<span class="string">&quot;unreachable&quot;</span>))
+            <span class="kw">if </span><span class="self">Self</span>::iter_indices_for_key(<span class="kw-2">&amp;</span><span class="self">self</span>.hashers, len, item.as_ref())
+                .all(|i| <span class="kw-2">*</span>inner.get(i <span class="kw">as </span>usize).expect(<span class="string">&quot;unreachable&quot;</span>))
             {
-                <span class="prelude-val">Some</span>(<span class="ident">FilterResult::NeedAdditionalCheck</span>)
-            } <span class="kw">else</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">FilterResult::NotContains</span>)
+                <span class="prelude-val">Some</span>(FilterResult::NeedAdditionalCheck)
+            } <span class="kw">else </span>{
+                <span class="prelude-val">Some</span>(FilterResult::NotContains)
             }
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        }
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 
-    <span class="comment">// Returns empty iterator on len == 0</span>
-    <span class="kw">fn</span> <span class="ident">iter_indices_for_key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="ident">hashers</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AHasher</span><span class="op">&gt;</span>,
-        <span class="ident">len</span>: <span class="ident">u64</span>,
-        <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">u64</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span> {
-        <span class="ident">hashers</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">filter_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">hasher</span><span class="op">|</span> {
-            <span class="ident">hasher</span>.<span class="ident">write</span>(<span class="ident">item</span>.<span class="ident">as_ref</span>());
-            <span class="ident">hasher</span>.<span class="ident">finish</span>().<span class="ident">checked_rem</span>(<span class="ident">len</span>)
+    <span class="comment">// Returns empty iterator on len == 0
+    </span><span class="kw">fn </span>iter_indices_for_key&lt;<span class="lifetime">&#39;a</span>&gt;(
+        hashers: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Vec&lt;AHasher&gt;,
+        len: u64,
+        item: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = u64&gt; + <span class="lifetime">&#39;a </span>{
+        hashers.iter().cloned().filter_map(<span class="kw">move </span>|<span class="kw-2">mut </span>hasher| {
+            hasher.write(item.as_ref());
+            hasher.finish().checked_rem(len)
         })
     }
 
-    <span class="doccomment">/// Check filter by reading bits from file</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">contains_in_file</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">BloomDataProvider</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// Check filter by reading bits from file
+    </span><span class="kw">pub async fn </span>contains_in_file&lt;P: BloomDataProvider&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">provider</span>: <span class="kw-2">&amp;</span><span class="ident">P</span>,
-        <span class="ident">item</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">FilterResult</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">bits_count</span> <span class="op">==</span> <span class="number">0</span> {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">FilterResult::NeedAdditionalCheck</span>);
+        provider: <span class="kw-2">&amp;</span>P,
+        item: <span class="kw">impl </span>AsRef&lt;[u8]&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;FilterResult&gt; {
+        <span class="kw">if </span><span class="self">self</span>.bits_count == <span class="number">0 </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(FilterResult::NeedAdditionalCheck);
         }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hashers</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">hashers</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">start_pos</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">buffer_start_position</span>().<span class="ident">unwrap</span>();
-        <span class="kw">for</span> <span class="ident">index</span> <span class="kw">in</span> <span class="ident">hashers</span>.<span class="ident">iter_mut</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">hasher</span><span class="op">|</span> {
-            <span class="ident">hasher</span>.<span class="ident">write</span>(<span class="ident">item</span>.<span class="ident">as_ref</span>());
-            <span class="ident">hasher</span>.<span class="ident">finish</span>() <span class="op">%</span> <span class="self">self</span>.<span class="ident">bits_count</span> <span class="kw">as</span> <span class="ident">u64</span>
+        <span class="kw">let </span><span class="kw-2">mut </span>hashers = <span class="self">self</span>.hashers.clone();
+        <span class="kw">let </span>start_pos = <span class="self">self</span>.buffer_start_position().unwrap();
+        <span class="kw">for </span>index <span class="kw">in </span>hashers.iter_mut().map(|hasher| {
+            hasher.write(item.as_ref());
+            hasher.finish() % <span class="self">self</span>.bits_count <span class="kw">as </span>u64
         }) {
-            <span class="kw">let</span> <span class="ident">byte</span> <span class="op">=</span> <span class="ident">provider</span>.<span class="ident">read_byte</span>(<span class="ident">start_pos</span> <span class="op">+</span> <span class="ident">index</span> <span class="op">/</span> <span class="number">8</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>byte = provider.read_byte(start_pos + index / <span class="number">8</span>).<span class="kw">await</span><span class="question-mark">?</span>;
 
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">byte</span>
-                .<span class="ident">view_bits</span>::<span class="op">&lt;</span><span class="ident">Lsb0</span><span class="op">&gt;</span>()
-                .<span class="ident">get</span>(<span class="ident">index</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">%</span> <span class="number">8</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;unreachable&quot;</span>)
+            <span class="kw">if </span>!byte
+                .view_bits::&lt;Lsb0&gt;()
+                .get(index <span class="kw">as </span>usize % <span class="number">8</span>)
+                .expect(<span class="string">&quot;unreachable&quot;</span>)
             {
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">FilterResult::NotContains</span>);
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(FilterResult::NotContains);
             }
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">FilterResult::NeedAdditionalCheck</span>)
+        <span class="prelude-val">Ok</span>(FilterResult::NeedAdditionalCheck)
     }
 
-    <span class="comment">// bincode write len as u64 before Vec elements. sizeof(config) + sizeof(u64)</span>
-    <span class="kw">fn</span> <span class="ident">buffer_start_position</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">bincode::serialized_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">config</span>)<span class="question-mark">?</span> <span class="op">+</span> <span class="ident">std::mem::size_of</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>() <span class="kw">as</span> <span class="ident">u64</span>)
+    <span class="comment">// bincode write len as u64 before Vec elements. sizeof(config) + sizeof(u64)
+    </span><span class="kw">fn </span>buffer_start_position(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
+        <span class="prelude-val">Ok</span>(bincode::serialized_size(<span class="kw-2">&amp;</span><span class="self">self</span>.config)<span class="question-mark">? </span>+ std::mem::size_of::&lt;u64&gt;() <span class="kw">as </span>u64)
     }
 
-    <span class="doccomment">/// Get amount of memory allocated for filter</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">memory_allocated</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">as_ref</span>().<span class="ident">map_or</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">buf</span><span class="op">|</span> <span class="ident">buf</span>.<span class="ident">capacity</span>() <span class="op">/</span> <span class="number">8</span>)
+    <span class="doccomment">/// Get amount of memory allocated for filter
+    </span><span class="kw">pub fn </span>memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.inner.as_ref().map_or(<span class="number">0</span>, |buf| buf.capacity() / <span class="number">8</span>)
     }
 }
 
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">check_inversed_formula</span>() {
-        <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::Config</span>;
-        <span class="kw">const</span> <span class="ident">EPSILON</span>: <span class="ident">f64</span> <span class="op">=</span> <span class="number">0.01</span>;
+<span class="kw">mod </span>tests {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>check_inversed_formula() {
+        <span class="kw">use </span><span class="kw">super</span>::Config;
+        <span class="kw">const </span>EPSILON: f64 = <span class="number">0.01</span>;
 
-        <span class="kw">let</span> <span class="ident">config</span> <span class="op">=</span> <span class="ident">Config::default</span>();
+        <span class="kw">let </span>config = Config::default();
 
-        <span class="kw">let</span> <span class="ident">inversed_formula_value</span> <span class="op">=</span> <span class="ident"><span class="kw">super</span>::bits_count_from_formula</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>);
-        <span class="kw">let</span> <span class="ident">iterations_method_value</span> <span class="op">=</span> <span class="ident"><span class="kw">super</span>::bits_count_via_iterations</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>);
+        <span class="kw">let </span>inversed_formula_value = <span class="kw">super</span>::bits_count_from_formula(<span class="kw-2">&amp;</span>config);
+        <span class="kw">let </span>iterations_method_value = <span class="kw">super</span>::bits_count_via_iterations(<span class="kw-2">&amp;</span>config);
 
-        <span class="kw">let</span> <span class="ident">min_value</span> <span class="op">=</span> <span class="ident">iterations_method_value</span>.<span class="ident">min</span>(<span class="ident">inversed_formula_value</span>) <span class="kw">as</span> <span class="ident">f64</span>;
-        <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span>
-            ((<span class="ident">iterations_method_value</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">-</span> <span class="ident">inversed_formula_value</span> <span class="kw">as</span> <span class="ident">f64</span>) <span class="op">/</span> <span class="ident">min_value</span>).<span class="ident">abs</span>();
+        <span class="kw">let </span>min_value = iterations_method_value.min(inversed_formula_value) <span class="kw">as </span>f64;
+        <span class="kw">let </span>diff =
+            ((iterations_method_value <span class="kw">as </span>f64 - inversed_formula_value <span class="kw">as </span>f64) / min_value).abs();
 
         <span class="macro">assert!</span>(
-            <span class="ident">diff</span> <span class="op">&lt;</span> <span class="ident">EPSILON</span>,
+            diff &lt; EPSILON,
             <span class="string">&quot;description: {}\ninversed formula value: {}, iteration value: {}, diff: {}&quot;</span>,
             <span class="string">&quot;bits_count relative diff is more than EPSILON&quot;</span>,
-            <span class="ident">inversed_formula_value</span>,
-            <span class="ident">iterations_method_value</span>,
-            <span class="ident">diff</span>
+            inversed_formula_value,
+            iterations_method_value,
+            diff
         );
 
-        <span class="kw">let</span> <span class="ident">inversed_formula_fpr</span> <span class="op">=</span> <span class="ident"><span class="kw">super</span>::false_positive_rate</span>(
-            <span class="ident">config</span>.<span class="ident">hashers_count</span> <span class="kw">as</span> <span class="ident">f64</span>,
-            <span class="ident">config</span>.<span class="ident">elements</span> <span class="kw">as</span> <span class="ident">f64</span>,
-            <span class="ident">inversed_formula_value</span> <span class="kw">as</span> <span class="ident">f64</span>,
+        <span class="kw">let </span>inversed_formula_fpr = <span class="kw">super</span>::false_positive_rate(
+            config.hashers_count <span class="kw">as </span>f64,
+            config.elements <span class="kw">as </span>f64,
+            inversed_formula_value <span class="kw">as </span>f64,
         );
-        <span class="kw">let</span> <span class="ident">iterations_method_fpr</span> <span class="op">=</span> <span class="ident"><span class="kw">super</span>::false_positive_rate</span>(
-            <span class="ident">config</span>.<span class="ident">hashers_count</span> <span class="kw">as</span> <span class="ident">f64</span>,
-            <span class="ident">config</span>.<span class="ident">elements</span> <span class="kw">as</span> <span class="ident">f64</span>,
-            <span class="ident">iterations_method_value</span> <span class="kw">as</span> <span class="ident">f64</span>,
+        <span class="kw">let </span>iterations_method_fpr = <span class="kw">super</span>::false_positive_rate(
+            config.hashers_count <span class="kw">as </span>f64,
+            config.elements <span class="kw">as </span>f64,
+            iterations_method_value <span class="kw">as </span>f64,
         );
 
-        <span class="kw">let</span> <span class="ident">min_val</span> <span class="op">=</span> <span class="ident">inversed_formula_fpr</span>.<span class="ident">min</span>(<span class="ident">iterations_method_fpr</span>);
-        <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span> (<span class="ident">inversed_formula_fpr</span> <span class="op">-</span> <span class="ident">iterations_method_fpr</span>).<span class="ident">abs</span>() <span class="op">/</span> <span class="ident">min_val</span>;
+        <span class="kw">let </span>min_val = inversed_formula_fpr.min(iterations_method_fpr);
+        <span class="kw">let </span>diff = (inversed_formula_fpr - iterations_method_fpr).abs() / min_val;
         <span class="macro">assert!</span>(
-            <span class="ident">diff</span> <span class="op">&lt;</span> <span class="ident">EPSILON</span>,
+            diff &lt; EPSILON,
             <span class="string">&quot;description: {}\nfpr (inversed formula): {}, fpr (iterations method): {}, diff: {}&quot;</span>,
             <span class="string">&quot;fpr relative diff is more than EPSILON&quot;</span>,
-            <span class="ident">inversed_formula_fpr</span>,
-            <span class="ident">iterations_method_fpr</span>,
-            <span class="ident">diff</span>
+            inversed_formula_fpr,
+            iterations_method_fpr,
+            diff
         );
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

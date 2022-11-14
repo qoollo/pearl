@@ -1,11 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/io_uring/uring.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>uring.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container">
-                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../rio/index.html">
-                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/io_uring/uring.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>uring.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container">
+                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../rio/index.html">
+                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -757,758 +752,757 @@
 <span id="750">750</span>
 <span id="751">751</span>
 <span id="752">752</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+</pre><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// Nice bindings for the shiny new linux IO system</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Rio</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Uring</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Nice bindings for the shiny new linux IO system
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>Rio(<span class="kw">pub</span>(<span class="kw">crate</span>) Arc&lt;Uring&gt;);
 
-<span class="kw">impl</span> <span class="ident">std::ops::Deref</span> <span class="kw">for</span> <span class="ident">Rio</span> {
-    <span class="kw">type</span> <span class="ident">Target</span> <span class="op">=</span> <span class="ident">Uring</span>;
+<span class="kw">impl </span>std::ops::Deref <span class="kw">for </span>Rio {
+    <span class="kw">type </span>Target = Uring;
 
-    <span class="kw">fn</span> <span class="ident">deref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Uring</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>
-    }
+    <span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Uring {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0
+    </span>}
 }
 
-<span class="doccomment">/// The top-level `io_uring` structure.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Uring</span> {
-    <span class="ident">sq</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">Sq</span><span class="op">&gt;</span>,
-    <span class="ident">ticket_queue</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">TicketQueue</span><span class="op">&gt;</span>,
-    <span class="ident">in_flight</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">InFlight</span><span class="op">&gt;</span>,
-    <span class="ident">flags</span>: <span class="ident">u32</span>,
-    <span class="ident">ring_fd</span>: <span class="ident">i32</span>,
-    <span class="ident">config</span>: <span class="ident">Config</span>,
-    <span class="ident">loaded</span>: <span class="ident">AtomicU64</span>,
-    <span class="ident">submitted</span>: <span class="ident">AtomicU64</span>,
+<span class="doccomment">/// The top-level `io_uring` structure.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>Uring {
+    sq: Mutex&lt;Sq&gt;,
+    ticket_queue: Arc&lt;TicketQueue&gt;,
+    in_flight: Arc&lt;InFlight&gt;,
+    flags: u32,
+    ring_fd: i32,
+    config: Config,
+    loaded: AtomicU64,
+    submitted: AtomicU64,
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-<span class="kw">unsafe</span> <span class="kw">impl</span> <span class="ident">Send</span> <span class="kw">for</span> <span class="ident">Uring</span> {}
+<span class="attribute">#[allow(unsafe_code)]
+</span><span class="kw">unsafe impl </span>Send <span class="kw">for </span>Uring {}
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-<span class="kw">unsafe</span> <span class="kw">impl</span> <span class="ident">Sync</span> <span class="kw">for</span> <span class="ident">Uring</span> {}
+<span class="attribute">#[allow(unsafe_code)]
+</span><span class="kw">unsafe impl </span>Sync <span class="kw">for </span>Uring {}
 
-<span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">Uring</span> {
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">let</span> <span class="ident">poison_pill_res</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">with_sqe</span>::<span class="op">&lt;</span><span class="kw">_</span>, ()<span class="op">&gt;</span>(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, <span class="op">|</span><span class="ident">sqe</span><span class="op">|</span> {
-                <span class="ident">sqe</span>.<span class="ident">prep_rw</span>(
-                    <span class="ident">IORING_OP_NOP</span>,
+<span class="kw">impl </span>Drop <span class="kw">for </span>Uring {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>poison_pill_res =
+            <span class="self">self</span>.with_sqe::&lt;<span class="kw">_</span>, ()&gt;(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, |sqe| {
+                sqe.prep_rw(
+                    IORING_OP_NOP,
                     <span class="number">0</span>,
                     <span class="number">1</span>,
                     <span class="number">0</span>,
-                    <span class="ident">Ordering::Drain</span>,
+                    Ordering::Drain,
                 );
-                <span class="comment">// set the poison pill</span>
-                <span class="ident">sqe</span>.<span class="ident">user_data</span> <span class="op">^</span><span class="op">=</span> <span class="ident">u64::max_value</span>();
+                <span class="comment">// set the poison pill
+                </span>sqe.user_data ^= u64::max_value();
             });
 
-        <span class="comment">// this waits for the NOP event to complete.</span>
-        <span class="ident">drop</span>(<span class="ident">poison_pill_res</span>);
+        <span class="comment">// this waits for the NOP event to complete.
+        </span>drop(poison_pill_res);
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">print_profile_on_drop</span> {
-            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;no_metrics&quot;</span>))]</span>
-            <span class="ident">M</span>.<span class="ident">print_profile</span>();
+        <span class="kw">if </span><span class="self">self</span>.config.print_profile_on_drop {
+            <span class="attribute">#[cfg(not(feature = <span class="string">&quot;no_metrics&quot;</span>))]
+            </span>M.print_profile();
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Uring</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">config</span>: <span class="ident">Config</span>,
-        <span class="ident">flags</span>: <span class="ident">u32</span>,
-        <span class="ident">ring_fd</span>: <span class="ident">i32</span>,
-        <span class="ident">sq</span>: <span class="ident">Sq</span>,
-        <span class="ident">in_flight</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">InFlight</span><span class="op">&gt;</span>,
-        <span class="ident">ticket_queue</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">TicketQueue</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Uring</span> {
-        <span class="ident">Uring</span> {
-            <span class="ident">flags</span>,
-            <span class="ident">ring_fd</span>,
-            <span class="ident">sq</span>: <span class="ident">Mutex::new</span>(<span class="ident">sq</span>),
-            <span class="ident">config</span>,
-            <span class="ident">in_flight</span>,
-            <span class="ident">ticket_queue</span>,
-            <span class="ident">loaded</span>: <span class="number">0</span>.<span class="ident">into</span>(),
-            <span class="ident">submitted</span>: <span class="number">0</span>.<span class="ident">into</span>(),
+<span class="kw">impl </span>Uring {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+        config: Config,
+        flags: u32,
+        ring_fd: i32,
+        sq: Sq,
+        in_flight: Arc&lt;InFlight&gt;,
+        ticket_queue: Arc&lt;TicketQueue&gt;,
+    ) -&gt; Uring {
+        Uring {
+            flags,
+            ring_fd,
+            sq: Mutex::new(sq),
+            config,
+            in_flight,
+            ticket_queue,
+            loaded: <span class="number">0</span>.into(),
+            submitted: <span class="number">0</span>.into(),
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ensure_submitted</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ensure_submitted(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">sqe_id</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">submitted</span>.<span class="ident">load</span>(<span class="ident">Acquire</span>);
-        <span class="kw">if</span> <span class="ident">current</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">sqe_id</span> {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+        sqe_id: u64,
+    ) -&gt; io::Result&lt;()&gt; {
+        <span class="kw">let </span>current = <span class="self">self</span>.submitted.load(Acquire);
+        <span class="kw">if </span>current &gt;= sqe_id {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sq</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">_get_sq_mu</span> <span class="op">=</span> <span class="ident">Measure::new</span>(<span class="kw-2">&amp;</span><span class="ident">M</span>.<span class="ident">sq_mu_wait</span>);
-            <span class="self">self</span>.<span class="ident">sq</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>()
+        <span class="kw">let </span><span class="kw-2">mut </span>sq = {
+            <span class="kw">let </span>_get_sq_mu = Measure::new(<span class="kw-2">&amp;</span>M.sq_mu_wait);
+            <span class="self">self</span>.sq.lock().unwrap()
         };
-        <span class="kw">let</span> <span class="ident">_hold_sq_mu</span> <span class="op">=</span> <span class="ident">Measure::new</span>(<span class="kw-2">&amp;</span><span class="ident">M</span>.<span class="ident">sq_mu_hold</span>);
-        <span class="kw">let</span> <span class="ident">submitted</span> <span class="op">=</span>
-            <span class="ident">sq</span>.<span class="ident">submit_all</span>(<span class="self">self</span>.<span class="ident">flags</span>, <span class="self">self</span>.<span class="ident">ring_fd</span>);
-        <span class="kw">let</span> <span class="ident">old</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">submitted</span>.<span class="ident">fetch_add</span>(<span class="ident">submitted</span>, <span class="ident">Release</span>);
+        <span class="kw">let </span>_hold_sq_mu = Measure::new(<span class="kw-2">&amp;</span>M.sq_mu_hold);
+        <span class="kw">let </span>submitted =
+            sq.submit_all(<span class="self">self</span>.flags, <span class="self">self</span>.ring_fd);
+        <span class="kw">let </span>old =
+            <span class="self">self</span>.submitted.fetch_add(submitted, Release);
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">flags</span> <span class="op">&amp;</span> <span class="ident">IORING_SETUP_SQPOLL</span> <span class="op">==</span> <span class="number">0</span> {
-            <span class="comment">// we only check this if we&#39;re running in</span>
-            <span class="comment">// non-SQPOLL mode where we have to manually</span>
-            <span class="comment">// push our submissions to the kernel.</span>
-            <span class="macro">assert!</span>(
-                <span class="ident">old</span> <span class="op">+</span> <span class="ident">submitted</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">sqe_id</span>,
+        <span class="kw">if </span><span class="self">self</span>.flags &amp; IORING_SETUP_SQPOLL == <span class="number">0 </span>{
+            <span class="comment">// we only check this if we&#39;re running in
+            // non-SQPOLL mode where we have to manually
+            // push our submissions to the kernel.
+            </span><span class="macro">assert!</span>(
+                old + submitted &gt;= sqe_id,
                 <span class="string">&quot;failed to submit our expected SQE on ensure_submitted. \
                 expected old {} + submitted {} to be &gt;= sqe_id {}&quot;</span>,
-                <span class="ident">old</span>,
-                <span class="ident">submitted</span>,
-                <span class="ident">sqe_id</span>,
+                old,
+                submitted,
+                sqe_id,
             );
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Asynchronously accepts a `TcpStream` from</span>
-    <span class="doccomment">/// a provided `TcpListener`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This only becomes usable on linux kernels</span>
-    <span class="doccomment">/// 5.5 and up.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">accept</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">tcp_listener</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">TcpListener</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">TcpStream</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">with_sqe</span>(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, <span class="op">|</span><span class="ident">sqe</span><span class="op">|</span> {
-            <span class="ident">sqe</span>.<span class="ident">prep_rw</span>(
-                <span class="ident">IORING_OP_ACCEPT</span>,
-                <span class="ident">tcp_listener</span>.<span class="ident">as_raw_fd</span>(),
+    <span class="doccomment">/// Asynchronously accepts a `TcpStream` from
+    /// a provided `TcpListener`.
+    ///
+    /// # Warning
+    ///
+    /// This only becomes usable on linux kernels
+    /// 5.5 and up.
+    </span><span class="kw">pub fn </span>accept&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        tcp_listener: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>TcpListener,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, TcpStream&gt; {
+        <span class="self">self</span>.with_sqe(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, |sqe| {
+            sqe.prep_rw(
+                IORING_OP_ACCEPT,
+                tcp_listener.as_raw_fd(),
                 <span class="number">0</span>,
                 <span class="number">0</span>,
-                <span class="ident">Ordering::None</span>,
+                Ordering::None,
             )
         })
     }
 
-    <span class="doccomment">/// Asynchronously connects a `TcpStream` from</span>
-    <span class="doccomment">/// a provided `SocketAddr`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This only becomes usable on linux kernels</span>
-    <span class="doccomment">/// 5.5 and up.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connect</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">socket</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">F</span>,
-        <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">std::net::SocketAddr</span>,
-        <span class="ident">order</span>: <span class="ident">Ordering</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">AsRawFd</span>,
+    <span class="doccomment">/// Asynchronously connects a `TcpStream` from
+    /// a provided `SocketAddr`.
+    ///
+    /// # Warning
+    ///
+    /// This only becomes usable on linux kernels
+    /// 5.5 and up.
+    </span><span class="kw">pub fn </span>connect&lt;<span class="lifetime">&#39;a</span>, F&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        socket: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>F,
+        address: <span class="kw-2">&amp;</span>std::net::SocketAddr,
+        order: Ordering,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, ()&gt;
+    <span class="kw">where
+        </span>F: AsRawFd,
     {
-        <span class="kw">let</span> (<span class="ident">addr</span>, <span class="ident">len</span>) <span class="op">=</span> <span class="ident">addr2raw</span>(<span class="ident">address</span>);
-        <span class="self">self</span>.<span class="ident">with_sqe</span>(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, <span class="op">|</span><span class="ident">sqe</span><span class="op">|</span> {
-            <span class="ident">sqe</span>.<span class="ident">prep_rw</span>(
-                <span class="ident">IORING_OP_CONNECT</span>,
-                <span class="ident">socket</span>.<span class="ident">as_raw_fd</span>(),
+        <span class="kw">let </span>(addr, len) = addr2raw(address);
+        <span class="self">self</span>.with_sqe(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, |sqe| {
+            sqe.prep_rw(
+                IORING_OP_CONNECT,
+                socket.as_raw_fd(),
                 <span class="number">0</span>,
-                <span class="ident">len</span> <span class="kw">as</span> <span class="ident">u64</span>,
-                <span class="ident">order</span>,
+                len <span class="kw">as </span>u64,
+                order,
             );
 
-            <span class="ident">sqe</span>.<span class="ident">addr</span> <span class="op">=</span> <span class="ident">addr</span> <span class="kw">as</span> <span class="ident">u64</span>;
+            sqe.addr = addr <span class="kw">as </span>u64;
         })
     }
 
-    <span class="doccomment">/// Send a buffer to the target socket</span>
-    <span class="doccomment">/// or file-like destination.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns the length that was successfully</span>
-    <span class="doccomment">/// written.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This only becomes usable on linux kernels</span>
-    <span class="doccomment">/// 5.6 and up.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>, <span class="ident">B</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">stream</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">F</span>,
-        <span class="ident">iov</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">B</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">usize</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">AsRawFd</span>,
-        <span class="ident">B</span>: <span class="lifetime">&#39;a</span> <span class="op">+</span> <span class="ident">AsIoVec</span>,
+    <span class="doccomment">/// Send a buffer to the target socket
+    /// or file-like destination.
+    ///
+    /// Returns the length that was successfully
+    /// written.
+    ///
+    /// # Warning
+    ///
+    /// This only becomes usable on linux kernels
+    /// 5.6 and up.
+    </span><span class="kw">pub fn </span>send&lt;<span class="lifetime">&#39;a</span>, F, B&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        stream: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>F,
+        iov: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>B,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, usize&gt;
+    <span class="kw">where
+        </span>F: AsRawFd,
+        B: <span class="lifetime">&#39;a </span>+ AsIoVec,
     {
-        <span class="self">self</span>.<span class="ident">send_ordered</span>(<span class="ident">stream</span>, <span class="ident">iov</span>, <span class="ident">Ordering::None</span>)
+        <span class="self">self</span>.send_ordered(stream, iov, Ordering::None)
     }
 
-    <span class="doccomment">/// Send a buffer to the target socket</span>
-    <span class="doccomment">/// or file-like destination.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns the length that was successfully</span>
-    <span class="doccomment">/// written.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Accepts an `Ordering` specification.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This only becomes usable on linux kernels</span>
-    <span class="doccomment">/// 5.6 and up.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send_ordered</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>, <span class="ident">B</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">stream</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">F</span>,
-        <span class="ident">iov</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">B</span>,
-        <span class="ident">ordering</span>: <span class="ident">Ordering</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">usize</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">AsRawFd</span>,
-        <span class="ident">B</span>: <span class="lifetime">&#39;a</span> <span class="op">+</span> <span class="ident">AsIoVec</span>,
+    <span class="doccomment">/// Send a buffer to the target socket
+    /// or file-like destination.
+    ///
+    /// Returns the length that was successfully
+    /// written.
+    ///
+    /// Accepts an `Ordering` specification.
+    ///
+    /// # Warning
+    ///
+    /// This only becomes usable on linux kernels
+    /// 5.6 and up.
+    </span><span class="kw">pub fn </span>send_ordered&lt;<span class="lifetime">&#39;a</span>, F, B&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        stream: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>F,
+        iov: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>B,
+        ordering: Ordering,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, usize&gt;
+    <span class="kw">where
+        </span>F: AsRawFd,
+        B: <span class="lifetime">&#39;a </span>+ AsIoVec,
     {
-        <span class="kw">let</span> <span class="ident">iov</span> <span class="op">=</span> <span class="ident">iov</span>.<span class="ident">into_new_iovec</span>();
+        <span class="kw">let </span>iov = iov.into_new_iovec();
 
-        <span class="self">self</span>.<span class="ident">with_sqe</span>(<span class="prelude-val">None</span>, <span class="bool-val">true</span>, <span class="op">|</span><span class="ident">sqe</span><span class="op">|</span> {
-            <span class="ident">sqe</span>.<span class="ident">prep_rw</span>(
-                <span class="ident">IORING_OP_SEND</span>,
-                <span class="ident">stream</span>.<span class="ident">as_raw_fd</span>(),
+        <span class="self">self</span>.with_sqe(<span class="prelude-val">None</span>, <span class="bool-val">true</span>, |sqe| {
+            sqe.prep_rw(
+                IORING_OP_SEND,
+                stream.as_raw_fd(),
                 <span class="number">0</span>,
                 <span class="number">0</span>,
-                <span class="ident">ordering</span>,
+                ordering,
             );
-            <span class="ident">sqe</span>.<span class="ident">addr</span> <span class="op">=</span> <span class="ident">iov</span>.<span class="ident">iov_base</span> <span class="kw">as</span> <span class="ident">u64</span>;
-            <span class="ident">sqe</span>.<span class="ident">len</span> <span class="op">=</span> <span class="ident">u32::try_from</span>(<span class="ident">iov</span>.<span class="ident">iov_len</span>).<span class="ident">unwrap</span>();
+            sqe.addr = iov.iov_base <span class="kw">as </span>u64;
+            sqe.len = u32::try_from(iov.iov_len).unwrap();
         })
     }
 
-    <span class="doccomment">/// Receive data from the target socket</span>
-    <span class="doccomment">/// or file-like destination, and place</span>
-    <span class="doccomment">/// it in the given buffer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns the length that was successfully</span>
-    <span class="doccomment">/// read.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This only becomes usable on linux kernels</span>
-    <span class="doccomment">/// 5.6 and up.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">recv</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>, <span class="ident">B</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">stream</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">F</span>,
-        <span class="ident">iov</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">B</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">usize</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">AsRawFd</span>,
-        <span class="ident">B</span>: <span class="ident">AsIoVec</span> <span class="op">+</span> <span class="ident">AsIoVecMut</span>,
+    <span class="doccomment">/// Receive data from the target socket
+    /// or file-like destination, and place
+    /// it in the given buffer.
+    ///
+    /// Returns the length that was successfully
+    /// read.
+    ///
+    /// # Warning
+    ///
+    /// This only becomes usable on linux kernels
+    /// 5.6 and up.
+    </span><span class="kw">pub fn </span>recv&lt;<span class="lifetime">&#39;a</span>, F, B&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        stream: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>F,
+        iov: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>B,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, usize&gt;
+    <span class="kw">where
+        </span>F: AsRawFd,
+        B: AsIoVec + AsIoVecMut,
     {
-        <span class="self">self</span>.<span class="ident">recv_ordered</span>(<span class="ident">stream</span>, <span class="ident">iov</span>, <span class="ident">Ordering::None</span>)
+        <span class="self">self</span>.recv_ordered(stream, iov, Ordering::None)
     }
 
-    <span class="doccomment">/// Receive data from the target socket</span>
-    <span class="doccomment">/// or file-like destination, and place</span>
-    <span class="doccomment">/// it in the given buffer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns the length that was successfully</span>
-    <span class="doccomment">/// read.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Accepts an `Ordering` specification.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This only becomes usable on linux kernels</span>
-    <span class="doccomment">/// 5.6 and up.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">recv_ordered</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>, <span class="ident">B</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">stream</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">F</span>,
-        <span class="ident">iov</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">B</span>,
-        <span class="ident">ordering</span>: <span class="ident">Ordering</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">usize</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">AsRawFd</span>,
-        <span class="ident">B</span>: <span class="ident">AsIoVec</span> <span class="op">+</span> <span class="ident">AsIoVecMut</span>,
+    <span class="doccomment">/// Receive data from the target socket
+    /// or file-like destination, and place
+    /// it in the given buffer.
+    ///
+    /// Returns the length that was successfully
+    /// read.
+    ///
+    /// Accepts an `Ordering` specification.
+    ///
+    /// # Warning
+    ///
+    /// This only becomes usable on linux kernels
+    /// 5.6 and up.
+    </span><span class="kw">pub fn </span>recv_ordered&lt;<span class="lifetime">&#39;a</span>, F, B&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        stream: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>F,
+        iov: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>B,
+        ordering: Ordering,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, usize&gt;
+    <span class="kw">where
+        </span>F: AsRawFd,
+        B: AsIoVec + AsIoVecMut,
     {
-        <span class="kw">let</span> <span class="ident">iov</span> <span class="op">=</span> <span class="ident">iov</span>.<span class="ident">into_new_iovec</span>();
+        <span class="kw">let </span>iov = iov.into_new_iovec();
 
-        <span class="self">self</span>.<span class="ident">with_sqe</span>(<span class="prelude-val">Some</span>(<span class="ident">iov</span>), <span class="bool-val">true</span>, <span class="op">|</span><span class="ident">sqe</span><span class="op">|</span> {
-            <span class="ident">sqe</span>.<span class="ident">prep_rw</span>(
-                <span class="ident">IORING_OP_RECV</span>,
-                <span class="ident">stream</span>.<span class="ident">as_raw_fd</span>(),
+        <span class="self">self</span>.with_sqe(<span class="prelude-val">Some</span>(iov), <span class="bool-val">true</span>, |sqe| {
+            sqe.prep_rw(
+                IORING_OP_RECV,
+                stream.as_raw_fd(),
                 <span class="number">0</span>,
                 <span class="number">0</span>,
-                <span class="ident">ordering</span>,
+                ordering,
             );
-            <span class="ident">sqe</span>.<span class="ident">len</span> <span class="op">=</span> <span class="ident">u32::try_from</span>(<span class="ident">iov</span>.<span class="ident">iov_len</span>).<span class="ident">unwrap</span>();
+            sqe.len = u32::try_from(iov.iov_len).unwrap();
         })
     }
 
-    <span class="doccomment">/// Flushes all buffered writes, and associated</span>
-    <span class="doccomment">/// metadata changes.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You usually don&#39;t want to do this without</span>
-    <span class="doccomment">/// linking to a previous write, because</span>
-    <span class="doccomment">/// `io_uring` will execute operations out-of-order.</span>
-    <span class="doccomment">/// Without setting a `Link` ordering on the previous</span>
-    <span class="doccomment">/// operation, or using `fsync_ordered` with</span>
-    <span class="doccomment">/// the `Drain` ordering, causing all previous</span>
-    <span class="doccomment">/// operations to complete before itself.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Additionally, fsync does not ensure that</span>
-    <span class="doccomment">/// the file actually exists in its parent</span>
-    <span class="doccomment">/// directory. So, for new files, you must</span>
-    <span class="doccomment">/// also fsync the parent directory.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This does nothing for files opened in</span>
-    <span class="doccomment">/// `O_DIRECT` mode.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fsync</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">File</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">fsync_ordered</span>(<span class="ident">file</span>, <span class="ident">Ordering::None</span>)
+    <span class="doccomment">/// Flushes all buffered writes, and associated
+    /// metadata changes.
+    ///
+    /// # Warning
+    ///
+    /// You usually don&#39;t want to do this without
+    /// linking to a previous write, because
+    /// `io_uring` will execute operations out-of-order.
+    /// Without setting a `Link` ordering on the previous
+    /// operation, or using `fsync_ordered` with
+    /// the `Drain` ordering, causing all previous
+    /// operations to complete before itself.
+    ///
+    /// Additionally, fsync does not ensure that
+    /// the file actually exists in its parent
+    /// directory. So, for new files, you must
+    /// also fsync the parent directory.
+    ///
+    /// This does nothing for files opened in
+    /// `O_DIRECT` mode.
+    </span><span class="kw">pub fn </span>fsync&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        file: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>File,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, ()&gt; {
+        <span class="self">self</span>.fsync_ordered(file, Ordering::None)
     }
 
-    <span class="doccomment">/// Flushes all buffered writes, and associated</span>
-    <span class="doccomment">/// metadata changes.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You probably want to</span>
-    <span class="doccomment">/// either use a `Link` ordering on a previous</span>
-    <span class="doccomment">/// write (or chain of separate writes), or</span>
-    <span class="doccomment">/// use the `Drain` ordering on this operation.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You may pass in an `Ordering` to specify</span>
-    <span class="doccomment">/// two different optional behaviors:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// * `Ordering::Link` causes the next</span>
-    <span class="doccomment">///   submitted operation to wait until</span>
-    <span class="doccomment">///   this one finishes. Useful for</span>
-    <span class="doccomment">///   things like file copy, fsync-after-write,</span>
-    <span class="doccomment">///   or proxies.</span>
-    <span class="doccomment">/// * `Ordering::Drain` causes all previously</span>
-    <span class="doccomment">///   submitted operations to complete before</span>
-    <span class="doccomment">///   this one begins.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// fsync does not ensure that</span>
-    <span class="doccomment">/// the file actually exists in its parent</span>
-    <span class="doccomment">/// directory. So, for new files, you must</span>
-    <span class="doccomment">/// also fsync the parent directory.</span>
-    <span class="doccomment">/// This does nothing for files opened in</span>
-    <span class="doccomment">/// `O_DIRECT` mode.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fsync_ordered</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">File</span>,
-        <span class="ident">ordering</span>: <span class="ident">Ordering</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">with_sqe</span>(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, <span class="op">|</span><span class="ident">sqe</span><span class="op">|</span> {
-            <span class="ident">sqe</span>.<span class="ident">prep_rw</span>(
-                <span class="ident">IORING_OP_FSYNC</span>,
-                <span class="ident">file</span>.<span class="ident">as_raw_fd</span>(),
+    <span class="doccomment">/// Flushes all buffered writes, and associated
+    /// metadata changes.
+    ///
+    /// You probably want to
+    /// either use a `Link` ordering on a previous
+    /// write (or chain of separate writes), or
+    /// use the `Drain` ordering on this operation.
+    ///
+    /// You may pass in an `Ordering` to specify
+    /// two different optional behaviors:
+    ///
+    /// * `Ordering::Link` causes the next
+    ///   submitted operation to wait until
+    ///   this one finishes. Useful for
+    ///   things like file copy, fsync-after-write,
+    ///   or proxies.
+    /// * `Ordering::Drain` causes all previously
+    ///   submitted operations to complete before
+    ///   this one begins.
+    ///
+    /// # Warning
+    ///
+    /// fsync does not ensure that
+    /// the file actually exists in its parent
+    /// directory. So, for new files, you must
+    /// also fsync the parent directory.
+    /// This does nothing for files opened in
+    /// `O_DIRECT` mode.
+    </span><span class="kw">pub fn </span>fsync_ordered&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        file: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>File,
+        ordering: Ordering,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, ()&gt; {
+        <span class="self">self</span>.with_sqe(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, |sqe| {
+            sqe.prep_rw(
+                IORING_OP_FSYNC,
+                file.as_raw_fd(),
                 <span class="number">0</span>,
                 <span class="number">0</span>,
-                <span class="ident">ordering</span>,
+                ordering,
             )
         })
     }
 
-    <span class="doccomment">/// Flushes all buffered writes, and the specific</span>
-    <span class="doccomment">/// metadata required to access the data. This</span>
-    <span class="doccomment">/// will skip syncing metadata like atime.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You probably want to</span>
-    <span class="doccomment">/// either use a `Link` ordering on a previous</span>
-    <span class="doccomment">/// write (or chain of separate writes), or</span>
-    <span class="doccomment">/// use the `Drain` ordering on this operation</span>
-    <span class="doccomment">/// with the `fdatasync_ordered` method.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// fdatasync does not ensure that</span>
-    <span class="doccomment">/// the file actually exists in its parent</span>
-    <span class="doccomment">/// directory. So, for new files, you must</span>
-    <span class="doccomment">/// also fsync the parent directory.</span>
-    <span class="doccomment">/// This does nothing for files opened in</span>
-    <span class="doccomment">/// `O_DIRECT` mode.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fdatasync</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">File</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">fdatasync_ordered</span>(<span class="ident">file</span>, <span class="ident">Ordering::None</span>)
+    <span class="doccomment">/// Flushes all buffered writes, and the specific
+    /// metadata required to access the data. This
+    /// will skip syncing metadata like atime.
+    ///
+    /// You probably want to
+    /// either use a `Link` ordering on a previous
+    /// write (or chain of separate writes), or
+    /// use the `Drain` ordering on this operation
+    /// with the `fdatasync_ordered` method.
+    ///
+    /// # Warning
+    ///
+    /// fdatasync does not ensure that
+    /// the file actually exists in its parent
+    /// directory. So, for new files, you must
+    /// also fsync the parent directory.
+    /// This does nothing for files opened in
+    /// `O_DIRECT` mode.
+    </span><span class="kw">pub fn </span>fdatasync&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        file: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>File,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, ()&gt; {
+        <span class="self">self</span>.fdatasync_ordered(file, Ordering::None)
     }
 
-    <span class="doccomment">/// Flushes all buffered writes, and the specific</span>
-    <span class="doccomment">/// metadata required to access the data. This</span>
-    <span class="doccomment">/// will skip syncing metadata like atime.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You probably want to</span>
-    <span class="doccomment">/// either use a `Link` ordering on a previous</span>
-    <span class="doccomment">/// write (or chain of separate writes), or</span>
-    <span class="doccomment">/// use the `Drain` ordering on this operation.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You may pass in an `Ordering` to specify</span>
-    <span class="doccomment">/// two different optional behaviors:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// * `Ordering::Link` causes the next</span>
-    <span class="doccomment">///   submitted operation to wait until</span>
-    <span class="doccomment">///   this one finishes. Useful for</span>
-    <span class="doccomment">///   things like file copy, fsync-after-write,</span>
-    <span class="doccomment">///   or proxies.</span>
-    <span class="doccomment">/// * `Ordering::Drain` causes all previously</span>
-    <span class="doccomment">///   submitted operations to complete before</span>
-    <span class="doccomment">///   this one begins.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// fdatasync does not ensure that</span>
-    <span class="doccomment">/// the file actually exists in its parent</span>
-    <span class="doccomment">/// directory. So, for new files, you must</span>
-    <span class="doccomment">/// also fsync the parent directory.</span>
-    <span class="doccomment">/// This does nothing for files opened in</span>
-    <span class="doccomment">/// `O_DIRECT` mode.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fdatasync_ordered</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">File</span>,
-        <span class="ident">ordering</span>: <span class="ident">Ordering</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">with_sqe</span>(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">sqe</span><span class="op">|</span> {
-            <span class="ident">sqe</span>.<span class="ident">prep_rw</span>(
-                <span class="ident">IORING_OP_FSYNC</span>,
-                <span class="ident">file</span>.<span class="ident">as_raw_fd</span>(),
+    <span class="doccomment">/// Flushes all buffered writes, and the specific
+    /// metadata required to access the data. This
+    /// will skip syncing metadata like atime.
+    ///
+    /// You probably want to
+    /// either use a `Link` ordering on a previous
+    /// write (or chain of separate writes), or
+    /// use the `Drain` ordering on this operation.
+    ///
+    /// You may pass in an `Ordering` to specify
+    /// two different optional behaviors:
+    ///
+    /// * `Ordering::Link` causes the next
+    ///   submitted operation to wait until
+    ///   this one finishes. Useful for
+    ///   things like file copy, fsync-after-write,
+    ///   or proxies.
+    /// * `Ordering::Drain` causes all previously
+    ///   submitted operations to complete before
+    ///   this one begins.
+    ///
+    /// # Warning
+    ///
+    /// fdatasync does not ensure that
+    /// the file actually exists in its parent
+    /// directory. So, for new files, you must
+    /// also fsync the parent directory.
+    /// This does nothing for files opened in
+    /// `O_DIRECT` mode.
+    </span><span class="kw">pub fn </span>fdatasync_ordered&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        file: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>File,
+        ordering: Ordering,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, ()&gt; {
+        <span class="self">self</span>.with_sqe(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, |<span class="kw-2">mut </span>sqe| {
+            sqe.prep_rw(
+                IORING_OP_FSYNC,
+                file.as_raw_fd(),
                 <span class="number">0</span>,
                 <span class="number">0</span>,
-                <span class="ident">ordering</span>,
+                ordering,
             );
-            <span class="ident">sqe</span>.<span class="ident">flags</span> <span class="op">|</span><span class="op">=</span> <span class="ident">IORING_FSYNC_DATASYNC</span>;
+            sqe.flags |= IORING_FSYNC_DATASYNC;
         })
     }
 
-    <span class="doccomment">/// Synchronizes the data associated with a range</span>
-    <span class="doccomment">/// in a file. Does not synchronize any metadata</span>
-    <span class="doccomment">/// updates, which can cause data loss if you</span>
-    <span class="doccomment">/// are not writing to a file whose metadata</span>
-    <span class="doccomment">/// has previously been synchronized.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You probably want to have a prior write</span>
-    <span class="doccomment">/// linked to this, or set `Ordering::Drain`</span>
-    <span class="doccomment">/// by using `sync_file_range_ordered` instead.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Under the hood, this uses the &quot;pessimistic&quot;</span>
-    <span class="doccomment">/// set of flags:</span>
-    <span class="doccomment">/// `SYNC_FILE_RANGE_WRITE | SYNC_FILE_RANGE_WAIT_AFTER`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sync_file_range</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">File</span>,
-        <span class="ident">offset</span>: <span class="ident">u64</span>,
-        <span class="ident">len</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">sync_file_range_ordered</span>(
-            <span class="ident">file</span>,
-            <span class="ident">offset</span>,
-            <span class="ident">len</span>,
-            <span class="ident">Ordering::None</span>,
+    <span class="doccomment">/// Synchronizes the data associated with a range
+    /// in a file. Does not synchronize any metadata
+    /// updates, which can cause data loss if you
+    /// are not writing to a file whose metadata
+    /// has previously been synchronized.
+    ///
+    /// You probably want to have a prior write
+    /// linked to this, or set `Ordering::Drain`
+    /// by using `sync_file_range_ordered` instead.
+    ///
+    /// Under the hood, this uses the &quot;pessimistic&quot;
+    /// set of flags:
+    /// `SYNC_FILE_RANGE_WRITE | SYNC_FILE_RANGE_WAIT_AFTER`
+    </span><span class="kw">pub fn </span>sync_file_range&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        file: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>File,
+        offset: u64,
+        len: usize,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, ()&gt; {
+        <span class="self">self</span>.sync_file_range_ordered(
+            file,
+            offset,
+            len,
+            Ordering::None,
         )
     }
 
-    <span class="doccomment">/// Synchronizes the data associated with a range</span>
-    <span class="doccomment">/// in a file. Does not synchronize any metadata</span>
-    <span class="doccomment">/// updates, which can cause data loss if you</span>
-    <span class="doccomment">/// are not writing to a file whose metadata</span>
-    <span class="doccomment">/// has previously been synchronized.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You probably want to have a prior write</span>
-    <span class="doccomment">/// linked to this, or set `Ordering::Drain`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Under the hood, this uses the &quot;pessimistic&quot;</span>
-    <span class="doccomment">/// set of flags:</span>
-    <span class="doccomment">/// `SYNC_FILE_RANGE_WRITE | SYNC_FILE_RANGE_WAIT_AFTER`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sync_file_range_ordered</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">File</span>,
-        <span class="ident">offset</span>: <span class="ident">u64</span>,
-        <span class="ident">len</span>: <span class="ident">usize</span>,
-        <span class="ident">ordering</span>: <span class="ident">Ordering</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">with_sqe</span>(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">sqe</span><span class="op">|</span> {
-            <span class="ident">sqe</span>.<span class="ident">prep_rw</span>(
-                <span class="ident">IORING_OP_SYNC_FILE_RANGE</span>,
-                <span class="ident">file</span>.<span class="ident">as_raw_fd</span>(),
-                <span class="ident">len</span>,
-                <span class="ident">offset</span>,
-                <span class="ident">ordering</span>,
+    <span class="doccomment">/// Synchronizes the data associated with a range
+    /// in a file. Does not synchronize any metadata
+    /// updates, which can cause data loss if you
+    /// are not writing to a file whose metadata
+    /// has previously been synchronized.
+    ///
+    /// You probably want to have a prior write
+    /// linked to this, or set `Ordering::Drain`.
+    ///
+    /// Under the hood, this uses the &quot;pessimistic&quot;
+    /// set of flags:
+    /// `SYNC_FILE_RANGE_WRITE | SYNC_FILE_RANGE_WAIT_AFTER`
+    </span><span class="kw">pub fn </span>sync_file_range_ordered&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        file: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>File,
+        offset: u64,
+        len: usize,
+        ordering: Ordering,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, ()&gt; {
+        <span class="self">self</span>.with_sqe(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, |<span class="kw-2">mut </span>sqe| {
+            sqe.prep_rw(
+                IORING_OP_SYNC_FILE_RANGE,
+                file.as_raw_fd(),
+                len,
+                offset,
+                ordering,
             );
-            <span class="ident">sqe</span>.<span class="ident">flags</span> <span class="op">|</span><span class="op">=</span> <span class="ident">u8::try_from</span>(
-                <span class="comment">// We don&#39;t use this because it causes</span>
-                <span class="comment">// EBADF to be thrown. Looking at</span>
-                <span class="comment">// linux&#39;s fs/sync.c, it seems as though</span>
-                <span class="comment">// it performs an identical operation</span>
-                <span class="comment">// as SYNC_FILE_RANGE_WAIT_AFTER.</span>
-                <span class="comment">// libc::SYNC_FILE_RANGE_WAIT_BEFORE |</span>
-                <span class="ident">libc::SYNC_FILE_RANGE_WRITE</span>
-                    <span class="op">|</span> <span class="ident">libc::SYNC_FILE_RANGE_WAIT_AFTER</span>,
+            sqe.flags |= u8::try_from(
+                <span class="comment">// We don&#39;t use this because it causes
+                // EBADF to be thrown. Looking at
+                // linux&#39;s fs/sync.c, it seems as though
+                // it performs an identical operation
+                // as SYNC_FILE_RANGE_WAIT_AFTER.
+                // libc::SYNC_FILE_RANGE_WAIT_BEFORE |
+                </span>libc::SYNC_FILE_RANGE_WRITE
+                    | libc::SYNC_FILE_RANGE_WAIT_AFTER,
             )
-            .<span class="ident">unwrap</span>();
+            .unwrap();
         })
     }
 
-    <span class="doccomment">/// Writes data at the provided buffer using</span>
-    <span class="doccomment">/// vectored IO. Be sure to check the returned</span>
-    <span class="doccomment">/// `io_uring_cqe`&#39;s `res` field to see if a</span>
-    <span class="doccomment">/// short write happened. This will contain</span>
-    <span class="doccomment">/// the number of bytes written.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that the file argument is generic</span>
-    <span class="doccomment">/// for anything that supports AsRawFd:</span>
-    <span class="doccomment">/// sockets, files, etc...</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_at</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>, <span class="ident">B</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">F</span>,
-        <span class="ident">iov</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">B</span>,
-        <span class="ident">at</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">usize</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">AsRawFd</span>,
-        <span class="ident">B</span>: <span class="lifetime">&#39;a</span> <span class="op">+</span> <span class="ident">AsIoVec</span>,
+    <span class="doccomment">/// Writes data at the provided buffer using
+    /// vectored IO. Be sure to check the returned
+    /// `io_uring_cqe`&#39;s `res` field to see if a
+    /// short write happened. This will contain
+    /// the number of bytes written.
+    ///
+    /// Note that the file argument is generic
+    /// for anything that supports AsRawFd:
+    /// sockets, files, etc...
+    </span><span class="kw">pub fn </span>write_at&lt;<span class="lifetime">&#39;a</span>, F, B&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        file: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>F,
+        iov: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>B,
+        at: u64,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, usize&gt;
+    <span class="kw">where
+        </span>F: AsRawFd,
+        B: <span class="lifetime">&#39;a </span>+ AsIoVec,
     {
-        <span class="self">self</span>.<span class="ident">write_at_ordered</span>(<span class="ident">file</span>, <span class="ident">iov</span>, <span class="ident">at</span>, <span class="ident">Ordering::None</span>)
+        <span class="self">self</span>.write_at_ordered(file, iov, at, Ordering::None)
     }
 
-    <span class="doccomment">/// Writes data at the provided buffer using</span>
-    <span class="doccomment">/// vectored IO.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Be sure to check the returned</span>
-    <span class="doccomment">/// `io_uring_cqe`&#39;s `res` field to see if a</span>
-    <span class="doccomment">/// short write happened. This will contain</span>
-    <span class="doccomment">/// the number of bytes written.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You may pass in an `Ordering` to specify</span>
-    <span class="doccomment">/// two different optional behaviors:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// * `Ordering::Link` causes the next</span>
-    <span class="doccomment">///   submitted operation to wait until</span>
-    <span class="doccomment">///   this one finishes. Useful for</span>
-    <span class="doccomment">///   things like file copy, fsync-after-write,</span>
-    <span class="doccomment">///   or proxies.</span>
-    <span class="doccomment">/// * `Ordering::Drain` causes all previously</span>
-    <span class="doccomment">///   submitted operations to complete before</span>
-    <span class="doccomment">///   this one begins.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that the file argument is generic</span>
-    <span class="doccomment">/// for anything that supports AsRawFd:</span>
-    <span class="doccomment">/// sockets, files, etc...</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_at_ordered</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>, <span class="ident">B</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">F</span>,
-        <span class="ident">iov</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">B</span>,
-        <span class="ident">at</span>: <span class="ident">u64</span>,
-        <span class="ident">ordering</span>: <span class="ident">Ordering</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">usize</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">AsRawFd</span>,
-        <span class="ident">B</span>: <span class="lifetime">&#39;a</span> <span class="op">+</span> <span class="ident">AsIoVec</span>,
+    <span class="doccomment">/// Writes data at the provided buffer using
+    /// vectored IO.
+    ///
+    /// Be sure to check the returned
+    /// `io_uring_cqe`&#39;s `res` field to see if a
+    /// short write happened. This will contain
+    /// the number of bytes written.
+    ///
+    /// You may pass in an `Ordering` to specify
+    /// two different optional behaviors:
+    ///
+    /// * `Ordering::Link` causes the next
+    ///   submitted operation to wait until
+    ///   this one finishes. Useful for
+    ///   things like file copy, fsync-after-write,
+    ///   or proxies.
+    /// * `Ordering::Drain` causes all previously
+    ///   submitted operations to complete before
+    ///   this one begins.
+    ///
+    /// Note that the file argument is generic
+    /// for anything that supports AsRawFd:
+    /// sockets, files, etc...
+    </span><span class="kw">pub fn </span>write_at_ordered&lt;<span class="lifetime">&#39;a</span>, F, B&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        file: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>F,
+        iov: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>B,
+        at: u64,
+        ordering: Ordering,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, usize&gt;
+    <span class="kw">where
+        </span>F: AsRawFd,
+        B: <span class="lifetime">&#39;a </span>+ AsIoVec,
     {
-        <span class="self">self</span>.<span class="ident">with_sqe</span>(
-            <span class="prelude-val">Some</span>(<span class="ident">iov</span>.<span class="ident">into_new_iovec</span>()),
+        <span class="self">self</span>.with_sqe(
+            <span class="prelude-val">Some</span>(iov.into_new_iovec()),
             <span class="bool-val">false</span>,
-            <span class="op">|</span><span class="ident">sqe</span><span class="op">|</span> {
-                <span class="ident">sqe</span>.<span class="ident">prep_rw</span>(
-                    <span class="ident">IORING_OP_WRITEV</span>,
-                    <span class="ident">file</span>.<span class="ident">as_raw_fd</span>(),
+            |sqe| {
+                sqe.prep_rw(
+                    IORING_OP_WRITEV,
+                    file.as_raw_fd(),
                     <span class="number">1</span>,
-                    <span class="ident">at</span>,
-                    <span class="ident">ordering</span>,
+                    at,
+                    ordering,
                 )
             },
         )
     }
 
-    <span class="doccomment">/// Reads data into the provided buffer from the</span>
-    <span class="doccomment">/// given file-like object, at the given offest,</span>
-    <span class="doccomment">/// using vectored IO. Be sure to check the returned</span>
-    <span class="doccomment">/// `io_uring_cqe`&#39;s `res` field to see if a</span>
-    <span class="doccomment">/// short read happened. This will contain</span>
-    <span class="doccomment">/// the number of bytes read.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that the file argument is generic</span>
-    <span class="doccomment">/// for anything that supports AsRawFd:</span>
-    <span class="doccomment">/// sockets, files, etc...</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_at</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>, <span class="ident">B</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">F</span>,
-        <span class="ident">iov</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">B</span>,
-        <span class="ident">at</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">usize</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">AsRawFd</span>,
-        <span class="ident">B</span>: <span class="ident">AsIoVec</span> <span class="op">+</span> <span class="ident">AsIoVecMut</span>,
+    <span class="doccomment">/// Reads data into the provided buffer from the
+    /// given file-like object, at the given offest,
+    /// using vectored IO. Be sure to check the returned
+    /// `io_uring_cqe`&#39;s `res` field to see if a
+    /// short read happened. This will contain
+    /// the number of bytes read.
+    ///
+    /// Note that the file argument is generic
+    /// for anything that supports AsRawFd:
+    /// sockets, files, etc...
+    </span><span class="kw">pub fn </span>read_at&lt;<span class="lifetime">&#39;a</span>, F, B&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        file: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>F,
+        iov: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>B,
+        at: u64,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, usize&gt;
+    <span class="kw">where
+        </span>F: AsRawFd,
+        B: AsIoVec + AsIoVecMut,
     {
-        <span class="self">self</span>.<span class="ident">read_at_ordered</span>(<span class="ident">file</span>, <span class="ident">iov</span>, <span class="ident">at</span>, <span class="ident">Ordering::None</span>)
+        <span class="self">self</span>.read_at_ordered(file, iov, at, Ordering::None)
     }
 
-    <span class="doccomment">/// Reads data into the provided buffer using</span>
-    <span class="doccomment">/// vectored IO. Be sure to check the returned</span>
-    <span class="doccomment">/// `io_uring_cqe`&#39;s `res` field to see if a</span>
-    <span class="doccomment">/// short read happened. This will contain</span>
-    <span class="doccomment">/// the number of bytes read.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You may pass in an `Ordering` to specify</span>
-    <span class="doccomment">/// two different optional behaviors:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// * `Ordering::Link` causes the next</span>
-    <span class="doccomment">///   submitted operation to wait until</span>
-    <span class="doccomment">///   this one finishes. Useful for</span>
-    <span class="doccomment">///   things like file copy, fsync-after-write,</span>
-    <span class="doccomment">///   or proxies.</span>
-    <span class="doccomment">/// * `Ordering::Drain` causes all previously</span>
-    <span class="doccomment">///   submitted operations to complete before</span>
-    <span class="doccomment">///   this one begins.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that the file argument is generic</span>
-    <span class="doccomment">/// for anything that supports AsRawFd:</span>
-    <span class="doccomment">/// sockets, files, etc...</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_at_ordered</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>, <span class="ident">B</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">F</span>,
-        <span class="ident">iov</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">B</span>,
-        <span class="ident">at</span>: <span class="ident">u64</span>,
-        <span class="ident">ordering</span>: <span class="ident">Ordering</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">usize</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">AsRawFd</span>,
-        <span class="ident">B</span>: <span class="ident">AsIoVec</span> <span class="op">+</span> <span class="ident">AsIoVecMut</span>,
+    <span class="doccomment">/// Reads data into the provided buffer using
+    /// vectored IO. Be sure to check the returned
+    /// `io_uring_cqe`&#39;s `res` field to see if a
+    /// short read happened. This will contain
+    /// the number of bytes read.
+    ///
+    /// You may pass in an `Ordering` to specify
+    /// two different optional behaviors:
+    ///
+    /// * `Ordering::Link` causes the next
+    ///   submitted operation to wait until
+    ///   this one finishes. Useful for
+    ///   things like file copy, fsync-after-write,
+    ///   or proxies.
+    /// * `Ordering::Drain` causes all previously
+    ///   submitted operations to complete before
+    ///   this one begins.
+    ///
+    /// Note that the file argument is generic
+    /// for anything that supports AsRawFd:
+    /// sockets, files, etc...
+    </span><span class="kw">pub fn </span>read_at_ordered&lt;<span class="lifetime">&#39;a</span>, F, B&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        file: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>F,
+        iov: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>B,
+        at: u64,
+        ordering: Ordering,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, usize&gt;
+    <span class="kw">where
+        </span>F: AsRawFd,
+        B: AsIoVec + AsIoVecMut,
     {
-        <span class="self">self</span>.<span class="ident">with_sqe</span>(
-            <span class="prelude-val">Some</span>(<span class="ident">iov</span>.<span class="ident">into_new_iovec</span>()),
+        <span class="self">self</span>.with_sqe(
+            <span class="prelude-val">Some</span>(iov.into_new_iovec()),
             <span class="bool-val">false</span>,
-            <span class="op">|</span><span class="ident">sqe</span><span class="op">|</span> {
-                <span class="ident">sqe</span>.<span class="ident">prep_rw</span>(
-                    <span class="ident">IORING_OP_READV</span>,
-                    <span class="ident">file</span>.<span class="ident">as_raw_fd</span>(),
+            |sqe| {
+                sqe.prep_rw(
+                    IORING_OP_READV,
+                    file.as_raw_fd(),
                     <span class="number">1</span>,
-                    <span class="ident">at</span>,
-                    <span class="ident">ordering</span>,
+                    at,
+                    ordering,
                 )
             },
         )
     }
 
-    <span class="doccomment">/// Don&#39;t do anything. This is</span>
-    <span class="doccomment">/// mostly for debugging and tuning.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">nop</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">nop_ordered</span>(<span class="ident">Ordering::None</span>)
+    <span class="doccomment">/// Don&#39;t do anything. This is
+    /// mostly for debugging and tuning.
+    </span><span class="kw">pub fn </span>nop&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, ()&gt; {
+        <span class="self">self</span>.nop_ordered(Ordering::None)
     }
 
-    <span class="doccomment">/// Don&#39;t do anything. This is</span>
-    <span class="doccomment">/// mostly for debugging and tuning.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">nop_ordered</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">ordering</span>: <span class="ident">Ordering</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">with_sqe</span>(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, <span class="op">|</span><span class="ident">sqe</span><span class="op">|</span> {
-            <span class="ident">sqe</span>.<span class="ident">prep_rw</span>(<span class="ident">IORING_OP_NOP</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>, <span class="ident">ordering</span>)
+    <span class="doccomment">/// Don&#39;t do anything. This is
+    /// mostly for debugging and tuning.
+    </span><span class="kw">pub fn </span>nop_ordered&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        ordering: Ordering,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, ()&gt; {
+        <span class="self">self</span>.with_sqe(<span class="prelude-val">None</span>, <span class="bool-val">false</span>, |sqe| {
+            sqe.prep_rw(IORING_OP_NOP, <span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>, ordering)
         })
     }
 
-    <span class="doccomment">/// Block until all items in the submission queue</span>
-    <span class="doccomment">/// are submitted to the kernel. This can</span>
-    <span class="doccomment">/// be avoided by using the `SQPOLL` mode</span>
-    <span class="doccomment">/// (a privileged operation) on the `Config`</span>
-    <span class="doccomment">/// struct.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that this is performed automatically</span>
-    <span class="doccomment">/// and in a more fine-grained way when a</span>
-    <span class="doccomment">/// `Completion` is consumed via `Completion::wait`</span>
-    <span class="doccomment">/// or awaited in a Future context.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You don&#39;t need to call this if you are</span>
-    <span class="doccomment">/// calling `.wait()` or `.await` on the</span>
-    <span class="doccomment">/// `Completion` quickly, but if you are</span>
-    <span class="doccomment">/// doing some other stuff that could take</span>
-    <span class="doccomment">/// a while first, calling this will ensure</span>
-    <span class="doccomment">/// that the operation is being executed</span>
-    <span class="doccomment">/// by the kernel in the mean time.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">submit_all</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sq</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">_get_sq_mu</span> <span class="op">=</span> <span class="ident">Measure::new</span>(<span class="kw-2">&amp;</span><span class="ident">M</span>.<span class="ident">sq_mu_wait</span>);
-            <span class="self">self</span>.<span class="ident">sq</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>()
+    <span class="doccomment">/// Block until all items in the submission queue
+    /// are submitted to the kernel. This can
+    /// be avoided by using the `SQPOLL` mode
+    /// (a privileged operation) on the `Config`
+    /// struct.
+    ///
+    /// Note that this is performed automatically
+    /// and in a more fine-grained way when a
+    /// `Completion` is consumed via `Completion::wait`
+    /// or awaited in a Future context.
+    ///
+    /// You don&#39;t need to call this if you are
+    /// calling `.wait()` or `.await` on the
+    /// `Completion` quickly, but if you are
+    /// doing some other stuff that could take
+    /// a while first, calling this will ensure
+    /// that the operation is being executed
+    /// by the kernel in the mean time.
+    </span><span class="kw">pub fn </span>submit_all(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">let </span><span class="kw-2">mut </span>sq = {
+            <span class="kw">let </span>_get_sq_mu = Measure::new(<span class="kw-2">&amp;</span>M.sq_mu_wait);
+            <span class="self">self</span>.sq.lock().unwrap()
         };
-        <span class="kw">let</span> <span class="ident">_hold_sq_mu</span> <span class="op">=</span> <span class="ident">Measure::new</span>(<span class="kw-2">&amp;</span><span class="ident">M</span>.<span class="ident">sq_mu_hold</span>);
-        <span class="ident">sq</span>.<span class="ident">submit_all</span>(<span class="self">self</span>.<span class="ident">flags</span>, <span class="self">self</span>.<span class="ident">ring_fd</span>);
+        <span class="kw">let </span>_hold_sq_mu = Measure::new(<span class="kw-2">&amp;</span>M.sq_mu_hold);
+        sq.submit_all(<span class="self">self</span>.flags, <span class="self">self</span>.ring_fd);
     }
 
-    <span class="kw">fn</span> <span class="ident">with_sqe</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>, <span class="ident">C</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">iovec</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">libc::iovec</span><span class="op">&gt;</span>,
-        <span class="ident">msghdr</span>: <span class="ident">bool</span>,
-        <span class="ident">f</span>: <span class="ident">F</span>,
-    ) -&gt; <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">C</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;mut</span> <span class="ident">io_uring_sqe</span>),
-        <span class="ident">C</span>: <span class="ident">FromCqe</span>,
+    <span class="kw">fn </span>with_sqe&lt;<span class="lifetime">&#39;a</span>, F, C&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        iovec: <span class="prelude-ty">Option</span>&lt;libc::iovec&gt;,
+        msghdr: bool,
+        f: F,
+    ) -&gt; Completion&lt;<span class="lifetime">&#39;a</span>, C&gt;
+    <span class="kw">where
+        </span>F: FnOnce(<span class="kw-2">&amp;mut </span>io_uring_sqe),
+        C: FromCqe,
     {
-        <span class="kw">let</span> <span class="ident">ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ticket_queue</span>.<span class="ident">pop</span>();
-        <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">completion</span>, <span class="ident">filler</span>) <span class="op">=</span> <span class="ident">pair</span>(<span class="self">self</span>);
+        <span class="kw">let </span>ticket = <span class="self">self</span>.ticket_queue.pop();
+        <span class="kw">let </span>(<span class="kw-2">mut </span>completion, filler) = pair(<span class="self">self</span>);
 
-        <span class="kw">let</span> <span class="ident">data_ptr</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">in_flight</span>
-            .<span class="ident">insert</span>(<span class="ident">ticket</span>, <span class="ident">iovec</span>, <span class="ident">msghdr</span>, <span class="ident">filler</span>);
+        <span class="kw">let </span>data_ptr = <span class="self">self
+            </span>.in_flight
+            .insert(ticket, iovec, msghdr, filler);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sq</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">_get_sq_mu</span> <span class="op">=</span> <span class="ident">Measure::new</span>(<span class="kw-2">&amp;</span><span class="ident">M</span>.<span class="ident">sq_mu_wait</span>);
-            <span class="self">self</span>.<span class="ident">sq</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>()
+        <span class="kw">let </span><span class="kw-2">mut </span>sq = {
+            <span class="kw">let </span>_get_sq_mu = Measure::new(<span class="kw-2">&amp;</span>M.sq_mu_wait);
+            <span class="self">self</span>.sq.lock().unwrap()
         };
-        <span class="kw">let</span> <span class="ident">_hold_sq_mu</span> <span class="op">=</span> <span class="ident">Measure::new</span>(<span class="kw-2">&amp;</span><span class="ident">M</span>.<span class="ident">sq_mu_hold</span>);
+        <span class="kw">let </span>_hold_sq_mu = Measure::new(<span class="kw-2">&amp;</span>M.sq_mu_hold);
 
-        <span class="ident">completion</span>.<span class="ident">sqe_id</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">loaded</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Release</span>) <span class="op">+</span> <span class="number">1</span>;
+        completion.sqe_id =
+            <span class="self">self</span>.loaded.fetch_add(<span class="number">1</span>, Release) + <span class="number">1</span>;
 
-        <span class="kw">let</span> <span class="ident">sqe</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">_get_sqe</span> <span class="op">=</span> <span class="ident">Measure::new</span>(<span class="kw-2">&amp;</span><span class="ident">M</span>.<span class="ident">get_sqe</span>);
-            <span class="kw">loop</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">sqe</span>) <span class="op">=</span>
-                    <span class="ident">sq</span>.<span class="ident">try_get_sqe</span>(<span class="self">self</span>.<span class="ident">flags</span>)
+        <span class="kw">let </span>sqe = {
+            <span class="kw">let </span>_get_sqe = Measure::new(<span class="kw-2">&amp;</span>M.get_sqe);
+            <span class="kw">loop </span>{
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(sqe) =
+                    sq.try_get_sqe(<span class="self">self</span>.flags)
                 {
-                    <span class="kw">break</span> <span class="ident">sqe</span>;
-                } <span class="kw">else</span> {
-                    <span class="kw">let</span> <span class="ident">submitted</span> <span class="op">=</span> <span class="ident">sq</span>.<span class="ident">submit_all</span>(
-                        <span class="self">self</span>.<span class="ident">flags</span>,
-                        <span class="self">self</span>.<span class="ident">ring_fd</span>,
+                    <span class="kw">break </span>sqe;
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span>submitted = sq.submit_all(
+                        <span class="self">self</span>.flags,
+                        <span class="self">self</span>.ring_fd,
                     );
-                    <span class="self">self</span>.<span class="ident">submitted</span>
-                        .<span class="ident">fetch_add</span>(<span class="ident">submitted</span>, <span class="ident">Release</span>);
+                    <span class="self">self</span>.submitted
+                        .fetch_add(submitted, Release);
                 };
             }
         };
 
-        <span class="ident">sqe</span>.<span class="ident">user_data</span> <span class="op">=</span> <span class="ident">ticket</span> <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="ident">sqe</span>.<span class="ident">addr</span> <span class="op">=</span> <span class="ident">data_ptr</span>;
-        <span class="ident">f</span>(<span class="ident">sqe</span>);
+        sqe.user_data = ticket <span class="kw">as </span>u64;
+        sqe.addr = data_ptr;
+        f(sqe);
 
-        <span class="ident">completion</span>
+        completion
     }
 }
 
-<span class="kw">fn</span> <span class="ident">addr2raw</span>(
-    <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">std::net::SocketAddr</span>,
-) -&gt; (<span class="kw-2">*const</span> <span class="ident">libc::sockaddr</span>, <span class="ident">libc::socklen_t</span>) {
-    <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">addr</span> {
-        <span class="ident">std::net::SocketAddr::V4</span>(<span class="kw-2">ref</span> <span class="ident">a</span>) =&gt; {
-            <span class="kw">let</span> <span class="ident">b</span>: <span class="kw-2">*const</span> <span class="ident">std::net::SocketAddrV4</span> <span class="op">=</span> <span class="ident">a</span>;
+<span class="kw">fn </span>addr2raw(
+    addr: <span class="kw-2">&amp;</span>std::net::SocketAddr,
+) -&gt; (<span class="kw-2">*const </span>libc::sockaddr, libc::socklen_t) {
+    <span class="kw">match </span><span class="kw-2">*</span>addr {
+        std::net::SocketAddr::V4(<span class="kw-2">ref </span>a) =&gt; {
+            <span class="kw">let </span>b: <span class="kw-2">*const </span>std::net::SocketAddrV4 = a;
             (
-                <span class="ident">b</span> <span class="kw">as</span> <span class="kw-2">*const</span> <span class="kw">_</span>,
-                <span class="ident">std::mem::size_of_val</span>(<span class="ident">a</span>) <span class="kw">as</span> <span class="ident">libc::socklen_t</span>,
+                b <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">_</span>,
+                std::mem::size_of_val(a) <span class="kw">as </span>libc::socklen_t,
             )
         }
-        <span class="ident">std::net::SocketAddr::V6</span>(<span class="kw-2">ref</span> <span class="ident">a</span>) =&gt; {
-            <span class="kw">let</span> <span class="ident">b</span>: <span class="kw-2">*const</span> <span class="ident">std::net::SocketAddrV6</span> <span class="op">=</span> <span class="ident">a</span>;
+        std::net::SocketAddr::V6(<span class="kw-2">ref </span>a) =&gt; {
+            <span class="kw">let </span>b: <span class="kw-2">*const </span>std::net::SocketAddrV6 = a;
             (
-                <span class="ident">b</span> <span class="kw">as</span> <span class="kw-2">*const</span> <span class="kw">_</span>,
-                <span class="ident">std::mem::size_of_val</span>(<span class="ident">a</span>) <span class="kw">as</span> <span class="ident">libc::socklen_t</span>,
+                b <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">_</span>,
+                std::mem::size_of_val(a) <span class="kw">as </span>libc::socklen_t,
             )
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

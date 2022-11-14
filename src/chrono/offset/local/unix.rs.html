@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/chrono-0.4.20/src/offset/local/unix.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>unix.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script src="../../../../crates.js"></script><script defer src="../../../../main.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../chrono/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../../chrono/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../chrono/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/chrono-0.4.23/src/offset/local/unix.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>unix.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../chrono/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../chrono/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../chrono/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -144,147 +139,234 @@
 <span id="139">139</span>
 <span id="140">140</span>
 <span id="141">141</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT</span>
-<span class="comment">// file at the top-level directory of this distribution and at</span>
-<span class="comment">// http://rust-lang.org/COPYRIGHT.</span>
-<span class="comment">//</span>
-<span class="comment">// Licensed under the Apache License, Version 2.0 &lt;LICENSE-APACHE or</span>
-<span class="comment">// http://www.apache.org/licenses/LICENSE-2.0&gt; or the MIT license</span>
-<span class="comment">// &lt;LICENSE-MIT or http://opensource.org/licenses/MIT&gt;, at your</span>
-<span class="comment">// option. This file may not be copied, modified, or distributed</span>
-<span class="comment">// except according to those terms.</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 &lt;LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0&gt; or the MIT license
+// &lt;LICENSE-MIT or http://opensource.org/licenses/MIT&gt;, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cell::RefCell</span>, <span class="ident">env</span>, <span class="ident">fs</span>, <span class="ident">time::SystemTime</span>};
+</span><span class="kw">use </span>std::{cell::RefCell, collections::hash_map, env, fs, hash::Hasher, time::SystemTime};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::tz_info::TimeZone</span>;
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">DateTime</span>, <span class="ident">FixedOffset</span>, <span class="ident">Local</span>, <span class="ident">NaiveDateTime</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Datelike</span>, <span class="ident">LocalResult</span>, <span class="ident">Utc</span>};
+<span class="kw">use </span><span class="kw">super</span>::tz_info::TimeZone;
+<span class="kw">use super</span>::{DateTime, FixedOffset, Local, NaiveDateTime};
+<span class="kw">use crate</span>::{Datelike, LocalResult, Utc};
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">now</span>() -&gt; <span class="ident">DateTime</span><span class="op">&lt;</span><span class="ident">Local</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">Utc::now</span>().<span class="ident">naive_utc</span>();
-    <span class="ident">naive_to_local</span>(<span class="kw-2">&amp;</span><span class="ident">now</span>, <span class="bool-val">false</span>).<span class="ident">unwrap</span>()
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>now() -&gt; DateTime&lt;Local&gt; {
+    <span class="kw">let </span>now = Utc::now().naive_utc();
+    naive_to_local(<span class="kw-2">&amp;</span>now, <span class="bool-val">false</span>).unwrap()
 }
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">naive_to_local</span>(<span class="ident">d</span>: <span class="kw-2">&amp;</span><span class="ident">NaiveDateTime</span>, <span class="ident">local</span>: <span class="ident">bool</span>) -&gt; <span class="ident">LocalResult</span><span class="op">&lt;</span><span class="ident">DateTime</span><span class="op">&lt;</span><span class="ident">Local</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="ident">TZ_INFO</span>.<span class="ident">with</span>(<span class="op">|</span><span class="ident">maybe_cache</span><span class="op">|</span> {
-        <span class="ident">maybe_cache</span>.<span class="ident">borrow_mut</span>().<span class="ident">get_or_insert_with</span>(<span class="ident">Cache::default</span>).<span class="ident">offset</span>(<span class="kw-2">*</span><span class="ident">d</span>, <span class="ident">local</span>)
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>naive_to_local(d: <span class="kw-2">&amp;</span>NaiveDateTime, local: bool) -&gt; LocalResult&lt;DateTime&lt;Local&gt;&gt; {
+    TZ_INFO.with(|maybe_cache| {
+        maybe_cache.borrow_mut().get_or_insert_with(Cache::default).offset(<span class="kw-2">*</span>d, local)
     })
 }
 
-<span class="comment">// we have to store the `Cache` in an option as it can&#39;t</span>
-<span class="comment">// be initalized in a static context.</span>
-<span class="macro">thread_local!</span> {
-    <span class="kw">static</span> <span class="ident">TZ_INFO</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Cache</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
+<span class="comment">// we have to store the `Cache` in an option as it can&#39;t
+// be initalized in a static context.
+</span><span class="macro">thread_local! </span>{
+    <span class="kw">static </span>TZ_INFO: RefCell&lt;<span class="prelude-ty">Option</span>&lt;Cache&gt;&gt; = Default::default();
 }
 
-<span class="kw">enum</span> <span class="ident">Source</span> {
-    <span class="ident">LocalTime</span> { <span class="ident">mtime</span>: <span class="ident">SystemTime</span>, <span class="ident">last_checked</span>: <span class="ident">SystemTime</span> },
-    <span class="comment">// we don&#39;t bother storing the contents of the environment variable in this case.</span>
-    <span class="comment">// changing the environment while the process is running is generally not reccomended</span>
-    <span class="ident">Environment</span>,
+<span class="kw">enum </span>Source {
+    LocalTime { mtime: SystemTime },
+    Environment { hash: u64 },
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Source</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="ident">Source</span> {
-        <span class="comment">// use of var_os avoids allocating, which is nice</span>
-        <span class="comment">// as we are only going to discard the string anyway</span>
-        <span class="comment">// but we must ensure the contents are valid unicode</span>
-        <span class="comment">// otherwise the behaivour here would be different</span>
-        <span class="comment">// to that in `naive_to_local`</span>
-        <span class="kw">match</span> <span class="ident">env::var_os</span>(<span class="string">&quot;TZ&quot;</span>) {
-            <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">s</span>) <span class="kw">if</span> <span class="ident">s</span>.<span class="ident">to_str</span>().<span class="ident">is_some</span>() =&gt; <span class="ident">Source::Environment</span>,
-            <span class="prelude-val">Some</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="prelude-val">None</span> =&gt; <span class="ident">Source::LocalTime</span> {
-                <span class="ident">mtime</span>: <span class="ident">fs::symlink_metadata</span>(<span class="string">&quot;/etc/localtime&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;localtime should exist&quot;</span>)
-                    .<span class="ident">modified</span>()
-                    .<span class="ident">unwrap</span>(),
-                <span class="ident">last_checked</span>: <span class="ident">SystemTime::now</span>(),
+<span class="kw">impl </span>Source {
+    <span class="kw">fn </span>new(env_tz: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; Source {
+        <span class="kw">match </span>env_tz {
+            <span class="prelude-val">Some</span>(tz) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>hasher = hash_map::DefaultHasher::new();
+                hasher.write(tz.as_bytes());
+                <span class="kw">let </span>hash = hasher.finish();
+                Source::Environment { hash }
+            }
+            <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>fs::symlink_metadata(<span class="string">&quot;/etc/localtime&quot;</span>) {
+                <span class="prelude-val">Ok</span>(data) =&gt; Source::LocalTime {
+                    <span class="comment">// we have to pick a sensible default when the mtime fails
+                    // by picking SystemTime::now() we raise the probability of
+                    // the cache being invalidated if/when the mtime starts working
+                    </span>mtime: data.modified().unwrap_or_else(|<span class="kw">_</span>| SystemTime::now()),
+                },
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                    <span class="comment">// as above, now() should be a better default than some constant
+                    // TODO: see if we can improve caching in the case where the fallback is a valid timezone
+                    </span>Source::LocalTime { mtime: SystemTime::now() }
+                }
             },
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Source</span> {
-    <span class="kw">fn</span> <span class="ident">out_of_date</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>();
-        <span class="kw">let</span> <span class="ident">prev</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Source::LocalTime</span> { <span class="ident">mtime</span>, <span class="ident">last_checked</span> } =&gt; <span class="kw">match</span> <span class="ident">now</span>.<span class="ident">duration_since</span>(<span class="kw-2">*</span><span class="ident">last_checked</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">d</span>) <span class="kw">if</span> <span class="ident">d</span>.<span class="ident">as_secs</span>() <span class="op">&lt;</span> <span class="number">1</span> =&gt; <span class="kw">return</span> <span class="bool-val">false</span>,
-                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw-2">*</span><span class="ident">mtime</span>,
-            },
-            <span class="ident">Source::Environment</span> =&gt; <span class="kw">return</span> <span class="bool-val">false</span>,
-        };
+<span class="kw">struct </span>Cache {
+    zone: TimeZone,
+    source: Source,
+    last_checked: SystemTime,
+}
 
-        <span class="kw">match</span> <span class="ident">Source::default</span>() {
-            <span class="ident">Source::LocalTime</span> { <span class="ident">mtime</span>, .. } =&gt; {
-                <span class="kw-2">*</span><span class="self">self</span> <span class="op">=</span> <span class="ident">Source::LocalTime</span> { <span class="ident">mtime</span>, <span class="ident">last_checked</span>: <span class="ident">now</span> };
-                <span class="ident">prev</span> <span class="op">!</span><span class="op">=</span> <span class="ident">mtime</span>
-            }
-            <span class="comment">// will only reach here if TZ has been set while</span>
-            <span class="comment">// the process is running</span>
-            <span class="ident">Source::Environment</span> =&gt; {
-                <span class="kw-2">*</span><span class="self">self</span> <span class="op">=</span> <span class="ident">Source::Environment</span>;
-                <span class="bool-val">true</span>
-            }
+<span class="attribute">#[cfg(target_os = <span class="string">&quot;android&quot;</span>)]
+</span><span class="kw">const </span>TZDB_LOCATION: <span class="kw-2">&amp;</span>str = <span class="string">&quot; /system/usr/share/zoneinfo&quot;</span>;
+
+<span class="attribute">#[cfg(target_os = <span class="string">&quot;aix&quot;</span>)]
+</span><span class="kw">const </span>TZDB_LOCATION: <span class="kw-2">&amp;</span>str = <span class="string">&quot;/usr/share/lib/zoneinfo&quot;</span>;
+
+<span class="attribute">#[allow(dead_code)] </span><span class="comment">// keeps the cfg simpler
+</span><span class="attribute">#[cfg(not(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;aix&quot;</span>)))]
+</span><span class="kw">const </span>TZDB_LOCATION: <span class="kw-2">&amp;</span>str = <span class="string">&quot;/usr/share/zoneinfo&quot;</span>;
+
+<span class="kw">fn </span>fallback_timezone() -&gt; <span class="prelude-ty">Option</span>&lt;TimeZone&gt; {
+    <span class="kw">let </span>tz_name = iana_time_zone::get_timezone().ok()<span class="question-mark">?</span>;
+    <span class="kw">let </span>bytes = fs::read(<span class="macro">format!</span>(<span class="string">&quot;{}/{}&quot;</span>, TZDB_LOCATION, tz_name)).ok()<span class="question-mark">?</span>;
+    TimeZone::from_tz_data(<span class="kw-2">&amp;</span>bytes).ok()
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>Cache {
+    <span class="kw">fn </span>default() -&gt; Cache {
+        <span class="comment">// default to UTC if no local timezone can be found
+        </span><span class="kw">let </span>env_tz = env::var(<span class="string">&quot;TZ&quot;</span>).ok();
+        <span class="kw">let </span>env_ref = env_tz.as_ref().map(|s| s.as_str());
+        Cache {
+            last_checked: SystemTime::now(),
+            source: Source::new(env_ref),
+            zone: current_zone(env_ref),
         }
     }
 }
 
-<span class="kw">struct</span> <span class="ident">Cache</span> {
-    <span class="ident">zone</span>: <span class="ident">TimeZone</span>,
-    <span class="ident">source</span>: <span class="ident">Source</span>,
+<span class="kw">fn </span>current_zone(var: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; TimeZone {
+    TimeZone::local(var).ok().or_else(fallback_timezone).unwrap_or_else(TimeZone::utc)
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Cache</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="ident">Cache</span> {
-        <span class="ident">Cache</span> {
-            <span class="ident">zone</span>: <span class="ident">TimeZone::local</span>().<span class="ident">expect</span>(<span class="string">&quot;unable to parse localtime info&quot;</span>),
-            <span class="ident">source</span>: <span class="ident">Source::default</span>(),
+<span class="kw">impl </span>Cache {
+    <span class="kw">fn </span>offset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, d: NaiveDateTime, local: bool) -&gt; LocalResult&lt;DateTime&lt;Local&gt;&gt; {
+        <span class="kw">let </span>now = SystemTime::now();
+
+        <span class="kw">match </span>now.duration_since(<span class="self">self</span>.last_checked) {
+            <span class="comment">// If the cache has been around for less than a second then we reuse it
+            // unconditionally. This is a reasonable tradeoff because the timezone
+            // generally won&#39;t be changing _that_ often, but if the time zone does
+            // change, it will reflect sufficiently quickly from an application
+            // user&#39;s perspective.
+            </span><span class="prelude-val">Ok</span>(d) <span class="kw">if </span>d.as_secs() &lt; <span class="number">1 </span>=&gt; (),
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) | <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>env_tz = env::var(<span class="string">&quot;TZ&quot;</span>).ok();
+                <span class="kw">let </span>env_ref = env_tz.as_ref().map(|s| s.as_str());
+                <span class="kw">let </span>new_source = Source::new(env_ref);
+
+                <span class="kw">let </span>out_of_date = <span class="kw">match </span>(<span class="kw-2">&amp;</span><span class="self">self</span>.source, <span class="kw-2">&amp;</span>new_source) {
+                    <span class="comment">// change from env to file or file to env, must recreate the zone
+                    </span>(Source::Environment { .. }, Source::LocalTime { .. })
+                    | (Source::LocalTime { .. }, Source::Environment { .. }) =&gt; <span class="bool-val">true</span>,
+                    <span class="comment">// stay as file, but mtime has changed
+                    </span>(Source::LocalTime { mtime: old_mtime }, Source::LocalTime { mtime })
+                        <span class="kw">if </span>old_mtime != mtime =&gt;
+                    {
+                        <span class="bool-val">true
+                    </span>}
+                    <span class="comment">// stay as env, but hash of variable has changed
+                    </span>(Source::Environment { hash: old_hash }, Source::Environment { hash })
+                        <span class="kw">if </span>old_hash != hash =&gt;
+                    {
+                        <span class="bool-val">true
+                    </span>}
+                    <span class="comment">// cache can be reused
+                    </span><span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+                };
+
+                <span class="kw">if </span>out_of_date {
+                    <span class="self">self</span>.zone = current_zone(env_ref);
+                }
+
+                <span class="self">self</span>.last_checked = now;
+                <span class="self">self</span>.source = new_source;
+            }
         }
-    }
-}
 
-<span class="kw">impl</span> <span class="ident">Cache</span> {
-    <span class="kw">fn</span> <span class="ident">offset</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">d</span>: <span class="ident">NaiveDateTime</span>, <span class="ident">local</span>: <span class="ident">bool</span>) -&gt; <span class="ident">LocalResult</span><span class="op">&lt;</span><span class="ident">DateTime</span><span class="op">&lt;</span><span class="ident">Local</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">source</span>.<span class="ident">out_of_date</span>() {
-            <span class="kw-2">*</span><span class="self">self</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
+        <span class="kw">if </span>!local {
+            <span class="kw">let </span>offset = <span class="self">self
+                </span>.zone
+                .find_local_time_type(d.timestamp())
+                .expect(<span class="string">&quot;unable to select local time type&quot;</span>)
+                .offset();
+
+            <span class="kw">return match </span>FixedOffset::east_opt(offset) {
+                <span class="prelude-val">Some</span>(offset) =&gt; LocalResult::Single(DateTime::from_utc(d, offset)),
+                <span class="prelude-val">None </span>=&gt; LocalResult::None,
+            };
         }
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">local</span> {
-            <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">FixedOffset::east</span>(
-                <span class="self">self</span>.<span class="ident">zone</span>
-                    .<span class="ident">find_local_time_type</span>(<span class="ident">d</span>.<span class="ident">timestamp</span>())
-                    .<span class="ident">expect</span>(<span class="string">&quot;unable to select local time type&quot;</span>)
-                    .<span class="ident">offset</span>(),
-            );
-
-            <span class="kw">return</span> <span class="ident">LocalResult::Single</span>(<span class="ident">DateTime::from_utc</span>(<span class="ident">d</span>, <span class="ident">offset</span>));
-        }
-
-        <span class="comment">// we pass through the year as the year of a local point in time must either be valid in that locale, or</span>
-        <span class="comment">// the entire time was skipped in which case we will return LocalResult::None anywa.</span>
-        <span class="kw">match</span> <span class="self">self</span>
-            .<span class="ident">zone</span>
-            .<span class="ident">find_local_time_type_from_local</span>(<span class="ident">d</span>.<span class="ident">timestamp</span>(), <span class="ident">d</span>.<span class="ident">year</span>())
-            .<span class="ident">expect</span>(<span class="string">&quot;unable to select local time type&quot;</span>)
+        <span class="comment">// we pass through the year as the year of a local point in time must either be valid in that locale, or
+        // the entire time was skipped in which case we will return LocalResult::None anywa.
+        </span><span class="kw">match </span><span class="self">self
+            </span>.zone
+            .find_local_time_type_from_local(d.timestamp(), d.year())
+            .expect(<span class="string">&quot;unable to select local time type&quot;</span>)
         {
-            <span class="ident">LocalResult::None</span> =&gt; <span class="ident">LocalResult::None</span>,
-            <span class="ident">LocalResult::Ambiguous</span>(<span class="ident">early</span>, <span class="ident">late</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">early_offset</span> <span class="op">=</span> <span class="ident">FixedOffset::east</span>(<span class="ident">early</span>.<span class="ident">offset</span>());
-                <span class="kw">let</span> <span class="ident">late_offset</span> <span class="op">=</span> <span class="ident">FixedOffset::east</span>(<span class="ident">late</span>.<span class="ident">offset</span>());
+            LocalResult::None =&gt; LocalResult::None,
+            LocalResult::Ambiguous(early, late) =&gt; {
+                <span class="kw">let </span>early_offset = FixedOffset::east_opt(early.offset()).unwrap();
+                <span class="kw">let </span>late_offset = FixedOffset::east_opt(late.offset()).unwrap();
 
-                <span class="ident">LocalResult::Ambiguous</span>(
-                    <span class="ident">DateTime::from_utc</span>(<span class="ident">d</span> <span class="op">-</span> <span class="ident">early_offset</span>, <span class="ident">early_offset</span>),
-                    <span class="ident">DateTime::from_utc</span>(<span class="ident">d</span> <span class="op">-</span> <span class="ident">late_offset</span>, <span class="ident">late_offset</span>),
+                LocalResult::Ambiguous(
+                    DateTime::from_utc(d - early_offset, early_offset),
+                    DateTime::from_utc(d - late_offset, late_offset),
                 )
             }
-            <span class="ident">LocalResult::Single</span>(<span class="ident">tt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">FixedOffset::east</span>(<span class="ident">tt</span>.<span class="ident">offset</span>());
-                <span class="ident">LocalResult::Single</span>(<span class="ident">DateTime::from_utc</span>(<span class="ident">d</span> <span class="op">-</span> <span class="ident">offset</span>, <span class="ident">offset</span>))
+            LocalResult::Single(tt) =&gt; {
+                <span class="kw">let </span>offset = FixedOffset::east_opt(tt.offset()).unwrap();
+                LocalResult::Single(DateTime::from_utc(d - offset, offset))
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="chrono" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="chrono" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

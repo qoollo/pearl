@@ -1,11 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/io_uring/kernel_types.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>kernel_types.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container">
-                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../rio/index.html">
-                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/io_uring/kernel_types.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>kernel_types.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container">
+                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../rio/index.html">
+                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -170,171 +165,170 @@
 <span id="163">163</span>
 <span id="164">164</span>
 <span id="165">165</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">allow</span>(<span class="ident">non_camel_case_types</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#![allow(non_camel_case_types)]
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+</span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// Generated by bindgen, then cleaned up</span>
-<span class="doccomment">/// Target: linux 5.3.9_p3-debian-sources</span>
-<span class="doccomment">///         `include/uapi/linux/io_uring.h`</span>
-<span class="kw">use</span> <span class="ident">std::fmt</span>;
+<span class="doccomment">/// Generated by bindgen, then cleaned up
+/// Target: linux 5.3.9_p3-debian-sources
+///         `include/uapi/linux/io_uring.h`
+</span><span class="kw">use </span>std::fmt;
 
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">io_uring_cqe</span> {
-    <span class="kw">pub</span> <span class="ident">user_data</span>: <span class="ident">u64</span>,
-    <span class="kw">pub</span> <span class="ident">res</span>: <span class="ident">i32</span>,
-    <span class="kw">pub</span> <span class="ident">flags</span>: <span class="ident">u32</span>,
+<span class="attribute">#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+</span><span class="kw">pub struct </span>io_uring_cqe {
+    <span class="kw">pub </span>user_data: u64,
+    <span class="kw">pub </span>res: i32,
+    <span class="kw">pub </span>flags: u32,
 }
 
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">io_uring_params</span> {
-    <span class="kw">pub</span> <span class="ident">sq_entries</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">cq_entries</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">flags</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">sq_thread_cpu</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">sq_thread_idle</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">resv</span>: [<span class="ident">u32</span>; <span class="number">5_usize</span>],
-    <span class="kw">pub</span> <span class="ident">sq_off</span>: <span class="ident">io_sqring_offsets</span>,
-    <span class="kw">pub</span> <span class="ident">cq_off</span>: <span class="ident">io_cqring_offsets</span>,
+<span class="attribute">#[repr(C)]
+#[derive(Default, Debug, Copy, Clone)]
+</span><span class="kw">pub struct </span>io_uring_params {
+    <span class="kw">pub </span>sq_entries: u32,
+    <span class="kw">pub </span>cq_entries: u32,
+    <span class="kw">pub </span>flags: u32,
+    <span class="kw">pub </span>sq_thread_cpu: u32,
+    <span class="kw">pub </span>sq_thread_idle: u32,
+    <span class="kw">pub </span>resv: [u32; <span class="number">5_usize</span>],
+    <span class="kw">pub </span>sq_off: io_sqring_offsets,
+    <span class="kw">pub </span>cq_off: io_cqring_offsets,
 }
 
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">__kernel_rwf_t</span> <span class="op">=</span> <span class="ident">::std::os::raw::c_int</span>;
+<span class="kw">pub type </span>__kernel_rwf_t = ::std::os::raw::c_int;
 
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">io_uring_sqe</span> {
-    <span class="kw">pub</span> <span class="ident">opcode</span>: <span class="ident">u8</span>,
-    <span class="kw">pub</span> <span class="ident">flags</span>: <span class="ident">u8</span>,
-    <span class="kw">pub</span> <span class="ident">ioprio</span>: <span class="ident">u16</span>,
-    <span class="kw">pub</span> <span class="ident">fd</span>: <span class="ident">i32</span>,
-    <span class="kw">pub</span> <span class="ident">off</span>: <span class="ident">u64</span>,
-    <span class="kw">pub</span> <span class="ident">addr</span>: <span class="ident">u64</span>,
-    <span class="kw">pub</span> <span class="ident">len</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">__bindgen_anon_1</span>: <span class="ident">io_uring_sqe__bindgen_ty_1</span>,
-    <span class="kw">pub</span> <span class="ident">user_data</span>: <span class="ident">u64</span>,
-    <span class="kw">pub</span> <span class="ident">__bindgen_anon_2</span>: <span class="ident">io_uring_sqe__bindgen_ty_2</span>,
+<span class="attribute">#[repr(C)]
+#[derive(Copy, Clone, Debug, Default)]
+</span><span class="kw">pub struct </span>io_uring_sqe {
+    <span class="kw">pub </span>opcode: u8,
+    <span class="kw">pub </span>flags: u8,
+    <span class="kw">pub </span>ioprio: u16,
+    <span class="kw">pub </span>fd: i32,
+    <span class="kw">pub </span>off: u64,
+    <span class="kw">pub </span>addr: u64,
+    <span class="kw">pub </span>len: u32,
+    <span class="kw">pub </span>__bindgen_anon_1: io_uring_sqe__bindgen_ty_1,
+    <span class="kw">pub </span>user_data: u64,
+    <span class="kw">pub </span>__bindgen_anon_2: io_uring_sqe__bindgen_ty_2,
 }
 
-<span class="kw">impl</span> <span class="ident">io_uring_sqe</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">prep_rw</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">opcode</span>: <span class="ident">u8</span>,
-        <span class="ident">file_descriptor</span>: <span class="ident">i32</span>,
-        <span class="ident">len</span>: <span class="ident">usize</span>,
-        <span class="ident">off</span>: <span class="ident">u64</span>,
-        <span class="ident">ordering</span>: <span class="ident">Ordering</span>,
+<span class="kw">impl </span>io_uring_sqe {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>prep_rw(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        opcode: u8,
+        file_descriptor: i32,
+        len: usize,
+        off: u64,
+        ordering: Ordering,
     ) {
-        <span class="kw-2">*</span><span class="self">self</span> <span class="op">=</span> <span class="ident">io_uring_sqe</span> {
-            <span class="ident">opcode</span>,
-            <span class="ident">flags</span>: <span class="number">0</span>,
-            <span class="ident">ioprio</span>: <span class="number">0</span>,
-            <span class="ident">fd</span>: <span class="ident">file_descriptor</span>,
-            <span class="ident">len</span>: <span class="ident">u32::try_from</span>(<span class="ident">len</span>).<span class="ident">unwrap</span>(),
-            <span class="ident">off</span>,
-            ..<span class="kw-2">*</span><span class="self">self</span>
-        };
+        <span class="kw-2">*</span><span class="self">self </span>= io_uring_sqe {
+            opcode,
+            flags: <span class="number">0</span>,
+            ioprio: <span class="number">0</span>,
+            fd: file_descriptor,
+            len: u32::try_from(len).unwrap(),
+            off,
+            ..<span class="kw-2">*</span><span class="self">self
+        </span>};
 
-        <span class="self">self</span>.<span class="ident">__bindgen_anon_1</span>.<span class="ident">rw_flags</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="self">self</span>.<span class="ident">__bindgen_anon_2</span>.<span class="ident">__pad2</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">3</span>];
+        <span class="self">self</span>.__bindgen_anon_1.rw_flags = <span class="number">0</span>;
+        <span class="self">self</span>.__bindgen_anon_2.__pad2 = [<span class="number">0</span>; <span class="number">3</span>];
 
-        <span class="self">self</span>.<span class="ident">apply_order</span>(<span class="ident">ordering</span>);
+        <span class="self">self</span>.apply_order(ordering);
     }
 
-    <span class="kw">fn</span> <span class="ident">apply_order</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ordering</span>: <span class="ident">Ordering</span>) {
-        <span class="kw">match</span> <span class="ident">ordering</span> {
-            <span class="ident">Ordering::None</span> =&gt; {}
-            <span class="ident">Ordering::Link</span> =&gt; {
-                <span class="self">self</span>.<span class="ident">flags</span> <span class="op">|</span><span class="op">=</span> <span class="ident">IOSQE_IO_LINK</span>
+    <span class="kw">fn </span>apply_order(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ordering: Ordering) {
+        <span class="kw">match </span>ordering {
+            Ordering::None =&gt; {}
+            Ordering::Link =&gt; {
+                <span class="self">self</span>.flags |= IOSQE_IO_LINK
             }
-            <span class="ident">Ordering::Drain</span> =&gt; {
-                <span class="self">self</span>.<span class="ident">flags</span> <span class="op">|</span><span class="op">=</span> <span class="ident">IOSQE_IO_DRAIN</span>
+            Ordering::Drain =&gt; {
+                <span class="self">self</span>.flags |= IOSQE_IO_DRAIN
             }
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">union</span> <span class="ident">io_uring_sqe__bindgen_ty_1</span> {
-    <span class="kw">pub</span> <span class="ident">rw_flags</span>: <span class="ident">__kernel_rwf_t</span>,
-    <span class="kw">pub</span> <span class="ident">fsync_flags</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">poll_events</span>: <span class="ident">u16</span>,
-    <span class="kw">pub</span> <span class="ident">sync_range_flags</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">msg_flags</span>: <span class="ident">u32</span>,
-    <span class="ident">_bindgen_union_align</span>: <span class="ident">u32</span>,
+<span class="attribute">#[repr(C)]
+#[derive(Copy, Clone)]
+</span><span class="kw">pub union </span>io_uring_sqe__bindgen_ty_1 {
+    <span class="kw">pub </span>rw_flags: __kernel_rwf_t,
+    <span class="kw">pub </span>fsync_flags: u32,
+    <span class="kw">pub </span>poll_events: u16,
+    <span class="kw">pub </span>sync_range_flags: u32,
+    <span class="kw">pub </span>msg_flags: u32,
+    _bindgen_union_align: u32,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">io_uring_sqe__bindgen_ty_1</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="ident">io_uring_sqe__bindgen_ty_1</span> {
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-        <span class="kw">unsafe</span> {
-            <span class="ident">std::mem::zeroed</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>io_uring_sqe__bindgen_ty_1 {
+    <span class="kw">fn </span>default() -&gt; io_uring_sqe__bindgen_ty_1 {
+        <span class="attribute">#[allow(unsafe_code)]
+        </span><span class="kw">unsafe </span>{
+            std::mem::zeroed()
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">io_uring_sqe__bindgen_ty_1</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(
+<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>io_uring_sqe__bindgen_ty_1 {
+    <span class="kw">fn </span>fmt(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;io_uring_sqe__bindgen_ty_1&quot;</span>)
+        f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;,
+    ) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;io_uring_sqe__bindgen_ty_1&quot;</span>)
     }
 }
 
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">union</span> <span class="ident">io_uring_sqe__bindgen_ty_2</span> {
-    <span class="kw">pub</span> <span class="ident">buf_index</span>: <span class="ident">u16</span>,
-    <span class="kw">pub</span> <span class="ident">__pad2</span>: [<span class="ident">u64</span>; <span class="number">3_usize</span>],
-    <span class="ident">_bindgen_union_align</span>: [<span class="ident">u64</span>; <span class="number">3_usize</span>],
+<span class="attribute">#[repr(C)]
+#[derive(Copy, Clone)]
+</span><span class="kw">pub union </span>io_uring_sqe__bindgen_ty_2 {
+    <span class="kw">pub </span>buf_index: u16,
+    <span class="kw">pub </span>__pad2: [u64; <span class="number">3_usize</span>],
+    _bindgen_union_align: [u64; <span class="number">3_usize</span>],
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">io_uring_sqe__bindgen_ty_2</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(
+<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>io_uring_sqe__bindgen_ty_2 {
+    <span class="kw">fn </span>fmt(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;io_uring_sqe__bindgen_ty_2&quot;</span>)
+        f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;,
+    ) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;io_uring_sqe__bindgen_ty_2&quot;</span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">io_uring_sqe__bindgen_ty_2</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="ident">io_uring_sqe__bindgen_ty_2</span> {
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-        <span class="kw">unsafe</span> {
-            <span class="ident">std::mem::zeroed</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>io_uring_sqe__bindgen_ty_2 {
+    <span class="kw">fn </span>default() -&gt; io_uring_sqe__bindgen_ty_2 {
+        <span class="attribute">#[allow(unsafe_code)]
+        </span><span class="kw">unsafe </span>{
+            std::mem::zeroed()
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">io_sqring_offsets</span> {
-    <span class="kw">pub</span> <span class="ident">head</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">tail</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">ring_mask</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">ring_entries</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">flags</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">dropped</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">array</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">resv1</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">resv2</span>: <span class="ident">u64</span>,
+<span class="attribute">#[repr(C)]
+#[derive(Default, Debug, Copy, Clone)]
+</span><span class="kw">pub struct </span>io_sqring_offsets {
+    <span class="kw">pub </span>head: u32,
+    <span class="kw">pub </span>tail: u32,
+    <span class="kw">pub </span>ring_mask: u32,
+    <span class="kw">pub </span>ring_entries: u32,
+    <span class="kw">pub </span>flags: u32,
+    <span class="kw">pub </span>dropped: u32,
+    <span class="kw">pub </span>array: u32,
+    <span class="kw">pub </span>resv1: u32,
+    <span class="kw">pub </span>resv2: u64,
 }
 
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">io_cqring_offsets</span> {
-    <span class="kw">pub</span> <span class="ident">head</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">tail</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">ring_mask</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">ring_entries</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">overflow</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">cqes</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">resv</span>: [<span class="ident">u64</span>; <span class="number">2_usize</span>],
+<span class="attribute">#[repr(C)]
+#[derive(Default, Debug, Copy, Clone)]
+</span><span class="kw">pub struct </span>io_cqring_offsets {
+    <span class="kw">pub </span>head: u32,
+    <span class="kw">pub </span>tail: u32,
+    <span class="kw">pub </span>ring_mask: u32,
+    <span class="kw">pub </span>ring_entries: u32,
+    <span class="kw">pub </span>overflow: u32,
+    <span class="kw">pub </span>cqes: u32,
+    <span class="kw">pub </span>resv: [u64; <span class="number">2_usize</span>],
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

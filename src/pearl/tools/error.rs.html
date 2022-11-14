@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/error.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/error.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -57,60 +52,59 @@
 <span id="52">52</span>
 <span id="53">53</span>
 <span id="54">54</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// Error type</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Error</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Error</span> {
-    <span class="doccomment">/// Failed to validate record header</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;record header validation error: {0}&quot;</span>)]</span>
-    <span class="ident">RecordHeaderValidation</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Failed to validate index header</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;index header validation error: {0}&quot;</span>)]</span>
-    <span class="ident">IndexHeaderValidation</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Failed to validate index</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;index validation error: {0}&quot;</span>)]</span>
-    <span class="ident">IndexValidation</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Failed to validate blob header</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;blob header validation error: {0}&quot;</span>)]</span>
-    <span class="ident">BlobHeaderValidation</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Failed to validate record</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;record validation error: {0}&quot;</span>)]</span>
-    <span class="ident">RecordValidation</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Skip wrong record is not possible</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;skip data error: {0}&quot;</span>)]</span>
-    <span class="ident">SkipRecordData</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Can&#39;t migrate blob</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;unsupported migration from {0} to {1}&quot;</span>)]</span>
-    <span class="ident">UnsupportedMigration</span>(<span class="ident">u32</span>, <span class="ident">u32</span>),
+<span class="doccomment">/// Error type
+</span><span class="attribute">#[derive(Debug, Error)]
+</span><span class="kw">pub enum </span>Error {
+    <span class="doccomment">/// Failed to validate record header
+    </span><span class="attribute">#[error(<span class="string">&quot;record header validation error: {0}&quot;</span>)]
+    </span>RecordHeaderValidation(String),
+    <span class="doccomment">/// Failed to validate index header
+    </span><span class="attribute">#[error(<span class="string">&quot;index header validation error: {0}&quot;</span>)]
+    </span>IndexHeaderValidation(String),
+    <span class="doccomment">/// Failed to validate index
+    </span><span class="attribute">#[error(<span class="string">&quot;index validation error: {0}&quot;</span>)]
+    </span>IndexValidation(String),
+    <span class="doccomment">/// Failed to validate blob header
+    </span><span class="attribute">#[error(<span class="string">&quot;blob header validation error: {0}&quot;</span>)]
+    </span>BlobHeaderValidation(String),
+    <span class="doccomment">/// Failed to validate record
+    </span><span class="attribute">#[error(<span class="string">&quot;record validation error: {0}&quot;</span>)]
+    </span>RecordValidation(String),
+    <span class="doccomment">/// Skip wrong record is not possible
+    </span><span class="attribute">#[error(<span class="string">&quot;skip data error: {0}&quot;</span>)]
+    </span>SkipRecordData(String),
+    <span class="doccomment">/// Can&#39;t migrate blob
+    </span><span class="attribute">#[error(<span class="string">&quot;unsupported migration from {0} to {1}&quot;</span>)]
+    </span>UnsupportedMigration(u32, u32),
 }
 
-<span class="kw">impl</span> <span class="ident">Error</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">record_header_validation_error</span>(<span class="ident">message</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::RecordHeaderValidation</span>(<span class="ident">message</span>.<span class="ident">into</span>())
+<span class="kw">impl </span>Error {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>record_header_validation_error(message: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::RecordHeaderValidation(message.into())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">index_header_validation_error</span>(<span class="ident">message</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::IndexHeaderValidation</span>(<span class="ident">message</span>.<span class="ident">into</span>())
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>index_header_validation_error(message: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::IndexHeaderValidation(message.into())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">blob_header_validation_error</span>(<span class="ident">message</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::BlobHeaderValidation</span>(<span class="ident">message</span>.<span class="ident">into</span>())
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>blob_header_validation_error(message: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::BlobHeaderValidation(message.into())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">record_validation_error</span>(<span class="ident">message</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::RecordValidation</span>(<span class="ident">message</span>.<span class="ident">into</span>())
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>record_validation_error(message: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::RecordValidation(message.into())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">skip_record_data_error</span>(<span class="ident">message</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::SkipRecordData</span>(<span class="ident">message</span>.<span class="ident">into</span>())
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>skip_record_data_error(message: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::SkipRecordData(message.into())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">unsupported_migration</span>(<span class="ident">from</span>: <span class="ident">u32</span>, <span class="ident">to</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::UnsupportedMigration</span>(<span class="ident">from</span>, <span class="ident">to</span>)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>unsupported_migration(from: u32, to: u32) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::UnsupportedMigration(from, to)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/index/core.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script src="../../../../crates.js"></script><script defer src="../../../../main.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../pearl/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/index/core.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../pearl/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -400,403 +395,402 @@
 <span id="395">395</span>
 <span id="396">396</span>
 <span id="397">397</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter</span>::{<span class="ident">BloomDataProvider</span>, <span class="ident">CombinedFilter</span>, <span class="ident">FilterTrait</span>};
-<span class="kw">use</span> <span class="ident">std::mem::size_of</span>;
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::filter::{BloomDataProvider, CombinedFilter, FilterTrait};
+<span class="kw">use </span>std::mem::size_of;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">Index</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">IndexStruct</span><span class="op">&lt;</span><span class="ident">BPTreeFileIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>, <span class="ident">K</span><span class="op">&gt;</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>Index&lt;K&gt; = IndexStruct&lt;BPTreeFileIndex&lt;K&gt;, K&gt;;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="ident">HEADER_VERSION</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">5</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="ident">INDEX_HEADER_MAGIC_BYTE</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0xacdc_bcde</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HEADER_VERSION: u8 = <span class="number">5</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>INDEX_HEADER_MAGIC_BYTE: u64 = <span class="number">0xacdc_bcde</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">IndexParams</span> {
-    <span class="ident">bloom_is_on</span>: <span class="ident">bool</span>,
-    <span class="ident">recreate_file</span>: <span class="ident">bool</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">struct </span>IndexParams {
+    bloom_is_on: bool,
+    recreate_file: bool,
 }
 
-<span class="kw">impl</span> <span class="ident">IndexParams</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">bloom_is_on</span>: <span class="ident">bool</span>, <span class="ident">recreate_file</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">bloom_is_on</span>,
-            <span class="ident">recreate_file</span>,
+<span class="kw">impl </span>IndexParams {
+    <span class="kw">fn </span>new(bloom_is_on: bool, recreate_file: bool) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            bloom_is_on,
+            recreate_file,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IndexConfig</span> {
-    <span class="kw">pub</span> <span class="ident">bloom_config</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BloomConfig</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">recreate_index_file</span>: <span class="ident">bool</span>,
+<span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>IndexConfig {
+    <span class="kw">pub </span>bloom_config: <span class="prelude-ty">Option</span>&lt;BloomConfig&gt;,
+    <span class="kw">pub </span>recreate_index_file: bool,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">IndexConfig</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">bloom_config</span>: <span class="prelude-val">None</span>,
-            <span class="ident">recreate_index_file</span>: <span class="bool-val">true</span>,
+<span class="kw">impl </span>Default <span class="kw">for </span>IndexConfig {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            bloom_config: <span class="prelude-val">None</span>,
+            recreate_index_file: <span class="bool-val">true</span>,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">IndexStruct</span><span class="op">&lt;</span><span class="ident">FileIndex</span>, <span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>IndexStruct&lt;FileIndex, K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
 {
-    <span class="ident">mem</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MemoryAttrs</span><span class="op">&gt;</span>,
-    <span class="ident">filter</span>: <span class="ident">CombinedFilter</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-    <span class="ident">bloom_offset</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    <span class="ident">params</span>: <span class="ident">IndexParams</span>,
-    <span class="ident">inner</span>: <span class="ident">State</span><span class="op">&lt;</span><span class="ident">FileIndex</span>, <span class="ident">K</span><span class="op">&gt;</span>,
-    <span class="ident">name</span>: <span class="ident">FileName</span>,
-    <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>,
+    mem: <span class="prelude-ty">Option</span>&lt;MemoryAttrs&gt;,
+    filter: CombinedFilter&lt;K&gt;,
+    bloom_offset: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    params: IndexParams,
+    inner: State&lt;FileIndex, K&gt;,
+    name: FileName,
+    ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span> <span class="comment">// Default can be used to initialize structure with 0</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MemoryAttrs</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">key_size</span>: <span class="ident">usize</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">btree_entry_size</span>: <span class="ident">usize</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">records_allocated</span>: <span class="ident">usize</span>,
-    <span class="comment">// contains actual size occupied by record header in RAM (which helps</span>
-    <span class="comment">// to compute actual size of indices in RAM in `InMemory` state)</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">record_header_size</span>: <span class="ident">usize</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">records_count</span>: <span class="ident">usize</span>,
+<span class="attribute">#[derive(Debug, Default)] </span><span class="comment">// Default can be used to initialize structure with 0
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MemoryAttrs {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) key_size: usize,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) btree_entry_size: usize,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) records_allocated: usize,
+    <span class="comment">// contains actual size occupied by record header in RAM (which helps
+    // to compute actual size of indices in RAM in `InMemory` state)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) record_header_size: usize,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) records_count: usize,
 }
 
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+<span class="kw">pub type </span>InMemoryIndex&lt;K&gt; = BTreeMap&lt;K, Vec&lt;RecordHeader&gt;&gt;;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">State</span><span class="op">&lt;</span><span class="ident">FileIndex</span>, <span class="ident">K</span><span class="op">&gt;</span> {
-    <span class="ident">InMemory</span>(<span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>),
-    <span class="ident">OnDisk</span>(<span class="ident">FileIndex</span>),
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>State&lt;FileIndex, K&gt; {
+    InMemory(InMemoryIndex&lt;K&gt;),
+    OnDisk(FileIndex),
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">FileIndex</span>, <span class="ident">K</span><span class="op">&gt;</span> <span class="ident">IndexStruct</span><span class="op">&lt;</span><span class="ident">FileIndex</span>, <span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">FileIndex</span>: <span class="ident">FileIndexTrait</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;FileIndex, K&gt; IndexStruct&lt;FileIndex, K&gt;
+<span class="kw">where
+    </span>FileIndex: FileIndexTrait&lt;K&gt;,
+    <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
 {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">name</span>: <span class="ident">FileName</span>, <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>, <span class="ident">config</span>: <span class="ident">IndexConfig</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="ident">IndexParams::new</span>(<span class="ident">config</span>.<span class="ident">bloom_config</span>.<span class="ident">is_some</span>(), <span class="ident">config</span>.<span class="ident">recreate_index_file</span>);
-        <span class="kw">let</span> <span class="ident">bloom_filter</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">params</span>.<span class="ident">bloom_is_on</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">config</span>.<span class="ident">bloom_config</span>.<span class="ident">map</span>(<span class="ident">Bloom::new</span>).<span class="ident">unwrap_or_default</span>())
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        };
-        <span class="kw">let</span> <span class="ident">mem</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Default::default</span>());
-        <span class="self">Self</span> {
-            <span class="ident">params</span>,
-            <span class="ident">filter</span>: <span class="ident">CombinedFilter::new</span>(<span class="ident">bloom_filter</span>, <span class="ident">RangeFilter::new</span>()),
-            <span class="ident">bloom_offset</span>: <span class="prelude-val">None</span>,
-            <span class="ident">inner</span>: <span class="ident">State::InMemory</span>(<span class="ident">BTreeMap::new</span>()),
-            <span class="ident">mem</span>,
-            <span class="ident">name</span>,
-            <span class="ident">ioring</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(name: FileName, ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;, config: IndexConfig) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
+        <span class="kw">let </span>bloom_filter = <span class="kw">if </span>params.bloom_is_on {
+            <span class="prelude-val">Some</span>(config.bloom_config.map(Bloom::new).unwrap_or_default())
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
+        <span class="kw">let </span>mem = <span class="prelude-val">Some</span>(Default::default());
+        <span class="self">Self </span>{
+            params,
+            filter: CombinedFilter::new(bloom_filter, RangeFilter::new()),
+            bloom_offset: <span class="prelude-val">None</span>,
+            inner: State::InMemory(BTreeMap::new()),
+            mem,
+            name,
+            ioring,
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span> <span class="op">=</span> <span class="ident">State::InMemory</span>(<span class="ident">BTreeMap::new</span>());
-        <span class="self">self</span>.<span class="ident">mem</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Default::default</span>());
-        <span class="self">self</span>.<span class="ident">filter</span>.<span class="ident">clear_filter</span>();
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.inner = State::InMemory(BTreeMap::new());
+        <span class="self">self</span>.mem = <span class="prelude-val">Some</span>(Default::default());
+        <span class="self">self</span>.filter.clear_filter();
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">offload_filter</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">on_disk</span>() {
-            <span class="self">self</span>.<span class="ident">filter</span>.<span class="ident">offload_filter</span>()
-        } <span class="kw">else</span> {
-            <span class="number">0</span>
-        }
+    <span class="kw">pub fn </span>offload_filter(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; usize {
+        <span class="kw">if </span><span class="self">self</span>.on_disk() {
+            <span class="self">self</span>.filter.offload_filter()
+        } <span class="kw">else </span>{
+            <span class="number">0
+        </span>}
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_filter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">CombinedFilter</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">filter</span>
+    <span class="kw">pub fn </span>get_filter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>CombinedFilter&lt;K&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.filter
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">FileName</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>FileName {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.name
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">from_file</span>(
-        <span class="ident">name</span>: <span class="ident">FileName</span>,
-        <span class="ident">config</span>: <span class="ident">IndexConfig</span>,
-        <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>,
-        <span class="ident">blob_size</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">findex</span> <span class="op">=</span> <span class="ident">FileIndex::from_file</span>(<span class="ident">name</span>.<span class="ident">clone</span>(), <span class="ident">ioring</span>.<span class="ident">clone</span>()).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="ident">findex</span>
-            .<span class="ident">validate</span>(<span class="ident">blob_size</span>)
-            .<span class="ident">with_context</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;Header is corrupt&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">meta_buf</span> <span class="op">=</span> <span class="ident">findex</span>.<span class="ident">read_meta</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> (<span class="ident">bloom_filter</span>, <span class="ident">range_filter</span>, <span class="ident">bloom_offset</span>) <span class="op">=</span> <span class="ident"><span class="self">Self</span>::deserialize_filters</span>(<span class="kw-2">&amp;</span><span class="ident">meta_buf</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="ident">IndexParams::new</span>(<span class="ident">config</span>.<span class="ident">bloom_config</span>.<span class="ident">is_some</span>(), <span class="ident">config</span>.<span class="ident">recreate_index_file</span>);
-        <span class="kw">let</span> <span class="ident">bloom_filter</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">params</span>.<span class="ident">bloom_is_on</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">bloom_filter</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        };
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>from_file(
+        name: FileName,
+        config: IndexConfig,
+        ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
+        blob_size: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span>findex = FileIndex::from_file(name.clone(), ioring.clone()).<span class="kw">await</span><span class="question-mark">?</span>;
+        findex
+            .validate(blob_size)
+            .with_context(|| <span class="string">&quot;Header is corrupt&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>meta_buf = findex.read_meta().<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>(bloom_filter, range_filter, bloom_offset) = <span class="self">Self</span>::deserialize_filters(<span class="kw-2">&amp;</span>meta_buf)<span class="question-mark">?</span>;
+        <span class="kw">let </span>params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
+        <span class="kw">let </span>bloom_filter = <span class="kw">if </span>params.bloom_is_on {
+            <span class="prelude-val">Some</span>(bloom_filter)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
         <span class="macro">trace!</span>(<span class="string">&quot;index restored successfuly&quot;</span>);
-        <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="self">Self</span> {
-            <span class="ident">inner</span>: <span class="ident">State::OnDisk</span>(<span class="ident">findex</span>),
-            <span class="ident">mem</span>: <span class="prelude-val">None</span>,
-            <span class="ident">name</span>,
-            <span class="ident">filter</span>: <span class="ident">CombinedFilter::new</span>(<span class="ident">bloom_filter</span>, <span class="ident">range_filter</span>),
-            <span class="ident">bloom_offset</span>: <span class="prelude-val">Some</span>(<span class="ident">bloom_offset</span> <span class="kw">as</span> <span class="ident">u64</span>),
-            <span class="ident">params</span>,
-            <span class="ident">ioring</span>,
+        <span class="kw">let </span>index = <span class="self">Self </span>{
+            inner: State::OnDisk(findex),
+            mem: <span class="prelude-val">None</span>,
+            name,
+            filter: CombinedFilter::new(bloom_filter, range_filter),
+            bloom_offset: <span class="prelude-val">Some</span>(bloom_offset <span class="kw">as </span>u64),
+            params,
+            ioring,
         };
-        <span class="prelude-val">Ok</span>(<span class="ident">index</span>)
+        <span class="prelude-val">Ok</span>(index)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">on_disk</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="macro">matches!</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>, <span class="ident">State::OnDisk</span>(<span class="kw">_</span>))
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>on_disk(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="macro">matches!</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.inner, State::OnDisk(<span class="kw">_</span>))
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">dump_in_memory</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">blob_size</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">State::InMemory</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="kw">if</span> <span class="ident">headers</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="number">0</span>);
+    <span class="kw">async fn </span>dump_in_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
+        <span class="kw">if let </span>State::InMemory(headers) = <span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            <span class="kw">if </span>headers.len() == <span class="number">0 </span>{
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="number">0</span>);
             }
-            <span class="macro">debug!</span>(<span class="string">&quot;blob index simple in memory headers {}&quot;</span>, <span class="ident">headers</span>.<span class="ident">len</span>());
-            <span class="kw">let</span> (<span class="ident">meta_buf</span>, <span class="ident">bloom_offset</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">serialize_filters</span>()<span class="question-mark">?</span>;
-            <span class="self">self</span>.<span class="ident">bloom_offset</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">bloom_offset</span> <span class="kw">as</span> <span class="ident">u64</span>);
-            <span class="kw">let</span> <span class="ident">findex</span> <span class="op">=</span> <span class="ident">FileIndex::from_records</span>(
-                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name</span>.<span class="ident">to_path</span>(),
-                <span class="self">self</span>.<span class="ident">ioring</span>.<span class="ident">clone</span>(),
-                <span class="ident">headers</span>,
-                <span class="ident">meta_buf</span>,
-                <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">recreate_file</span>,
-                <span class="ident">blob_size</span>,
+            <span class="macro">debug!</span>(<span class="string">&quot;blob index simple in memory headers {}&quot;</span>, headers.len());
+            <span class="kw">let </span>(meta_buf, bloom_offset) = <span class="self">self</span>.serialize_filters()<span class="question-mark">?</span>;
+            <span class="self">self</span>.bloom_offset = <span class="prelude-val">Some</span>(bloom_offset <span class="kw">as </span>u64);
+            <span class="kw">let </span>findex = FileIndex::from_records(
+                <span class="kw-2">&amp;</span><span class="self">self</span>.name.to_path(),
+                <span class="self">self</span>.ioring.clone(),
+                headers,
+                meta_buf,
+                <span class="self">self</span>.params.recreate_file,
+                blob_size,
             )
             .<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">findex</span>.<span class="ident">file_size</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-            <span class="self">self</span>.<span class="ident">inner</span> <span class="op">=</span> <span class="ident">State::OnDisk</span>(<span class="ident">findex</span>);
-            <span class="self">self</span>.<span class="ident">mem</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-            <span class="prelude-val">Ok</span>(<span class="ident">size</span>)
-        } <span class="kw">else</span> {
+            <span class="kw">let </span>size = findex.file_size() <span class="kw">as </span>usize;
+            <span class="self">self</span>.inner = State::OnDisk(findex);
+            <span class="self">self</span>.mem = <span class="prelude-val">None</span>;
+            <span class="prelude-val">Ok</span>(size)
+        } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(<span class="number">0</span>)
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">serialize_filters</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">usize</span>)<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">range_buf</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">filter</span>.<span class="ident">range</span>().<span class="ident">to_raw</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">range_buf_size</span> <span class="op">=</span> <span class="ident">range_buf</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="kw">let</span> <span class="ident">bloom_buf</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">filter</span>
-            .<span class="ident">bloom</span>()
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">map_or</span>(<span class="ident">Bloom::default</span>().<span class="ident">to_raw</span>(), <span class="op">|</span><span class="ident">bloom</span><span class="op">|</span> <span class="ident">bloom</span>.<span class="ident">to_raw</span>())<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">size_of</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>() <span class="op">+</span> <span class="ident">range_buf</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="ident">bloom_buf</span>.<span class="ident">len</span>());
-        <span class="kw">let</span> <span class="ident">bloom_offset</span> <span class="op">=</span> <span class="ident">size_of</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>() <span class="op">+</span> <span class="ident">range_buf</span>.<span class="ident">len</span>();
-        <span class="ident">buf</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">range_buf_size</span>)<span class="question-mark">?</span>);
-        <span class="ident">buf</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">range_buf</span>);
-        <span class="ident">buf</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">bloom_buf</span>);
-        <span class="prelude-val">Ok</span>((<span class="ident">buf</span>, <span class="ident">bloom_offset</span>))
+    <span class="kw">fn </span>serialize_filters(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, usize)&gt; {
+        <span class="kw">let </span>range_buf = <span class="self">self</span>.filter.range().to_raw()<span class="question-mark">?</span>;
+        <span class="kw">let </span>range_buf_size = range_buf.len() <span class="kw">as </span>u64;
+        <span class="kw">let </span>bloom_buf = <span class="self">self
+            </span>.filter
+            .bloom()
+            .as_ref()
+            .map_or(Bloom::default().to_raw(), |bloom| bloom.to_raw())<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::with_capacity(size_of::&lt;u64&gt;() + range_buf.len() + bloom_buf.len());
+        <span class="kw">let </span>bloom_offset = size_of::&lt;u64&gt;() + range_buf.len();
+        buf.extend_from_slice(<span class="kw-2">&amp;</span>serialize(<span class="kw-2">&amp;</span>range_buf_size)<span class="question-mark">?</span>);
+        buf.extend_from_slice(<span class="kw-2">&amp;</span>range_buf);
+        buf.extend_from_slice(<span class="kw-2">&amp;</span>bloom_buf);
+        <span class="prelude-val">Ok</span>((buf, bloom_offset))
     }
 
-    <span class="kw">fn</span> <span class="ident">deserialize_filters</span>(<span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Bloom</span>, <span class="ident">RangeFilter</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>, <span class="ident">usize</span>)<span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">range_size_buf</span>, <span class="ident">rest_buf</span>) <span class="op">=</span> <span class="ident">buf</span>.<span class="ident">split_at</span>(<span class="ident">size_of</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>());
-        <span class="kw">let</span> <span class="ident">range_size</span> <span class="op">=</span> <span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">range_size_buf</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> (<span class="ident">range_buf</span>, <span class="ident">bloom_buf</span>) <span class="op">=</span> <span class="ident">rest_buf</span>.<span class="ident">split_at</span>(<span class="ident">range_size</span>);
-        <span class="kw">let</span> <span class="ident">bloom</span> <span class="op">=</span> <span class="ident">Bloom::from_raw</span>(<span class="ident">bloom_buf</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">range</span> <span class="op">=</span> <span class="ident">RangeFilter</span>::<span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span><span class="ident">::from_raw</span>(<span class="ident">range_buf</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((<span class="ident">bloom</span>, <span class="ident">range</span>, <span class="ident">range_size</span> <span class="op">+</span> <span class="ident">size_of</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>()))
+    <span class="kw">fn </span>deserialize_filters(buf: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(Bloom, RangeFilter&lt;K&gt;, usize)&gt; {
+        <span class="kw">let </span>(range_size_buf, rest_buf) = buf.split_at(size_of::&lt;u64&gt;());
+        <span class="kw">let </span>range_size = deserialize(<span class="kw-2">&amp;</span>range_size_buf)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(range_buf, bloom_buf) = rest_buf.split_at(range_size);
+        <span class="kw">let </span>bloom = Bloom::from_raw(bloom_buf)<span class="question-mark">?</span>;
+        <span class="kw">let </span>range = RangeFilter::&lt;K&gt;::from_raw(range_buf)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((bloom, range, range_size + size_of::&lt;u64&gt;()))
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">load_in_memory</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">findex</span>: <span class="ident">FileIndex</span>, <span class="ident">blob_size</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">record_headers</span>, <span class="ident">records_count</span>) <span class="op">=</span> <span class="ident">findex</span>.<span class="ident">get_records_headers</span>(<span class="ident">blob_size</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">mem</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">compute_mem_attrs</span>(<span class="kw-2">&amp;</span><span class="ident">record_headers</span>, <span class="ident">records_count</span>));
-        <span class="self">self</span>.<span class="ident">inner</span> <span class="op">=</span> <span class="ident">State::InMemory</span>(<span class="ident">record_headers</span>);
-        <span class="kw">let</span> <span class="ident">meta_buf</span> <span class="op">=</span> <span class="ident">findex</span>.<span class="ident">read_meta</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> (<span class="ident">bloom_filter</span>, <span class="ident">range_filter</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident"><span class="self">Self</span>::deserialize_filters</span>(<span class="kw-2">&amp;</span><span class="ident">meta_buf</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">bloom_filter</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">bloom_is_on</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">bloom_filter</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        };
-        <span class="self">self</span>.<span class="ident">filter</span> <span class="op">=</span> <span class="ident">CombinedFilter::new</span>(<span class="ident">bloom_filter</span>, <span class="ident">range_filter</span>);
-        <span class="self">self</span>.<span class="ident">bloom_offset</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+    <span class="kw">async fn </span>load_in_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>, findex: FileIndex, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>(record_headers, records_count) = findex.get_records_headers(blob_size).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="self">self</span>.mem = <span class="prelude-val">Some</span>(compute_mem_attrs(<span class="kw-2">&amp;</span>record_headers, records_count));
+        <span class="self">self</span>.inner = State::InMemory(record_headers);
+        <span class="kw">let </span>meta_buf = findex.read_meta().<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>(bloom_filter, range_filter, <span class="kw">_</span>) = <span class="self">Self</span>::deserialize_filters(<span class="kw-2">&amp;</span>meta_buf)<span class="question-mark">?</span>;
+        <span class="kw">let </span>bloom_filter = <span class="kw">if </span><span class="self">self</span>.params.bloom_is_on {
+            <span class="prelude-val">Some</span>(bloom_filter)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
+        <span class="self">self</span>.filter = CombinedFilter::new(bloom_filter, range_filter);
+        <span class="self">self</span>.bloom_offset = <span class="prelude-val">None</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">memory_used</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">State::InMemory</span>(<span class="ident">data</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="kw">let</span> <span class="ident">mem</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">mem</span>
-                .<span class="ident">as_ref</span>()
-                .<span class="ident">expect</span>(<span class="string">&quot;No memory info in `InMemory` State&quot;</span>);
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>memory_used(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="kw">if let </span>State::InMemory(data) = <span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            <span class="kw">let </span>mem = <span class="self">self
+                </span>.mem
+                .as_ref()
+                .expect(<span class="string">&quot;No memory info in `InMemory` State&quot;</span>);
             <span class="macro">trace!</span>(<span class="string">&quot;record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}&quot;</span>,
-            <span class="ident">mem</span>.<span class="ident">record_header_size</span>, <span class="ident">mem</span>.<span class="ident">records_allocated</span>, <span class="ident">data</span>.<span class="ident">len</span>(), <span class="ident">mem</span>.<span class="ident">btree_entry_size</span>
+            mem.record_header_size, mem.records_allocated, data.len(), mem.btree_entry_size
             );
-            <span class="comment">// last minus is neccessary, because allocated but not initialized record headers don&#39;t</span>
-            <span class="comment">// have key allocated on heap</span>
-            <span class="ident">mem</span>.<span class="ident">record_header_size</span> <span class="op">*</span> <span class="ident">mem</span>.<span class="ident">records_allocated</span> <span class="op">+</span> <span class="ident">data</span>.<span class="ident">len</span>() <span class="op">*</span> <span class="ident">mem</span>.<span class="ident">btree_entry_size</span>
-                <span class="op">-</span> (<span class="ident">mem</span>.<span class="ident">records_allocated</span> <span class="op">-</span> <span class="ident">mem</span>.<span class="ident">records_count</span>) <span class="op">*</span> <span class="ident">mem</span>.<span class="ident">key_size</span>
-        } <span class="kw">else</span> {
-            <span class="number">0</span>
-        }
+            <span class="comment">// last minus is neccessary, because allocated but not initialized record headers don&#39;t
+            // have key allocated on heap
+            </span>mem.record_header_size * mem.records_allocated + data.len() * mem.btree_entry_size
+                - (mem.records_allocated - mem.records_count) * mem.key_size
+        } <span class="kw">else </span>{
+            <span class="number">0
+        </span>}
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">disk_used</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">State::OnDisk</span>(<span class="ident">file</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="ident">file</span>.<span class="ident">file_size</span>()
-        } <span class="kw">else</span> {
-            <span class="number">0</span>
-        }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>disk_used(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="kw">if let </span>State::OnDisk(file) = <span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            file.file_size()
+        } <span class="kw">else </span>{
+            <span class="number">0
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">mark_all_as_deleted_in_memory</span>(<span class="ident">headers</span>: <span class="kw-2">&amp;mut</span> <span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="macro">debug!</span>(<span class="string">&quot;headers: {}&quot;</span>, <span class="ident">headers</span>.<span class="ident">len</span>());
-        <span class="ident">headers</span>.<span class="ident">remove</span>(<span class="ident">key</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>)
+    <span class="kw">fn </span>mark_all_as_deleted_in_memory(headers: <span class="kw-2">&amp;mut </span>InMemoryIndex&lt;K&gt;, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;headers: {}&quot;</span>, headers.len());
+        headers.remove(key).map(|v| v.len() <span class="kw">as </span>u64)
     }
 }
 
-<span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">FileIndex</span>, <span class="ident">K</span><span class="op">&gt;</span> <span class="ident">IndexTrait</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">IndexStruct</span><span class="op">&lt;</span><span class="ident">FileIndex</span>, <span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">FileIndex</span>: <span class="ident">FileIndexTrait</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span>,
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+<span class="attribute">#[async_trait::async_trait]
+</span><span class="kw">impl</span>&lt;FileIndex, K&gt; IndexTrait&lt;K&gt; <span class="kw">for </span>IndexStruct&lt;FileIndex, K&gt;
+<span class="kw">where
+    </span>FileIndex: FileIndexTrait&lt;K&gt; + Clone,
+    <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
 {
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_any</span>(<span class="ident">key</span>).<span class="kw">await</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">is_some</span>())
+    <span class="kw">async fn </span>contains_key(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+        <span class="self">self</span>.get_any(key).<span class="kw">await</span>.map(|h| h.is_some())
     }
 
-    <span class="kw">fn</span> <span class="ident">push</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">h</span>: <span class="ident">RecordHeader</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, h: RecordHeader) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob index simple push&quot;</span>);
-        <span class="kw">match</span> <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="ident">State::InMemory</span>(<span class="ident">headers</span>) =&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.inner {
+            State::InMemory(headers) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;blob index simple push bloom filter add&quot;</span>);
-                <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">h</span>.<span class="ident">key</span>().<span class="ident">to_vec</span>().<span class="ident">into</span>();
-                <span class="self">self</span>.<span class="ident">filter</span>.<span class="ident">add</span>(<span class="kw-2">&amp;</span><span class="ident">key</span>);
-                <span class="macro">debug!</span>(<span class="string">&quot;blob index simple push key: {:?}&quot;</span>, <span class="ident">h</span>.<span class="ident">key</span>());
-                <span class="kw">let</span> <span class="ident">mem</span> <span class="op">=</span> <span class="self">self</span>
-                    .<span class="ident">mem</span>
-                    .<span class="ident">as_mut</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;No memory info in `InMemory` State&quot;</span>);
-                <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">h</span>.<span class="ident">key</span>().<span class="ident">to_vec</span>().<span class="ident">into</span>();
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">key</span>) {
-                    <span class="kw">let</span> <span class="ident">old_capacity</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">capacity</span>();
-                    <span class="ident">v</span>.<span class="ident">push</span>(<span class="ident">h</span>);
-                    <span class="macro">trace!</span>(<span class="string">&quot;capacity growth: {}&quot;</span>, <span class="ident">v</span>.<span class="ident">capacity</span>() <span class="op">-</span> <span class="ident">old_capacity</span>);
-                    <span class="ident">mem</span>.<span class="ident">records_allocated</span> <span class="op">+</span><span class="op">=</span> <span class="ident">v</span>.<span class="ident">capacity</span>() <span class="op">-</span> <span class="ident">old_capacity</span>;
-                } <span class="kw">else</span> {
-                    <span class="kw">if</span> <span class="ident">mem</span>.<span class="ident">records_count</span> <span class="op">==</span> <span class="number">0</span> {
-                        <span class="ident">set_key_related_fields</span>::<span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>(<span class="ident">mem</span>);
+                <span class="kw">let </span>key = h.key().to_vec().into();
+                <span class="self">self</span>.filter.add(<span class="kw-2">&amp;</span>key);
+                <span class="macro">debug!</span>(<span class="string">&quot;blob index simple push key: {:?}&quot;</span>, h.key());
+                <span class="kw">let </span>mem = <span class="self">self
+                    </span>.mem
+                    .as_mut()
+                    .expect(<span class="string">&quot;No memory info in `InMemory` State&quot;</span>);
+                <span class="kw">let </span>key = h.key().to_vec().into();
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = headers.get_mut(<span class="kw-2">&amp;</span>key) {
+                    <span class="kw">let </span>old_capacity = v.capacity();
+                    v.push(h);
+                    <span class="macro">trace!</span>(<span class="string">&quot;capacity growth: {}&quot;</span>, v.capacity() - old_capacity);
+                    mem.records_allocated += v.capacity() - old_capacity;
+                } <span class="kw">else </span>{
+                    <span class="kw">if </span>mem.records_count == <span class="number">0 </span>{
+                        set_key_related_fields::&lt;K&gt;(mem);
                     }
-                    <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">h</span>];
-                    <span class="ident">mem</span>.<span class="ident">records_allocated</span> <span class="op">+</span><span class="op">=</span> <span class="ident">v</span>.<span class="ident">capacity</span>(); <span class="comment">// capacity == 1</span>
-                    <span class="ident">headers</span>.<span class="ident">insert</span>(<span class="ident">key</span>, <span class="ident">v</span>);
+                    <span class="kw">let </span>v = <span class="macro">vec!</span>[h];
+                    mem.records_allocated += v.capacity(); <span class="comment">// capacity == 1
+                    </span>headers.insert(key, v);
                 }
-                <span class="ident">mem</span>.<span class="ident">records_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                mem.records_count += <span class="number">1</span>;
                 <span class="prelude-val">Ok</span>(())
             }
-            <span class="ident">State::OnDisk</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">Error::from</span>(<span class="ident">ErrorKind::Index</span>(
-                <span class="string">&quot;Index is closed, push is unavalaible&quot;</span>.<span class="ident">to_string</span>(),
+            State::OnDisk(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(Error::from(ErrorKind::Index(
+                <span class="string">&quot;Index is closed, push is unavalaible&quot;</span>.to_string(),
             ))
-            .<span class="ident">into</span>()),
+            .into()),
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_all</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="ident">State::InMemory</span>(<span class="ident">headers</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">headers</span>.<span class="ident">get</span>(<span class="ident">key</span>).<span class="ident">cloned</span>()),
-            <span class="ident">State::OnDisk</span>(<span class="ident">findex</span>) =&gt; <span class="ident">findex</span>.<span class="ident">find_by_key</span>(<span class="ident">key</span>).<span class="kw">await</span>,
+    <span class="kw">async fn </span>get_all(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;RecordHeader&gt;&gt;&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            State::InMemory(headers) =&gt; <span class="prelude-val">Ok</span>(headers.get(key).cloned()),
+            State::OnDisk(findex) =&gt; findex.find_by_key(key).<span class="kw">await</span>,
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_any</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">async fn </span>get_any(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;RecordHeader&gt;&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;index get any&quot;</span>);
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="ident">State::InMemory</span>(<span class="ident">headers</span>) =&gt; {
-                <span class="macro">debug!</span>(<span class="string">&quot;index get any in memory headers: {}&quot;</span>, <span class="ident">headers</span>.<span class="ident">len</span>());
-                <span class="comment">// in memory indexes with same key are stored in ascending order, so the last</span>
-                <span class="comment">// by adding time record is last in list (in b+tree disk index it&#39;s first)</span>
-                <span class="prelude-val">Ok</span>(<span class="ident">headers</span>.<span class="ident">get</span>(<span class="ident">key</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">last</span>()).<span class="ident">cloned</span>())
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            State::InMemory(headers) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;index get any in memory headers: {}&quot;</span>, headers.len());
+                <span class="comment">// in memory indexes with same key are stored in ascending order, so the last
+                // by adding time record is last in list (in b+tree disk index it&#39;s first)
+                </span><span class="prelude-val">Ok</span>(headers.get(key).and_then(|h| h.last()).cloned())
             }
-            <span class="ident">State::OnDisk</span>(<span class="ident">findex</span>) =&gt; {
+            State::OnDisk(findex) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;index get any on disk&quot;</span>);
-                <span class="kw">let</span> <span class="ident">header</span> <span class="op">=</span> <span class="ident">findex</span>.<span class="ident">get_any</span>(<span class="ident">key</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="ident">header</span>)
+                <span class="kw">let </span>header = findex.get_any(key).<span class="kw">await</span><span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(header)
             }
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">dump</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">blob_size</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">dump_in_memory</span>(<span class="ident">blob_size</span>).<span class="kw">await</span>
-    }
+    <span class="kw">async fn </span>dump(<span class="kw-2">&amp;mut </span><span class="self">self</span>, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
+        <span class="self">self</span>.dump_in_memory(blob_size).<span class="kw">await
+    </span>}
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">load</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">blob_size</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="ident">State::InMemory</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-            <span class="ident">State::OnDisk</span>(<span class="ident">findex</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">findex</span> <span class="op">=</span> <span class="ident">findex</span>.<span class="ident">clone</span>();
-                <span class="self">self</span>.<span class="ident">load_in_memory</span>(<span class="ident">findex</span>, <span class="ident">blob_size</span>).<span class="kw">await</span>
-            }
+    <span class="kw">async fn </span>load(<span class="kw-2">&amp;mut </span><span class="self">self</span>, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            State::InMemory(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+            State::OnDisk(findex) =&gt; {
+                <span class="kw">let </span>findex = findex.clone();
+                <span class="self">self</span>.load_in_memory(findex, blob_size).<span class="kw">await
+            </span>}
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="ident">State::OnDisk</span>(<span class="kw-2">ref</span> <span class="ident">findex</span>) =&gt; <span class="ident">findex</span>.<span class="ident">records_count</span>(),
-            <span class="ident">State::InMemory</span>(<span class="kw">_</span>) =&gt; <span class="self">self</span>
-                .<span class="ident">mem</span>
-                .<span class="ident">as_ref</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">mem</span><span class="op">|</span> <span class="ident">mem</span>.<span class="ident">records_count</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;No memory info in `InMemory` State&quot;</span>),
+    <span class="kw">fn </span>count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="kw">match </span><span class="self">self</span>.inner {
+            State::OnDisk(<span class="kw-2">ref </span>findex) =&gt; findex.records_count(),
+            State::InMemory(<span class="kw">_</span>) =&gt; <span class="self">self
+                </span>.mem
+                .as_ref()
+                .map(|mem| mem.records_count)
+                .expect(<span class="string">&quot;No memory info in `InMemory` State&quot;</span>),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">mark_all_as_deleted</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">debug!</span>(<span class="string">&quot;mark all as deleted by {:?} key&quot;</span>, <span class="ident">key</span>);
-        <span class="kw">match</span> <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="ident">State::InMemory</span>(<span class="ident">headers</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::mark_all_as_deleted_in_memory</span>(<span class="ident">headers</span>, <span class="ident">key</span>)),
-            <span class="ident">State::OnDisk</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">Error::from</span>(<span class="ident">ErrorKind::Index</span>(
-                <span class="string">&quot;Index is closed, delete is unavalaible&quot;</span>.<span class="ident">to_string</span>(),
+    <span class="kw">fn </span>mark_all_as_deleted(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;u64&gt;&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;mark all as deleted by {:?} key&quot;</span>, key);
+        <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.inner {
+            State::InMemory(headers) =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::mark_all_as_deleted_in_memory(headers, key)),
+            State::OnDisk(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(Error::from(ErrorKind::Index(
+                <span class="string">&quot;Index is closed, delete is unavalaible&quot;</span>.to_string(),
             ))
-            .<span class="ident">into</span>()),
+            .into()),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait</span> <span class="ident">FileIndexTrait</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>: <span class="ident">Sized</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">from_file</span>(<span class="ident">name</span>: <span class="ident">FileName</span>, <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>;
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">from_records</span>(
-        <span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>,
-        <span class="ident">rio</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>,
-        <span class="ident">headers</span>: <span class="kw-2">&amp;</span><span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-        <span class="ident">meta</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-        <span class="ident">recreate_index_file</span>: <span class="ident">bool</span>,
-        <span class="ident">blob_size</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">file_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span>;
-    <span class="kw">fn</span> <span class="ident">records_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span>;
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_meta</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>;
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_meta_at</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">i</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>;
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">find_by_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>;
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_records_headers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blob_size</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>, <span class="ident">usize</span>)<span class="op">&gt;</span>;
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_any</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blob_size</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span>;
+<span class="attribute">#[async_trait::async_trait]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>FileIndexTrait&lt;K&gt;: Sized + Send + Sync {
+    <span class="kw">async fn </span>from_file(name: FileName, ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt;;
+    <span class="kw">async fn </span>from_records(
+        path: <span class="kw-2">&amp;</span>Path,
+        rio: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
+        headers: <span class="kw-2">&amp;</span>InMemoryIndex&lt;K&gt;,
+        meta: Vec&lt;u8&gt;,
+        recreate_index_file: bool,
+        blob_size: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt;;
+    <span class="kw">fn </span>file_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64;
+    <span class="kw">fn </span>records_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
+    <span class="kw">async fn </span>read_meta(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt;;
+    <span class="kw">async fn </span>read_meta_at(<span class="kw-2">&amp;</span><span class="self">self</span>, i: u64) -&gt; <span class="prelude-ty">Result</span>&lt;u8&gt;;
+    <span class="kw">async fn </span>find_by_key(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;RecordHeader&gt;&gt;&gt;;
+    <span class="kw">async fn </span>get_records_headers(<span class="kw-2">&amp;</span><span class="self">self</span>, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(InMemoryIndex&lt;K&gt;, usize)&gt;;
+    <span class="kw">async fn </span>get_any(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;RecordHeader&gt;&gt;;
+    <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;;
 }
 
-<span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">FileIndex</span>, <span class="ident">K</span><span class="op">&gt;</span> <span class="ident">BloomDataProvider</span> <span class="kw">for</span> <span class="ident">IndexStruct</span><span class="op">&lt;</span><span class="ident">FileIndex</span>, <span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">FileIndex</span>: <span class="ident">FileIndexTrait</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+<span class="attribute">#[async_trait::async_trait]
+</span><span class="kw">impl</span>&lt;FileIndex, K&gt; BloomDataProvider <span class="kw">for </span>IndexStruct&lt;FileIndex, K&gt;
+<span class="kw">where
+    </span>FileIndex: FileIndexTrait&lt;K&gt;,
+    <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
 {
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_byte</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span> {
-            <span class="ident">State::OnDisk</span>(<span class="ident">findex</span>) =&gt; {
-                <span class="ident">findex</span>
-                    .<span class="ident">read_meta_at</span>(<span class="ident">index</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">bloom_offset</span>.<span class="ident">expect</span>(<span class="string">&quot;should be set after dump&quot;</span>))
-                    .<span class="kw">await</span>
-            }
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="macro">anyhow::anyhow!</span>(<span class="string">&quot;Can&#39;t read from in-memory index&quot;</span>)),
+    <span class="kw">async fn </span>read_byte(<span class="kw-2">&amp;</span><span class="self">self</span>, index: u64) -&gt; <span class="prelude-ty">Result</span>&lt;u8&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            State::OnDisk(findex) =&gt; {
+                findex
+                    .read_meta_at(index + <span class="self">self</span>.bloom_offset.expect(<span class="string">&quot;should be set after dump&quot;</span>))
+                    .<span class="kw">await
+            </span>}
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="macro">anyhow::anyhow!</span>(<span class="string">&quot;Can&#39;t read from in-memory index&quot;</span>)),
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

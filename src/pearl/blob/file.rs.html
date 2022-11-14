@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/file.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>file.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/file.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>file.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -224,227 +219,226 @@
 <span id="219">219</span>
 <span id="220">220</span>
 <span id="221">221</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">os::unix::prelude</span>::{<span class="ident">AsRawFd</span>, <span class="ident">FileExt</span>},
-    <span class="ident">time::SystemTime</span>,
+</pre><pre class="rust"><code><span class="kw">use </span>std::{
+    os::unix::prelude::{AsRawFd, FileExt},
+    time::SystemTime,
 };
 
-<span class="kw">use</span> <span class="ident">nix</span>::{<span class="ident">errno::Errno</span>, <span class="ident">fcntl::FcntlArg</span>};
+<span class="kw">use </span>nix::{errno::Errno, fcntl::FcntlArg};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">File</span> {
-    <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>,
-    <span class="ident">no_lock_fd</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">StdFile</span><span class="op">&gt;</span>, <span class="comment">// requires only for read_at/write_at methods</span>
-    <span class="ident">size</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">AtomicU64</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>File {
+    ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
+    no_lock_fd: Arc&lt;StdFile&gt;, <span class="comment">// requires only for read_at/write_at methods
+    </span>size: Arc&lt;AtomicU64&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">enum</span> <span class="ident">LockAcquisitionResult</span> {
-    <span class="ident">Acquired</span>,
-    <span class="ident">AlreadyLocked</span>,
-    <span class="ident">Error</span>(<span class="ident">Errno</span>),
+<span class="attribute">#[derive(PartialEq, Eq)]
+</span><span class="kw">enum </span>LockAcquisitionResult {
+    Acquired,
+    AlreadyLocked,
+    Error(Errno),
 }
 
-<span class="kw">impl</span> <span class="ident">File</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open</span>(<span class="ident">path</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;</span>, <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>) -&gt; <span class="ident">IOResult</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="ident"><span class="self">Self</span>::from_file</span>(<span class="ident">path</span>, <span class="op">|</span><span class="ident">f</span><span class="op">|</span> <span class="ident">f</span>.<span class="ident">create</span>(<span class="bool-val">false</span>).<span class="ident">append</span>(<span class="bool-val">true</span>).<span class="ident">read</span>(<span class="bool-val">true</span>), <span class="ident">ioring</span>).<span class="kw">await</span>
-    }
+<span class="kw">impl </span>File {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>open(path: <span class="kw">impl </span>AsRef&lt;Path&gt;, ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;) -&gt; IOResult&lt;<span class="self">Self</span>&gt; {
+        <span class="self">Self</span>::from_file(path, |f| f.create(<span class="bool-val">false</span>).append(<span class="bool-val">true</span>).read(<span class="bool-val">true</span>), ioring).<span class="kw">await
+    </span>}
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">path</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;</span>, <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>) -&gt; <span class="ident">IOResult</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="ident"><span class="self">Self</span>::from_file</span>(<span class="ident">path</span>, <span class="op">|</span><span class="ident">f</span><span class="op">|</span> <span class="ident">f</span>.<span class="ident">create</span>(<span class="bool-val">true</span>).<span class="ident">write</span>(<span class="bool-val">true</span>).<span class="ident">read</span>(<span class="bool-val">true</span>), <span class="ident">ioring</span>).<span class="kw">await</span>
-    }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>create(path: <span class="kw">impl </span>AsRef&lt;Path&gt;, ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;) -&gt; IOResult&lt;<span class="self">Self</span>&gt; {
+        <span class="self">Self</span>::from_file(path, |f| f.create(<span class="bool-val">true</span>).write(<span class="bool-val">true</span>).read(<span class="bool-val">true</span>), ioring).<span class="kw">await
+    </span>}
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">from_file</span>(
-        <span class="ident">path</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;</span>,
-        <span class="ident">setup</span>: <span class="kw">impl</span> <span class="ident">Fn</span>(<span class="kw-2">&amp;mut</span> <span class="ident">OpenOptions</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">OpenOptions</span>,
-        <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">IOResult</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">file</span> <span class="op">=</span> <span class="ident">setup</span>(<span class="kw-2">&amp;mut</span> <span class="ident">OpenOptions::new</span>()).<span class="ident">open</span>(<span class="ident">path</span>.<span class="ident">as_ref</span>()).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">async fn </span>from_file(
+        path: <span class="kw">impl </span>AsRef&lt;Path&gt;,
+        setup: <span class="kw">impl </span>Fn(<span class="kw-2">&amp;mut </span>OpenOptions) -&gt; <span class="kw-2">&amp;mut </span>OpenOptions,
+        ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
+    ) -&gt; IOResult&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span>file = setup(<span class="kw-2">&amp;mut </span>OpenOptions::new()).open(path.as_ref()).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident"><span class="self">Self</span>::advisory_write_lock_file</span>(<span class="ident">file</span>.<span class="ident">as_raw_fd</span>()) <span class="op">==</span> <span class="ident">LockAcquisitionResult::AlreadyLocked</span>
+        <span class="kw">if </span><span class="self">Self</span>::advisory_write_lock_file(file.as_raw_fd()) == LockAcquisitionResult::AlreadyLocked
         {
-            <span class="macro">error!</span>(<span class="string">&quot;File {:?} is locked&quot;</span>, <span class="ident">path</span>.<span class="ident">as_ref</span>());
-            <span class="macro">panic!</span>(<span class="string">&quot;File {:?} is locked&quot;</span>, <span class="ident">path</span>.<span class="ident">as_ref</span>());
+            <span class="macro">error!</span>(<span class="string">&quot;File {:?} is locked&quot;</span>, path.as_ref());
+            <span class="macro">panic!</span>(<span class="string">&quot;File {:?} is locked&quot;</span>, path.as_ref());
         }
 
-        <span class="ident"><span class="self">Self</span>::from_tokio_file</span>(<span class="ident">file</span>, <span class="ident">ioring</span>).<span class="kw">await</span>
+        <span class="self">Self</span>::from_tokio_file(file, ioring).<span class="kw">await
+    </span>}
+
+    <span class="kw">pub fn </span>size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.size.load(ORD)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">size</span>.<span class="ident">load</span>(<span class="ident">ORD</span>)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_append(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;usize&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>ioring) = <span class="self">self</span>.ioring {
+            <span class="self">self</span>.write_append_aio(buf, ioring).<span class="kw">await
+        </span>} <span class="kw">else </span>{
+            <span class="self">self</span>.write_append_sync(buf).<span class="kw">await
+        </span>}
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write_append</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">IOResult</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">ioring</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ioring</span> {
-            <span class="self">self</span>.<span class="ident">write_append_aio</span>(<span class="ident">buf</span>, <span class="ident">ioring</span>).<span class="kw">await</span>
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">write_append_sync</span>(<span class="ident">buf</span>).<span class="kw">await</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_append_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;usize&gt; {
+        <span class="kw">let </span>offset = <span class="self">self</span>.size.fetch_add(buf.len() <span class="kw">as </span>u64, Ordering::SeqCst);
+        <span class="self">self</span>.write_at_sync(offset, buf).<span class="kw">await
+    </span>}
+
+    <span class="kw">async fn </span>write_append_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8], ioring: <span class="kw-2">&amp;</span>Rio) -&gt; IOResult&lt;usize&gt; {
+        <span class="kw">let </span>offset = <span class="self">self</span>.size.fetch_add(buf.len() <span class="kw">as </span>u64, Ordering::SeqCst);
+        <span class="self">self</span>.write_at_aio(offset, buf, ioring).<span class="kw">await
+    </span>}
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_at(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;usize&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>ioring) = <span class="self">self</span>.ioring {
+            <span class="self">self</span>.write_at_aio(offset, buf, ioring).<span class="kw">await
+        </span>} <span class="kw">else </span>{
+            <span class="self">self</span>.write_at_sync(offset, buf).<span class="kw">await
+        </span>}
+    }
+
+    <span class="kw">async fn </span>write_at_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: <span class="kw-2">&amp;</span>[u8], ioring: <span class="kw-2">&amp;</span>Rio) -&gt; IOResult&lt;usize&gt; {
+        <span class="kw">let </span>compl = ioring.write_at(<span class="kw-2">&amp;*</span><span class="self">self</span>.no_lock_fd, <span class="kw-2">&amp;</span>buf, offset);
+        <span class="kw">let </span>count = compl.<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="comment">// on blob level this error will be treated as unavailable file (rio doesn&#39;t return error
+        // in explicit format so we do that for it)
+        // P.S.: previous solution was to panic, where this situation appears, seems like this solution
+        // is a little better (for example, in case of cluster which contains few pearl storages it
+        // won&#39;t break the whole cluster, but only pass information outside, that last write wasn&#39;t sucessful)
+        </span><span class="kw">if </span>count &lt; buf.len() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(IOError::from_raw_os_error(<span class="number">5</span>));
         }
+        <span class="prelude-val">Ok</span>(count)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write_append_sync</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">IOResult</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">size</span>.<span class="ident">fetch_add</span>(<span class="ident">buf</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>, <span class="ident">Ordering::SeqCst</span>);
-        <span class="self">self</span>.<span class="ident">write_at_sync</span>(<span class="ident">offset</span>, <span class="ident">buf</span>).<span class="kw">await</span>
+    <span class="kw">async fn </span>write_at_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;usize&gt; {
+        <span class="kw">let </span>buf = buf.to_vec();
+        <span class="kw">let </span>file = <span class="self">self</span>.no_lock_fd.clone();
+        <span class="self">Self</span>::blocking_call(<span class="kw">move </span>|| file.write_at(<span class="kw-2">&amp;</span>buf, offset)).<span class="kw">await
+    </span>}
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; <span class="self">self</span>.size().try_into()<span class="question-mark">?</span>];
+        <span class="self">self</span>.read_at(<span class="kw-2">&amp;mut </span>buf, <span class="number">0</span>).<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// TODO: verify read size
+        </span><span class="prelude-val">Ok</span>(buf)
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write_append_aio</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">ioring</span>: <span class="kw-2">&amp;</span><span class="ident">Rio</span>) -&gt; <span class="ident">IOResult</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">size</span>.<span class="ident">fetch_add</span>(<span class="ident">buf</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>, <span class="ident">Ordering::SeqCst</span>);
-        <span class="self">self</span>.<span class="ident">write_at_aio</span>(<span class="ident">offset</span>, <span class="ident">buf</span>, <span class="ident">ioring</span>).<span class="kw">await</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_at(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8], offset: u64) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>ioring) = <span class="self">self</span>.ioring {
+            <span class="self">self</span>.read_at_aio(buf, offset, ioring).<span class="kw">await
+        </span>} <span class="kw">else </span>{
+            <span class="self">self</span>.read_at_sync(buf, offset).<span class="kw">await
+        </span>}
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write_at</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">offset</span>: <span class="ident">u64</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">IOResult</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">ioring</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ioring</span> {
-            <span class="self">self</span>.<span class="ident">write_at_aio</span>(<span class="ident">offset</span>, <span class="ident">buf</span>, <span class="ident">ioring</span>).<span class="kw">await</span>
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">write_at_sync</span>(<span class="ident">offset</span>, <span class="ident">buf</span>).<span class="kw">await</span>
-        }
-    }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_at_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8], offset: u64) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
+        <span class="kw">let </span>file = <span class="self">self</span>.no_lock_fd.clone();
+        <span class="kw">let </span><span class="kw-2">mut </span>new_buf = buf.to_vec();
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write_at_aio</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">offset</span>: <span class="ident">u64</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">ioring</span>: <span class="kw-2">&amp;</span><span class="ident">Rio</span>) -&gt; <span class="ident">IOResult</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">compl</span> <span class="op">=</span> <span class="ident">ioring</span>.<span class="ident">write_at</span>(<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">no_lock_fd</span>, <span class="kw-2">&amp;</span><span class="ident">buf</span>, <span class="ident">offset</span>);
-        <span class="kw">let</span> <span class="ident">count</span> <span class="op">=</span> <span class="ident">compl</span>.<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="comment">// on blob level this error will be treated as unavailable file (rio doesn&#39;t return error</span>
-        <span class="comment">// in explicit format so we do that for it)</span>
-        <span class="comment">// P.S.: previous solution was to panic, where this situation appears, seems like this solution</span>
-        <span class="comment">// is a little better (for example, in case of cluster which contains few pearl storages it</span>
-        <span class="comment">// won&#39;t break the whole cluster, but only pass information outside, that last write wasn&#39;t sucessful)</span>
-        <span class="kw">if</span> <span class="ident">count</span> <span class="op">&lt;</span> <span class="ident">buf</span>.<span class="ident">len</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">IOError::from_raw_os_error</span>(<span class="number">5</span>));
-        }
-        <span class="prelude-val">Ok</span>(<span class="ident">count</span>)
-    }
-
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write_at_sync</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">offset</span>: <span class="ident">u64</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">IOResult</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">buf</span>.<span class="ident">to_vec</span>();
-        <span class="kw">let</span> <span class="ident">file</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">no_lock_fd</span>.<span class="ident">clone</span>();
-        <span class="ident"><span class="self">Self</span>::blocking_call</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="ident">file</span>.<span class="ident">write_at</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>, <span class="ident">offset</span>)).<span class="kw">await</span>
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_all</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0</span>; <span class="self">self</span>.<span class="ident">size</span>().<span class="ident">try_into</span>()<span class="question-mark">?</span>];
-        <span class="self">self</span>.<span class="ident">read_at</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>, <span class="number">0</span>).<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// TODO: verify read size</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">buf</span>)
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_at</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">u8</span>], <span class="ident">offset</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">ioring</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ioring</span> {
-            <span class="self">self</span>.<span class="ident">read_at_aio</span>(<span class="ident">buf</span>, <span class="ident">offset</span>, <span class="ident">ioring</span>).<span class="kw">await</span>
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">read_at_sync</span>(<span class="ident">buf</span>, <span class="ident">offset</span>).<span class="kw">await</span>
-        }
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_at_sync</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">u8</span>], <span class="ident">offset</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">file</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">no_lock_fd</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_buf</span> <span class="op">=</span> <span class="ident">buf</span>.<span class="ident">to_vec</span>();
-
-        <span class="kw">let</span> (<span class="ident">count</span>, <span class="ident">new_buf</span>) <span class="op">=</span> <span class="ident"><span class="self">Self</span>::blocking_call</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
-            <span class="ident">file</span>.<span class="ident">read_at</span>(<span class="kw-2">&amp;mut</span> <span class="ident">new_buf</span>, <span class="ident">offset</span>)
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">count</span><span class="op">|</span> (<span class="ident">count</span>, <span class="ident">new_buf</span>))
+        <span class="kw">let </span>(count, new_buf) = <span class="self">Self</span>::blocking_call(<span class="kw">move </span>|| {
+            file.read_at(<span class="kw-2">&amp;mut </span>new_buf, offset)
+                .map(|count| (count, new_buf))
         })
         .<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="ident">buf</span>.<span class="ident">clone_from_slice</span>(<span class="ident">new_buf</span>.<span class="ident">as_slice</span>());
-        <span class="prelude-val">Ok</span>(<span class="ident">count</span>)
+        buf.clone_from_slice(new_buf.as_slice());
+        <span class="prelude-val">Ok</span>(count)
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_at_aio</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">u8</span>], <span class="ident">offset</span>: <span class="ident">u64</span>, <span class="ident">ioring</span>: <span class="kw-2">&amp;</span><span class="ident">Rio</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
+    <span class="kw">async fn </span>read_at_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8], offset: u64, ioring: <span class="kw-2">&amp;</span>Rio) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob file read at&quot;</span>);
-        <span class="kw">if</span> <span class="ident">buf</span>.<span class="ident">is_empty</span>() {
+        <span class="kw">if </span>buf.is_empty() {
             <span class="macro">warn!</span>(<span class="string">&quot;file read_at empty buf&quot;</span>);
         }
         <span class="macro">debug!</span>(
             <span class="string">&quot;blob file read at buf len: {}, offset: {}&quot;</span>,
-            <span class="ident">buf</span>.<span class="ident">len</span>(),
-            <span class="ident">offset</span>
+            buf.len(),
+            offset
         );
-        <span class="kw">let</span> <span class="ident">compl</span> <span class="op">=</span> <span class="ident">ioring</span>.<span class="ident">read_at</span>(<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">no_lock_fd</span>, <span class="kw-2">&amp;</span><span class="ident">buf</span>, <span class="ident">offset</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">compl</span>.<span class="kw">await</span>.<span class="ident">with_context</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;read at failed&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">while</span> <span class="ident">size</span> <span class="op">&lt;</span> <span class="ident">buf</span>.<span class="ident">len</span>() {
+        <span class="kw">let </span>compl = ioring.read_at(<span class="kw-2">&amp;*</span><span class="self">self</span>.no_lock_fd, <span class="kw-2">&amp;</span>buf, offset);
+        <span class="kw">let </span><span class="kw-2">mut </span>size = compl.<span class="kw">await</span>.with_context(|| <span class="string">&quot;read at failed&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">while </span>size &lt; buf.len() {
             <span class="macro">debug!</span>(
                 <span class="string">&quot;io uring read partial block, trying to read the rest, completed {}/{} bytes&quot;</span>,
-                <span class="ident">size</span>,
-                <span class="ident">buf</span>.<span class="ident">len</span>()
+                size,
+                buf.len()
             );
-            <span class="kw">let</span> <span class="ident">slice</span> <span class="op">=</span> <span class="ident">buf</span>.<span class="ident">split_at_mut</span>(<span class="ident">size</span>).<span class="number">1</span>;
-            <span class="macro">debug!</span>(<span class="string">&quot;blob file read at buf to fill up: {}b&quot;</span>, <span class="ident">slice</span>.<span class="ident">len</span>());
-            <span class="kw">let</span> <span class="ident">compl</span> <span class="op">=</span> <span class="ident">ioring</span>.<span class="ident">read_at</span>(<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">no_lock_fd</span>, <span class="kw-2">&amp;</span><span class="ident">slice</span>, <span class="ident">offset</span> <span class="op">+</span> <span class="ident">size</span> <span class="kw">as</span> <span class="ident">u64</span>);
-            <span class="kw">let</span> <span class="ident">remainder_size</span> <span class="op">=</span> <span class="ident">compl</span>.<span class="kw">await</span>.<span class="ident">with_context</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;second read at failed&quot;</span>)<span class="question-mark">?</span>;
+            <span class="kw">let </span>slice = buf.split_at_mut(size).<span class="number">1</span>;
+            <span class="macro">debug!</span>(<span class="string">&quot;blob file read at buf to fill up: {}b&quot;</span>, slice.len());
+            <span class="kw">let </span>compl = ioring.read_at(<span class="kw-2">&amp;*</span><span class="self">self</span>.no_lock_fd, <span class="kw-2">&amp;</span>slice, offset + size <span class="kw">as </span>u64);
+            <span class="kw">let </span>remainder_size = compl.<span class="kw">await</span>.with_context(|| <span class="string">&quot;second read at failed&quot;</span>)<span class="question-mark">?</span>;
             <span class="macro">debug!</span>(
                 <span class="string">&quot;blob file read at second read, completed {}/{} of remains bytes&quot;</span>,
-                <span class="ident">remainder_size</span>,
-                <span class="ident">slice</span>.<span class="ident">len</span>()
+                remainder_size,
+                slice.len()
             );
-            <span class="kw">if</span> <span class="ident">remainder_size</span> <span class="op">==</span> <span class="number">0</span> {
-                <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="string">&quot;blob file read failed, second read returns zero bytes&quot;</span>.<span class="ident">to_string</span>();
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::io</span>(<span class="ident">msg</span>).<span class="ident">into</span>());
+            <span class="kw">if </span>remainder_size == <span class="number">0 </span>{
+                <span class="kw">let </span>msg = <span class="string">&quot;blob file read failed, second read returns zero bytes&quot;</span>.to_string();
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::io(msg).into());
             }
-            <span class="ident">size</span> <span class="op">+</span><span class="op">=</span> <span class="ident">remainder_size</span>;
-            <span class="macro">debug!</span>(<span class="string">&quot;blob file read at proggress {}/{}&quot;</span>, <span class="ident">size</span>, <span class="ident">buf</span>.<span class="ident">len</span>());
+            size += remainder_size;
+            <span class="macro">debug!</span>(<span class="string">&quot;blob file read at proggress {}/{}&quot;</span>, size, buf.len());
         }
-        <span class="macro">debug!</span>(<span class="string">&quot;blob file read at complited: {}&quot;</span>, <span class="ident">size</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">size</span>)
+        <span class="macro">debug!</span>(<span class="string">&quot;blob file read at complited: {}&quot;</span>, size);
+        <span class="prelude-val">Ok</span>(size)
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">from_tokio_file</span>(<span class="ident">file</span>: <span class="ident">TokioFile</span>, <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>) -&gt; <span class="ident">IOResult</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">file</span>.<span class="ident">metadata</span>().<span class="kw">await</span><span class="question-mark">?</span>.<span class="ident">len</span>();
-        <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">AtomicU64::new</span>(<span class="ident">size</span>));
-        <span class="kw">let</span> <span class="ident">std_file</span> <span class="op">=</span> <span class="ident">file</span>.<span class="ident">try_into_std</span>().<span class="ident">expect</span>(<span class="string">&quot;tokio file into std&quot;</span>);
+    <span class="kw">async fn </span>from_tokio_file(file: TokioFile, ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;) -&gt; IOResult&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span>size = file.metadata().<span class="kw">await</span><span class="question-mark">?</span>.len();
+        <span class="kw">let </span>size = Arc::new(AtomicU64::new(size));
+        <span class="kw">let </span>std_file = file.try_into_std().expect(<span class="string">&quot;tokio file into std&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">file</span> <span class="op">=</span> <span class="self">Self</span> {
-            <span class="ident">ioring</span>,
-            <span class="ident">no_lock_fd</span>: <span class="ident">Arc::new</span>(<span class="ident">std_file</span>),
-            <span class="ident">size</span>,
+        <span class="kw">let </span>file = <span class="self">Self </span>{
+            ioring,
+            no_lock_fd: Arc::new(std_file),
+            size,
         };
-        <span class="prelude-val">Ok</span>(<span class="ident">file</span>)
+        <span class="prelude-val">Ok</span>(file)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">fsyncdata</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IOResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">ioring</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ioring</span> {
-            <span class="kw">let</span> <span class="ident">compl</span> <span class="op">=</span> <span class="ident">ioring</span>.<span class="ident">fsync</span>(<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">no_lock_fd</span>);
-            <span class="ident">compl</span>.<span class="kw">await</span>
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">fd</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">no_lock_fd</span>.<span class="ident">clone</span>();
-            <span class="ident"><span class="self">Self</span>::blocking_call</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="ident">fd</span>.<span class="ident">sync_all</span>()).<span class="kw">await</span>
-        }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>fsyncdata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; IOResult&lt;()&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>ioring) = <span class="self">self</span>.ioring {
+            <span class="kw">let </span>compl = ioring.fsync(<span class="kw-2">&amp;*</span><span class="self">self</span>.no_lock_fd);
+            compl.<span class="kw">await
+        </span>} <span class="kw">else </span>{
+            <span class="kw">let </span>fd = <span class="self">self</span>.no_lock_fd.clone();
+            <span class="self">Self</span>::blocking_call(<span class="kw">move </span>|| fd.sync_all()).<span class="kw">await
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">advisory_write_lock_file</span>(<span class="ident">fd</span>: <span class="ident">i32</span>) -&gt; <span class="ident">LockAcquisitionResult</span> {
-        <span class="kw">let</span> <span class="ident">flock</span> <span class="op">=</span> <span class="ident">libc::flock</span> {
-            <span class="ident">l_len</span>: <span class="number">0</span>, <span class="comment">// 0 means &quot;whole file&quot;</span>
-            <span class="ident">l_start</span>: <span class="number">0</span>,
-            <span class="ident">l_whence</span>: <span class="ident">libc::SEEK_SET</span> <span class="kw">as</span> <span class="ident">i16</span>,
-            <span class="ident">l_type</span>: <span class="ident">libc::F_WRLCK</span> <span class="kw">as</span> <span class="ident">i16</span>,
-            <span class="ident">l_pid</span>: <span class="op">-</span><span class="number">1</span>, <span class="comment">// pid of current file owner, if any (when fcntl is invoked with F_GETLK)</span>
-        };
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">nix::fcntl::fcntl</span>(<span class="ident">fd</span>, <span class="ident">FcntlArg::F_SETLK</span>(<span class="kw-2">&amp;</span><span class="ident">flock</span>));
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">res</span> {
-            <span class="macro">warn!</span>(<span class="string">&quot;acquiring writelock failed, errno: {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="kw">match</span> <span class="ident">e</span> {
-                <span class="ident">Errno::EACCES</span> <span class="op">|</span> <span class="ident">Errno::EAGAIN</span> =&gt; <span class="ident">LockAcquisitionResult::AlreadyLocked</span>,
-                <span class="ident">e</span> =&gt; <span class="ident">LockAcquisitionResult::Error</span>(<span class="ident">e</span>),
+    <span class="kw">fn </span>advisory_write_lock_file(fd: i32) -&gt; LockAcquisitionResult {
+        <span class="kw">let </span>flock = libc::flock {
+            l_len: <span class="number">0</span>, <span class="comment">// 0 means &quot;whole file&quot;
+            </span>l_start: <span class="number">0</span>,
+            l_whence: libc::SEEK_SET <span class="kw">as </span>i16,
+            l_type: libc::F_WRLCK <span class="kw">as </span>i16,
+            l_pid: -<span class="number">1</span>, <span class="comment">// pid of current file owner, if any (when fcntl is invoked with F_GETLK)
+        </span>};
+        <span class="kw">let </span>res = nix::fcntl::fcntl(fd, FcntlArg::F_SETLK(<span class="kw-2">&amp;</span>flock));
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = res {
+            <span class="macro">warn!</span>(<span class="string">&quot;acquiring writelock failed, errno: {:?}&quot;</span>, e);
+            <span class="kw">match </span>e {
+                Errno::EACCES | Errno::EAGAIN =&gt; LockAcquisitionResult::AlreadyLocked,
+                e =&gt; LockAcquisitionResult::Error(e),
             }
-        } <span class="kw">else</span> {
-            <span class="ident">LockAcquisitionResult::Acquired</span>
+        } <span class="kw">else </span>{
+            LockAcquisitionResult::Acquired
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">blocking_call</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">R</span><span class="op">&gt;</span>(<span class="ident">f</span>: <span class="ident">F</span>) -&gt; <span class="ident">R</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">FnOnce</span>() -&gt; <span class="ident">R</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-        <span class="ident">R</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="kw">async fn </span>blocking_call&lt;F, R&gt;(f: F) -&gt; R
+    <span class="kw">where
+        </span>F: FnOnce() -&gt; R + Send + <span class="lifetime">&#39;static</span>,
+        R: Send + <span class="lifetime">&#39;static</span>,
     {
-        <span class="ident">tokio::task::spawn_blocking</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="ident">f</span>())
-            .<span class="kw">await</span>
-            .<span class="ident">expect</span>(<span class="string">&quot;spawned blocking task failed&quot;</span>)
+        tokio::task::spawn_blocking(<span class="kw">move </span>|| f())
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;spawned blocking task failed&quot;</span>)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">created_at</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SystemTime</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">metadata</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">no_lock_fd</span>.<span class="ident">metadata</span>()<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">metadata</span>.<span class="ident">created</span>().<span class="ident">unwrap_or</span>(<span class="ident">SystemTime::now</span>()))
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>created_at(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;SystemTime&gt; {
+        <span class="kw">let </span>metadata = <span class="self">self</span>.no_lock_fd.metadata()<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(metadata.created().unwrap_or(SystemTime::now()))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

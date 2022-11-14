@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/field.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>field.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../bitvec/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/field.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>field.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../bitvec/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1895,38 +1890,38 @@ in a way that matches a debugger or other memory inspections.
 [`load_le`]: crate::field::BitField::load_le
 [`store_be`]: crate::field::BitField::store_be
 [`store_le`]: crate::field::BitField::store_le
-!*/</span>
+!*/
 
-<span class="kw">use</span> <span class="ident">core</span>::{
-	<span class="ident">mem</span>,
-	<span class="ident">ptr</span>,
+</span><span class="kw">use </span>core::{
+	mem,
+	ptr,
 };
 
-<span class="kw">use</span> <span class="ident">funty::IsNumber</span>;
-<span class="kw">use</span> <span class="ident">tap::pipe::Pipe</span>;
+<span class="kw">use </span>funty::IsNumber;
+<span class="kw">use </span>tap::pipe::Pipe;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-	<span class="ident">access::BitAccess</span>,
-	<span class="ident">array::BitArray</span>,
-	<span class="ident">domain</span>::{
-		<span class="ident">Domain</span>,
-		<span class="ident">DomainMut</span>,
+<span class="kw">use crate</span>::{
+	access::BitAccess,
+	array::BitArray,
+	domain::{
+		Domain,
+		DomainMut,
 	},
-	<span class="ident">index::BitMask</span>,
-	<span class="ident">mem::BitMemory</span>,
-	<span class="ident">order</span>::{
-		<span class="ident">BitOrder</span>,
-		<span class="ident">Lsb0</span>,
-		<span class="ident">Msb0</span>,
+	index::BitMask,
+	mem::BitMemory,
+	order::{
+		BitOrder,
+		Lsb0,
+		Msb0,
 	},
-	<span class="ident">slice::BitSlice</span>,
-	<span class="ident">store::BitStore</span>,
-	<span class="ident">view::BitViewSized</span>,
+	slice::BitSlice,
+	store::BitStore,
+	view::BitViewSized,
 };
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;alloc&quot;</span>)]</span>
-<span class="kw">use</span> <span class="kw">crate</span>::{
-	<span class="ident">boxed::BitBox</span>,
-	<span class="ident">vec::BitVec</span>,
+<span class="attribute">#[cfg(feature = <span class="string">&quot;alloc&quot;</span>)]
+</span><span class="kw">use crate</span>::{
+	boxed::BitBox,
+	vec::BitVec,
 };
 
 <span class="doccomment">/** Performs C-style bitfield access through a [`BitSlice`].
@@ -1975,517 +1970,517 @@ this behavior.
 [`store`]: Self::store
 [`store_be`]: Self::store_be
 [`store_le`]: Self::store_le
-**/</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">BitField</span> {
-	<span class="doccomment">/// Loads the bits in the `self` region into a local value.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This can load into any of the unsigned integers which implement</span>
-	<span class="doccomment">/// [`BitMemory`]. Any further transformation must be done by the user.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Target-Specific Behavior</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// **THIS FUNCTION CHANGES BEHAVIOR FOR DIFFERENT TARGETS.**</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The default implementation of this function calls [`load_le`] on</span>
-	<span class="doccomment">/// little-endian byte-ordered CPUs, and [`load_be`] on big-endian</span>
-	<span class="doccomment">/// byte-ordered CPUs.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If you are using this function from a region that crosses multiple</span>
-	<span class="doccomment">/// elements in memory, be aware that it will behave differently on</span>
-	<span class="doccomment">/// big-endian and little-endian target architectures.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `&amp;self`: A read reference to some bits in memory. This slice must be</span>
-	<span class="doccomment">///   trimmed to have a width no more than the [`M::BITS`] width of the type</span>
-	<span class="doccomment">///   being loaded. This can be accomplished with range indexing on a larger</span>
-	<span class="doccomment">///   slice.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// A value `M` whose least [`self.len()`] significant bits are filled with</span>
-	<span class="doccomment">/// the bits of `self`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Panics</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This method is encouraged to panic if `self` is empty, or wider than a</span>
-	<span class="doccomment">/// single element `M`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`BitMemory`]: crate::mem::BitMemory</span>
-	<span class="doccomment">/// [`M::BITS`]: funty::IsNumber::BITS</span>
-	<span class="doccomment">/// [`load_be`]: Self::load_be</span>
-	<span class="doccomment">/// [`load_le`]: Self::load_le</span>
-	<span class="doccomment">/// [`self.len()`]: crate::slice::BitSlice::len</span>
-	<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-	<span class="kw">fn</span> <span class="ident">load</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_endian</span> <span class="op">=</span> <span class="string">&quot;little&quot;</span>)]</span>
-		<span class="kw">return</span> <span class="self">self</span>.<span class="ident">load_le</span>::<span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>();
+**/
+</span><span class="kw">pub trait </span>BitField {
+	<span class="doccomment">/// Loads the bits in the `self` region into a local value.
+	///
+	/// This can load into any of the unsigned integers which implement
+	/// [`BitMemory`]. Any further transformation must be done by the user.
+	///
+	/// # Target-Specific Behavior
+	///
+	/// **THIS FUNCTION CHANGES BEHAVIOR FOR DIFFERENT TARGETS.**
+	///
+	/// The default implementation of this function calls [`load_le`] on
+	/// little-endian byte-ordered CPUs, and [`load_be`] on big-endian
+	/// byte-ordered CPUs.
+	///
+	/// If you are using this function from a region that crosses multiple
+	/// elements in memory, be aware that it will behave differently on
+	/// big-endian and little-endian target architectures.
+	///
+	/// # Parameters
+	///
+	/// - `&amp;self`: A read reference to some bits in memory. This slice must be
+	///   trimmed to have a width no more than the [`M::BITS`] width of the type
+	///   being loaded. This can be accomplished with range indexing on a larger
+	///   slice.
+	///
+	/// # Returns
+	///
+	/// A value `M` whose least [`self.len()`] significant bits are filled with
+	/// the bits of `self`.
+	///
+	/// # Panics
+	///
+	/// This method is encouraged to panic if `self` is empty, or wider than a
+	/// single element `M`.
+	///
+	/// [`BitMemory`]: crate::mem::BitMemory
+	/// [`M::BITS`]: funty::IsNumber::BITS
+	/// [`load_be`]: Self::load_be
+	/// [`load_le`]: Self::load_le
+	/// [`self.len()`]: crate::slice::BitSlice::len
+	</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+	</span><span class="kw">fn </span>load&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory {
+		<span class="attribute">#[cfg(target_endian = <span class="string">&quot;little&quot;</span>)]
+		</span><span class="kw">return </span><span class="self">self</span>.load_le::&lt;M&gt;();
 
-		<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_endian</span> <span class="op">=</span> <span class="string">&quot;big&quot;</span>)]</span>
-		<span class="kw">return</span> <span class="self">self</span>.<span class="ident">load_be</span>::<span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>();
+		<span class="attribute">#[cfg(target_endian = <span class="string">&quot;big&quot;</span>)]
+		</span><span class="kw">return </span><span class="self">self</span>.load_be::&lt;M&gt;();
 	}
 
-	<span class="doccomment">/// Stores a sequence of bits from the user into the domain of `self`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This can store any of the unsigned integers which implement</span>
-	<span class="doccomment">/// [`BitMemory`]. Any other types must first be transformed by the user.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Target-Specific Behavior</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// **THIS FUNCTION CHANGES BEHAVIOR FOR DIFFERENT TARGETS.**</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The default implementation of this function calls [`store_le`] on</span>
-	<span class="doccomment">/// little-endian byte-ordered CPUs, and [`store_be`] on big-endian</span>
-	<span class="doccomment">/// byte-ordered CPUs.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If you are using this function to store into a region that crosses</span>
-	<span class="doccomment">/// multiple elements in memory, be aware that it will behave differently on</span>
-	<span class="doccomment">/// big-endian and little-endian target architectures.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `&amp;mut self`: A write reference to some bits in memory. This slice must</span>
-	<span class="doccomment">///   be trimmed to have a width no more than the [`M::BITS`] width of the</span>
-	<span class="doccomment">///   type being stored. This can be accomplished with range indexing on a</span>
-	<span class="doccomment">///   larger slice.</span>
-	<span class="doccomment">/// - `value`: A value, whose [`self.len()`] least significant bits will be</span>
-	<span class="doccomment">///   stored into `self`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Behavior</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The [`self.len()`] least significant bits of `value` are written into</span>
-	<span class="doccomment">/// the domain of `self`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Panics</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This method is encouraged to panic if `self` is empty, or wider than a</span>
-	<span class="doccomment">/// single element `M`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`BitMemory`]: crate::mem::BitMemory</span>
-	<span class="doccomment">/// [`M::BITS`]: funty::IsNumber::BITS</span>
-	<span class="doccomment">/// [`self.len()`]: crate::slice::BitSlice::len</span>
-	<span class="doccomment">/// [`store_be`]: Self::store_be</span>
-	<span class="doccomment">/// [`store_le`]: Self::store_le</span>
-	<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-	<span class="kw">fn</span> <span class="ident">store</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_endian</span> <span class="op">=</span> <span class="string">&quot;little&quot;</span>)]</span>
-		<span class="self">self</span>.<span class="ident">store_le</span>(<span class="ident">value</span>);
+	<span class="doccomment">/// Stores a sequence of bits from the user into the domain of `self`.
+	///
+	/// This can store any of the unsigned integers which implement
+	/// [`BitMemory`]. Any other types must first be transformed by the user.
+	///
+	/// # Target-Specific Behavior
+	///
+	/// **THIS FUNCTION CHANGES BEHAVIOR FOR DIFFERENT TARGETS.**
+	///
+	/// The default implementation of this function calls [`store_le`] on
+	/// little-endian byte-ordered CPUs, and [`store_be`] on big-endian
+	/// byte-ordered CPUs.
+	///
+	/// If you are using this function to store into a region that crosses
+	/// multiple elements in memory, be aware that it will behave differently on
+	/// big-endian and little-endian target architectures.
+	///
+	/// # Parameters
+	///
+	/// - `&amp;mut self`: A write reference to some bits in memory. This slice must
+	///   be trimmed to have a width no more than the [`M::BITS`] width of the
+	///   type being stored. This can be accomplished with range indexing on a
+	///   larger slice.
+	/// - `value`: A value, whose [`self.len()`] least significant bits will be
+	///   stored into `self`.
+	///
+	/// # Behavior
+	///
+	/// The [`self.len()`] least significant bits of `value` are written into
+	/// the domain of `self`.
+	///
+	/// # Panics
+	///
+	/// This method is encouraged to panic if `self` is empty, or wider than a
+	/// single element `M`.
+	///
+	/// [`BitMemory`]: crate::mem::BitMemory
+	/// [`M::BITS`]: funty::IsNumber::BITS
+	/// [`self.len()`]: crate::slice::BitSlice::len
+	/// [`store_be`]: Self::store_be
+	/// [`store_le`]: Self::store_le
+	</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+	</span><span class="kw">fn </span>store&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: M)
+	<span class="kw">where </span>M: BitMemory {
+		<span class="attribute">#[cfg(target_endian = <span class="string">&quot;little&quot;</span>)]
+		</span><span class="self">self</span>.store_le(value);
 
-		<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_endian</span> <span class="op">=</span> <span class="string">&quot;big&quot;</span>)]</span>
-		<span class="self">self</span>.<span class="ident">store_be</span>(<span class="ident">value</span>);
+		<span class="attribute">#[cfg(target_endian = <span class="string">&quot;big&quot;</span>)]
+		</span><span class="self">self</span>.store_be(value);
 	}
 
-	<span class="doccomment">/// Loads from `self`, using little-endian element `T` ordering.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This function interprets a multi-element slice as having its least</span>
-	<span class="doccomment">/// significant chunk in the low memory address, and its most significant</span>
-	<span class="doccomment">/// chunk in the high memory address. Each element `T` is still interpreted</span>
-	<span class="doccomment">/// from individual bytes according to the local CPU ordering.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `&amp;self`: A read reference to some bits in memory. This slice must be</span>
-	<span class="doccomment">///   trimmed to have a width no more than the [`M::BITS`] width of the type</span>
-	<span class="doccomment">///   being loaded. This can be accomplished with range indexing on a larger</span>
-	<span class="doccomment">///   slice.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// A value `M` whose least [`self.len()`] significant bits are filled with</span>
-	<span class="doccomment">/// the bits of `self`. If `self` spans multiple elements `T`, then the</span>
-	<span class="doccomment">/// lowest-address `T` is interpreted as containing the least significant</span>
-	<span class="doccomment">/// bits of the return value `M`, and the highest-address `T` is interpreted</span>
-	<span class="doccomment">/// as containing its most significant bits.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Panics</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This method is encouraged to panic if `self` is empty, or wider than a</span>
-	<span class="doccomment">/// single element `M`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This example shows how a value is segmented across multiple storage</span>
-	<span class="doccomment">/// elements:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let mut data = [0u8; 3];</span>
-	<span class="doccomment">/// data.view_bits_mut::&lt;Msb0&gt;()</span>
-	<span class="doccomment">///   [5 .. 17]</span>
-	<span class="doccomment">///   .store_le(0b0000_1_1011_1000_110u16);</span>
-	<span class="doccomment">/// //                 O PQRS TUVW XYZ</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// assert_eq!(data, [</span>
-	<span class="doccomment">///   0b00000_110, 0b1011_1000, 0b1_0000000</span>
-	<span class="doccomment">/// //        XYZ    PQRS TUVW    O</span>
-	<span class="doccomment">/// ]);</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let val = data.view_bits::&lt;Msb0&gt;()</span>
-	<span class="doccomment">///   [5 .. 17]</span>
-	<span class="doccomment">///   .load_le::&lt;u16&gt;();</span>
-	<span class="doccomment">/// assert_eq!(</span>
-	<span class="doccomment">///   val,</span>
-	<span class="doccomment">///   0b0000_1_1011_1000_110,</span>
-	<span class="doccomment">/// //       O PQRS TUVW XYZ</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// And this example shows how the same memory region will be read by</span>
-	<span class="doccomment">/// different `BitOrder` implementors:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// // Bit pos:   14                                     19  16</span>
-	<span class="doccomment">/// // Lsb0:     ─┤                                       ├──┤</span>
-	<span class="doccomment">/// let arr = [0b0100_0000_0000_0011u16, 0b0001_0000_0000_1110u16];</span>
-	<span class="doccomment">/// // Msb0:                      ├─       ├──┤</span>
-	<span class="doccomment">/// // Bit pos:                  14       16  19</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// assert_eq!(</span>
-	<span class="doccomment">///   arr.view_bits::&lt;Lsb0&gt;()[14 .. 20].load_le::&lt;u8&gt;(),</span>
-	<span class="doccomment">///   0b111001,</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// assert_eq!(</span>
-	<span class="doccomment">///   arr.view_bits::&lt;Msb0&gt;()[14 .. 20].load_le::&lt;u8&gt;(),</span>
-	<span class="doccomment">///   0b000111,</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`M::BITS`]: funty::IsNumber::BITS</span>
-	<span class="doccomment">/// [`self.len()`]: crate::slice::BitSlice::len</span>
-	<span class="kw">fn</span> <span class="ident">load_le</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span>;
+	<span class="doccomment">/// Loads from `self`, using little-endian element `T` ordering.
+	///
+	/// This function interprets a multi-element slice as having its least
+	/// significant chunk in the low memory address, and its most significant
+	/// chunk in the high memory address. Each element `T` is still interpreted
+	/// from individual bytes according to the local CPU ordering.
+	///
+	/// # Parameters
+	///
+	/// - `&amp;self`: A read reference to some bits in memory. This slice must be
+	///   trimmed to have a width no more than the [`M::BITS`] width of the type
+	///   being loaded. This can be accomplished with range indexing on a larger
+	///   slice.
+	///
+	/// # Returns
+	///
+	/// A value `M` whose least [`self.len()`] significant bits are filled with
+	/// the bits of `self`. If `self` spans multiple elements `T`, then the
+	/// lowest-address `T` is interpreted as containing the least significant
+	/// bits of the return value `M`, and the highest-address `T` is interpreted
+	/// as containing its most significant bits.
+	///
+	/// # Panics
+	///
+	/// This method is encouraged to panic if `self` is empty, or wider than a
+	/// single element `M`.
+	///
+	/// # Examples
+	///
+	/// This example shows how a value is segmented across multiple storage
+	/// elements:
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let mut data = [0u8; 3];
+	/// data.view_bits_mut::&lt;Msb0&gt;()
+	///   [5 .. 17]
+	///   .store_le(0b0000_1_1011_1000_110u16);
+	/// //                 O PQRS TUVW XYZ
+	///
+	/// assert_eq!(data, [
+	///   0b00000_110, 0b1011_1000, 0b1_0000000
+	/// //        XYZ    PQRS TUVW    O
+	/// ]);
+	///
+	/// let val = data.view_bits::&lt;Msb0&gt;()
+	///   [5 .. 17]
+	///   .load_le::&lt;u16&gt;();
+	/// assert_eq!(
+	///   val,
+	///   0b0000_1_1011_1000_110,
+	/// //       O PQRS TUVW XYZ
+	/// );
+	/// ```
+	///
+	/// And this example shows how the same memory region will be read by
+	/// different `BitOrder` implementors:
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// // Bit pos:   14                                     19  16
+	/// // Lsb0:     ─┤                                       ├──┤
+	/// let arr = [0b0100_0000_0000_0011u16, 0b0001_0000_0000_1110u16];
+	/// // Msb0:                      ├─       ├──┤
+	/// // Bit pos:                  14       16  19
+	///
+	/// assert_eq!(
+	///   arr.view_bits::&lt;Lsb0&gt;()[14 .. 20].load_le::&lt;u8&gt;(),
+	///   0b111001,
+	/// );
+	/// assert_eq!(
+	///   arr.view_bits::&lt;Msb0&gt;()[14 .. 20].load_le::&lt;u8&gt;(),
+	///   0b000111,
+	/// );
+	/// ```
+	///
+	/// [`M::BITS`]: funty::IsNumber::BITS
+	/// [`self.len()`]: crate::slice::BitSlice::len
+	</span><span class="kw">fn </span>load_le&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory;
 
-	<span class="doccomment">/// Loads from `self`, using big-endian element `T` ordering.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This function interprets a multi-element slice as having its most</span>
-	<span class="doccomment">/// significant chunk in the low memory address, and its least significant</span>
-	<span class="doccomment">/// chunk in the high memory address. Each element `T` is still interpreted</span>
-	<span class="doccomment">/// from individual bytes according to the local CPU ordering.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `&amp;self`: A read reference to some bits in memory. This slice must be</span>
-	<span class="doccomment">///   trimmed to have a width no more than the [`M::BITS`] width of the type</span>
-	<span class="doccomment">///   being loaded. This can be accomplished with range indexing on a larger</span>
-	<span class="doccomment">///   slice.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// A value `M` whose least [`self.len()`] significant bits are filled with</span>
-	<span class="doccomment">/// the bits of `self`. If `self` spans multiple elements `T`, then the</span>
-	<span class="doccomment">/// lowest-address `T` is interpreted as containing the most significant</span>
-	<span class="doccomment">/// bits of the return value `M`, and the highest-address `T` is interpreted</span>
-	<span class="doccomment">/// as containing its least significant bits.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Panics</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This method is encouraged to panic if `self` is empty, or wider than a</span>
-	<span class="doccomment">/// single element `M`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This example shows how a value is segmented across multiple storage</span>
-	<span class="doccomment">/// elements:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let mut data = [0u8; 3];</span>
-	<span class="doccomment">/// data.view_bits_mut::&lt;Msb0&gt;()</span>
-	<span class="doccomment">///   [5 .. 17]</span>
-	<span class="doccomment">///   .store_be(0b0000_110_1000_1011_1u16);</span>
-	<span class="doccomment">/// //                 OPQ RSTU VWXY Z</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// assert_eq!(data, [</span>
-	<span class="doccomment">///   0b00000_110, 0b1000_1011, 0b1_0000000</span>
-	<span class="doccomment">/// //        OPQ    RSTU VWXY    Z</span>
-	<span class="doccomment">/// ]);</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let val = data.view_bits::&lt;Msb0&gt;()</span>
-	<span class="doccomment">///   [5 .. 17]</span>
-	<span class="doccomment">///   .load_be::&lt;u16&gt;();</span>
-	<span class="doccomment">/// assert_eq!(</span>
-	<span class="doccomment">///   val,</span>
-	<span class="doccomment">///   0b0000_110_1000_1011_1,</span>
-	<span class="doccomment">/// //       OPQ RSTU VWXY Z</span>
-	<span class="doccomment">/// # &quot;{:012b}&quot;,</span>
-	<span class="doccomment">/// # val,</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// And this example shows how the same memory region will be read by</span>
-	<span class="doccomment">/// different `BitOrder` implementations:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">/// // Bit pos:   14                                     19  16</span>
-	<span class="doccomment">/// // Lsb0:     ─┤                                       ├──┤</span>
-	<span class="doccomment">/// let arr = [0b0100_0000_0000_0011u16, 0b0001_0000_0000_1110u16];</span>
-	<span class="doccomment">/// // Msb0:                      ├─       ├──┤</span>
-	<span class="doccomment">/// // Bit pos:                  14       16  19</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// assert_eq!(</span>
-	<span class="doccomment">///   arr.view_bits::&lt;Lsb0&gt;()[14 .. 20].load_be::&lt;u8&gt;(),</span>
-	<span class="doccomment">///   0b011110,</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// assert_eq!(</span>
-	<span class="doccomment">///   arr.view_bits::&lt;Msb0&gt;()[14 .. 20].load_be::&lt;u8&gt;(),</span>
-	<span class="doccomment">///   0b110001,</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`M::BITS`]: funty::IsNumber::BITS</span>
-	<span class="doccomment">/// [`self.len()`]: crate::slice::BitSlice::len</span>
-	<span class="kw">fn</span> <span class="ident">load_be</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span>;
+	<span class="doccomment">/// Loads from `self`, using big-endian element `T` ordering.
+	///
+	/// This function interprets a multi-element slice as having its most
+	/// significant chunk in the low memory address, and its least significant
+	/// chunk in the high memory address. Each element `T` is still interpreted
+	/// from individual bytes according to the local CPU ordering.
+	///
+	/// # Parameters
+	///
+	/// - `&amp;self`: A read reference to some bits in memory. This slice must be
+	///   trimmed to have a width no more than the [`M::BITS`] width of the type
+	///   being loaded. This can be accomplished with range indexing on a larger
+	///   slice.
+	///
+	/// # Returns
+	///
+	/// A value `M` whose least [`self.len()`] significant bits are filled with
+	/// the bits of `self`. If `self` spans multiple elements `T`, then the
+	/// lowest-address `T` is interpreted as containing the most significant
+	/// bits of the return value `M`, and the highest-address `T` is interpreted
+	/// as containing its least significant bits.
+	///
+	/// # Panics
+	///
+	/// This method is encouraged to panic if `self` is empty, or wider than a
+	/// single element `M`.
+	///
+	/// # Examples
+	///
+	/// This example shows how a value is segmented across multiple storage
+	/// elements:
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let mut data = [0u8; 3];
+	/// data.view_bits_mut::&lt;Msb0&gt;()
+	///   [5 .. 17]
+	///   .store_be(0b0000_110_1000_1011_1u16);
+	/// //                 OPQ RSTU VWXY Z
+	///
+	/// assert_eq!(data, [
+	///   0b00000_110, 0b1000_1011, 0b1_0000000
+	/// //        OPQ    RSTU VWXY    Z
+	/// ]);
+	///
+	/// let val = data.view_bits::&lt;Msb0&gt;()
+	///   [5 .. 17]
+	///   .load_be::&lt;u16&gt;();
+	/// assert_eq!(
+	///   val,
+	///   0b0000_110_1000_1011_1,
+	/// //       OPQ RSTU VWXY Z
+	/// # &quot;{:012b}&quot;,
+	/// # val,
+	/// );
+	/// ```
+	///
+	/// And this example shows how the same memory region will be read by
+	/// different `BitOrder` implementations:
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	/// // Bit pos:   14                                     19  16
+	/// // Lsb0:     ─┤                                       ├──┤
+	/// let arr = [0b0100_0000_0000_0011u16, 0b0001_0000_0000_1110u16];
+	/// // Msb0:                      ├─       ├──┤
+	/// // Bit pos:                  14       16  19
+	///
+	/// assert_eq!(
+	///   arr.view_bits::&lt;Lsb0&gt;()[14 .. 20].load_be::&lt;u8&gt;(),
+	///   0b011110,
+	/// );
+	/// assert_eq!(
+	///   arr.view_bits::&lt;Msb0&gt;()[14 .. 20].load_be::&lt;u8&gt;(),
+	///   0b110001,
+	/// );
+	/// ```
+	///
+	/// [`M::BITS`]: funty::IsNumber::BITS
+	/// [`self.len()`]: crate::slice::BitSlice::len
+	</span><span class="kw">fn </span>load_be&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory;
 
-	<span class="doccomment">/// Stores into `self`, using little-endian element ordering.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This function interprets a multi-element slice as having its least</span>
-	<span class="doccomment">/// significant chunk in the low memory address, and its most significant</span>
-	<span class="doccomment">/// chunk in the high memory address. Each element `T` is still interpreted</span>
-	<span class="doccomment">/// from individual bytes according to the local CPU ordering.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `&amp;mut self`: A write reference to some bits in memory. This slice must</span>
-	<span class="doccomment">///   be trimmed to have a width no more than the [`M::BITS`] width of the</span>
-	<span class="doccomment">///   type being stored. This can be accomplished with range indexing on a</span>
-	<span class="doccomment">///   larger slice.</span>
-	<span class="doccomment">/// - `value`: A value, whose [`self.len()`] least significant bits will be</span>
-	<span class="doccomment">///   stored into `self`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Behavior</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The [`self.len()`] least significant bits of `value` are written into</span>
-	<span class="doccomment">/// the domain of `self`. If `self` spans multiple elements `T`, then the</span>
-	<span class="doccomment">/// lowest-address `T` is interpreted as containing the least significant</span>
-	<span class="doccomment">/// bits of the `M` return value, and the highest-address `T` is interpreted</span>
-	<span class="doccomment">/// as containing its most significant bits.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Panics</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This method is encouraged to panic if `self` is empty, or wider than a</span>
-	<span class="doccomment">/// single element `M`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This example shows how a value is segmented across multiple storage</span>
-	<span class="doccomment">/// elements:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let mut data = [0u8; 3];</span>
-	<span class="doccomment">/// data.view_bits_mut::&lt;Lsb0&gt;()</span>
-	<span class="doccomment">///   [5 .. 17]</span>
-	<span class="doccomment">///   .store_le(0b0000_1_1011_1000_110u16);</span>
-	<span class="doccomment">/// //                 O PQRS TUVW XYZ</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// assert_eq!(data, [</span>
-	<span class="doccomment">///   0b110_00000, 0b1011_1000, 0b0000000_1</span>
-	<span class="doccomment">/// //  XYZ          PQRS TUVW            O</span>
-	<span class="doccomment">/// ]);</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let val = data.view_bits::&lt;Lsb0&gt;()</span>
-	<span class="doccomment">///   [5 .. 17]</span>
-	<span class="doccomment">///   .load_le::&lt;u16&gt;();</span>
-	<span class="doccomment">/// assert_eq!(</span>
-	<span class="doccomment">///   val,</span>
-	<span class="doccomment">///   0b0000_1_1011_1000_110u16,</span>
-	<span class="doccomment">/// //       O PQRS TUVW XYZ</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// And this example shows how the same memory region is written by</span>
-	<span class="doccomment">/// different `BitOrder` implementations:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">/// let mut lsb0 = bitarr![Lsb0, u16; 0; 32];</span>
-	<span class="doccomment">/// let mut msb0 = bitarr![Msb0, u16; 0; 32];</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// // Bit pos:        14                                     19  16</span>
-	<span class="doccomment">/// // Lsb0:          ─┤                                       ├──┤</span>
-	<span class="doccomment">/// let exp_lsb0 = [0b0100_0000_0000_0000u16, 0b0000_0000_0000_1110u16];</span>
-	<span class="doccomment">/// let exp_msb0 = [0b0000_0000_0000_0011u16, 0b0001_0000_0000_0000u16];</span>
-	<span class="doccomment">/// // Msb0:                           ├─       ├──┤</span>
-	<span class="doccomment">/// // Bit pos:                       14       16  19</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// lsb0[14 ..= 19].store_le(0b111001u8);</span>
-	<span class="doccomment">/// msb0[14 ..= 19].store_le(0b000111u8);</span>
-	<span class="doccomment">/// assert_eq!(lsb0.as_raw_slice(), exp_lsb0);</span>
-	<span class="doccomment">/// assert_eq!(msb0.as_raw_slice(), exp_msb0);</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`M::BITS`]: funty::IsNumber::BITS</span>
-	<span class="doccomment">/// [`self.len()`]: crate::slice::BitSlice::len</span>
-	<span class="kw">fn</span> <span class="ident">store_le</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span>;
+	<span class="doccomment">/// Stores into `self`, using little-endian element ordering.
+	///
+	/// This function interprets a multi-element slice as having its least
+	/// significant chunk in the low memory address, and its most significant
+	/// chunk in the high memory address. Each element `T` is still interpreted
+	/// from individual bytes according to the local CPU ordering.
+	///
+	/// # Parameters
+	///
+	/// - `&amp;mut self`: A write reference to some bits in memory. This slice must
+	///   be trimmed to have a width no more than the [`M::BITS`] width of the
+	///   type being stored. This can be accomplished with range indexing on a
+	///   larger slice.
+	/// - `value`: A value, whose [`self.len()`] least significant bits will be
+	///   stored into `self`.
+	///
+	/// # Behavior
+	///
+	/// The [`self.len()`] least significant bits of `value` are written into
+	/// the domain of `self`. If `self` spans multiple elements `T`, then the
+	/// lowest-address `T` is interpreted as containing the least significant
+	/// bits of the `M` return value, and the highest-address `T` is interpreted
+	/// as containing its most significant bits.
+	///
+	/// # Panics
+	///
+	/// This method is encouraged to panic if `self` is empty, or wider than a
+	/// single element `M`.
+	///
+	/// # Examples
+	///
+	/// This example shows how a value is segmented across multiple storage
+	/// elements:
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let mut data = [0u8; 3];
+	/// data.view_bits_mut::&lt;Lsb0&gt;()
+	///   [5 .. 17]
+	///   .store_le(0b0000_1_1011_1000_110u16);
+	/// //                 O PQRS TUVW XYZ
+	///
+	/// assert_eq!(data, [
+	///   0b110_00000, 0b1011_1000, 0b0000000_1
+	/// //  XYZ          PQRS TUVW            O
+	/// ]);
+	///
+	/// let val = data.view_bits::&lt;Lsb0&gt;()
+	///   [5 .. 17]
+	///   .load_le::&lt;u16&gt;();
+	/// assert_eq!(
+	///   val,
+	///   0b0000_1_1011_1000_110u16,
+	/// //       O PQRS TUVW XYZ
+	/// );
+	/// ```
+	///
+	/// And this example shows how the same memory region is written by
+	/// different `BitOrder` implementations:
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	/// let mut lsb0 = bitarr![Lsb0, u16; 0; 32];
+	/// let mut msb0 = bitarr![Msb0, u16; 0; 32];
+	///
+	/// // Bit pos:        14                                     19  16
+	/// // Lsb0:          ─┤                                       ├──┤
+	/// let exp_lsb0 = [0b0100_0000_0000_0000u16, 0b0000_0000_0000_1110u16];
+	/// let exp_msb0 = [0b0000_0000_0000_0011u16, 0b0001_0000_0000_0000u16];
+	/// // Msb0:                           ├─       ├──┤
+	/// // Bit pos:                       14       16  19
+	///
+	/// lsb0[14 ..= 19].store_le(0b111001u8);
+	/// msb0[14 ..= 19].store_le(0b000111u8);
+	/// assert_eq!(lsb0.as_raw_slice(), exp_lsb0);
+	/// assert_eq!(msb0.as_raw_slice(), exp_msb0);
+	/// ```
+	///
+	/// [`M::BITS`]: funty::IsNumber::BITS
+	/// [`self.len()`]: crate::slice::BitSlice::len
+	</span><span class="kw">fn </span>store_le&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: M)
+	<span class="kw">where </span>M: BitMemory;
 
-	<span class="doccomment">/// Stores into `self`, using big-endian element ordering.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This function interprets a multi-element slice as having its most</span>
-	<span class="doccomment">/// significant chunk in the low memory address, and its least significant</span>
-	<span class="doccomment">/// chunk in the high memory address. Each element `T` is still interpreted</span>
-	<span class="doccomment">/// from individual bytes according to the local CPU ordering.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `&amp;mut self`: A write reference to some bits in memory. This slice must</span>
-	<span class="doccomment">///   be trimmed to have a width no more than the [`M::BITS`] width of the</span>
-	<span class="doccomment">///   type being stored. This can be accomplished with range indexing on a</span>
-	<span class="doccomment">///   larger slice.</span>
-	<span class="doccomment">/// - `value`: A value, whose [`self.len()`] least significant bits will be</span>
-	<span class="doccomment">///   stored into `self`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Behavior</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The [`self.len()`] least significant bits of `value` are written into</span>
-	<span class="doccomment">/// the domain of `self`. If `self` spans multiple elements `T`, then the</span>
-	<span class="doccomment">/// lowest-address `T` is interpreted as containing the most significant</span>
-	<span class="doccomment">/// bits of the `M` return value, and the highest-address `T` is interpreted</span>
-	<span class="doccomment">/// as containing its least significant bits.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Panics</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This method is encouraged to panic if `self` is empty, or wider than a</span>
-	<span class="doccomment">/// single element `M`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This example shows how a value is segmented across multiple storage</span>
-	<span class="doccomment">/// elements:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let mut data = [0u8; 3];</span>
-	<span class="doccomment">/// data.view_bits_mut::&lt;Lsb0&gt;()</span>
-	<span class="doccomment">///   [5 .. 17]</span>
-	<span class="doccomment">///   .store_be(0b0000_110_1000_1011_1u16);</span>
-	<span class="doccomment">/// //                 OPQ RSTU VWXY Z</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// assert_eq!(data, [</span>
-	<span class="doccomment">///   0b110_00000, 0b1000_1011, 0b0000000_1</span>
-	<span class="doccomment">/// //  OPQ          RSTU VWXY            Z</span>
-	<span class="doccomment">/// ]);</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let val = data.view_bits::&lt;Lsb0&gt;()</span>
-	<span class="doccomment">///   [5 .. 17]</span>
-	<span class="doccomment">///   .load_be::&lt;u16&gt;();</span>
-	<span class="doccomment">/// assert_eq!(</span>
-	<span class="doccomment">///   val,</span>
-	<span class="doccomment">///   0b0000_110_1000_1011_1u16,</span>
-	<span class="doccomment">/// //       OPQ RSTU VWXY Z</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// And this example shows how the same memory region is written by</span>
-	<span class="doccomment">/// different `BitOrder` implementations:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">/// let mut lsb0 = bitarr![Lsb0, u16; 0; 32];</span>
-	<span class="doccomment">/// let mut msb0 = bitarr![Msb0, u16; 0; 32];</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// // Bit pos:        14                                     19  16</span>
-	<span class="doccomment">/// // Lsb0:          ─┤                                       ├──┤</span>
-	<span class="doccomment">/// let exp_lsb0 = [0b0100_0000_0000_0000u16, 0b0000_0000_0000_1110u16];</span>
-	<span class="doccomment">/// let exp_msb0 = [0b0000_0000_0000_0011u16, 0b0001_0000_0000_0000u16];</span>
-	<span class="doccomment">/// // Msb0:                           ├─       ├──┤</span>
-	<span class="doccomment">/// // Bit pos:                       14       16  19</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// lsb0[14 ..= 19].store_be(0b011110u8);</span>
-	<span class="doccomment">/// msb0[14 ..= 19].store_be(0b110001u8);</span>
-	<span class="doccomment">/// assert_eq!(lsb0.as_raw_slice(), exp_lsb0);</span>
-	<span class="doccomment">/// assert_eq!(msb0.as_raw_slice(), exp_msb0);</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`M::BITS`]: funty::IsNumber::BITS</span>
-	<span class="doccomment">/// [`self.len()`]: crate::slice::BitSlice::len</span>
-	<span class="kw">fn</span> <span class="ident">store_be</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span>;
+	<span class="doccomment">/// Stores into `self`, using big-endian element ordering.
+	///
+	/// This function interprets a multi-element slice as having its most
+	/// significant chunk in the low memory address, and its least significant
+	/// chunk in the high memory address. Each element `T` is still interpreted
+	/// from individual bytes according to the local CPU ordering.
+	///
+	/// # Parameters
+	///
+	/// - `&amp;mut self`: A write reference to some bits in memory. This slice must
+	///   be trimmed to have a width no more than the [`M::BITS`] width of the
+	///   type being stored. This can be accomplished with range indexing on a
+	///   larger slice.
+	/// - `value`: A value, whose [`self.len()`] least significant bits will be
+	///   stored into `self`.
+	///
+	/// # Behavior
+	///
+	/// The [`self.len()`] least significant bits of `value` are written into
+	/// the domain of `self`. If `self` spans multiple elements `T`, then the
+	/// lowest-address `T` is interpreted as containing the most significant
+	/// bits of the `M` return value, and the highest-address `T` is interpreted
+	/// as containing its least significant bits.
+	///
+	/// # Panics
+	///
+	/// This method is encouraged to panic if `self` is empty, or wider than a
+	/// single element `M`.
+	///
+	/// # Examples
+	///
+	/// This example shows how a value is segmented across multiple storage
+	/// elements:
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let mut data = [0u8; 3];
+	/// data.view_bits_mut::&lt;Lsb0&gt;()
+	///   [5 .. 17]
+	///   .store_be(0b0000_110_1000_1011_1u16);
+	/// //                 OPQ RSTU VWXY Z
+	///
+	/// assert_eq!(data, [
+	///   0b110_00000, 0b1000_1011, 0b0000000_1
+	/// //  OPQ          RSTU VWXY            Z
+	/// ]);
+	///
+	/// let val = data.view_bits::&lt;Lsb0&gt;()
+	///   [5 .. 17]
+	///   .load_be::&lt;u16&gt;();
+	/// assert_eq!(
+	///   val,
+	///   0b0000_110_1000_1011_1u16,
+	/// //       OPQ RSTU VWXY Z
+	/// );
+	/// ```
+	///
+	/// And this example shows how the same memory region is written by
+	/// different `BitOrder` implementations:
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	/// let mut lsb0 = bitarr![Lsb0, u16; 0; 32];
+	/// let mut msb0 = bitarr![Msb0, u16; 0; 32];
+	///
+	/// // Bit pos:        14                                     19  16
+	/// // Lsb0:          ─┤                                       ├──┤
+	/// let exp_lsb0 = [0b0100_0000_0000_0000u16, 0b0000_0000_0000_1110u16];
+	/// let exp_msb0 = [0b0000_0000_0000_0011u16, 0b0001_0000_0000_0000u16];
+	/// // Msb0:                           ├─       ├──┤
+	/// // Bit pos:                       14       16  19
+	///
+	/// lsb0[14 ..= 19].store_be(0b011110u8);
+	/// msb0[14 ..= 19].store_be(0b110001u8);
+	/// assert_eq!(lsb0.as_raw_slice(), exp_lsb0);
+	/// assert_eq!(msb0.as_raw_slice(), exp_msb0);
+	/// ```
+	///
+	/// [`M::BITS`]: funty::IsNumber::BITS
+	/// [`self.len()`]: crate::slice::BitSlice::len
+	</span><span class="kw">fn </span>store_be&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: M)
+	<span class="kw">where </span>M: BitMemory;
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">BitField</span> <span class="kw">for</span> <span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">Lsb0</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span> <span class="ident">T</span>: <span class="ident">BitStore</span>
+<span class="kw">impl</span>&lt;T&gt; BitField <span class="kw">for </span>BitSlice&lt;Lsb0, T&gt;
+<span class="kw">where </span>T: BitStore
 {
-	<span class="doccomment">/// Loads from `self`, using little-endian element ordering if `self` spans</span>
-	<span class="doccomment">/// more than one `T` element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If [`self.domain()`] produces a [`Domain::Region`], then:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - its [`head`] element contains the least significant segment of the</span>
-	<span class="doccomment">///   returned value, in the bits at the most significant edge of the</span>
-	<span class="doccomment">///   element,</span>
-	<span class="doccomment">/// - its [`body`] slice contains successively more-significant segments,</span>
-	<span class="doccomment">///   and</span>
-	<span class="doccomment">/// - its [`tail`] element contains the most significant segment of the</span>
-	<span class="doccomment">///   returned value, in the bits at the least significant edge of the</span>
-	<span class="doccomment">///   element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If the domain is an [`Enclave`], then the referent element is merely</span>
-	<span class="doccomment">/// loaded, shifted, and masked; no recombination of segments is necessary.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let mut data = [0u8; 3];</span>
-	<span class="doccomment">/// data.view_bits_mut::&lt;Lsb0&gt;()[5 .. 21].store_le::&lt;u16&gt;(</span>
-	<span class="doccomment">///   0b1_1011_0100_1100_011</span>
-	<span class="doccomment">/// //  K LMNO PQRS TUVW XYZ</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// assert_eq!(data, [</span>
-	<span class="doccomment">///   0b011_00000, 0b0100_1100, 0b000_1_1011</span>
-	<span class="doccomment">/// //  XYZ          PQRS TUVW        K LMNO</span>
-	<span class="doccomment">/// ]);</span>
-	<span class="doccomment">/// let val = data.view_bits::&lt;Lsb0&gt;()[5 .. 21].load_le::&lt;u16&gt;();</span>
-	<span class="doccomment">/// assert_eq!(</span>
-	<span class="doccomment">///   val,</span>
-	<span class="doccomment">///   0b1_1011_0100_1100_011,</span>
-	<span class="doccomment">/// //  K LMNO PQRS TUVW XYZ</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`Domain::Region`]: crate::domain::Domain::Region</span>
-	<span class="doccomment">/// [`Enclave`]: crate::domain::Domain::Enclave</span>
-	<span class="doccomment">/// [`body`]: crate::domain::Domain::Region::body</span>
-	<span class="doccomment">/// [`head`]: crate::domain::Domain::Region::head</span>
-	<span class="doccomment">/// [`self.domain()`]: crate::slice::BitSlice::domain</span>
-	<span class="doccomment">/// [`tail`]: crate::domain::Domain::Region::tail</span>
-	<span class="kw">fn</span> <span class="ident">load_le</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="ident">check</span>::<span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="string">&quot;load&quot;</span>, <span class="self">self</span>.<span class="ident">len</span>());
+	<span class="doccomment">/// Loads from `self`, using little-endian element ordering if `self` spans
+	/// more than one `T` element.
+	///
+	/// If [`self.domain()`] produces a [`Domain::Region`], then:
+	///
+	/// - its [`head`] element contains the least significant segment of the
+	///   returned value, in the bits at the most significant edge of the
+	///   element,
+	/// - its [`body`] slice contains successively more-significant segments,
+	///   and
+	/// - its [`tail`] element contains the most significant segment of the
+	///   returned value, in the bits at the least significant edge of the
+	///   element.
+	///
+	/// If the domain is an [`Enclave`], then the referent element is merely
+	/// loaded, shifted, and masked; no recombination of segments is necessary.
+	///
+	/// # Examples
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let mut data = [0u8; 3];
+	/// data.view_bits_mut::&lt;Lsb0&gt;()[5 .. 21].store_le::&lt;u16&gt;(
+	///   0b1_1011_0100_1100_011
+	/// //  K LMNO PQRS TUVW XYZ
+	/// );
+	/// assert_eq!(data, [
+	///   0b011_00000, 0b0100_1100, 0b000_1_1011
+	/// //  XYZ          PQRS TUVW        K LMNO
+	/// ]);
+	/// let val = data.view_bits::&lt;Lsb0&gt;()[5 .. 21].load_le::&lt;u16&gt;();
+	/// assert_eq!(
+	///   val,
+	///   0b1_1011_0100_1100_011,
+	/// //  K LMNO PQRS TUVW XYZ
+	/// );
+	/// ```
+	///
+	/// [`Domain::Region`]: crate::domain::Domain::Region
+	/// [`Enclave`]: crate::domain::Domain::Enclave
+	/// [`body`]: crate::domain::Domain::Region::body
+	/// [`head`]: crate::domain::Domain::Region::head
+	/// [`self.domain()`]: crate::slice::BitSlice::domain
+	/// [`tail`]: crate::domain::Domain::Region::tail
+	</span><span class="kw">fn </span>load_le&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory {
+		check::&lt;M&gt;(<span class="string">&quot;load&quot;</span>, <span class="self">self</span>.len());
 
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain</span>() {
-			<span class="comment">//  In Lsb0, a `head` index counts distance from LSedge, and a</span>
-			<span class="comment">//  `tail` index counts element width minus distance from MSedge.</span>
-			<span class="ident">Domain::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>, <span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>), <span class="ident">head</span>.<span class="ident">into_inner</span>())
+		<span class="kw">match </span><span class="self">self</span>.domain() {
+			<span class="comment">//  In Lsb0, a `head` index counts distance from LSedge, and a
+			//  `tail` index counts element width minus distance from MSedge.
+			</span>Domain::Enclave { head, elem, tail } =&gt; {
+				get::&lt;T, M&gt;(elem, Lsb0::mask(head, tail), head.into_inner())
 			},
-			<span class="ident">Domain::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accum</span> <span class="op">=</span> <span class="ident">M::ZERO</span>;
+			Domain::Region { head, body, tail } =&gt; {
+				<span class="kw">let </span><span class="kw-2">mut </span>accum = M::ZERO;
 
 				<span class="comment">/* For multi-`T::Mem` domains, the most significant chunk is
 				stored in the highest memory address, the tail. Each successive
 				memory address lower has a chunk of decreasing significance,
 				until the least significant chunk is stored in the lowest memory
 				address, the head.
-				*/</span>
+				*/
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="ident">accum</span> <span class="op">=</span> <span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>, <span class="ident">Lsb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>), <span class="number">0</span>);
+				</span><span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					accum = get::&lt;T, M&gt;(elem, Lsb0::mask(<span class="prelude-val">None</span>, tail), <span class="number">0</span>);
 				}
 
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span>.<span class="ident">iter</span>().<span class="ident">rev</span>().<span class="ident">map</span>(<span class="ident">BitStore::load_value</span>) {
+				<span class="kw">for </span>elem <span class="kw">in </span>body.iter().rev().map(BitStore::load_value) {
 					<span class="comment">/* Rust does not allow the use of shift instructions of
 					exactly a type width to clear a value. This loop only enters
 					when `M` is not narrower than `T::Mem`, and the shift is
@@ -2496,245 +2491,245 @@ this behavior.
 
 					As a const-expression, this branch folds at compile-time to
 					conditionally remove or retain the instruction.
-					*/</span>
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="op">&gt;</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> {
-						<span class="ident">accum</span> <span class="op">&lt;</span><span class="op">&lt;</span><span class="op">=</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span>;
+					*/
+					</span><span class="kw">if </span>M::BITS &gt; &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS {
+						accum &lt;&lt;= &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS;
 					}
-					<span class="ident">accum</span> <span class="op">|</span><span class="op">=</span> <span class="ident">resize</span>::<span class="op">&lt;</span><span class="ident">T::Mem</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>);
+					accum |= resize::&lt;T::Mem, M&gt;(elem);
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="kw">let</span> <span class="ident">shamt</span> <span class="op">=</span> <span class="ident">head</span>.<span class="ident">into_inner</span>();
-					<span class="kw">let</span> <span class="ident">rshamt</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">shamt</span>;
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">&gt;</span> <span class="ident">rshamt</span> {
-						<span class="ident">accum</span> <span class="op">&lt;</span><span class="op">&lt;</span><span class="op">=</span> <span class="ident">rshamt</span>;
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					<span class="kw">let </span>shamt = head.into_inner();
+					<span class="kw">let </span>rshamt = &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>u8 - shamt;
+					<span class="kw">if </span>M::BITS <span class="kw">as </span>u8 &gt; rshamt {
+						accum &lt;&lt;= rshamt;
 					}
-					<span class="kw">else</span> {
-						<span class="ident">accum</span> <span class="op">=</span> <span class="ident">M::ZERO</span>;
+					<span class="kw">else </span>{
+						accum = M::ZERO;
 					}
-					<span class="ident">accum</span> <span class="op">|</span><span class="op">=</span> <span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>, <span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>), <span class="ident">shamt</span>);
+					accum |= get::&lt;T, M&gt;(elem, Lsb0::mask(head, <span class="prelude-val">None</span>), shamt);
 				}
 
-				<span class="ident">accum</span>
+				accum
 			},
 		}
 	}
 
-	<span class="doccomment">/// Loads from `self`, using big-endian element ordering if `self` spans</span>
-	<span class="doccomment">/// more than one `T` element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If [`self.domain()`] produces a [`Domain::Region`], then:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - its [`head`] element contains the most significant segment of the</span>
-	<span class="doccomment">///   returned value, in the bits at the most significant edge of the</span>
-	<span class="doccomment">///   element,</span>
-	<span class="doccomment">/// - its [`body`] slice contains successively less-significant segments,</span>
-	<span class="doccomment">///   and</span>
-	<span class="doccomment">/// - its [`tail`] element contains the least significant segment of the</span>
-	<span class="doccomment">///   returned value, in the bits at the least significant edge of the</span>
-	<span class="doccomment">///   element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If the domain is an [`Enclave`], then the referent element is merely</span>
-	<span class="doccomment">/// loaded, shifted, and masked; no recombination of segments is necessary.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let mut data = [0u8; 3];</span>
-	<span class="doccomment">/// data.view_bits_mut::&lt;Lsb0&gt;()[5 .. 21].store_be::&lt;u16&gt;(</span>
-	<span class="doccomment">///   0b011_1100_0100_1011_1,</span>
-	<span class="doccomment">/// //  KLM NOPQ RSTU VWXY Z</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// assert_eq!(data, [</span>
-	<span class="doccomment">///   0b011_00000, 0b1100_0100, 0b000_1011_1</span>
-	<span class="doccomment">/// //  KLM          NOPQ RSTU        VWXY Z</span>
-	<span class="doccomment">/// ]);</span>
-	<span class="doccomment">/// let val = data.view_bits::&lt;Lsb0&gt;()[5 .. 21].load_be::&lt;u16&gt;();</span>
-	<span class="doccomment">/// assert_eq!(</span>
-	<span class="doccomment">///   val,</span>
-	<span class="doccomment">///   0b011_1100_0100_1011_1,</span>
-	<span class="doccomment">/// //  KLM NOPQ RSTU VWXY Z</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`Domain::Region`]: crate::domain::Domain::Region</span>
-	<span class="doccomment">/// [`Enclave`]: crate::domain::Domain::Enclave</span>
-	<span class="doccomment">/// [`body`]: crate::domain::Domain::Region::body</span>
-	<span class="doccomment">/// [`head`]: crate::domain::Domain::Region::head</span>
-	<span class="doccomment">/// [`self.domain()`]: crate::slice::BitSlice::domain</span>
-	<span class="doccomment">/// [`tail`]: crate::domain::Domain::Region::tail</span>
-	<span class="kw">fn</span> <span class="ident">load_be</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="ident">check</span>::<span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="string">&quot;load&quot;</span>, <span class="self">self</span>.<span class="ident">len</span>());
+	<span class="doccomment">/// Loads from `self`, using big-endian element ordering if `self` spans
+	/// more than one `T` element.
+	///
+	/// If [`self.domain()`] produces a [`Domain::Region`], then:
+	///
+	/// - its [`head`] element contains the most significant segment of the
+	///   returned value, in the bits at the most significant edge of the
+	///   element,
+	/// - its [`body`] slice contains successively less-significant segments,
+	///   and
+	/// - its [`tail`] element contains the least significant segment of the
+	///   returned value, in the bits at the least significant edge of the
+	///   element.
+	///
+	/// If the domain is an [`Enclave`], then the referent element is merely
+	/// loaded, shifted, and masked; no recombination of segments is necessary.
+	///
+	/// # Examples
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let mut data = [0u8; 3];
+	/// data.view_bits_mut::&lt;Lsb0&gt;()[5 .. 21].store_be::&lt;u16&gt;(
+	///   0b011_1100_0100_1011_1,
+	/// //  KLM NOPQ RSTU VWXY Z
+	/// );
+	/// assert_eq!(data, [
+	///   0b011_00000, 0b1100_0100, 0b000_1011_1
+	/// //  KLM          NOPQ RSTU        VWXY Z
+	/// ]);
+	/// let val = data.view_bits::&lt;Lsb0&gt;()[5 .. 21].load_be::&lt;u16&gt;();
+	/// assert_eq!(
+	///   val,
+	///   0b011_1100_0100_1011_1,
+	/// //  KLM NOPQ RSTU VWXY Z
+	/// );
+	/// ```
+	///
+	/// [`Domain::Region`]: crate::domain::Domain::Region
+	/// [`Enclave`]: crate::domain::Domain::Enclave
+	/// [`body`]: crate::domain::Domain::Region::body
+	/// [`head`]: crate::domain::Domain::Region::head
+	/// [`self.domain()`]: crate::slice::BitSlice::domain
+	/// [`tail`]: crate::domain::Domain::Region::tail
+	</span><span class="kw">fn </span>load_be&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory {
+		check::&lt;M&gt;(<span class="string">&quot;load&quot;</span>, <span class="self">self</span>.len());
 
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain</span>() {
-			<span class="ident">Domain::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>, <span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>), <span class="ident">head</span>.<span class="ident">into_inner</span>())
+		<span class="kw">match </span><span class="self">self</span>.domain() {
+			Domain::Enclave { head, elem, tail } =&gt; {
+				get::&lt;T, M&gt;(elem, Lsb0::mask(head, tail), head.into_inner())
 			},
-			<span class="ident">Domain::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accum</span> <span class="op">=</span> <span class="ident">M::ZERO</span>;
+			Domain::Region { head, body, tail } =&gt; {
+				<span class="kw">let </span><span class="kw-2">mut </span>accum = M::ZERO;
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="ident">accum</span> <span class="op">=</span> <span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(
-						<span class="ident">elem</span>,
-						<span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>),
-						<span class="ident">head</span>.<span class="ident">into_inner</span>(),
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					accum = get::&lt;T, M&gt;(
+						elem,
+						Lsb0::mask(head, <span class="prelude-val">None</span>),
+						head.into_inner(),
 					);
 				}
 
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="ident">BitStore::load_value</span>) {
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="op">&gt;</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> {
-						<span class="ident">accum</span> <span class="op">&lt;</span><span class="op">&lt;</span><span class="op">=</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span>;
+				<span class="kw">for </span>elem <span class="kw">in </span>body.iter().map(BitStore::load_value) {
+					<span class="kw">if </span>M::BITS &gt; &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS {
+						accum &lt;&lt;= &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS;
 					}
-					<span class="ident">accum</span> <span class="op">|</span><span class="op">=</span> <span class="ident">resize</span>::<span class="op">&lt;</span><span class="ident">T::Mem</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>);
+					accum |= resize::&lt;T::Mem, M&gt;(elem);
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="kw">let</span> <span class="ident">shamt</span> <span class="op">=</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>();
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">&gt;</span> <span class="ident">shamt</span> {
-						<span class="ident">accum</span> <span class="op">&lt;</span><span class="op">&lt;</span><span class="op">=</span> <span class="ident">shamt</span>;
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					<span class="kw">let </span>shamt = tail.into_inner();
+					<span class="kw">if </span>M::BITS <span class="kw">as </span>u8 &gt; shamt {
+						accum &lt;&lt;= shamt;
 					}
-					<span class="kw">else</span> {
-						<span class="ident">accum</span> <span class="op">=</span> <span class="ident">M::ZERO</span>;
+					<span class="kw">else </span>{
+						accum = M::ZERO;
 					}
-					<span class="ident">accum</span> <span class="op">|</span><span class="op">=</span> <span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>, <span class="ident">Lsb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>), <span class="number">0</span>);
+					accum |= get::&lt;T, M&gt;(elem, Lsb0::mask(<span class="prelude-val">None</span>, tail), <span class="number">0</span>);
 				}
 
-				<span class="ident">accum</span>
+				accum
 			},
 		}
 	}
 
-	<span class="doccomment">/// Stores into `self`, using little-endian element ordering if `self` spans</span>
-	<span class="doccomment">/// more than one `T` element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If [`self.domain()`] produces a [`Domain::Region`], then:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - its [`head`] element receives the least significant segment of</span>
-	<span class="doccomment">///   `value`, in the bits at the most significant edge of the element,</span>
-	<span class="doccomment">/// - its [`body`] slice receives successively more-significant segments of</span>
-	<span class="doccomment">///   `value`, and</span>
-	<span class="doccomment">/// - its [`tail`] element receives the most significant segment of `value`,</span>
-	<span class="doccomment">///   in the bits at the least significant edge of the element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If the domain is an [`Enclave`], then `value` is shifted into place and</span>
-	<span class="doccomment">/// written without any segmentation.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See the documentation for `&lt;BitSlice&lt;Lsb0, u8&gt; as BitField&gt;::load_le`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`Domain::Region`]: crate::domain::Domain::Region</span>
-	<span class="doccomment">/// [`Enclave`]: crate::domain::Domain::Enclave</span>
-	<span class="doccomment">/// [`head`]: crate::domain::Domain::Region::head</span>
-	<span class="doccomment">/// [`body`]: crate::domain::Domain::Region::body</span>
-	<span class="doccomment">/// [`self.domain()`]: crate::slice::BitSlice::domain</span>
-	<span class="doccomment">/// [`tail`]: crate::domain::Domain::Region::tail</span>
-	<span class="kw">fn</span> <span class="ident">store_le</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="ident">check</span>::<span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="string">&quot;store&quot;</span>, <span class="self">self</span>.<span class="ident">len</span>());
+	<span class="doccomment">/// Stores into `self`, using little-endian element ordering if `self` spans
+	/// more than one `T` element.
+	///
+	/// If [`self.domain()`] produces a [`Domain::Region`], then:
+	///
+	/// - its [`head`] element receives the least significant segment of
+	///   `value`, in the bits at the most significant edge of the element,
+	/// - its [`body`] slice receives successively more-significant segments of
+	///   `value`, and
+	/// - its [`tail`] element receives the most significant segment of `value`,
+	///   in the bits at the least significant edge of the element.
+	///
+	/// If the domain is an [`Enclave`], then `value` is shifted into place and
+	/// written without any segmentation.
+	///
+	/// # Examples
+	///
+	/// See the documentation for `&lt;BitSlice&lt;Lsb0, u8&gt; as BitField&gt;::load_le`.
+	///
+	/// [`Domain::Region`]: crate::domain::Domain::Region
+	/// [`Enclave`]: crate::domain::Domain::Enclave
+	/// [`head`]: crate::domain::Domain::Region::head
+	/// [`body`]: crate::domain::Domain::Region::body
+	/// [`self.domain()`]: crate::slice::BitSlice::domain
+	/// [`tail`]: crate::domain::Domain::Region::tail
+	</span><span class="kw">fn </span>store_le&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>value: M)
+	<span class="kw">where </span>M: BitMemory {
+		check::&lt;M&gt;(<span class="string">&quot;store&quot;</span>, <span class="self">self</span>.len());
 
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain_mut</span>() {
-			<span class="ident">DomainMut::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="ident">set</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(
-					<span class="ident">elem</span>,
-					<span class="ident">value</span>,
-					<span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>),
-					<span class="ident">head</span>.<span class="ident">into_inner</span>(),
+		<span class="kw">match </span><span class="self">self</span>.domain_mut() {
+			DomainMut::Enclave { head, elem, tail } =&gt; {
+				set::&lt;T, M&gt;(
+					elem,
+					value,
+					Lsb0::mask(head, tail),
+					head.into_inner(),
 				);
 			},
-			<span class="ident">DomainMut::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="kw">let</span> <span class="ident">shamt</span> <span class="op">=</span> <span class="ident">head</span>.<span class="ident">into_inner</span>();
-					<span class="ident">set</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>, <span class="ident">value</span>, <span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>), <span class="ident">shamt</span>);
-					<span class="kw">let</span> <span class="ident">lshamt</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">shamt</span>;
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">&gt;</span> <span class="ident">lshamt</span> {
-						<span class="ident">value</span> <span class="op">&gt;</span><span class="op">&gt;</span><span class="op">=</span> <span class="ident">lshamt</span>;
+			DomainMut::Region { head, body, tail } =&gt; {
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					<span class="kw">let </span>shamt = head.into_inner();
+					set::&lt;T, M&gt;(elem, value, Lsb0::mask(head, <span class="prelude-val">None</span>), shamt);
+					<span class="kw">let </span>lshamt = &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>u8 - shamt;
+					<span class="kw">if </span>M::BITS <span class="kw">as </span>u8 &gt; lshamt {
+						value &gt;&gt;= lshamt;
 					}
-					<span class="kw">else</span> {
-						<span class="ident">value</span> <span class="op">=</span> <span class="ident">M::ZERO</span>;
-					}
-				}
-
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span>.<span class="ident">iter_mut</span>() {
-					<span class="ident">elem</span>.<span class="ident">store_value</span>(<span class="ident">resize</span>(<span class="ident">value</span>));
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="op">&gt;</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> {
-						<span class="ident">value</span> <span class="op">&gt;</span><span class="op">&gt;</span><span class="op">=</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span>;
+					<span class="kw">else </span>{
+						value = M::ZERO;
 					}
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="ident">set</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>, <span class="ident">value</span>, <span class="ident">Lsb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>), <span class="number">0</span>);
+				<span class="kw">for </span>elem <span class="kw">in </span>body.iter_mut() {
+					elem.store_value(resize(value));
+					<span class="kw">if </span>M::BITS &gt; &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS {
+						value &gt;&gt;= &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS;
+					}
+				}
+
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					set::&lt;T, M&gt;(elem, value, Lsb0::mask(<span class="prelude-val">None</span>, tail), <span class="number">0</span>);
 				}
 			},
 		}
 	}
 
-	<span class="doccomment">/// Stores into `self`, using big-endian element ordering if `self` spans</span>
-	<span class="doccomment">/// more than one `T` element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If [`self.domain()`] produces a [`Domain::Region`], then:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - its [`head`] element receives the most significant segment of `value`,</span>
-	<span class="doccomment">///   in the bits at the most significant edge of the element,</span>
-	<span class="doccomment">/// - its [`body`] slice receives successively less-significant segments of</span>
-	<span class="doccomment">///   `value`, and</span>
-	<span class="doccomment">/// - its [`tail`] element receives the least significant segment of</span>
-	<span class="doccomment">///   `value`, in the bits at the least significant edge of the element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If the domain is an [`Enclave`], then `value` is shifted into place and</span>
-	<span class="doccomment">/// written without any segmentation.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See the documentation for `&lt;BitSlice&lt;Lsb0, u8&gt; as BitField&gt;::load_be`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`Domain::Region`]: crate::domain::Domain::Region</span>
-	<span class="doccomment">/// [`Enclave`]: crate::domain::Domain::Enclave</span>
-	<span class="doccomment">/// [`head`]: crate::domain::Domain::Region::head</span>
-	<span class="doccomment">/// [`body`]: crate::domain::Domain::Region::body</span>
-	<span class="doccomment">/// [`self.domain()`]: crate::slice::BitSlice::domain</span>
-	<span class="doccomment">/// [`tail`]: crate::domain::Domain::Region::tail</span>
-	<span class="kw">fn</span> <span class="ident">store_be</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="ident">check</span>::<span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="string">&quot;store&quot;</span>, <span class="self">self</span>.<span class="ident">len</span>());
+	<span class="doccomment">/// Stores into `self`, using big-endian element ordering if `self` spans
+	/// more than one `T` element.
+	///
+	/// If [`self.domain()`] produces a [`Domain::Region`], then:
+	///
+	/// - its [`head`] element receives the most significant segment of `value`,
+	///   in the bits at the most significant edge of the element,
+	/// - its [`body`] slice receives successively less-significant segments of
+	///   `value`, and
+	/// - its [`tail`] element receives the least significant segment of
+	///   `value`, in the bits at the least significant edge of the element.
+	///
+	/// If the domain is an [`Enclave`], then `value` is shifted into place and
+	/// written without any segmentation.
+	///
+	/// # Examples
+	///
+	/// See the documentation for `&lt;BitSlice&lt;Lsb0, u8&gt; as BitField&gt;::load_be`.
+	///
+	/// [`Domain::Region`]: crate::domain::Domain::Region
+	/// [`Enclave`]: crate::domain::Domain::Enclave
+	/// [`head`]: crate::domain::Domain::Region::head
+	/// [`body`]: crate::domain::Domain::Region::body
+	/// [`self.domain()`]: crate::slice::BitSlice::domain
+	/// [`tail`]: crate::domain::Domain::Region::tail
+	</span><span class="kw">fn </span>store_be&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>value: M)
+	<span class="kw">where </span>M: BitMemory {
+		check::&lt;M&gt;(<span class="string">&quot;store&quot;</span>, <span class="self">self</span>.len());
 
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain_mut</span>() {
-			<span class="ident">DomainMut::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="ident">set</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(
-					<span class="ident">elem</span>,
-					<span class="ident">value</span>,
-					<span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>),
-					<span class="ident">head</span>.<span class="ident">into_inner</span>(),
+		<span class="kw">match </span><span class="self">self</span>.domain_mut() {
+			DomainMut::Enclave { head, elem, tail } =&gt; {
+				set::&lt;T, M&gt;(
+					elem,
+					value,
+					Lsb0::mask(head, tail),
+					head.into_inner(),
 				);
 			},
-			<span class="ident">DomainMut::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="ident">set</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>, <span class="ident">value</span>, <span class="ident">Lsb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>), <span class="number">0</span>);
-					<span class="kw">let</span> <span class="ident">shamt</span> <span class="op">=</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>();
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">&gt;</span> <span class="ident">shamt</span> {
-						<span class="ident">value</span> <span class="op">&gt;</span><span class="op">&gt;</span><span class="op">=</span> <span class="ident">shamt</span>;
+			DomainMut::Region { head, body, tail } =&gt; {
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					set::&lt;T, M&gt;(elem, value, Lsb0::mask(<span class="prelude-val">None</span>, tail), <span class="number">0</span>);
+					<span class="kw">let </span>shamt = tail.into_inner();
+					<span class="kw">if </span>M::BITS <span class="kw">as </span>u8 &gt; shamt {
+						value &gt;&gt;= shamt;
 					}
-					<span class="kw">else</span> {
-						<span class="ident">value</span> <span class="op">=</span> <span class="ident">M::ZERO</span>;
-					}
-				}
-
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span>.<span class="ident">iter_mut</span>().<span class="ident">rev</span>() {
-					<span class="ident">elem</span>.<span class="ident">store_value</span>(<span class="ident">resize</span>(<span class="ident">value</span>));
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="op">&gt;</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> {
-						<span class="ident">value</span> <span class="op">&gt;</span><span class="op">&gt;</span><span class="op">=</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span>;
+					<span class="kw">else </span>{
+						value = M::ZERO;
 					}
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="ident">set</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(
-						<span class="ident">elem</span>,
-						<span class="ident">value</span>,
-						<span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>),
-						<span class="ident">head</span>.<span class="ident">into_inner</span>(),
+				<span class="kw">for </span>elem <span class="kw">in </span>body.iter_mut().rev() {
+					elem.store_value(resize(value));
+					<span class="kw">if </span>M::BITS &gt; &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS {
+						value &gt;&gt;= &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS;
+					}
+				}
+
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					set::&lt;T, M&gt;(
+						elem,
+						value,
+						Lsb0::mask(head, <span class="prelude-val">None</span>),
+						head.into_inner(),
 					);
 				}
 			},
@@ -2742,437 +2737,437 @@ this behavior.
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">BitField</span> <span class="kw">for</span> <span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">Msb0</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span> <span class="ident">T</span>: <span class="ident">BitStore</span>
+<span class="kw">impl</span>&lt;T&gt; BitField <span class="kw">for </span>BitSlice&lt;Msb0, T&gt;
+<span class="kw">where </span>T: BitStore
 {
-	<span class="doccomment">/// Loads from `self`, using little-endian element ordering if `self` spans</span>
-	<span class="doccomment">/// more than one `T` element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If [`self.domain()`] produces a [`Domain::Region`], then:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - its [`head`] element contains the least significant segment of the</span>
-	<span class="doccomment">///   returned value, in the bits at the least significant edge of the</span>
-	<span class="doccomment">///   element,</span>
-	<span class="doccomment">/// - its [`body`] slice contains successively more-significant segments,</span>
-	<span class="doccomment">///   and</span>
-	<span class="doccomment">/// - its [`tail`] element contains the most significant segment of the</span>
-	<span class="doccomment">///   returned value, in the bits at the most significant edge of the</span>
-	<span class="doccomment">///   element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If the domain is an [`Enclave`], then the referent element is merely</span>
-	<span class="doccomment">/// loaded, shifted, and masked; no recombination of segments is necessary.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let mut data = [0u8; 3];</span>
-	<span class="doccomment">/// data.view_bits_mut::&lt;Msb0&gt;()[5 .. 21].store_le::&lt;u16&gt;(</span>
-	<span class="doccomment">///   0b1_1011_0100_1100_110</span>
-	<span class="doccomment">/// //  K LMNO PQRS TUVW XYZ</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// assert_eq!(data, [</span>
-	<span class="doccomment">///   0b00000_110, 0b0100_1100, 0b1_1011_000</span>
-	<span class="doccomment">/// //        XYZ    PQRS TUVW    K LMNO</span>
-	<span class="doccomment">/// ]);</span>
-	<span class="doccomment">/// let val = data.view_bits::&lt;Msb0&gt;()[5 .. 21].load_le::&lt;u16&gt;();</span>
-	<span class="doccomment">/// assert_eq!(</span>
-	<span class="doccomment">///   val,</span>
-	<span class="doccomment">///   0b1_1011_0100_1100_110,</span>
-	<span class="doccomment">/// //  K LMNO PQRS TUVW XYZ</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`Domain::Region`]: crate::domain::Domain::Region</span>
-	<span class="doccomment">/// [`Enclave`]: crate::domain::Domain::Enclave</span>
-	<span class="doccomment">/// [`body`]: crate::domain::Domain::Region::body</span>
-	<span class="doccomment">/// [`head`]: crate::domain::Domain::Region::head</span>
-	<span class="doccomment">/// [`self.domain()`]: crate::slice::BitSlice::domain</span>
-	<span class="doccomment">/// [`tail`]: crate::domain::Domain::Region::tail</span>
-	<span class="kw">fn</span> <span class="ident">load_le</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="ident">check</span>::<span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="string">&quot;load&quot;</span>, <span class="self">self</span>.<span class="ident">len</span>());
+	<span class="doccomment">/// Loads from `self`, using little-endian element ordering if `self` spans
+	/// more than one `T` element.
+	///
+	/// If [`self.domain()`] produces a [`Domain::Region`], then:
+	///
+	/// - its [`head`] element contains the least significant segment of the
+	///   returned value, in the bits at the least significant edge of the
+	///   element,
+	/// - its [`body`] slice contains successively more-significant segments,
+	///   and
+	/// - its [`tail`] element contains the most significant segment of the
+	///   returned value, in the bits at the most significant edge of the
+	///   element.
+	///
+	/// If the domain is an [`Enclave`], then the referent element is merely
+	/// loaded, shifted, and masked; no recombination of segments is necessary.
+	///
+	/// # Examples
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let mut data = [0u8; 3];
+	/// data.view_bits_mut::&lt;Msb0&gt;()[5 .. 21].store_le::&lt;u16&gt;(
+	///   0b1_1011_0100_1100_110
+	/// //  K LMNO PQRS TUVW XYZ
+	/// );
+	/// assert_eq!(data, [
+	///   0b00000_110, 0b0100_1100, 0b1_1011_000
+	/// //        XYZ    PQRS TUVW    K LMNO
+	/// ]);
+	/// let val = data.view_bits::&lt;Msb0&gt;()[5 .. 21].load_le::&lt;u16&gt;();
+	/// assert_eq!(
+	///   val,
+	///   0b1_1011_0100_1100_110,
+	/// //  K LMNO PQRS TUVW XYZ
+	/// );
+	/// ```
+	///
+	/// [`Domain::Region`]: crate::domain::Domain::Region
+	/// [`Enclave`]: crate::domain::Domain::Enclave
+	/// [`body`]: crate::domain::Domain::Region::body
+	/// [`head`]: crate::domain::Domain::Region::head
+	/// [`self.domain()`]: crate::slice::BitSlice::domain
+	/// [`tail`]: crate::domain::Domain::Region::tail
+	</span><span class="kw">fn </span>load_le&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory {
+		check::&lt;M&gt;(<span class="string">&quot;load&quot;</span>, <span class="self">self</span>.len());
 
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain</span>() {
-			<span class="ident">Domain::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; <span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(
-				<span class="ident">elem</span>,
-				<span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>),
-				<span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>(),
+		<span class="kw">match </span><span class="self">self</span>.domain() {
+			Domain::Enclave { head, elem, tail } =&gt; get::&lt;T, M&gt;(
+				elem,
+				Msb0::mask(head, tail),
+				&lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>u8 - tail.into_inner(),
 			),
-			<span class="ident">Domain::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accum</span> <span class="op">=</span> <span class="ident">M::ZERO</span>;
+			Domain::Region { head, body, tail } =&gt; {
+				<span class="kw">let </span><span class="kw-2">mut </span>accum = M::ZERO;
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="ident">accum</span> <span class="op">=</span> <span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(
-						<span class="ident">elem</span>,
-						<span class="ident">Msb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>),
-						<span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>(),
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					accum = get::&lt;T, M&gt;(
+						elem,
+						Msb0::mask(<span class="prelude-val">None</span>, tail),
+						&lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>u8 - tail.into_inner(),
 					);
 				}
 
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span>.<span class="ident">iter</span>().<span class="ident">rev</span>().<span class="ident">map</span>(<span class="ident">BitStore::load_value</span>) {
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="op">&gt;</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> {
-						<span class="ident">accum</span> <span class="op">&lt;</span><span class="op">&lt;</span><span class="op">=</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span>;
+				<span class="kw">for </span>elem <span class="kw">in </span>body.iter().rev().map(BitStore::load_value) {
+					<span class="kw">if </span>M::BITS &gt; &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS {
+						accum &lt;&lt;= &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS;
 					}
-					<span class="ident">accum</span> <span class="op">|</span><span class="op">=</span> <span class="ident">resize</span>::<span class="op">&lt;</span><span class="ident">T::Mem</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>);
+					accum |= resize::&lt;T::Mem, M&gt;(elem);
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="kw">let</span> <span class="ident">shamt</span> <span class="op">=</span>
-						<span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">head</span>.<span class="ident">into_inner</span>();
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">&gt;</span> <span class="ident">shamt</span> {
-						<span class="ident">accum</span> <span class="op">&lt;</span><span class="op">&lt;</span><span class="op">=</span> <span class="ident">shamt</span>;
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					<span class="kw">let </span>shamt =
+						&lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>u8 - head.into_inner();
+					<span class="kw">if </span>M::BITS <span class="kw">as </span>u8 &gt; shamt {
+						accum &lt;&lt;= shamt;
 					}
-					<span class="kw">else</span> {
-						<span class="ident">accum</span> <span class="op">=</span> <span class="ident">M::ZERO</span>;
+					<span class="kw">else </span>{
+						accum = M::ZERO;
 					}
-					<span class="ident">accum</span> <span class="op">|</span><span class="op">=</span> <span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>, <span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>), <span class="number">0</span>);
+					accum |= get::&lt;T, M&gt;(elem, Msb0::mask(head, <span class="prelude-val">None</span>), <span class="number">0</span>);
 				}
 
-				<span class="ident">accum</span>
+				accum
 			},
 		}
 	}
 
-	<span class="doccomment">/// Loads from `self`, using big-endian element ordering if `self` spans</span>
-	<span class="doccomment">/// more than one element `T`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If [`self.domain()`] produces a [`Domain::Region`], then:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - its [`head`] element contains the most significant segment of the</span>
-	<span class="doccomment">///   returned value, in the bits at the least significant edge of the</span>
-	<span class="doccomment">///   element,</span>
-	<span class="doccomment">/// - its [`body`] slice contains successively less-significant segments,</span>
-	<span class="doccomment">///   and</span>
-	<span class="doccomment">/// - its [`tail`] element contains the least significant segment of the</span>
-	<span class="doccomment">///   returned value, in the bits at the most significant edge of the</span>
-	<span class="doccomment">///   element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If the domain is an [`Enclave`], then the referent element is merely</span>
-	<span class="doccomment">/// loaded, shifted, and masked; no recombination of segments is necessary.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// ```rust</span>
-	<span class="doccomment">/// use bitvec::prelude::*;</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// let mut data = [0u8; 3];</span>
-	<span class="doccomment">/// data.view_bits_mut::&lt;Msb0&gt;()[5 .. 21].store_be::&lt;u16&gt;(</span>
-	<span class="doccomment">///   0b110_1011_1100_0100_1</span>
-	<span class="doccomment">/// //  KLM NOPQ RSTU VWXY Z</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// assert_eq!(data, [</span>
-	<span class="doccomment">///   0b00000_110, 0b1011_1100, 0b0100_1_000</span>
-	<span class="doccomment">/// //        KLM    NOPQ RSTU    VWXY Z</span>
-	<span class="doccomment">/// ]);</span>
-	<span class="doccomment">/// let val = data.view_bits::&lt;Msb0&gt;()[5 .. 21].load_be::&lt;u16&gt;();</span>
-	<span class="doccomment">/// assert_eq!(</span>
-	<span class="doccomment">///   val,</span>
-	<span class="doccomment">///   0b110_1011_1100_0100_1,</span>
-	<span class="doccomment">/// //  KLM NOPQ RSTU VWXY Z</span>
-	<span class="doccomment">/// );</span>
-	<span class="doccomment">/// ```</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`Domain::Region`]: crate::domain::Domain::Region</span>
-	<span class="doccomment">/// [`Enclave`]: crate::domain::Domain::Enclave</span>
-	<span class="doccomment">/// [`body`]: crate::domain::Domain::Region::body</span>
-	<span class="doccomment">/// [`head`]: crate::domain::Domain::Region::head</span>
-	<span class="doccomment">/// [`self.domain()`]: crate::slice::BitSlice::domain</span>
-	<span class="doccomment">/// [`tail`]: crate::domain::Domain::Region::tail</span>
-	<span class="kw">fn</span> <span class="ident">load_be</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="ident">check</span>::<span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="string">&quot;load&quot;</span>, <span class="self">self</span>.<span class="ident">len</span>());
+	<span class="doccomment">/// Loads from `self`, using big-endian element ordering if `self` spans
+	/// more than one element `T`.
+	///
+	/// If [`self.domain()`] produces a [`Domain::Region`], then:
+	///
+	/// - its [`head`] element contains the most significant segment of the
+	///   returned value, in the bits at the least significant edge of the
+	///   element,
+	/// - its [`body`] slice contains successively less-significant segments,
+	///   and
+	/// - its [`tail`] element contains the least significant segment of the
+	///   returned value, in the bits at the most significant edge of the
+	///   element.
+	///
+	/// If the domain is an [`Enclave`], then the referent element is merely
+	/// loaded, shifted, and masked; no recombination of segments is necessary.
+	///
+	/// # Examples
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	///
+	/// let mut data = [0u8; 3];
+	/// data.view_bits_mut::&lt;Msb0&gt;()[5 .. 21].store_be::&lt;u16&gt;(
+	///   0b110_1011_1100_0100_1
+	/// //  KLM NOPQ RSTU VWXY Z
+	/// );
+	/// assert_eq!(data, [
+	///   0b00000_110, 0b1011_1100, 0b0100_1_000
+	/// //        KLM    NOPQ RSTU    VWXY Z
+	/// ]);
+	/// let val = data.view_bits::&lt;Msb0&gt;()[5 .. 21].load_be::&lt;u16&gt;();
+	/// assert_eq!(
+	///   val,
+	///   0b110_1011_1100_0100_1,
+	/// //  KLM NOPQ RSTU VWXY Z
+	/// );
+	/// ```
+	///
+	/// [`Domain::Region`]: crate::domain::Domain::Region
+	/// [`Enclave`]: crate::domain::Domain::Enclave
+	/// [`body`]: crate::domain::Domain::Region::body
+	/// [`head`]: crate::domain::Domain::Region::head
+	/// [`self.domain()`]: crate::slice::BitSlice::domain
+	/// [`tail`]: crate::domain::Domain::Region::tail
+	</span><span class="kw">fn </span>load_be&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory {
+		check::&lt;M&gt;(<span class="string">&quot;load&quot;</span>, <span class="self">self</span>.len());
 
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain</span>() {
-			<span class="ident">Domain::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; <span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(
-				<span class="ident">elem</span>,
-				<span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>),
-				<span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>(),
+		<span class="kw">match </span><span class="self">self</span>.domain() {
+			Domain::Enclave { head, elem, tail } =&gt; get::&lt;T, M&gt;(
+				elem,
+				Msb0::mask(head, tail),
+				&lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>u8 - tail.into_inner(),
 			),
-			<span class="ident">Domain::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accum</span> <span class="op">=</span> <span class="ident">M::ZERO</span>;
+			Domain::Region { head, body, tail } =&gt; {
+				<span class="kw">let </span><span class="kw-2">mut </span>accum = M::ZERO;
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="ident">accum</span> <span class="op">=</span> <span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>, <span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>), <span class="number">0</span>);
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					accum = get::&lt;T, M&gt;(elem, Msb0::mask(head, <span class="prelude-val">None</span>), <span class="number">0</span>);
 				}
 
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="ident">BitStore::load_value</span>) {
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="op">&gt;</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> {
-						<span class="ident">accum</span> <span class="op">&lt;</span><span class="op">&lt;</span><span class="op">=</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span>;
+				<span class="kw">for </span>elem <span class="kw">in </span>body.iter().map(BitStore::load_value) {
+					<span class="kw">if </span>M::BITS &gt; &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS {
+						accum &lt;&lt;= &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS;
 					}
-					<span class="ident">accum</span> <span class="op">|</span><span class="op">=</span> <span class="ident">resize</span>::<span class="op">&lt;</span><span class="ident">T::Mem</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>);
+					accum |= resize::&lt;T::Mem, M&gt;(elem);
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="kw">let</span> <span class="ident">shamt</span> <span class="op">=</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>();
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">&gt;</span> <span class="ident">shamt</span> {
-						<span class="ident">accum</span> <span class="op">&lt;</span><span class="op">&lt;</span><span class="op">=</span> <span class="ident">shamt</span>;
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					<span class="kw">let </span>shamt = tail.into_inner();
+					<span class="kw">if </span>M::BITS <span class="kw">as </span>u8 &gt; shamt {
+						accum &lt;&lt;= shamt;
 					}
-					<span class="kw">else</span> {
-						<span class="ident">accum</span> <span class="op">=</span> <span class="ident">M::ZERO</span>;
+					<span class="kw">else </span>{
+						accum = M::ZERO;
 					}
-					<span class="ident">accum</span> <span class="op">|</span><span class="op">=</span> <span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(
-						<span class="ident">elem</span>,
-						<span class="ident">Msb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>),
-						<span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">shamt</span>,
+					accum |= get::&lt;T, M&gt;(
+						elem,
+						Msb0::mask(<span class="prelude-val">None</span>, tail),
+						&lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>u8 - shamt,
 					);
 				}
 
-				<span class="ident">accum</span>
+				accum
 			},
 		}
 	}
 
-	<span class="doccomment">/// Stores into `self`, using little-endian element ordering if `self` spans</span>
-	<span class="doccomment">/// more than one `T` element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If [`self.domain()`] produces a [`Domain::Region`], then:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - its [`head`] element receives the least significant segment of</span>
-	<span class="doccomment">///   `value`, in the bits at the least significant edge of the element,</span>
-	<span class="doccomment">/// - its [`body`] slice receives successively more-significant segments of</span>
-	<span class="doccomment">///   `value`, and</span>
-	<span class="doccomment">/// - its [`tail`] element receives the most significant segment of `value`,</span>
-	<span class="doccomment">///   in the bits at the most significant edge of the element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If the domain is an [`Enclave`], then `value` is shifted into place and</span>
-	<span class="doccomment">/// written without any segmentation.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See the documentation for `&lt;BitSlice&lt;Msb0, u8&gt; as BitField&gt;::load_le`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`Domain::Region`]: crate::domain::Domain::Region</span>
-	<span class="doccomment">/// [`Enclave`]: crate::domain::Domain::Enclave</span>
-	<span class="doccomment">/// [`head`]: crate::domain::Domain::Region::head</span>
-	<span class="doccomment">/// [`body`]: crate::domain::Domain::Region::body</span>
-	<span class="doccomment">/// [`self.domain()`]: crate::slice::BitSlice::domain</span>
-	<span class="doccomment">/// [`tail`]: crate::domain::Domain::Region::tail</span>
-	<span class="kw">fn</span> <span class="ident">store_le</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="ident">check</span>::<span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="string">&quot;store&quot;</span>, <span class="self">self</span>.<span class="ident">len</span>());
+	<span class="doccomment">/// Stores into `self`, using little-endian element ordering if `self` spans
+	/// more than one `T` element.
+	///
+	/// If [`self.domain()`] produces a [`Domain::Region`], then:
+	///
+	/// - its [`head`] element receives the least significant segment of
+	///   `value`, in the bits at the least significant edge of the element,
+	/// - its [`body`] slice receives successively more-significant segments of
+	///   `value`, and
+	/// - its [`tail`] element receives the most significant segment of `value`,
+	///   in the bits at the most significant edge of the element.
+	///
+	/// If the domain is an [`Enclave`], then `value` is shifted into place and
+	/// written without any segmentation.
+	///
+	/// # Examples
+	///
+	/// See the documentation for `&lt;BitSlice&lt;Msb0, u8&gt; as BitField&gt;::load_le`.
+	///
+	/// [`Domain::Region`]: crate::domain::Domain::Region
+	/// [`Enclave`]: crate::domain::Domain::Enclave
+	/// [`head`]: crate::domain::Domain::Region::head
+	/// [`body`]: crate::domain::Domain::Region::body
+	/// [`self.domain()`]: crate::slice::BitSlice::domain
+	/// [`tail`]: crate::domain::Domain::Region::tail
+	</span><span class="kw">fn </span>store_le&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>value: M)
+	<span class="kw">where </span>M: BitMemory {
+		check::&lt;M&gt;(<span class="string">&quot;store&quot;</span>, <span class="self">self</span>.len());
 
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain_mut</span>() {
-			<span class="ident">DomainMut::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; <span class="ident">set</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(
-				<span class="ident">elem</span>,
-				<span class="ident">value</span>,
-				<span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>),
-				<span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>(),
+		<span class="kw">match </span><span class="self">self</span>.domain_mut() {
+			DomainMut::Enclave { head, elem, tail } =&gt; set::&lt;T, M&gt;(
+				elem,
+				value,
+				Msb0::mask(head, tail),
+				&lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>u8 - tail.into_inner(),
 			),
-			<span class="ident">DomainMut::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="ident">set</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>, <span class="ident">value</span>, <span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>), <span class="number">0</span>);
-					<span class="kw">let</span> <span class="ident">shamt</span> <span class="op">=</span>
-						<span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">head</span>.<span class="ident">into_inner</span>();
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">&gt;</span> <span class="ident">shamt</span> {
-						<span class="ident">value</span> <span class="op">&gt;</span><span class="op">&gt;</span><span class="op">=</span> <span class="ident">shamt</span>;
+			DomainMut::Region { head, body, tail } =&gt; {
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					set::&lt;T, M&gt;(elem, value, Msb0::mask(head, <span class="prelude-val">None</span>), <span class="number">0</span>);
+					<span class="kw">let </span>shamt =
+						&lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>u8 - head.into_inner();
+					<span class="kw">if </span>M::BITS <span class="kw">as </span>u8 &gt; shamt {
+						value &gt;&gt;= shamt;
 					}
-					<span class="kw">else</span> {
-						<span class="ident">value</span> <span class="op">=</span> <span class="ident">M::ZERO</span>;
-					}
-				}
-
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span>.<span class="ident">iter_mut</span>() {
-					<span class="ident">elem</span>.<span class="ident">store_value</span>(<span class="ident">resize</span>(<span class="ident">value</span>));
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="op">&gt;</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> {
-						<span class="ident">value</span> <span class="op">&gt;</span><span class="op">&gt;</span><span class="op">=</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span>;
+					<span class="kw">else </span>{
+						value = M::ZERO;
 					}
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="ident">set</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(
-						<span class="ident">elem</span>,
-						<span class="ident">value</span>,
-						<span class="ident">Msb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>),
-						<span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>(),
+				<span class="kw">for </span>elem <span class="kw">in </span>body.iter_mut() {
+					elem.store_value(resize(value));
+					<span class="kw">if </span>M::BITS &gt; &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS {
+						value &gt;&gt;= &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS;
+					}
+				}
+
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					set::&lt;T, M&gt;(
+						elem,
+						value,
+						Msb0::mask(<span class="prelude-val">None</span>, tail),
+						&lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>u8 - tail.into_inner(),
 					);
 				}
 			},
 		}
 	}
 
-	<span class="doccomment">/// Stores into `self`, using big-endian element ordering if `self` spans</span>
-	<span class="doccomment">/// more than one `T` element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If [`self.domain()`] produces a [`Domain::Region`], then:</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - its [`head`] element receives the most significant segment of `value`,</span>
-	<span class="doccomment">///   in the bits at the least significant edge of the element,</span>
-	<span class="doccomment">/// - its [`body`] slice receives successively less-significant segments of</span>
-	<span class="doccomment">///   `value`, and</span>
-	<span class="doccomment">/// - its [`tail`] element receives the least significant segment of</span>
-	<span class="doccomment">///   `value`, in the bits at the most significant edge of the element.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// If the domain is an [`Enclave`], then `value` is shifted into place and</span>
-	<span class="doccomment">/// written without any segmentation.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Examples</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// See the documentation for `&lt;BitSlice&lt;Lsb0, u8&gt; as BitField&gt;::load_be`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`Domain::Region`]: crate::domain::Domain::Region</span>
-	<span class="doccomment">/// [`Enclave`]: crate::domain::Domain::Enclave</span>
-	<span class="doccomment">/// [`head`]: crate::domain::Domain::Region::head</span>
-	<span class="doccomment">/// [`body`]: crate::domain::Domain::Region::body</span>
-	<span class="doccomment">/// [`self.domain()`]: crate::slice::BitSlice::domain</span>
-	<span class="doccomment">/// [`tail`]: crate::domain::Domain::Region::tail</span>
-	<span class="kw">fn</span> <span class="ident">store_be</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="ident">check</span>::<span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="string">&quot;store&quot;</span>, <span class="self">self</span>.<span class="ident">len</span>());
+	<span class="doccomment">/// Stores into `self`, using big-endian element ordering if `self` spans
+	/// more than one `T` element.
+	///
+	/// If [`self.domain()`] produces a [`Domain::Region`], then:
+	///
+	/// - its [`head`] element receives the most significant segment of `value`,
+	///   in the bits at the least significant edge of the element,
+	/// - its [`body`] slice receives successively less-significant segments of
+	///   `value`, and
+	/// - its [`tail`] element receives the least significant segment of
+	///   `value`, in the bits at the most significant edge of the element.
+	///
+	/// If the domain is an [`Enclave`], then `value` is shifted into place and
+	/// written without any segmentation.
+	///
+	/// # Examples
+	///
+	/// See the documentation for `&lt;BitSlice&lt;Lsb0, u8&gt; as BitField&gt;::load_be`.
+	///
+	/// [`Domain::Region`]: crate::domain::Domain::Region
+	/// [`Enclave`]: crate::domain::Domain::Enclave
+	/// [`head`]: crate::domain::Domain::Region::head
+	/// [`body`]: crate::domain::Domain::Region::body
+	/// [`self.domain()`]: crate::slice::BitSlice::domain
+	/// [`tail`]: crate::domain::Domain::Region::tail
+	</span><span class="kw">fn </span>store_be&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>value: M)
+	<span class="kw">where </span>M: BitMemory {
+		check::&lt;M&gt;(<span class="string">&quot;store&quot;</span>, <span class="self">self</span>.len());
 
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain_mut</span>() {
-			<span class="ident">DomainMut::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; <span class="ident">set</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(
-				<span class="ident">elem</span>,
-				<span class="ident">value</span>,
-				<span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>),
-				<span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>(),
+		<span class="kw">match </span><span class="self">self</span>.domain_mut() {
+			DomainMut::Enclave { head, elem, tail } =&gt; set::&lt;T, M&gt;(
+				elem,
+				value,
+				Msb0::mask(head, tail),
+				&lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>u8 - tail.into_inner(),
 			),
-			<span class="ident">DomainMut::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="ident">set</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(
-						<span class="ident">elem</span>,
-						<span class="ident">value</span>,
-						<span class="ident">Msb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>),
-						<span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>(),
+			DomainMut::Region { head, body, tail } =&gt; {
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					set::&lt;T, M&gt;(
+						elem,
+						value,
+						Msb0::mask(<span class="prelude-val">None</span>, tail),
+						&lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>u8 - tail.into_inner(),
 					);
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">&gt;</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>() {
-						<span class="ident">value</span> <span class="op">&gt;</span><span class="op">&gt;</span><span class="op">=</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>();
+					<span class="kw">if </span>M::BITS <span class="kw">as </span>u8 &gt; tail.into_inner() {
+						value &gt;&gt;= tail.into_inner();
 					}
-					<span class="kw">else</span> {
-						<span class="ident">value</span> <span class="op">=</span> <span class="ident">M::ZERO</span>;
-					}
-				}
-
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span>.<span class="ident">iter_mut</span>().<span class="ident">rev</span>() {
-					<span class="ident">elem</span>.<span class="ident">store_value</span>(<span class="ident">resize</span>(<span class="ident">value</span>));
-					<span class="kw">if</span> <span class="ident">M::BITS</span> <span class="op">&gt;</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> {
-						<span class="ident">value</span> <span class="op">&gt;</span><span class="op">&gt;</span><span class="op">=</span> <span class="op">&lt;</span><span class="ident">T::Mem</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span>;
+					<span class="kw">else </span>{
+						value = M::ZERO;
 					}
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="ident">set</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>, <span class="ident">value</span>, <span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>), <span class="number">0</span>);
+				<span class="kw">for </span>elem <span class="kw">in </span>body.iter_mut().rev() {
+					elem.store_value(resize(value));
+					<span class="kw">if </span>M::BITS &gt; &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS {
+						value &gt;&gt;= &lt;T::Mem <span class="kw">as </span>IsNumber&gt;::BITS;
+					}
+				}
+
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					set::&lt;T, M&gt;(elem, value, Msb0::mask(head, <span class="prelude-val">None</span>), <span class="number">0</span>);
 				}
 			},
 		}
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">V</span><span class="op">&gt;</span> <span class="ident">BitField</span> <span class="kw">for</span> <span class="ident">BitArray</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">V</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">V</span>: <span class="ident">BitViewSized</span>,
-	<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">V::Store</span><span class="op">&gt;</span>: <span class="ident">BitField</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;O, V&gt; BitField <span class="kw">for </span>BitArray&lt;O, V&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	V: BitViewSized,
+	BitSlice&lt;O, V::Store&gt;: BitField,
 {
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">load_le</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="self">self</span>.<span class="ident">as_bitslice</span>().<span class="ident">load_le</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>load_le&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory {
+		<span class="self">self</span>.as_bitslice().load_le()
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">load_be</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="self">self</span>.<span class="ident">as_bitslice</span>().<span class="ident">load_be</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>load_be&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory {
+		<span class="self">self</span>.as_bitslice().load_be()
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">store_le</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="self">self</span>.<span class="ident">as_mut_bitslice</span>().<span class="ident">store_le</span>(<span class="ident">value</span>)
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>store_le&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: M)
+	<span class="kw">where </span>M: BitMemory {
+		<span class="self">self</span>.as_mut_bitslice().store_le(value)
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">store_be</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="self">self</span>.<span class="ident">as_mut_bitslice</span>().<span class="ident">store_be</span>(<span class="ident">value</span>)
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>store_be&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: M)
+	<span class="kw">where </span>M: BitMemory {
+		<span class="self">self</span>.as_mut_bitslice().store_be(value)
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;alloc&quot;</span>)]</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">BitField</span> <span class="kw">for</span> <span class="ident">BitBox</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-	<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>: <span class="ident">BitField</span>,
+<span class="attribute">#[cfg(feature = <span class="string">&quot;alloc&quot;</span>)]
+#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;O, T&gt; BitField <span class="kw">for </span>BitBox&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
+	BitSlice&lt;O, T&gt;: BitField,
 {
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">load_le</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="self">self</span>.<span class="ident">as_bitslice</span>().<span class="ident">load_le</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>load_le&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory {
+		<span class="self">self</span>.as_bitslice().load_le()
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">load_be</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="self">self</span>.<span class="ident">as_bitslice</span>().<span class="ident">load_be</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>load_be&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory {
+		<span class="self">self</span>.as_bitslice().load_be()
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">store_le</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="self">self</span>.<span class="ident">as_mut_bitslice</span>().<span class="ident">store_le</span>(<span class="ident">value</span>)
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>store_le&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: M)
+	<span class="kw">where </span>M: BitMemory {
+		<span class="self">self</span>.as_mut_bitslice().store_le(value)
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">store_be</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="self">self</span>.<span class="ident">as_mut_bitslice</span>().<span class="ident">store_be</span>(<span class="ident">value</span>)
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>store_be&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: M)
+	<span class="kw">where </span>M: BitMemory {
+		<span class="self">self</span>.as_mut_bitslice().store_be(value)
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;alloc&quot;</span>)]</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">BitField</span> <span class="kw">for</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-	<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>: <span class="ident">BitField</span>,
+<span class="attribute">#[cfg(feature = <span class="string">&quot;alloc&quot;</span>)]
+#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;O, T&gt; BitField <span class="kw">for </span>BitVec&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
+	BitSlice&lt;O, T&gt;: BitField,
 {
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">load_le</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="self">self</span>.<span class="ident">as_bitslice</span>().<span class="ident">load_le</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>load_le&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory {
+		<span class="self">self</span>.as_bitslice().load_le()
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">load_be</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">M</span>
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="self">self</span>.<span class="ident">as_bitslice</span>().<span class="ident">load_be</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>load_be&lt;M&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; M
+	<span class="kw">where </span>M: BitMemory {
+		<span class="self">self</span>.as_bitslice().load_be()
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">store_le</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="self">self</span>.<span class="ident">as_mut_bitslice</span>().<span class="ident">store_le</span>(<span class="ident">value</span>)
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>store_le&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: M)
+	<span class="kw">where </span>M: BitMemory {
+		<span class="self">self</span>.as_mut_bitslice().store_le(value)
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">store_be</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">M</span>)
-	<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-		<span class="self">self</span>.<span class="ident">as_mut_bitslice</span>().<span class="ident">store_be</span>(<span class="ident">value</span>)
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>store_be&lt;M&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: M)
+	<span class="kw">where </span>M: BitMemory {
+		<span class="self">self</span>.as_mut_bitslice().store_be(value)
 	}
 }
 
-<span class="doccomment">/// Asserts that a slice length is within a memory element width.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Panics</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This panics if len is 0, or wider than [`M::BITS`].</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// [`M::BITS`]: funty::IsNumber::BITS</span>
-<span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="kw">fn</span> <span class="ident">check</span><span class="op">&lt;</span><span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">action</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>, <span class="ident">len</span>: <span class="ident">usize</span>)
-<span class="kw">where</span> <span class="ident">M</span>: <span class="ident">BitMemory</span> {
-	<span class="kw">if</span> <span class="op">!</span>(<span class="number">1</span> ..<span class="op">=</span> <span class="ident">M::BITS</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">len</span>) {
+<span class="doccomment">/// Asserts that a slice length is within a memory element width.
+///
+/// # Panics
+///
+/// This panics if len is 0, or wider than [`M::BITS`].
+///
+/// [`M::BITS`]: funty::IsNumber::BITS
+</span><span class="attribute">#[inline]
+</span><span class="kw">fn </span>check&lt;M&gt;(action: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str, len: usize)
+<span class="kw">where </span>M: BitMemory {
+	<span class="kw">if </span>!(<span class="number">1 </span>..= M::BITS <span class="kw">as </span>usize).contains(<span class="kw-2">&amp;</span>len) {
 		<span class="macro">panic!</span>(
 			<span class="string">&quot;Cannot {} {} bits from a {}-bit region&quot;</span>,
-			<span class="ident">action</span>,
-			<span class="ident">M::BITS</span>,
-			<span class="ident">len</span>,
+			action,
+			M::BITS,
+			len,
 		);
 	}
 }
@@ -3215,24 +3210,24 @@ This is the exact inverse of `set`.
 [`BitSlice`]: crate::slice::BitSlice
 [`BitStore`]: crate::store::BitStore
 [`T::Mem`]: crate::store::BitStore::Mem
-**/</span>
-<span class="comment">//  The trait resolution system fails here, and only resolves to `&lt;&amp;usize&gt;` as</span>
-<span class="comment">//  the RHS operand.</span>
-<span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::op_ref</span>)]</span>
-<span class="kw">fn</span> <span class="ident">get</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>, <span class="ident">mask</span>: <span class="ident">BitMask</span><span class="op">&lt;</span><span class="ident">T::Mem</span><span class="op">&gt;</span>, <span class="ident">shamt</span>: <span class="ident">u8</span>) -&gt; <span class="ident">M</span>
-<span class="kw">where</span>
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-	<span class="ident">M</span>: <span class="ident">BitMemory</span>,
+**/
+</span><span class="comment">//  The trait resolution system fails here, and only resolves to `&lt;&amp;usize&gt;` as
+//  the RHS operand.
+</span><span class="attribute">#[inline]
+#[allow(clippy::op_ref)]
+</span><span class="kw">fn </span>get&lt;T, M&gt;(elem: <span class="kw-2">&amp;</span>T, mask: BitMask&lt;T::Mem&gt;, shamt: u8) -&gt; M
+<span class="kw">where
+	</span>T: BitStore,
+	M: BitMemory,
 {
-	<span class="comment">//  Read the value out of the `elem` reference</span>
-	<span class="ident">elem</span>.<span class="ident">load_value</span>()
-		<span class="comment">//  Mask it against the slot</span>
-		.<span class="ident">pipe</span>(<span class="op">|</span><span class="ident">val</span><span class="op">|</span> <span class="ident">val</span> <span class="op">&amp;</span> <span class="kw-2">&amp;</span><span class="ident">mask</span>.<span class="ident">into_inner</span>())
-		<span class="comment">//  Shift it down to the LSedge</span>
-		.<span class="ident">pipe</span>(<span class="op">|</span><span class="ident">val</span><span class="op">|</span> <span class="ident">val</span> <span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>(<span class="ident">shamt</span> <span class="kw">as</span> <span class="ident">usize</span>))
-		<span class="comment">//  And resize to the expected output</span>
-		.<span class="ident">pipe</span>(<span class="ident">resize</span>::<span class="op">&lt;</span><span class="ident">T::Mem</span>, <span class="ident">M</span><span class="op">&gt;</span>)
+	<span class="comment">//  Read the value out of the `elem` reference
+	</span>elem.load_value()
+		<span class="comment">//  Mask it against the slot
+		</span>.pipe(|val| val &amp; <span class="kw-2">&amp;</span>mask.into_inner())
+		<span class="comment">//  Shift it down to the LSedge
+		</span>.pipe(|val| val &gt;&gt; <span class="kw-2">&amp;</span>(shamt <span class="kw">as </span>usize))
+		<span class="comment">//  And resize to the expected output
+		</span>.pipe(resize::&lt;T::Mem, M&gt;)
 }
 
 <span class="doccomment">/** Writes a value into a section of a memory element.
@@ -3272,28 +3267,28 @@ This is the exact inverse of `get`.
 [`BitSlice`]: crate::slice::BitSlice
 [`BitStore`]: crate::store::BitStore
 [`T::Mem`]: crate::store::BitStore::Mem
-**/</span>
-<span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::op_ref</span>)]</span>
-<span class="kw">fn</span> <span class="ident">set</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">M</span><span class="op">&gt;</span>(<span class="ident">elem</span>: <span class="kw-2">&amp;</span><span class="ident">T::Access</span>, <span class="ident">value</span>: <span class="ident">M</span>, <span class="ident">mask</span>: <span class="ident">BitMask</span><span class="op">&lt;</span><span class="ident">T::Mem</span><span class="op">&gt;</span>, <span class="ident">shamt</span>: <span class="ident">u8</span>)
-<span class="kw">where</span>
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-	<span class="ident">M</span>: <span class="ident">BitMemory</span>,
+**/
+</span><span class="attribute">#[inline]
+#[allow(clippy::op_ref)]
+</span><span class="kw">fn </span>set&lt;T, M&gt;(elem: <span class="kw-2">&amp;</span>T::Access, value: M, mask: BitMask&lt;T::Mem&gt;, shamt: u8)
+<span class="kw">where
+	</span>T: BitStore,
+	M: BitMemory,
 {
-	<span class="comment">//  Convert the `mask` type to fit into the accessor.</span>
-	<span class="kw">let</span> <span class="ident">mask</span> <span class="op">=</span> <span class="ident">BitMask::new</span>(<span class="ident">mask</span>.<span class="ident">into_inner</span>());
-	<span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">value</span>
-		<span class="comment">//  Resize the value to the expected input</span>
-		.<span class="ident">pipe</span>(<span class="ident">resize</span>::<span class="op">&lt;</span><span class="ident">M</span>, <span class="ident">T::Mem</span><span class="op">&gt;</span>)
-		<span class="comment">//  Shift it up from the LSedge</span>
-		.<span class="ident">pipe</span>(<span class="op">|</span><span class="ident">val</span><span class="op">|</span> <span class="ident">val</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="kw-2">&amp;</span>(<span class="ident">shamt</span> <span class="kw">as</span> <span class="ident">usize</span>))
-		<span class="comment">//  And mask it to the slot</span>
-		.<span class="ident">pipe</span>(<span class="op">|</span><span class="ident">val</span><span class="op">|</span> <span class="ident">mask</span> <span class="op">&amp;</span> <span class="ident">val</span>);
+	<span class="comment">//  Convert the `mask` type to fit into the accessor.
+	</span><span class="kw">let </span>mask = BitMask::new(mask.into_inner());
+	<span class="kw">let </span>value = value
+		<span class="comment">//  Resize the value to the expected input
+		</span>.pipe(resize::&lt;M, T::Mem&gt;)
+		<span class="comment">//  Shift it up from the LSedge
+		</span>.pipe(|val| val &lt;&lt; <span class="kw-2">&amp;</span>(shamt <span class="kw">as </span>usize))
+		<span class="comment">//  And mask it to the slot
+		</span>.pipe(|val| mask &amp; val);
 
-	<span class="comment">//  Erase the slot</span>
-	<span class="ident">elem</span>.<span class="ident">clear_bits</span>(<span class="ident">mask</span>);
-	<span class="comment">//  And write the shift/masked value into it</span>
-	<span class="ident">elem</span>.<span class="ident">set_bits</span>(<span class="ident">value</span>);
+	<span class="comment">//  Erase the slot
+	</span>elem.clear_bits(mask);
+	<span class="comment">//  And write the shift/masked value into it
+	</span>elem.set_bits(value);
 }
 
 <span class="doccomment">/** Resizes a value from one register width to another.
@@ -3314,79 +3309,78 @@ type.
 
 `value`, either zero-extended if `U` is wider than `T` or truncated if `U` is
 narrower than `T`.
-**/</span>
-<span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="kw">fn</span> <span class="ident">resize</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">value</span>: <span class="ident">T</span>) -&gt; <span class="ident">U</span>
-<span class="kw">where</span>
-	<span class="ident">T</span>: <span class="ident">BitMemory</span>,
-	<span class="ident">U</span>: <span class="ident">BitMemory</span>,
+**/
+</span><span class="attribute">#[inline]
+</span><span class="kw">fn </span>resize&lt;T, U&gt;(value: T) -&gt; U
+<span class="kw">where
+	</span>T: BitMemory,
+	U: BitMemory,
 {
-	<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">U::ZERO</span>;
-	<span class="kw">let</span> <span class="ident">size_t</span> <span class="op">=</span> <span class="ident">mem::size_of</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>();
-	<span class="kw">let</span> <span class="ident">size_u</span> <span class="op">=</span> <span class="ident">mem::size_of</span>::<span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>();
+	<span class="kw">let </span><span class="kw-2">mut </span>out = U::ZERO;
+	<span class="kw">let </span>size_t = mem::size_of::&lt;T&gt;();
+	<span class="kw">let </span>size_u = mem::size_of::&lt;U&gt;();
 
-	<span class="kw">unsafe</span> {
-		<span class="ident">resize_inner</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>, <span class="kw-2">&amp;mut</span> <span class="ident">out</span>, <span class="ident">size_t</span>, <span class="ident">size_u</span>);
+	<span class="kw">unsafe </span>{
+		resize_inner::&lt;T, U&gt;(<span class="kw-2">&amp;</span>value, <span class="kw-2">&amp;mut </span>out, size_t, size_u);
 	}
 
-	<span class="ident">out</span>
+	out
 }
 
-<span class="doccomment">/// Performs little-endian byte-order register resizing.</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_endian</span> <span class="op">=</span> <span class="string">&quot;little&quot;</span>)]</span>
-<span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">resize_inner</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span>(
-	<span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>,
-	<span class="ident">dst</span>: <span class="kw-2">&amp;mut</span> <span class="ident">U</span>,
-	<span class="ident">size_t</span>: <span class="ident">usize</span>,
-	<span class="ident">size_u</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// Performs little-endian byte-order register resizing.
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+#[cfg(target_endian = <span class="string">&quot;little&quot;</span>)]
+</span><span class="kw">unsafe fn </span>resize_inner&lt;T, U&gt;(
+	src: <span class="kw-2">&amp;</span>T,
+	dst: <span class="kw-2">&amp;mut </span>U,
+	size_t: usize,
+	size_u: usize,
 ) {
-	<span class="comment">//  In LE, the least significant byte is the base address, so resizing is</span>
-	<span class="comment">//  just a memcpy into a zeroed slot, taking only the smaller width.</span>
-	<span class="ident">ptr::copy_nonoverlapping</span>(
-		<span class="ident">src</span> <span class="kw">as</span> <span class="kw-2">*const</span> <span class="ident">T</span> <span class="kw">as</span> <span class="kw-2">*const</span> <span class="ident">u8</span>,
-		<span class="ident">dst</span> <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="ident">U</span> <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="ident">u8</span>,
-		<span class="ident">core::cmp::min</span>(<span class="ident">size_t</span>, <span class="ident">size_u</span>),
+	<span class="comment">//  In LE, the least significant byte is the base address, so resizing is
+	//  just a memcpy into a zeroed slot, taking only the smaller width.
+	</span>ptr::copy_nonoverlapping(
+		src <span class="kw">as </span><span class="kw-2">*const </span>T <span class="kw">as </span><span class="kw-2">*const </span>u8,
+		dst <span class="kw">as </span><span class="kw-2">*mut </span>U <span class="kw">as </span><span class="kw-2">*mut </span>u8,
+		core::cmp::min(size_t, size_u),
 	);
 }
 
-<span class="doccomment">/// Performs big-endian byte-order register resizing.</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>), <span class="ident">inline</span>(<span class="ident">always</span>))]</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_endian</span> <span class="op">=</span> <span class="string">&quot;big&quot;</span>)]</span>
-<span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">resize_inner</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span>(
-	<span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>,
-	<span class="ident">dst</span>: <span class="kw-2">&amp;mut</span> <span class="ident">U</span>,
-	<span class="ident">size_t</span>: <span class="ident">usize</span>,
-	<span class="ident">size_u</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// Performs big-endian byte-order register resizing.
+</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
+#[cfg(target_endian = <span class="string">&quot;big&quot;</span>)]
+</span><span class="kw">unsafe fn </span>resize_inner&lt;T, U&gt;(
+	src: <span class="kw-2">&amp;</span>T,
+	dst: <span class="kw-2">&amp;mut </span>U,
+	size_t: usize,
+	size_u: usize,
 ) {
-	<span class="kw">let</span> <span class="ident">src</span> <span class="op">=</span> <span class="ident">src</span> <span class="kw">as</span> <span class="kw-2">*const</span> <span class="ident">T</span> <span class="kw">as</span> <span class="kw-2">*const</span> <span class="ident">u8</span>;
-	<span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">dst</span> <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="ident">U</span> <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="ident">u8</span>;
+	<span class="kw">let </span>src = src <span class="kw">as </span><span class="kw-2">*const </span>T <span class="kw">as </span><span class="kw-2">*const </span>u8;
+	<span class="kw">let </span>dst = dst <span class="kw">as </span><span class="kw-2">*mut </span>U <span class="kw">as </span><span class="kw-2">*mut </span>u8;
 
-	<span class="comment">//  In BE, shrinking a value requires moving the source base pointer up,</span>
-	<span class="kw">if</span> <span class="ident">size_t</span> <span class="op">&gt;</span> <span class="ident">size_u</span> {
-		<span class="ident">ptr::copy_nonoverlapping</span>(<span class="ident">src</span>.<span class="ident">add</span>(<span class="ident">size_t</span> <span class="op">-</span> <span class="ident">size_u</span>), <span class="ident">dst</span>, <span class="ident">size_u</span>);
+	<span class="comment">//  In BE, shrinking a value requires moving the source base pointer up,
+	</span><span class="kw">if </span>size_t &gt; size_u {
+		ptr::copy_nonoverlapping(src.add(size_t - size_u), dst, size_u);
 	}
-	<span class="comment">//  While expanding a value requires moving the destination base pointer up.</span>
-	<span class="kw">else</span> {
-		<span class="ident">ptr::copy_nonoverlapping</span>(<span class="ident">src</span>, <span class="ident">dst</span>.<span class="ident">add</span>(<span class="ident">size_u</span> <span class="op">-</span> <span class="ident">size_t</span>), <span class="ident">size_t</span>);
+	<span class="comment">//  While expanding a value requires moving the destination base pointer up.
+	</span><span class="kw">else </span>{
+		ptr::copy_nonoverlapping(src, dst.add(size_u - size_t), size_t);
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">any</span>(<span class="ident">target_endian</span> <span class="op">=</span> <span class="string">&quot;big&quot;</span>, <span class="ident">target_endian</span> <span class="op">=</span> <span class="string">&quot;little&quot;</span>)))]</span>
-<span class="macro">compile_fail!</span>(<span class="macro">concat!</span>(
+<span class="attribute">#[cfg(not(any(target_endian = <span class="string">&quot;big&quot;</span>, target_endian = <span class="string">&quot;little&quot;</span>)))]
+</span><span class="macro">compile_fail!</span>(<span class="macro">concat!</span>(
 	<span class="string">&quot;This architecture is currently not supported. File an issue at &quot;</span>,
-	<span class="macro">env!</span>(<span class="ident">CARGO_PKG_REPOSITORY</span>)
+	<span class="macro">env!</span>(CARGO_PKG_REPOSITORY)
 ));
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;std&quot;</span>)]</span>
-<span class="kw">mod</span> <span class="ident">io</span>;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
+</span><span class="kw">mod </span>io;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 
-<span class="comment">// These tests are purely mathematical, and do not need to run more than once.</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">test</span>, <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;std&quot;</span>, <span class="ident">not</span>(<span class="ident">miri</span>), <span class="ident">not</span>(<span class="ident">tarpaulin</span>)))]</span>
-<span class="kw">mod</span> <span class="ident">permutation_tests</span>;
+<span class="comment">// These tests are purely mathematical, and do not need to run more than once.
+</span><span class="attribute">#[cfg(all(test, feature = <span class="string">&quot;std&quot;</span>, not(miri), not(tarpaulin)))]
+</span><span class="kw">mod </span>permutation_tests;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

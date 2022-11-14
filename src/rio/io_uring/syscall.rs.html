@@ -1,11 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/io_uring/syscall.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>syscall.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container">
-                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../rio/index.html">
-                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/io_uring/syscall.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>syscall.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../rio/index.html"><div class="logo-container">
+                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../rio/index.html">
+                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -106,107 +101,106 @@
 <span id="99">99</span>
 <span id="100">100</span>
 <span id="101">101</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#![allow(unused)]
 
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryFrom</span>, <span class="ident">io</span>};
+</span><span class="kw">use </span>std::{convert::TryFrom, io};
 
-<span class="kw">use</span> <span class="ident">libc</span>::{<span class="ident">c_int</span>, <span class="ident">c_long</span>, <span class="ident">c_uint</span>, <span class="ident">syscall</span>};
+<span class="kw">use </span>libc::{c_int, c_long, c_uint, syscall};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::io_uring_params</span>;
+<span class="kw">use </span><span class="kw">super</span>::io_uring_params;
 
-<span class="kw">const</span> <span class="ident">SETUP</span>: <span class="ident">c_long</span> <span class="op">=</span> <span class="number">425</span>;
-<span class="kw">const</span> <span class="ident">ENTER</span>: <span class="ident">c_long</span> <span class="op">=</span> <span class="number">426</span>;
-<span class="kw">const</span> <span class="ident">REGISTER</span>: <span class="ident">c_long</span> <span class="op">=</span> <span class="number">427</span>;
+<span class="kw">const </span>SETUP: c_long = <span class="number">425</span>;
+<span class="kw">const </span>ENTER: c_long = <span class="number">426</span>;
+<span class="kw">const </span>REGISTER: c_long = <span class="number">427</span>;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">setup</span>(
-    <span class="ident">entries</span>: <span class="ident">c_uint</span>,
-    <span class="ident">p</span>: <span class="kw-2">*mut</span> <span class="ident">io_uring_params</span>,
-) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">c_int</span><span class="op">&gt;</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>setup(
+    entries: c_uint,
+    p: <span class="kw-2">*mut </span>io_uring_params,
+) -&gt; io::Result&lt;c_int&gt; {
     <span class="macro">assert!</span>(
-        (<span class="number">1</span>..<span class="op">=</span><span class="number">4096</span>).<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">entries</span>),
-        <span class="string">&quot;entries must be between 1 and 4096 (inclusive)&quot;</span>
-    );
+        (<span class="number">1</span>..=<span class="number">4096</span>).contains(<span class="kw-2">&amp;</span>entries),
+        <span class="string">&quot;entries must be between 1 and 4096 (inclusive)&quot;
+    </span>);
     <span class="macro">assert_eq!</span>(
-        <span class="ident">entries</span>.<span class="ident">count_ones</span>(),
+        entries.count_ones(),
         <span class="number">1</span>,
-        <span class="string">&quot;entries must be a power of 2&quot;</span>
-    );
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-    <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="kw">unsafe</span> {
-        <span class="ident">syscall</span>(<span class="ident">SETUP</span>, <span class="ident">i64::from</span>(<span class="ident">entries</span>), <span class="ident">p</span> <span class="kw">as</span> <span class="ident">c_long</span>)
+        <span class="string">&quot;entries must be a power of 2&quot;
+    </span>);
+    <span class="attribute">#[allow(unsafe_code)]
+    </span><span class="kw">let </span>ret = <span class="kw">unsafe </span>{
+        syscall(SETUP, i64::from(entries), p <span class="kw">as </span>c_long)
     };
-    <span class="kw">if</span> <span class="ident">ret</span> <span class="op">&lt;</span> <span class="number">0</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">err</span> <span class="op">=</span> <span class="ident">io::Error::last_os_error</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="number">12</span>) <span class="op">=</span> <span class="ident">err</span>.<span class="ident">raw_os_error</span>() {
-            <span class="ident">err</span> <span class="op">=</span> <span class="ident">io::Error::new</span>(
-                <span class="ident">io::ErrorKind::Other</span>,
+    <span class="kw">if </span>ret &lt; <span class="number">0 </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>err = io::Error::last_os_error();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="number">12</span>) = err.raw_os_error() {
+            err = io::Error::new(
+                io::ErrorKind::Other,
                 <span class="string">&quot;Not enough lockable memory. You probably \
                  need to raise the memlock rlimit, which \
                  often defaults to a pretty low number.&quot;</span>,
             );
         }
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
+        <span class="kw">return </span><span class="prelude-val">Err</span>(err);
     }
-    <span class="prelude-val">Ok</span>(<span class="ident">i32::try_from</span>(<span class="ident">ret</span>).<span class="ident">unwrap</span>())
+    <span class="prelude-val">Ok</span>(i32::try_from(ret).unwrap())
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">enter</span>(
-    <span class="ident">fd</span>: <span class="ident">c_int</span>,
-    <span class="ident">to_submit</span>: <span class="ident">c_uint</span>,
-    <span class="ident">min_complete</span>: <span class="ident">c_uint</span>,
-    <span class="ident">flags</span>: <span class="ident">c_uint</span>,
-    <span class="ident">sig</span>: <span class="kw-2">*mut</span> <span class="ident">libc::sigset_t</span>,
-) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">c_int</span><span class="op">&gt;</span> {
-    <span class="kw">loop</span> {
-        <span class="comment">// this is strapped into an interruption</span>
-        <span class="comment">// diaper loop because it&#39;s the one that</span>
-        <span class="comment">// might actually block a lot</span>
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-        <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="kw">unsafe</span> {
-            <span class="ident">syscall</span>(
-                <span class="ident">ENTER</span>,
-                <span class="ident">i64::from</span>(<span class="ident">fd</span>),
-                <span class="ident">i64::from</span>(<span class="ident">to_submit</span>),
-                <span class="ident">i64::from</span>(<span class="ident">min_complete</span>),
-                <span class="ident">i64::from</span>(<span class="ident">flags</span>),
-                <span class="ident">sig</span> <span class="kw">as</span> <span class="ident">c_long</span>,
-                <span class="ident">core::mem::size_of</span>::<span class="op">&lt;</span><span class="ident">libc::sigset_t</span><span class="op">&gt;</span>()
-                    <span class="kw">as</span> <span class="ident">c_long</span>,
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>enter(
+    fd: c_int,
+    to_submit: c_uint,
+    min_complete: c_uint,
+    flags: c_uint,
+    sig: <span class="kw-2">*mut </span>libc::sigset_t,
+) -&gt; io::Result&lt;c_int&gt; {
+    <span class="kw">loop </span>{
+        <span class="comment">// this is strapped into an interruption
+        // diaper loop because it&#39;s the one that
+        // might actually block a lot
+        </span><span class="attribute">#[allow(unsafe_code)]
+        </span><span class="kw">let </span>ret = <span class="kw">unsafe </span>{
+            syscall(
+                ENTER,
+                i64::from(fd),
+                i64::from(to_submit),
+                i64::from(min_complete),
+                i64::from(flags),
+                sig <span class="kw">as </span>c_long,
+                core::mem::size_of::&lt;libc::sigset_t&gt;()
+                    <span class="kw">as </span>c_long,
             )
         };
-        <span class="kw">if</span> <span class="ident">ret</span> <span class="op">&lt;</span> <span class="number">0</span> {
-            <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="ident">io::Error::last_os_error</span>();
-            <span class="kw">if</span> <span class="ident">err</span>.<span class="ident">kind</span>() <span class="op">==</span> <span class="ident">io::ErrorKind::Interrupted</span> {
+        <span class="kw">if </span>ret &lt; <span class="number">0 </span>{
+            <span class="kw">let </span>err = io::Error::last_os_error();
+            <span class="kw">if </span>err.kind() == io::ErrorKind::Interrupted {
                 <span class="kw">continue</span>;
             }
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
-        } <span class="kw">else</span> {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">i32::try_from</span>(<span class="ident">ret</span>).<span class="ident">unwrap</span>());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(err);
+        } <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(i32::try_from(ret).unwrap());
         }
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">register</span>(
-    <span class="ident">fd</span>: <span class="ident">c_int</span>,
-    <span class="ident">opcode</span>: <span class="ident">c_uint</span>,
-    <span class="ident">arg</span>: <span class="kw-2">*const</span> <span class="ident">libc::c_void</span>,
-    <span class="ident">nr_args</span>: <span class="ident">c_uint</span>,
-) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">c_int</span><span class="op">&gt;</span> {
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-    <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="kw">unsafe</span> {
-        <span class="ident">syscall</span>(
-            <span class="ident">REGISTER</span>,
-            <span class="ident">i64::from</span>(<span class="ident">fd</span>),
-            <span class="ident">i64::from</span>(<span class="ident">opcode</span>),
-            <span class="ident">arg</span> <span class="kw">as</span> <span class="ident">c_long</span>,
-            <span class="ident">i64::from</span>(<span class="ident">nr_args</span>),
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>register(
+    fd: c_int,
+    opcode: c_uint,
+    arg: <span class="kw-2">*const </span>libc::c_void,
+    nr_args: c_uint,
+) -&gt; io::Result&lt;c_int&gt; {
+    <span class="attribute">#[allow(unsafe_code)]
+    </span><span class="kw">let </span>ret = <span class="kw">unsafe </span>{
+        syscall(
+            REGISTER,
+            i64::from(fd),
+            i64::from(opcode),
+            arg <span class="kw">as </span>c_long,
+            i64::from(nr_args),
         )
     };
-    <span class="kw">if</span> <span class="ident">ret</span> <span class="op">&lt;</span> <span class="number">0</span> {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">io::Error::last_os_error</span>());
+    <span class="kw">if </span>ret &lt; <span class="number">0 </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(io::Error::last_os_error());
     }
-    <span class="prelude-val">Ok</span>(<span class="ident">i32::try_from</span>(<span class="ident">ret</span>).<span class="ident">unwrap</span>())
+    <span class="prelude-val">Ok</span>(i32::try_from(ret).unwrap())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

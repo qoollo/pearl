@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/filter/traits.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>traits.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/filter/traits.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>traits.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -135,138 +130,137 @@
 <span id="130">130</span>
 <span id="131">131</span>
 <span id="132">132</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+</pre><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// Provider for raw filter data</span>
-<span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">BloomDataProvider</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
-    <span class="doccomment">/// Read byte from raw filter data</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_byte</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Provider for raw filter data
+</span><span class="attribute">#[async_trait::async_trait]
+</span><span class="kw">pub trait </span>BloomDataProvider: Send + Sync {
+    <span class="doccomment">/// Read byte from raw filter data
+    </span><span class="kw">async fn </span>read_byte(<span class="kw-2">&amp;</span><span class="self">self</span>, index: u64) -&gt; <span class="prelude-ty">Result</span>&lt;u8&gt;;
 }
 
-<span class="doccomment">/// Trait for scructs which contains bloom filters</span>
-<span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">BloomProvider</span><span class="op">&lt;</span><span class="ident">Key</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span><span class="op">&gt;</span>: <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Send</span> {
-    <span class="doccomment">/// Inner filter type</span>
-    <span class="kw">type</span> <span class="ident">Filter</span>: <span class="ident">FilterTrait</span><span class="op">&lt;</span><span class="ident">Key</span><span class="op">&gt;</span>;
-    <span class="doccomment">/// Check if element in filter</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">check_filter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">Key</span>) -&gt; <span class="ident">FilterResult</span>;
-    <span class="doccomment">/// Check if element in filter</span>
-    <span class="kw">fn</span> <span class="ident">check_filter_fast</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">Key</span>) -&gt; <span class="ident">FilterResult</span>;
-    <span class="doccomment">/// Returns freed memory</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">offload_buffer</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">needed_memory</span>: <span class="ident">usize</span>, <span class="ident">level</span>: <span class="ident">usize</span>) -&gt; <span class="ident">usize</span>;
-    <span class="doccomment">/// Returns overall filter</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_filter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Filter</span><span class="op">&gt;</span>;
-    <span class="doccomment">/// Returns overall filter</span>
-    <span class="kw">fn</span> <span class="ident">get_filter_fast</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::Filter</span><span class="op">&gt;</span>;
-    <span class="doccomment">/// Returns allocated memory</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">filter_memory_allocated</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span>;
+<span class="doccomment">/// Trait for scructs which contains bloom filters
+</span><span class="attribute">#[async_trait::async_trait]
+</span><span class="kw">pub trait </span>BloomProvider&lt;Key: Send + Sync&gt;: Sync + Send {
+    <span class="doccomment">/// Inner filter type
+    </span><span class="kw">type </span>Filter: FilterTrait&lt;Key&gt;;
+    <span class="doccomment">/// Check if element in filter
+    </span><span class="kw">async fn </span>check_filter(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span>Key) -&gt; FilterResult;
+    <span class="doccomment">/// Check if element in filter
+    </span><span class="kw">fn </span>check_filter_fast(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span>Key) -&gt; FilterResult;
+    <span class="doccomment">/// Returns freed memory
+    </span><span class="kw">async fn </span>offload_buffer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, needed_memory: usize, level: usize) -&gt; usize;
+    <span class="doccomment">/// Returns overall filter
+    </span><span class="kw">async fn </span>get_filter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Filter&gt;;
+    <span class="doccomment">/// Returns overall filter
+    </span><span class="kw">fn </span>get_filter_fast(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>::Filter&gt;;
+    <span class="doccomment">/// Returns allocated memory
+    </span><span class="kw">async fn </span>filter_memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 }
 
-<span class="doccomment">/// Trait filters should implement</span>
-<span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">FilterTrait</span><span class="op">&lt;</span><span class="ident">Key</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span><span class="op">&gt;</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Send</span> {
-    <span class="doccomment">/// Add key to filter</span>
-    <span class="kw">fn</span> <span class="ident">add</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Key</span>);
+<span class="doccomment">/// Trait filters should implement
+</span><span class="attribute">#[async_trait::async_trait]
+</span><span class="kw">pub trait </span>FilterTrait&lt;Key: Send + Sync&gt;: Clone + Sync + Send {
+    <span class="doccomment">/// Add key to filter
+    </span><span class="kw">fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>Key);
 
-    <span class="doccomment">/// Check if key in filter (should be implemented if filter can be checked without waiting)</span>
-    <span class="kw">fn</span> <span class="ident">contains_fast</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Key</span>) -&gt; <span class="ident">FilterResult</span>;
+    <span class="doccomment">/// Check if key in filter (should be implemented if filter can be checked without waiting)
+    </span><span class="kw">fn </span>contains_fast(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>Key) -&gt; FilterResult;
 
-    <span class="doccomment">/// Check if key in filter (can take some time)</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">contains</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">BloomDataProvider</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_provider</span>: <span class="kw-2">&amp;</span><span class="ident">P</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Key</span>) -&gt; <span class="ident">FilterResult</span> {
-        <span class="self">self</span>.<span class="ident">contains_fast</span>(<span class="ident">key</span>)
+    <span class="doccomment">/// Check if key in filter (can take some time)
+    </span><span class="kw">async fn </span>contains&lt;P: BloomDataProvider&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, _provider: <span class="kw-2">&amp;</span>P, key: <span class="kw-2">&amp;</span>Key) -&gt; FilterResult {
+        <span class="self">self</span>.contains_fast(key)
     }
 
-    <span class="doccomment">/// Offload filter from memory if possible</span>
-    <span class="kw">fn</span> <span class="ident">offload_filter</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="number">0</span>
-    }
+    <span class="doccomment">/// Offload filter from memory if possible
+    </span><span class="kw">fn </span>offload_filter(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; usize {
+        <span class="number">0
+    </span>}
 
-    <span class="doccomment">/// Add another filter to this filter</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">fn</span> <span class="ident">checked_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span>;
+    <span class="doccomment">/// Add another filter to this filter
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">fn </span>checked_add_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool;
 
-    <span class="doccomment">/// Memory used by filter</span>
-    <span class="kw">fn</span> <span class="ident">memory_allocated</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="number">0</span>
-    }
+    <span class="doccomment">/// Memory used by filter
+    </span><span class="kw">fn </span>memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="number">0
+    </span>}
 
-    <span class="doccomment">/// Clear all filter data</span>
-    <span class="kw">fn</span> <span class="ident">clear_filter</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>);
+    <span class="doccomment">/// Clear all filter data
+    </span><span class="kw">fn </span>clear_filter(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
-    <span class="doccomment">/// Check if filter was offloaded</span>
-    <span class="kw">fn</span> <span class="ident">is_filter_offloaded</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
-    }
+    <span class="doccomment">/// Check if filter was offloaded
+    </span><span class="kw">fn </span>is_filter_offloaded(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
 }
 
-<span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">K</span><span class="op">&gt;</span> <span class="ident">FilterTrait</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">K</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span>,
-    <span class="ident">T</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FilterTrait</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
+<span class="attribute">#[async_trait::async_trait]
+</span><span class="kw">impl</span>&lt;T, K&gt; FilterTrait&lt;K&gt; <span class="kw">for </span><span class="prelude-ty">Option</span>&lt;T&gt;
+<span class="kw">where
+    </span>K: Send + Sync,
+    T: Send + Sync + Clone + FilterTrait&lt;K&gt;,
 {
-    <span class="kw">fn</span> <span class="ident">add</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">filter</span>) <span class="op">=</span> <span class="self">self</span> {
-            <span class="ident">filter</span>.<span class="ident">add</span>(<span class="ident">key</span>);
+    <span class="kw">fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = <span class="self">self </span>{
+            filter.add(key);
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">contains_fast</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="ident">FilterResult</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">filter</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
-            <span class="ident">filter</span>.<span class="ident">contains_fast</span>(<span class="ident">key</span>)
-        } <span class="kw">else</span> {
-            <span class="ident">FilterResult::NeedAdditionalCheck</span>
+    <span class="kw">fn </span>contains_fast(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; FilterResult {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = <span class="kw-2">&amp;</span><span class="self">self </span>{
+            filter.contains_fast(key)
+        } <span class="kw">else </span>{
+            FilterResult::NeedAdditionalCheck
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">checked_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> (<span class="self">self</span>, <span class="ident">other</span>) {
-            (<span class="prelude-val">Some</span>(<span class="ident">this</span>), <span class="prelude-val">Some</span>(<span class="ident">other</span>)) =&gt; <span class="ident">this</span>.<span class="ident">checked_add_assign</span>(<span class="ident">other</span>),
+    <span class="kw">fn </span>checked_add_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        <span class="kw">match </span>(<span class="self">self</span>, other) {
+            (<span class="prelude-val">Some</span>(this), <span class="prelude-val">Some</span>(other)) =&gt; this.checked_add_assign(other),
             (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">clear_filter</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">filter</span>) <span class="op">=</span> <span class="self">self</span> {
-            <span class="ident">filter</span>.<span class="ident">clear_filter</span>();
+    <span class="kw">fn </span>clear_filter(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = <span class="self">self </span>{
+            filter.clear_filter();
         }
     }
 
-    <span class="doccomment">/// Check if key in filter (can take some time)</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">contains</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">BloomDataProvider</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">provider</span>: <span class="kw-2">&amp;</span><span class="ident">P</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="ident">FilterResult</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">filter</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
-            <span class="ident">filter</span>.<span class="ident">contains</span>(<span class="ident">provider</span>, <span class="ident">key</span>).<span class="kw">await</span>
-        } <span class="kw">else</span> {
-            <span class="ident">FilterResult::NeedAdditionalCheck</span>
+    <span class="doccomment">/// Check if key in filter (can take some time)
+    </span><span class="kw">async fn </span>contains&lt;P: BloomDataProvider&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, provider: <span class="kw-2">&amp;</span>P, key: <span class="kw-2">&amp;</span>K) -&gt; FilterResult {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = <span class="kw-2">&amp;</span><span class="self">self </span>{
+            filter.contains(provider, key).<span class="kw">await
+        </span>} <span class="kw">else </span>{
+            FilterResult::NeedAdditionalCheck
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">offload_filter</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">filter</span>) <span class="op">=</span> <span class="self">self</span> {
-            <span class="ident">filter</span>.<span class="ident">offload_filter</span>()
-        } <span class="kw">else</span> {
-            <span class="number">0</span>
-        }
+    <span class="kw">fn </span>offload_filter(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; usize {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = <span class="self">self </span>{
+            filter.offload_filter()
+        } <span class="kw">else </span>{
+            <span class="number">0
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">memory_allocated</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">filter</span>) <span class="op">=</span> <span class="self">self</span> {
-            <span class="ident">filter</span>.<span class="ident">memory_allocated</span>()
-        } <span class="kw">else</span> {
-            <span class="number">0</span>
-        }
+    <span class="kw">fn </span>memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = <span class="self">self </span>{
+            filter.memory_allocated()
+        } <span class="kw">else </span>{
+            <span class="number">0
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">is_filter_offloaded</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">filter</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
-            <span class="ident">filter</span>.<span class="ident">is_filter_offloaded</span>()
-        } <span class="kw">else</span> {
-            <span class="bool-val">false</span>
-        }
+    <span class="kw">fn </span>is_filter_offloaded(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = <span class="kw-2">&amp;</span><span class="self">self </span>{
+            filter.is_filter_offloaded()
+        } <span class="kw">else </span>{
+            <span class="bool-val">false
+        </span>}
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

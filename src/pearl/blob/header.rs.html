@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/header.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>header.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/header.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>header.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -66,69 +61,68 @@
 <span id="61">61</span>
 <span id="62">62</span>
 <span id="63">63</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">anyhow</span>::{<span class="ident">Context</span>, <span class="prelude-ty">Result</span>};
-<span class="kw">use</span> <span class="ident">bincode</span>::{<span class="ident">deserialize</span>, <span class="ident">serialized_size</span>};
-<span class="kw">use</span> <span class="ident">rio::Rio</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>anyhow::{Context, <span class="prelude-ty">Result</span>};
+<span class="kw">use </span>bincode::{deserialize, serialized_size};
+<span class="kw">use </span>rio::Rio;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">blob::File</span>, <span class="ident">error::ValidationErrorKind</span>, <span class="ident">Error</span>};
+<span class="kw">use crate</span>::{blob::File, error::ValidationErrorKind, Error};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::FileName</span>;
+<span class="kw">use </span><span class="kw">super</span>::FileName;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="ident">BLOB_VERSION</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="ident">BLOB_MAGIC_BYTE</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0xdeaf_abcd</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>BLOB_VERSION: u32 = <span class="number">1</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>BLOB_MAGIC_BYTE: u64 = <span class="number">0xdeaf_abcd</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Header</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">magic_byte</span>: <span class="ident">u64</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">version</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">flags</span>: <span class="ident">u64</span>,
+<span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+</span><span class="kw">pub struct </span>Header {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) magic_byte: u64,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) version: u32,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) flags: u64,
 }
 
-<span class="kw">impl</span> <span class="ident">Header</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">magic_byte</span>: <span class="ident">BLOB_MAGIC_BYTE</span>,
-            <span class="ident">version</span>: <span class="ident">BLOB_VERSION</span>,
-            <span class="ident">flags</span>: <span class="number">0</span>,
+<span class="kw">impl </span>Header {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            magic_byte: BLOB_MAGIC_BYTE,
+            version: BLOB_VERSION,
+            flags: <span class="number">0</span>,
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">from_file</span>(<span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">FileName</span>, <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">file</span> <span class="op">=</span> <span class="ident">File::open</span>(<span class="ident">name</span>.<span class="ident">to_path</span>(), <span class="ident">ioring</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">with_context</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;failed to open blob file: {}&quot;</span>, <span class="ident">name</span>))<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">serialized_size</span>(<span class="kw-2">&amp;</span><span class="ident">Header::new</span>()).<span class="ident">expect</span>(<span class="string">&quot;failed to serialize default header&quot;</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0</span>; <span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>];
-        <span class="ident">file</span>.<span class="ident">read_at</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>, <span class="number">0</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">with_context</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;failed to read from file: {}&quot;</span>, <span class="ident">name</span>))<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">header</span>: <span class="self">Self</span> <span class="op">=</span> <span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>)
-            .<span class="ident">with_context</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;failed to deserialize header from file: {}&quot;</span>, <span class="ident">name</span>))<span class="question-mark">?</span>;
-        <span class="ident">header</span>.<span class="ident">validate</span>().<span class="ident">context</span>(<span class="string">&quot;header validation failed&quot;</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">header</span>)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>from_file(name: <span class="kw-2">&amp;</span>FileName, ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span>file = File::open(name.to_path(), ioring)
+            .<span class="kw">await
+            </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;failed to open blob file: {}&quot;</span>, name))<span class="question-mark">?</span>;
+        <span class="kw">let </span>size = serialized_size(<span class="kw-2">&amp;</span>Header::new()).expect(<span class="string">&quot;failed to serialize default header&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; size <span class="kw">as </span>usize];
+        file.read_at(<span class="kw-2">&amp;mut </span>buf, <span class="number">0</span>)
+            .<span class="kw">await
+            </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;failed to read from file: {}&quot;</span>, name))<span class="question-mark">?</span>;
+        <span class="kw">let </span>header: <span class="self">Self </span>= deserialize(<span class="kw-2">&amp;</span>buf)
+            .with_context(|| <span class="macro">format!</span>(<span class="string">&quot;failed to deserialize header from file: {}&quot;</span>, name))<span class="question-mark">?</span>;
+        header.validate().context(<span class="string">&quot;header validation failed&quot;</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(header)
     }
 
-    <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">validate_without_version</span>()<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">version</span> <span class="op">!</span><span class="op">=</span> <span class="ident">BLOB_VERSION</span> {
-            <span class="kw">let</span> <span class="ident">cause</span> <span class="op">=</span> <span class="macro">format!</span>(
+    <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="self">self</span>.validate_without_version()<span class="question-mark">?</span>;
+        <span class="kw">if </span><span class="self">self</span>.version != BLOB_VERSION {
+            <span class="kw">let </span>cause = <span class="macro">format!</span>(
                 <span class="string">&quot;old blob version: {}, expected: {}&quot;</span>,
-                <span class="self">self</span>.<span class="ident">version</span>, <span class="ident">BLOB_VERSION</span>
+                <span class="self">self</span>.version, BLOB_VERSION
             );
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::validation</span>(<span class="ident">ValidationErrorKind::BlobVersion</span>, <span class="ident">cause</span>).<span class="ident">into</span>());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::validation(ValidationErrorKind::BlobVersion, cause).into());
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_without_version</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">magic_byte</span> <span class="op">!</span><span class="op">=</span> <span class="ident">BLOB_MAGIC_BYTE</span> {
-            <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">ValidationErrorKind::BlobMagicByte</span>;
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::validation</span>(<span class="ident">param</span>, <span class="string">&quot;blob header magic byte mismatch&quot;</span>).<span class="ident">into</span>());
+    <span class="kw">pub fn </span>validate_without_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">if </span><span class="self">self</span>.magic_byte != BLOB_MAGIC_BYTE {
+            <span class="kw">let </span>param = ValidationErrorKind::BlobMagicByte;
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::validation(param, <span class="string">&quot;blob header magic byte mismatch&quot;</span>).into());
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

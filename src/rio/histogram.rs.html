@@ -1,11 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/histogram.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>histogram.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../rio/index.html"><div class="logo-container">
-                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../rio/index.html">
-                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/histogram.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>histogram.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../rio/index.html"><div class="logo-container">
+                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../rio/index.html">
+                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -194,195 +189,194 @@
 <span id="187">187</span>
 <span id="188">188</span>
 <span id="189">189</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Copied from my historian crate. - Tyler Neely</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! A zero-config simple histogram collector</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! for use in instrumented optimization.</span>
-<span class="doccomment">//! Uses logarithmic bucketing rather than sampling,</span>
-<span class="doccomment">//! and has bounded (generally &lt;0.5%) error on percentiles.</span>
-<span class="doccomment">//! Performs no allocations after initial creation.</span>
-<span class="doccomment">//! Uses Relaxed atomics during collection.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! When you create it, it allocates 65k `AtomicU64`&#39;s</span>
-<span class="doccomment">//! that it uses for incrementing. Generating reports</span>
-<span class="doccomment">//! after running workloads on dozens of `Histogram`&#39;s</span>
-<span class="doccomment">//! does not result in a perceptible delay, but it</span>
-<span class="doccomment">//! might not be acceptable for use in low-latency</span>
-<span class="doccomment">//! reporting paths.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The trade-offs taken in this are to minimize latency</span>
-<span class="doccomment">//! during collection, while initial allocation and</span>
-<span class="doccomment">//! postprocessing delays are acceptable.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Future work to further reduce collection latency</span>
-<span class="doccomment">//! may include using thread-local caches that perform</span>
-<span class="doccomment">//! no atomic operations until they are dropped, when</span>
-<span class="doccomment">//! they may atomically aggregate their measurements</span>
-<span class="doccomment">//! into the shared collector that will be used for</span>
-<span class="doccomment">//! reporting.</span>
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused_results</span>)]</span>
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::print_stdout</span>)]</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Copied from my historian crate. - Tyler Neely
+//!
+//! A zero-config simple histogram collector
+//!
+//! for use in instrumented optimization.
+//! Uses logarithmic bucketing rather than sampling,
+//! and has bounded (generally &lt;0.5%) error on percentiles.
+//! Performs no allocations after initial creation.
+//! Uses Relaxed atomics during collection.
+//!
+//! When you create it, it allocates 65k `AtomicU64`&#39;s
+//! that it uses for incrementing. Generating reports
+//! after running workloads on dozens of `Histogram`&#39;s
+//! does not result in a perceptible delay, but it
+//! might not be acceptable for use in low-latency
+//! reporting paths.
+//!
+//! The trade-offs taken in this are to minimize latency
+//! during collection, while initial allocation and
+//! postprocessing delays are acceptable.
+//!
+//! Future work to further reduce collection latency
+//! may include using thread-local caches that perform
+//! no atomic operations until they are dropped, when
+//! they may atomically aggregate their measurements
+//! into the shared collector that will be used for
+//! reporting.
+</span><span class="attribute">#![allow(unused)]
+#![allow(unused_results)]
+#![allow(clippy::print_stdout)]
 
-<span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
-<span class="kw">use</span> <span class="ident">std::fmt</span>::{<span class="self">self</span>, <span class="ident">Debug</span>};
-<span class="kw">use</span> <span class="ident">std::sync::atomic</span>::{<span class="ident">AtomicU64</span>, <span class="ident">Ordering</span>};
+</span><span class="kw">use </span>std::convert::TryFrom;
+<span class="kw">use </span>std::fmt::{<span class="self">self</span>, Debug};
+<span class="kw">use </span>std::sync::atomic::{AtomicU64, Ordering};
 
-<span class="kw">const</span> <span class="ident">PRECISION</span>: <span class="ident">f64</span> <span class="op">=</span> <span class="number">100.</span>;
-<span class="kw">const</span> <span class="ident">BUCKETS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="number">16</span>;
+<span class="kw">const </span>PRECISION: f64 = <span class="number">100.</span>;
+<span class="kw">const </span>BUCKETS: usize = <span class="number">1 </span>&lt;&lt; <span class="number">16</span>;
 
-<span class="doccomment">/// A histogram collector that uses zero-configuration logarithmic buckets.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Histogram</span> {
-    <span class="ident">vals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AtomicU64</span><span class="op">&gt;</span>,
-    <span class="ident">sum</span>: <span class="ident">AtomicU64</span>,
-    <span class="ident">count</span>: <span class="ident">AtomicU64</span>,
+<span class="doccomment">/// A histogram collector that uses zero-configuration logarithmic buckets.
+</span><span class="kw">pub struct </span>Histogram {
+    vals: Vec&lt;AtomicU64&gt;,
+    sum: AtomicU64,
+    count: AtomicU64,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Histogram</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="ident">Histogram</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vals</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">BUCKETS</span>);
-        <span class="ident">vals</span>.<span class="ident">resize_with</span>(<span class="ident">BUCKETS</span>, <span class="ident">Default::default</span>);
+<span class="kw">impl </span>Default <span class="kw">for </span>Histogram {
+    <span class="kw">fn </span>default() -&gt; Histogram {
+        <span class="kw">let </span><span class="kw-2">mut </span>vals = Vec::with_capacity(BUCKETS);
+        vals.resize_with(BUCKETS, Default::default);
 
-        <span class="ident">Histogram</span> {
-            <span class="ident">vals</span>,
-            <span class="ident">sum</span>: <span class="ident">AtomicU64::new</span>(<span class="number">0</span>),
-            <span class="ident">count</span>: <span class="ident">AtomicU64::new</span>(<span class="number">0</span>),
+        Histogram {
+            vals,
+            sum: AtomicU64::new(<span class="number">0</span>),
+            count: AtomicU64::new(<span class="number">0</span>),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-<span class="kw">unsafe</span> <span class="kw">impl</span> <span class="ident">Send</span> <span class="kw">for</span> <span class="ident">Histogram</span> {}
+<span class="attribute">#[allow(unsafe_code)]
+</span><span class="kw">unsafe impl </span>Send <span class="kw">for </span>Histogram {}
 
-<span class="kw">impl</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Histogram</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(
+<span class="kw">impl </span>Debug <span class="kw">for </span>Histogram {
+    <span class="kw">fn </span>fmt(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">fmt::Error</span><span class="op">&gt;</span> {
-        <span class="kw">const</span> <span class="ident">PS</span>: [<span class="ident">f64</span>; <span class="number">10</span>] <span class="op">=</span> [
+        f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), fmt::Error&gt; {
+        <span class="kw">const </span>PS: [f64; <span class="number">10</span>] = [
             <span class="number">0.</span>, <span class="number">50.</span>, <span class="number">75.</span>, <span class="number">90.</span>, <span class="number">95.</span>, <span class="number">97.5</span>, <span class="number">99.</span>, <span class="number">99.9</span>, <span class="number">99.99</span>,
             <span class="number">100.</span>,
         ];
-        <span class="ident">f</span>.<span class="ident">write_str</span>(<span class="string">&quot;Histogramgram[&quot;</span>)<span class="question-mark">?</span>;
+        f.write_str(<span class="string">&quot;Histogramgram[&quot;</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">for</span> <span class="ident">p</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">PS</span> {
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">percentile</span>(<span class="kw-2">*</span><span class="ident">p</span>).<span class="ident">round</span>();
-            <span class="kw">let</span> <span class="ident">line</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;({} -&gt; {}) &quot;</span>, <span class="ident">p</span>, <span class="ident">res</span>);
-            <span class="ident">f</span>.<span class="ident">write_str</span>(<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">line</span>)<span class="question-mark">?</span>;
+        <span class="kw">for </span>p <span class="kw">in </span><span class="kw-2">&amp;</span>PS {
+            <span class="kw">let </span>res = <span class="self">self</span>.percentile(<span class="kw-2">*</span>p).round();
+            <span class="kw">let </span>line = <span class="macro">format!</span>(<span class="string">&quot;({} -&gt; {}) &quot;</span>, p, res);
+            f.write_str(<span class="kw-2">&amp;*</span>line)<span class="question-mark">?</span>;
         }
 
-        <span class="ident">f</span>.<span class="ident">write_str</span>(<span class="string">&quot;]&quot;</span>)
+        f.write_str(<span class="string">&quot;]&quot;</span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Histogram</span> {
-    <span class="doccomment">/// Record a value.</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">measure</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Copy</span> <span class="op">+</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl </span>Histogram {
+    <span class="doccomment">/// Record a value.
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>measure&lt;T: Copy + Into&lt;f64&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">raw_value</span>: <span class="ident">T</span>,
-    ) -&gt; <span class="ident">u64</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;no_metrics&quot;</span>))]</span>
-        {
-            <span class="kw">let</span> <span class="ident">value_float</span>: <span class="ident">f64</span> <span class="op">=</span> <span class="ident">raw_value</span>.<span class="ident">into</span>();
-            <span class="self">self</span>.<span class="ident">sum</span>.<span class="ident">fetch_add</span>(
-                <span class="ident">value_float</span>.<span class="ident">round</span>() <span class="kw">as</span> <span class="ident">u64</span>,
-                <span class="ident">Ordering::Relaxed</span>,
+        raw_value: T,
+    ) -&gt; u64 {
+        <span class="attribute">#[cfg(not(feature = <span class="string">&quot;no_metrics&quot;</span>))]
+        </span>{
+            <span class="kw">let </span>value_float: f64 = raw_value.into();
+            <span class="self">self</span>.sum.fetch_add(
+                value_float.round() <span class="kw">as </span>u64,
+                Ordering::Relaxed,
             );
 
-            <span class="self">self</span>.<span class="ident">count</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering::Relaxed</span>);
+            <span class="self">self</span>.count.fetch_add(<span class="number">1</span>, Ordering::Relaxed);
 
-            <span class="comment">// compress the value to one of 2**16 values</span>
-            <span class="comment">// using logarithmic bucketing</span>
-            <span class="kw">let</span> <span class="ident">compressed</span>: <span class="ident">u16</span> <span class="op">=</span> <span class="ident">compress</span>(<span class="ident">value_float</span>);
+            <span class="comment">// compress the value to one of 2**16 values
+            // using logarithmic bucketing
+            </span><span class="kw">let </span>compressed: u16 = compress(value_float);
 
-            <span class="comment">// increment the counter for this compressed value</span>
-            <span class="self">self</span>.<span class="ident">vals</span>[<span class="ident">compressed</span> <span class="kw">as</span> <span class="ident">usize</span>]
-                .<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering::Relaxed</span>)
-                <span class="op">+</span> <span class="number">1</span>
-        }
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;no_metrics&quot;</span>)]</span>
-        <span class="number">0</span>
-    }
+            <span class="comment">// increment the counter for this compressed value
+            </span><span class="self">self</span>.vals[compressed <span class="kw">as </span>usize]
+                .fetch_add(<span class="number">1</span>, Ordering::Relaxed)
+                + <span class="number">1
+        </span>}
+        <span class="attribute">#[cfg(feature = <span class="string">&quot;no_metrics&quot;</span>)]
+        </span><span class="number">0
+    </span>}
 
-    <span class="doccomment">/// Retrieve a percentile [0-100]. Returns NAN if no metrics have been</span>
-    <span class="doccomment">/// collected yet.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">percentile</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">p</span>: <span class="ident">f64</span>) -&gt; <span class="ident">f64</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;no_metrics&quot;</span>))]</span>
-        {
+    <span class="doccomment">/// Retrieve a percentile [0-100]. Returns NAN if no metrics have been
+    /// collected yet.
+    </span><span class="kw">pub fn </span>percentile(<span class="kw-2">&amp;</span><span class="self">self</span>, p: f64) -&gt; f64 {
+        <span class="attribute">#[cfg(not(feature = <span class="string">&quot;no_metrics&quot;</span>))]
+        </span>{
             <span class="macro">assert!</span>(
-                <span class="ident">p</span> <span class="op">&lt;</span><span class="op">=</span> <span class="number">100.</span>,
-                <span class="string">&quot;percentiles must not exceed 100.0&quot;</span>
-            );
+                p &lt;= <span class="number">100.</span>,
+                <span class="string">&quot;percentiles must not exceed 100.0&quot;
+            </span>);
 
-            <span class="kw">let</span> <span class="ident">count</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">count</span>.<span class="ident">load</span>(<span class="ident">Ordering::Acquire</span>);
+            <span class="kw">let </span>count = <span class="self">self</span>.count.load(Ordering::Acquire);
 
-            <span class="kw">if</span> <span class="ident">count</span> <span class="op">==</span> <span class="number">0</span> {
-                <span class="kw">return</span> <span class="ident">std::f64::NAN</span>;
+            <span class="kw">if </span>count == <span class="number">0 </span>{
+                <span class="kw">return </span>std::f64::NAN;
             }
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">target</span> <span class="op">=</span> <span class="ident">count</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">*</span> (<span class="ident">p</span> <span class="op">/</span> <span class="number">100.</span>);
-            <span class="kw">if</span> <span class="ident">target</span> <span class="op">==</span> <span class="number">0.</span> {
-                <span class="ident">target</span> <span class="op">=</span> <span class="number">1.</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>target = count <span class="kw">as </span>f64 * (p / <span class="number">100.</span>);
+            <span class="kw">if </span>target == <span class="number">0. </span>{
+                target = <span class="number">1.</span>;
             }
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sum</span> <span class="op">=</span> <span class="number">0.</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>sum = <span class="number">0.</span>;
 
-            <span class="kw">for</span> (<span class="ident">idx</span>, <span class="ident">val</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">vals</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-                <span class="kw">let</span> <span class="ident">count</span> <span class="op">=</span> <span class="ident">val</span>.<span class="ident">load</span>(<span class="ident">Ordering::Acquire</span>);
-                <span class="ident">sum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">count</span> <span class="kw">as</span> <span class="ident">f64</span>;
+            <span class="kw">for </span>(idx, val) <span class="kw">in </span><span class="self">self</span>.vals.iter().enumerate() {
+                <span class="kw">let </span>count = val.load(Ordering::Acquire);
+                sum += count <span class="kw">as </span>f64;
 
-                <span class="kw">if</span> <span class="ident">sum</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">target</span> {
-                    <span class="kw">return</span> <span class="ident">decompress</span>(<span class="ident">idx</span> <span class="kw">as</span> <span class="ident">u16</span>);
+                <span class="kw">if </span>sum &gt;= target {
+                    <span class="kw">return </span>decompress(idx <span class="kw">as </span>u16);
                 }
             }
         }
 
-        <span class="ident">std::f64::NAN</span>
+        std::f64::NAN
     }
 
-    <span class="doccomment">/// Dump out some common percentiles.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">print_percentiles</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+    <span class="doccomment">/// Dump out some common percentiles.
+    </span><span class="kw">pub fn </span>print_percentiles(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="self">self</span>);
     }
 
-    <span class="doccomment">/// Return the sum of all observations in this histogram.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sum</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">sum</span>.<span class="ident">load</span>(<span class="ident">Ordering::Acquire</span>)
+    <span class="doccomment">/// Return the sum of all observations in this histogram.
+    </span><span class="kw">pub fn </span>sum(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.sum.load(Ordering::Acquire)
     }
 
-    <span class="doccomment">/// Return the count of observations in this histogram.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">count</span>.<span class="ident">load</span>(<span class="ident">Ordering::Acquire</span>)
+    <span class="doccomment">/// Return the count of observations in this histogram.
+    </span><span class="kw">pub fn </span>count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.count.load(Ordering::Acquire)
     }
 }
 
-<span class="comment">// compress takes a value and lossily shrinks it to an u16 to facilitate</span>
-<span class="comment">// bucketing of histogram values, staying roughly within 1% of the true</span>
-<span class="comment">// value. This fails for large values of 1e142 and above, and is</span>
-<span class="comment">// inaccurate for values closer to 0 than +/- 0.51 or +/- math.Inf.</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::cast_sign_loss</span>)]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::cast_possible_truncation</span>)]</span>
-<span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="kw">fn</span> <span class="ident">compress</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">input_value</span>: <span class="ident">T</span>) -&gt; <span class="ident">u16</span> {
-    <span class="kw">let</span> <span class="ident">value</span>: <span class="ident">f64</span> <span class="op">=</span> <span class="ident">input_value</span>.<span class="ident">into</span>();
-    <span class="kw">let</span> <span class="ident">abs</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">abs</span>();
-    <span class="kw">let</span> <span class="ident">boosted</span> <span class="op">=</span> <span class="number">1.</span> <span class="op">+</span> <span class="ident">abs</span>;
-    <span class="kw">let</span> <span class="ident">ln</span> <span class="op">=</span> <span class="ident">boosted</span>.<span class="ident">ln</span>();
-    <span class="kw">let</span> <span class="ident">compressed</span> <span class="op">=</span> <span class="ident">PRECISION</span>.<span class="ident">mul_add</span>(<span class="ident">ln</span>, <span class="number">0.5</span>);
-    <span class="macro">assert!</span>(<span class="ident">compressed</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">f64::from</span>(<span class="ident">u16::max_value</span>()));
+<span class="comment">// compress takes a value and lossily shrinks it to an u16 to facilitate
+// bucketing of histogram values, staying roughly within 1% of the true
+// value. This fails for large values of 1e142 and above, and is
+// inaccurate for values closer to 0 than +/- 0.51 or +/- math.Inf.
+</span><span class="attribute">#[allow(clippy::cast_sign_loss)]
+#[allow(clippy::cast_possible_truncation)]
+#[inline]
+</span><span class="kw">fn </span>compress&lt;T: Into&lt;f64&gt;&gt;(input_value: T) -&gt; u16 {
+    <span class="kw">let </span>value: f64 = input_value.into();
+    <span class="kw">let </span>abs = value.abs();
+    <span class="kw">let </span>boosted = <span class="number">1. </span>+ abs;
+    <span class="kw">let </span>ln = boosted.ln();
+    <span class="kw">let </span>compressed = PRECISION.mul_add(ln, <span class="number">0.5</span>);
+    <span class="macro">assert!</span>(compressed &lt;= f64::from(u16::max_value()));
 
-    <span class="ident">compressed</span> <span class="kw">as</span> <span class="ident">u16</span>
+    compressed <span class="kw">as </span>u16
 }
 
-<span class="comment">// decompress takes a lossily shrunken u16 and returns an f64 within 1% of</span>
-<span class="comment">// the original passed to compress.</span>
-<span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="kw">fn</span> <span class="ident">decompress</span>(<span class="ident">compressed</span>: <span class="ident">u16</span>) -&gt; <span class="ident">f64</span> {
-    <span class="kw">let</span> <span class="ident">unboosted</span> <span class="op">=</span> <span class="ident">f64::from</span>(<span class="ident">compressed</span>) <span class="op">/</span> <span class="ident">PRECISION</span>;
-    (<span class="ident">unboosted</span>.<span class="ident">exp</span>() <span class="op">-</span> <span class="number">1.</span>)
+<span class="comment">// decompress takes a lossily shrunken u16 and returns an f64 within 1% of
+// the original passed to compress.
+</span><span class="attribute">#[inline]
+</span><span class="kw">fn </span>decompress(compressed: u16) -&gt; f64 {
+    <span class="kw">let </span>unboosted = f64::from(compressed) / PRECISION;
+    (unboosted.exp() - <span class="number">1.</span>)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

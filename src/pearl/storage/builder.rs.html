@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/storage/builder.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>builder.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/storage/builder.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>builder.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -201,208 +196,203 @@
 <span id="196">196</span>
 <span id="197">197</span>
 <span id="198">198</span>
-<span id="199">199</span>
-<span id="200">200</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// Is used to initialize a `Storage`.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Required params:</span>
-<span class="doccomment">///  - [`work_dir`] - where `Storage` will keep blob and index files</span>
-<span class="doccomment">///  - [`max_blob_size`] - upper limit of blob file size</span>
-<span class="doccomment">///  - [`max_data_in_blob`] - maximum number of records in one blob</span>
-<span class="doccomment">///  - [`blob_file_name_prefix`] - prefix in blob file name pattern: {prefix}.{id}.{ext}</span>
-<span class="doccomment">///  - [`key_size`] - const key size in bytes</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Example</span>
-<span class="doccomment">/// ```no-run</span>
-<span class="doccomment">/// use pearl::{Builder, Storage, Key};</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// struct Id;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let storage: Storage&lt;Id&gt; = Builder::new()</span>
-<span class="doccomment">///         .blob_file_name_prefix(&quot;benchmark&quot;)</span>
-<span class="doccomment">///         .max_blob_size(10_000_000)</span>
-<span class="doccomment">///         .max_data_in_blob(1_000)</span>
-<span class="doccomment">///         .work_dir(std::env::temp_dir().join(&quot;pearl_benchmark&quot;))</span>
-<span class="doccomment">///         .build()</span>
-<span class="doccomment">///         .unwrap();</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// [`work_dir`]: struct.Builder.html#method.work_dir</span>
-<span class="doccomment">/// [`max_blob_size`]: struct.Builder.html#method.max_blob_size</span>
-<span class="doccomment">/// [`max_data_in_blob`]: struct.Builder.html#method.max_data_in_blob</span>
-<span class="doccomment">/// [`blob_file_name_prefix`]: struct.Builder.html#method.blob_file_name_prefix</span>
-<span class="doccomment">/// [`key_size`]: struct.Builder.html#method.key_size</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Builder</span> {
-    <span class="ident">config</span>: <span class="ident">Config</span>,
-    <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Is used to initialize a `Storage`.
+///
+/// Required params:
+///  - [`work_dir`] - where `Storage` will keep blob and index files
+///  - [`max_blob_size`] - upper limit of blob file size
+///  - [`max_data_in_blob`] - maximum number of records in one blob
+///  - [`blob_file_name_prefix`] - prefix in blob file name pattern: {prefix}.{id}.{ext}
+///  - [`key_size`] - const key size in bytes
+///
+/// # Example
+/// ```no_run
+/// use pearl::{Builder, Storage, ArrayKey};
+///
+/// let storage: Storage&lt;ArrayKey&lt;8&gt;&gt; = Builder::new()
+///         .blob_file_name_prefix(&quot;benchmark&quot;)
+///         .max_blob_size(10_000_000)
+///         .max_data_in_blob(1_000)
+///         .work_dir(std::env::temp_dir().join(&quot;pearl_benchmark&quot;))
+///         .build()
+///         .unwrap();
+/// ```
+///
+/// [`work_dir`]: struct.Builder.html#method.work_dir
+/// [`max_blob_size`]: struct.Builder.html#method.max_blob_size
+/// [`max_data_in_blob`]: struct.Builder.html#method.max_data_in_blob
+/// [`blob_file_name_prefix`]: struct.Builder.html#method.blob_file_name_prefix
+/// [`key_size`]: struct.Builder.html#method.key_size
+</span><span class="attribute">#[derive(Default, Debug)]
+</span><span class="kw">pub struct </span>Builder {
+    config: Config,
+    ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
 }
 
-<span class="kw">const</span> <span class="ident">MAX_POSSIBLE_DATA_IN_BLOB</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u32::MAX</span> <span class="kw">as</span> <span class="ident">u64</span>;
+<span class="kw">const </span>MAX_POSSIBLE_DATA_IN_BLOB: u64 = u32::MAX <span class="kw">as </span>u64;
 
-<span class="kw">impl</span> <span class="ident">Builder</span> {
-    <span class="doccomment">/// Create new uninitialized `Builder`</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::default</span>()
+<span class="kw">impl </span>Builder {
+    <span class="doccomment">/// Create new uninitialized `Builder`
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::default()
     }
 
-    <span class="doccomment">/// Creates `Storage` based on given configuration,</span>
-    <span class="doccomment">/// returns error if not all params are set.</span>
-    <span class="doccomment">/// # Errors</span>
-    <span class="doccomment">/// Return error if some of the required params is missed or wrong</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Storage</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Creates `Storage` based on given configuration,
+    /// returns error if not all params are set.
+    /// # Errors
+    /// Return error if some of the required params is missed or wrong
+    </span><span class="kw">pub fn </span>build&lt;K&gt;(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Storage&lt;K&gt;&gt;
+    <span class="kw">where
+        for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">error_params</span> <span class="op">=</span> <span class="ident">String::new</span>();
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">work_dir</span>().<span class="ident">is_none</span>() {
-            <span class="ident">error_params</span>.<span class="ident">push_str</span>(<span class="string">&quot;&gt; work_dir\n&quot;</span>);
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">max_data_in_blob</span>().<span class="ident">is_none</span>() {
-            <span class="ident">error_params</span>.<span class="ident">push_str</span>(<span class="string">&quot;&gt; max_data_in_blob\n&quot;</span>);
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">max_data_in_blob</span>().<span class="ident">unwrap</span>() <span class="op">&gt;</span> <span class="ident">MAX_POSSIBLE_DATA_IN_BLOB</span> {
-            <span class="ident">error_params</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
+        <span class="kw">let </span><span class="kw-2">mut </span>error_params = String::new();
+        <span class="kw">if </span><span class="self">self</span>.config.work_dir().is_none() {
+            error_params.push_str(<span class="string">&quot;&gt; work_dir\n&quot;</span>);
+        } <span class="kw">else if </span><span class="self">self</span>.config.max_data_in_blob().is_none() {
+            error_params.push_str(<span class="string">&quot;&gt; max_data_in_blob\n&quot;</span>);
+        } <span class="kw">else if </span><span class="self">self</span>.config.max_data_in_blob().unwrap() &gt; MAX_POSSIBLE_DATA_IN_BLOB {
+            error_params.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
                 <span class="string">&quot;&gt; max_data_in_blob must be less than {}&quot;</span>,
-                <span class="ident">MAX_POSSIBLE_DATA_IN_BLOB</span>
+                MAX_POSSIBLE_DATA_IN_BLOB
             ));
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">max_blob_size</span>().<span class="ident">is_none</span>() {
-            <span class="ident">error_params</span>.<span class="ident">push_str</span>(<span class="string">&quot;&gt; max_blob_size\n&quot;</span>);
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">blob_file_name_prefix</span>().<span class="ident">is_none</span>() {
-            <span class="ident">error_params</span>.<span class="ident">push_str</span>(<span class="string">&quot;&gt; blob_file_name_prefix\n&quot;</span>);
+        } <span class="kw">else if </span><span class="self">self</span>.config.max_blob_size().is_none() {
+            error_params.push_str(<span class="string">&quot;&gt; max_blob_size\n&quot;</span>);
+        } <span class="kw">else if </span><span class="self">self</span>.config.blob_file_name_prefix().is_none() {
+            error_params.push_str(<span class="string">&quot;&gt; blob_file_name_prefix\n&quot;</span>);
         }
-        <span class="kw">if</span> <span class="ident">error_params</span>.<span class="ident">is_empty</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">Storage::new</span>(<span class="self">self</span>.<span class="ident">config</span>, <span class="self">self</span>.<span class="ident">ioring</span>))
-        } <span class="kw">else</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">error_params</span>);
-            <span class="prelude-val">Err</span>(<span class="ident">Error::uninitialized</span>().<span class="ident">into</span>())
+        <span class="kw">if </span>error_params.is_empty() {
+            <span class="prelude-val">Ok</span>(Storage::new(<span class="self">self</span>.config, <span class="self">self</span>.ioring))
+        } <span class="kw">else </span>{
+            <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, error_params);
+            <span class="prelude-val">Err</span>(Error::uninitialized().into())
         }
     }
 
-    <span class="doccomment">/// Sets working directory. If path doesn&#39;t exists, Storage will try to create it</span>
-    <span class="doccomment">/// at initialization stage.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">work_dir</span><span class="op">&lt;</span><span class="ident">S</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">work_dir</span>: <span class="ident">S</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">path</span>: <span class="ident">PathBuf</span> <span class="op">=</span> <span class="ident">work_dir</span>.<span class="ident">into</span>();
-        <span class="macro">debug!</span>(<span class="string">&quot;work dir set to: {}&quot;</span>, <span class="ident">path</span>.<span class="ident">display</span>());
-        <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_work_dir</span>(<span class="ident">path</span>);
-        <span class="self">self</span>
-    }
+    <span class="doccomment">/// Sets working directory. If path doesn&#39;t exists, Storage will try to create it
+    /// at initialization stage.
+    </span><span class="kw">pub fn </span>work_dir&lt;S: Into&lt;PathBuf&gt;&gt;(<span class="kw-2">mut </span><span class="self">self</span>, work_dir: S) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>path: PathBuf = work_dir.into();
+        <span class="macro">debug!</span>(<span class="string">&quot;work dir set to: {}&quot;</span>, path.display());
+        <span class="self">self</span>.config.set_work_dir(path);
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Sets directory name for corrupted files. If path doesn&#39;t exists, Storage will try to create it</span>
-    <span class="doccomment">/// at initialization stage.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">corrupted_dir_name</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">name</span>.<span class="ident">into</span>();
-        <span class="macro">debug!</span>(<span class="string">&quot;corrupted dir name set to: {}&quot;</span>, <span class="ident">name</span>);
-        <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_corrupted_dir_name</span>(<span class="ident">name</span>);
-        <span class="self">self</span>
-    }
+    <span class="doccomment">/// Sets directory name for corrupted files. If path doesn&#39;t exists, Storage will try to create it
+    /// at initialization stage.
+    </span><span class="kw">pub fn </span>corrupted_dir_name(<span class="kw-2">mut </span><span class="self">self</span>, name: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>name = name.into();
+        <span class="macro">debug!</span>(<span class="string">&quot;corrupted dir name set to: {}&quot;</span>, name);
+        <span class="self">self</span>.config.set_corrupted_dir_name(name);
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Sets blob file size approximate limit. When the file size exceeds it,</span>
-    <span class="doccomment">/// active blob update is activated.</span>
-    <span class="doccomment">/// Must be greater than zero</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">max_blob_size</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">max_blob_size</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">if</span> <span class="ident">max_blob_size</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_max_blob_size</span>(<span class="ident">max_blob_size</span>);
-        } <span class="kw">else</span> {
+    <span class="doccomment">/// Sets blob file size approximate limit. When the file size exceeds it,
+    /// active blob update is activated.
+    /// Must be greater than zero
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>max_blob_size(<span class="kw-2">mut </span><span class="self">self</span>, max_blob_size: u64) -&gt; <span class="self">Self </span>{
+        <span class="kw">if </span>max_blob_size &gt; <span class="number">0 </span>{
+            <span class="self">self</span>.config.set_max_blob_size(max_blob_size);
+        } <span class="kw">else </span>{
             <span class="macro">error!</span>(<span class="string">&quot;zero size blobs is useless, not set&quot;</span>);
         }
-        <span class="self">self</span>
-    }
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Limits max number of records in a single blob.</span>
-    <span class="doccomment">/// Must be greater than zero</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">max_data_in_blob</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">max_data_in_blob</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">if</span> <span class="ident">max_data_in_blob</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_max_data_in_blob</span>(<span class="ident">max_data_in_blob</span>);
-        } <span class="kw">else</span> {
+    <span class="doccomment">/// Limits max number of records in a single blob.
+    /// Must be greater than zero
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>max_data_in_blob(<span class="kw-2">mut </span><span class="self">self</span>, max_data_in_blob: u64) -&gt; <span class="self">Self </span>{
+        <span class="kw">if </span>max_data_in_blob &gt; <span class="number">0 </span>{
+            <span class="self">self</span>.config.set_max_data_in_blob(max_data_in_blob);
+        } <span class="kw">else </span>{
             <span class="macro">error!</span>(<span class="string">&quot;zero size blobs is useless, not set&quot;</span>);
         }
-        <span class="self">self</span>
-    }
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Sets blob file name prefix, e.g. if prefix set to `hellopearl`,</span>
-    <span class="doccomment">/// files will be named as `hellopearl.[N].blob`.</span>
-    <span class="doccomment">/// Where N - index number of file</span>
-    <span class="doccomment">/// If the prefix is empty, param won&#39;t be set.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">blob_file_name_prefix</span><span class="op">&lt;</span><span class="ident">U</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">blob_file_name_prefix</span>: <span class="ident">U</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">prefix</span> <span class="op">=</span> <span class="ident">blob_file_name_prefix</span>.<span class="ident">into</span>();
-        <span class="kw">if</span> <span class="ident">prefix</span>.<span class="ident">is_empty</span>() {
+    <span class="doccomment">/// Sets blob file name prefix, e.g. if prefix set to `hellopearl`,
+    /// files will be named as `hellopearl.[N].blob`.
+    /// Where N - index number of file
+    /// If the prefix is empty, param won&#39;t be set.
+    </span><span class="kw">pub fn </span>blob_file_name_prefix&lt;U: Into&lt;String&gt;&gt;(<span class="kw-2">mut </span><span class="self">self</span>, blob_file_name_prefix: U) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>prefix = blob_file_name_prefix.into();
+        <span class="kw">if </span>prefix.is_empty() {
             <span class="macro">error!</span>(<span class="string">&quot;passed empty file prefix, not set&quot;</span>);
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_blob_file_name_prefix</span>(<span class="ident">prefix</span>);
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.config.set_blob_file_name_prefix(prefix);
         }
-        <span class="self">self</span>
-    }
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Disables check existence of the record on write.</span>
-    <span class="doccomment">/// Writing becomes faster because there is no additional disk access</span>
-    <span class="doccomment">/// for searching for duplicates.</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">allow_duplicates</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_allow_duplicates</span>(<span class="bool-val">true</span>);
-        <span class="self">self</span>
-    }
+    <span class="doccomment">/// Disables check existence of the record on write.
+    /// Writing becomes faster because there is no additional disk access
+    /// for searching for duplicates.
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>allow_duplicates(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.config.set_allow_duplicates(<span class="bool-val">true</span>);
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Ignores blobs with corrupted header for index file and continues work with normal</span>
-    <span class="doccomment">/// ones (also leaves error logs for bad blobs).</span>
-    <span class="doccomment">/// It&#39;s worth noticing that index file maybe corrupted likely in case of irregular</span>
-    <span class="doccomment">/// stop of the storage: either the disk disconnected or server crashed. In these cases blob</span>
-    <span class="doccomment">/// file is likely either corrupted, so there is no a try to restore indices from blob file.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ignore_corrupted</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_ignore_corrupted</span>(<span class="bool-val">true</span>);
-        <span class="self">self</span>
-    }
+    <span class="doccomment">/// Ignores blobs with corrupted header for index file and continues work with normal
+    /// ones (also leaves error logs for bad blobs).
+    /// It&#39;s worth noticing that index file maybe corrupted likely in case of irregular
+    /// stop of the storage: either the disk disconnected or server crashed. In these cases blob
+    /// file is likely either corrupted, so there is no a try to restore indices from blob file.
+    </span><span class="kw">pub fn </span>ignore_corrupted(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.config.set_ignore_corrupted(<span class="bool-val">true</span>);
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Sets custom bloom filter config, if not set, use default values.</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_filter_config</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">config</span>: <span class="ident">BloomConfig</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">index_config</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">index</span>();
-        <span class="ident">index_config</span>.<span class="ident">bloom_config</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">config</span>);
-        <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_index</span>(<span class="ident">index_config</span>);
-        <span class="self">self</span>
-    }
+    <span class="doccomment">/// Sets custom bloom filter config, if not set, use default values.
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>set_filter_config(<span class="kw-2">mut </span><span class="self">self</span>, config: BloomConfig) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>index_config = <span class="self">self</span>.config.index();
+        index_config.bloom_config = <span class="prelude-val">Some</span>(config);
+        <span class="self">self</span>.config.set_index(index_config);
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Enables linux AIO with provided io_uring.</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">enable_aio</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ioring</span>: <span class="ident">Rio</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">ioring</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">ioring</span>);
-        <span class="self">self</span>
-    }
+    <span class="doccomment">/// Enables linux AIO with provided io_uring.
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>enable_aio(<span class="kw-2">mut </span><span class="self">self</span>, ioring: Rio) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.ioring = <span class="prelude-val">Some</span>(ioring);
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// [Optional]</span>
-    <span class="doccomment">/// Sets whether to create work directory if its missing on storage initialization.</span>
-    <span class="doccomment">/// Default value is `true`</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_work_dir</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">create</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_create_work_dir</span>(<span class="ident">create</span>);
-        <span class="self">self</span>
-    }
+    <span class="doccomment">/// [Optional]
+    /// Sets whether to create work directory if its missing on storage initialization.
+    /// Default value is `true`
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>create_work_dir(<span class="kw-2">mut </span><span class="self">self</span>, create: bool) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.config.set_create_work_dir(create);
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Sets semaphore for index dumping on blob change.</span>
-    <span class="doccomment">/// Parallel saving of indexes onto the disk will be limited by this semaphore.</span>
-    <span class="doccomment">/// This can prevent disk overusage in systems with multiple pearls.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_dump_sem</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">dump_sem</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Semaphore</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_dump_sem</span>(<span class="ident">dump_sem</span>);
-        <span class="self">self</span>
-    }
+    <span class="doccomment">/// Sets semaphore for index dumping on blob change.
+    /// Parallel saving of indexes onto the disk will be limited by this semaphore.
+    /// This can prevent disk overusage in systems with multiple pearls.
+    </span><span class="kw">pub fn </span>set_dump_sem(<span class="kw-2">mut </span><span class="self">self</span>, dump_sem: Arc&lt;Semaphore&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.config.set_dump_sem(dump_sem);
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Sets bloom filter group size</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_bloom_filter_group_size</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">size</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_bloom_filter_group_size</span>(<span class="ident">size</span>);
-        <span class="self">self</span>
-    }
+    <span class="doccomment">/// Sets bloom filter group size
+    </span><span class="kw">pub fn </span>set_bloom_filter_group_size(<span class="kw-2">mut </span><span class="self">self</span>, size: usize) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.config.set_bloom_filter_group_size(size);
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Set min and max waiting time for deferred index dump</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_deferred_index_dump_times</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">min</span>: <span class="ident">Duration</span>, <span class="ident">max</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">set_deferred_index_dump_times</span>(<span class="ident">min</span>, <span class="ident">max</span>);
-        <span class="self">self</span>
-    }
+    <span class="doccomment">/// Set min and max waiting time for deferred index dump
+    </span><span class="kw">pub fn </span>set_deferred_index_dump_times(<span class="kw-2">mut </span><span class="self">self</span>, min: Duration, max: Duration) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.config.set_deferred_index_dump_times(min, max);
+        <span class="self">self
+    </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

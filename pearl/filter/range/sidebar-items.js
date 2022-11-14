@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["RangeFilter","Range filter"]]});
+window.SIDEBAR_ITEMS = {"struct":[["RangeFilter","Range filter"]]};

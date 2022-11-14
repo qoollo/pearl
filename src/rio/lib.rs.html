@@ -1,11 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../rio/index.html"><div class="logo-container">
-                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../rio/index.html">
-                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../rio/index.html"><div class="logo-container">
+                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../rio/index.html">
+                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -315,316 +310,315 @@
 <span id="308">308</span>
 <span id="309">309</span>
 <span id="310">310</span>
-</pre><pre class="rust"><code><span class="doccomment">//! A steamy river of uring. Fast IO using io_uring.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! io_uring is going to change everything. It will speed up your</span>
-<span class="doccomment">//! disk usage by like 300%. Go ahead, run the `O_DIRECT` example</span>
-<span class="doccomment">//! and compare that to using a threadpool or anything</span>
-<span class="doccomment">//! you want. It&#39;s not gonna come close!</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Starting in linux 5.5, it also has support for tcp accept.</span>
-<span class="doccomment">//! This is gonna shred everything out there!!!</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! But there&#39;s a few snags. Mainly, it&#39;s a little misuse-prone.</span>
-<span class="doccomment">//! But Rust is pretty nice for specifying proofs about</span>
-<span class="doccomment">//! memory usage in the type system. And we don&#39;t even have</span>
-<span class="doccomment">//! to get too squirley. Check out the `write_at` implementation,</span>
-<span class="doccomment">//! for example. It just says that the Completion, the underlying</span>
-<span class="doccomment">//! uring, the file being used, the buffer being used, etc...</span>
-<span class="doccomment">//! will all be in scope at the same time while the Completion</span>
-<span class="doccomment">//! is in-use.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Most of the other io_uring libraries make</span>
-<span class="doccomment">//! it really easy to blow your legs off with</span>
-<span class="doccomment">//! use-after-frees. `rio` uses standard Rust</span>
-<span class="doccomment">//! lifetime specification  to make most use-after-frees</span>
-<span class="doccomment">//! fail to compile. Also, if a `Completion`</span>
-<span class="doccomment">//! that was pinned to the lifetime of a uring</span>
-<span class="doccomment">//! and backing buffer is dropped, it</span>
-<span class="doccomment">//! waits for its backing operation to complete</span>
-<span class="doccomment">//! before returning from Drop, to further</span>
-<span class="doccomment">//! prevent use-after-frees. use-after-frees</span>
-<span class="doccomment">//! are difficult to express when using `rio`.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Examples</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This won&#39;t compile:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```compile_fail</span>
-<span class="doccomment">//! let rio = rio::new().unwrap();</span>
-<span class="doccomment">//! let file = std::fs::File::open(&quot;use_after_free&quot;).unwrap();</span>
-<span class="doccomment">//! let out_buf = vec![42; 666];</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! let completion = rio.write_at(&amp;file, &amp;out_buf, 0).unwrap();</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // At this very moment, the kernel has a pointer to that there slice.</span>
-<span class="doccomment">//! // It also has the raw file descriptor of the file.</span>
-<span class="doccomment">//! // It&#39;s fixin&#39; to write the data from that memory into the file.</span>
-<span class="doccomment">//! // But if we freed it, it would be a bug,</span>
-<span class="doccomment">//! // and the kernel would write potentially scandalous data</span>
-<span class="doccomment">//! // into the file instead.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // any of the next 3 lines would cause compilation to fail...</span>
-<span class="doccomment">//! drop(out_io_slice);</span>
-<span class="doccomment">//! drop(file);</span>
-<span class="doccomment">//! drop(rio);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // this is both a Future and a normal blocking promise thing.</span>
-<span class="doccomment">//! // If you&#39;re using async, just call `.await` on it instead</span>
-<span class="doccomment">//! // of `.wait()`</span>
-<span class="doccomment">//! completion.wait();</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // now it&#39;s safe to drop those things in any order.</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Really shines with O_DIRECT:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```no_run</span>
-<span class="doccomment">//! use std::{</span>
-<span class="doccomment">//!     fs::OpenOptions,</span>
-<span class="doccomment">//!     io::{IoSlice, Result},</span>
-<span class="doccomment">//!     os::unix::fs::OpenOptionsExt,</span>
-<span class="doccomment">//! };</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! const CHUNK_SIZE: u64 = 4096 * 256;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // `O_DIRECT` requires all reads and writes</span>
-<span class="doccomment">//! // to be aligned to the block device&#39;s block</span>
-<span class="doccomment">//! // size. 4096 might not be the best, or even</span>
-<span class="doccomment">//! // a valid one, for yours!</span>
-<span class="doccomment">//! #[repr(align(4096))]</span>
-<span class="doccomment">//! struct Aligned([u8; CHUNK_SIZE as usize]);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! fn main() -&gt; Result&lt;()&gt; {</span>
-<span class="doccomment">//!     // start the ring</span>
-<span class="doccomment">//!     let ring = rio::new().expect(&quot;create uring&quot;);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!     // open output file, with `O_DIRECT` set</span>
-<span class="doccomment">//!     let file = OpenOptions::new()</span>
-<span class="doccomment">//!         .read(true)</span>
-<span class="doccomment">//!         .write(true)</span>
-<span class="doccomment">//!         .create(true)</span>
-<span class="doccomment">//!         .truncate(true)</span>
-<span class="doccomment">//!         .custom_flags(libc::O_DIRECT)</span>
-<span class="doccomment">//!         .open(&quot;file&quot;)</span>
-<span class="doccomment">//!         .expect(&quot;open file&quot;);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!     // create output buffer</span>
-<span class="doccomment">//!     let out_buf = Aligned([42; CHUNK_SIZE as usize]);</span>
-<span class="doccomment">//!     let out_slice = out_buf.0.as_ref();</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!     let mut completions = vec![];</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!     for i in 0..(4 * 1024) {</span>
-<span class="doccomment">//!         let at = i * CHUNK_SIZE;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!         let completion = ring.write_at(</span>
-<span class="doccomment">//!             &amp;file,</span>
-<span class="doccomment">//!             &amp;out_slice,</span>
-<span class="doccomment">//!             at,</span>
-<span class="doccomment">//!         );</span>
-<span class="doccomment">//!         completions.push(completion);</span>
-<span class="doccomment">//!     }</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!     for completion in completions.into_iter() {</span>
-<span class="doccomment">//!         completion.wait()?;</span>
-<span class="doccomment">//!     }</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!     Ok(())</span>
-<span class="doccomment">//! }</span>
-<span class="doccomment">//! ```</span>
-<span class="attribute">#![<span class="ident">doc</span>(
-    <span class="ident">html_logo_url</span> <span class="op">=</span> <span class="string">&quot;https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png&quot;</span>
-)]</span>
-<span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">deny</span>(<span class="ident">warnings</span>))]</span>
-<span class="attribute">#![<span class="ident">deny</span>(
-    <span class="ident">missing_docs</span>,
-    <span class="ident">future_incompatible</span>,
-    <span class="ident">nonstandard_style</span>,
-    <span class="ident">rust_2018_idioms</span>,
-    <span class="ident">missing_copy_implementations</span>,
-    <span class="ident">trivial_casts</span>,
-    <span class="ident">trivial_numeric_casts</span>,
-    <span class="ident">unsafe_code</span>,
-    <span class="ident">unused_qualifications</span>
-)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(
-    <span class="ident">clippy::cast_lossless</span>,
-    <span class="ident">clippy::cast_possible_truncation</span>,
-    <span class="ident">clippy::cast_possible_wrap</span>,
-    <span class="ident">clippy::cast_precision_loss</span>,
-    <span class="ident">clippy::cast_sign_loss</span>,
-    <span class="ident">clippy::checked_conversions</span>,
-    <span class="ident">clippy::decimal_literal_representation</span>,
-    <span class="ident">clippy::doc_markdown</span>,
-    <span class="ident">clippy::empty_enum</span>,
-    <span class="ident">clippy::explicit_into_iter_loop</span>,
-    <span class="ident">clippy::explicit_iter_loop</span>,
-    <span class="ident">clippy::expl_impl_clone_on_copy</span>,
-    <span class="ident">clippy::fallible_impl_from</span>,
-    <span class="ident">clippy::filter_map</span>,
-    <span class="ident">clippy::filter_map_next</span>,
-    <span class="ident">clippy::find_map</span>,
-    <span class="ident">clippy::float_arithmetic</span>,
-    <span class="ident">clippy::get_unwrap</span>,
-    <span class="ident">clippy::if_not_else</span>,
-    <span class="ident">clippy::inline_always</span>,
-    <span class="ident">clippy::invalid_upcast_comparisons</span>,
-    <span class="ident">clippy::items_after_statements</span>,
-    <span class="ident">clippy::map_flatten</span>,
-    <span class="ident">clippy::match_same_arms</span>,
-    <span class="ident">clippy::maybe_infinite_iter</span>,
-    <span class="ident">clippy::mem_forget</span>,
-    <span class="ident">clippy::missing_const_for_fn</span>,
-    <span class="ident">clippy::module_name_repetitions</span>,
-    <span class="ident">clippy::multiple_crate_versions</span>,
-    <span class="ident">clippy::multiple_inherent_impl</span>,
-    <span class="ident">clippy::mut_mut</span>,
-    <span class="ident">clippy::needless_borrow</span>,
-    <span class="ident">clippy::needless_continue</span>,
-    <span class="ident">clippy::needless_pass_by_value</span>,
-    <span class="ident">clippy::non_ascii_literal</span>,
-    <span class="ident">clippy::option_map_unwrap_or</span>,
-    <span class="ident">clippy::option_map_unwrap_or_else</span>,
-    <span class="ident">clippy::path_buf_push_overwrite</span>,
-    <span class="ident">clippy::print_stdout</span>,
-    <span class="ident">clippy::pub_enum_variant_names</span>,
-    <span class="ident">clippy::redundant_closure_for_method_calls</span>,
-    <span class="ident">clippy::replace_consts</span>,
-    <span class="ident">clippy::result_map_unwrap_or_else</span>,
-    <span class="ident">clippy::shadow_reuse</span>,
-    <span class="ident">clippy::shadow_same</span>,
-    <span class="ident">clippy::shadow_unrelated</span>,
-    <span class="ident">clippy::single_match_else</span>,
-    <span class="ident">clippy::string_add</span>,
-    <span class="ident">clippy::string_add_assign</span>,
-    <span class="ident">clippy::type_repetition_in_bounds</span>,
-    <span class="ident">clippy::unicode_not_nfc</span>,
-    <span class="ident">clippy::unimplemented</span>,
-    <span class="ident">clippy::unseparated_literal_suffix</span>,
-    <span class="ident">clippy::used_underscore_binding</span>,
-    <span class="ident">clippy::wildcard_dependencies</span>,
-    <span class="ident">clippy::wildcard_enum_match_arm</span>,
-    <span class="ident">clippy::wrong_pub_self_convention</span>
-)]</span>
+</pre><pre class="rust"><code><span class="doccomment">//! A steamy river of uring. Fast IO using io_uring.
+//!
+//! io_uring is going to change everything. It will speed up your
+//! disk usage by like 300%. Go ahead, run the `O_DIRECT` example
+//! and compare that to using a threadpool or anything
+//! you want. It&#39;s not gonna come close!
+//!
+//! Starting in linux 5.5, it also has support for tcp accept.
+//! This is gonna shred everything out there!!!
+//!
+//! But there&#39;s a few snags. Mainly, it&#39;s a little misuse-prone.
+//! But Rust is pretty nice for specifying proofs about
+//! memory usage in the type system. And we don&#39;t even have
+//! to get too squirley. Check out the `write_at` implementation,
+//! for example. It just says that the Completion, the underlying
+//! uring, the file being used, the buffer being used, etc...
+//! will all be in scope at the same time while the Completion
+//! is in-use.
+//!
+//! Most of the other io_uring libraries make
+//! it really easy to blow your legs off with
+//! use-after-frees. `rio` uses standard Rust
+//! lifetime specification  to make most use-after-frees
+//! fail to compile. Also, if a `Completion`
+//! that was pinned to the lifetime of a uring
+//! and backing buffer is dropped, it
+//! waits for its backing operation to complete
+//! before returning from Drop, to further
+//! prevent use-after-frees. use-after-frees
+//! are difficult to express when using `rio`.
+//!
+//! # Examples
+//!
+//! This won&#39;t compile:
+//!
+//! ```compile_fail
+//! let rio = rio::new().unwrap();
+//! let file = std::fs::File::open(&quot;use_after_free&quot;).unwrap();
+//! let out_buf = vec![42; 666];
+//!
+//! let completion = rio.write_at(&amp;file, &amp;out_buf, 0).unwrap();
+//!
+//! // At this very moment, the kernel has a pointer to that there slice.
+//! // It also has the raw file descriptor of the file.
+//! // It&#39;s fixin&#39; to write the data from that memory into the file.
+//! // But if we freed it, it would be a bug,
+//! // and the kernel would write potentially scandalous data
+//! // into the file instead.
+//!
+//! // any of the next 3 lines would cause compilation to fail...
+//! drop(out_io_slice);
+//! drop(file);
+//! drop(rio);
+//!
+//! // this is both a Future and a normal blocking promise thing.
+//! // If you&#39;re using async, just call `.await` on it instead
+//! // of `.wait()`
+//! completion.wait();
+//!
+//! // now it&#39;s safe to drop those things in any order.
+//! ```
+//!
+//!
+//! Really shines with O_DIRECT:
+//!
+//! ```no_run
+//! use std::{
+//!     fs::OpenOptions,
+//!     io::{IoSlice, Result},
+//!     os::unix::fs::OpenOptionsExt,
+//! };
+//!
+//! const CHUNK_SIZE: u64 = 4096 * 256;
+//!
+//! // `O_DIRECT` requires all reads and writes
+//! // to be aligned to the block device&#39;s block
+//! // size. 4096 might not be the best, or even
+//! // a valid one, for yours!
+//! #[repr(align(4096))]
+//! struct Aligned([u8; CHUNK_SIZE as usize]);
+//!
+//! fn main() -&gt; Result&lt;()&gt; {
+//!     // start the ring
+//!     let ring = rio::new().expect(&quot;create uring&quot;);
+//!
+//!     // open output file, with `O_DIRECT` set
+//!     let file = OpenOptions::new()
+//!         .read(true)
+//!         .write(true)
+//!         .create(true)
+//!         .truncate(true)
+//!         .custom_flags(libc::O_DIRECT)
+//!         .open(&quot;file&quot;)
+//!         .expect(&quot;open file&quot;);
+//!
+//!     // create output buffer
+//!     let out_buf = Aligned([42; CHUNK_SIZE as usize]);
+//!     let out_slice = out_buf.0.as_ref();
+//!
+//!     let mut completions = vec![];
+//!
+//!     for i in 0..(4 * 1024) {
+//!         let at = i * CHUNK_SIZE;
+//!
+//!         let completion = ring.write_at(
+//!             &amp;file,
+//!             &amp;out_slice,
+//!             at,
+//!         );
+//!         completions.push(completion);
+//!     }
+//!
+//!     for completion in completions.into_iter() {
+//!         completion.wait()?;
+//!     }
+//!
+//!     Ok(())
+//! }
+//! ```
+</span><span class="attribute">#![doc(
+    html_logo_url = <span class="string">&quot;https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png&quot;
+</span>)]
+#![cfg_attr(test, deny(warnings))]
+#![deny(
+    missing_docs,
+    future_incompatible,
+    nonstandard_style,
+    rust_2018_idioms,
+    missing_copy_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unused_qualifications
+)]
+#![deny(
+    clippy::cast_lossless,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::checked_conversions,
+    clippy::decimal_literal_representation,
+    clippy::doc_markdown,
+    clippy::empty_enum,
+    clippy::explicit_into_iter_loop,
+    clippy::explicit_iter_loop,
+    clippy::expl_impl_clone_on_copy,
+    clippy::fallible_impl_from,
+    clippy::filter_map,
+    clippy::filter_map_next,
+    clippy::find_map,
+    clippy::float_arithmetic,
+    clippy::get_unwrap,
+    clippy::if_not_else,
+    clippy::inline_always,
+    clippy::invalid_upcast_comparisons,
+    clippy::items_after_statements,
+    clippy::map_flatten,
+    clippy::match_same_arms,
+    clippy::maybe_infinite_iter,
+    clippy::mem_forget,
+    clippy::missing_const_for_fn,
+    clippy::module_name_repetitions,
+    clippy::multiple_crate_versions,
+    clippy::multiple_inherent_impl,
+    clippy::mut_mut,
+    clippy::needless_borrow,
+    clippy::needless_continue,
+    clippy::needless_pass_by_value,
+    clippy::non_ascii_literal,
+    clippy::option_map_unwrap_or,
+    clippy::option_map_unwrap_or_else,
+    clippy::path_buf_push_overwrite,
+    clippy::print_stdout,
+    clippy::pub_enum_variant_names,
+    clippy::redundant_closure_for_method_calls,
+    clippy::replace_consts,
+    clippy::result_map_unwrap_or_else,
+    clippy::shadow_reuse,
+    clippy::shadow_same,
+    clippy::shadow_unrelated,
+    clippy::single_match_else,
+    clippy::string_add,
+    clippy::string_add_assign,
+    clippy::type_repetition_in_bounds,
+    clippy::unicode_not_nfc,
+    clippy::unimplemented,
+    clippy::unseparated_literal_suffix,
+    clippy::used_underscore_binding,
+    clippy::wildcard_dependencies,
+    clippy::wildcard_enum_match_arm,
+    clippy::wrong_pub_self_convention
+)]
 
-<span class="kw">use</span> <span class="ident">std::io</span>;
+</span><span class="kw">use </span>std::io;
 
-<span class="kw">mod</span> <span class="ident">completion</span>;
-<span class="kw">mod</span> <span class="ident">histogram</span>;
-<span class="kw">mod</span> <span class="ident">lazy</span>;
-<span class="kw">mod</span> <span class="ident">metrics</span>;
+<span class="kw">mod </span>completion;
+<span class="kw">mod </span>histogram;
+<span class="kw">mod </span>lazy;
+<span class="kw">mod </span>metrics;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;linux&quot;</span>)]</span>
-<span class="kw">mod</span> <span class="ident">io_uring</span>;
+<span class="attribute">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
+</span><span class="kw">mod </span>io_uring;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;linux&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">io_uring</span>::{<span class="ident">Config</span>, <span class="ident">Ordering</span>, <span class="ident">Rio</span>, <span class="ident">Uring</span>};
+<span class="attribute">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
+</span><span class="kw">pub use </span>io_uring::{Config, Ordering, Rio, Uring};
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">completion::Completion</span>;
+<span class="kw">pub use </span>completion::Completion;
 
-<span class="kw">use</span> {
-    <span class="ident">completion</span>::{<span class="ident">pair</span>, <span class="ident">Filler</span>},
-    <span class="ident">histogram::Histogram</span>,
-    <span class="ident">lazy::Lazy</span>,
-    <span class="ident">metrics</span>::{<span class="ident">Measure</span>, <span class="ident">M</span>},
+<span class="kw">use </span>{
+    completion::{pair, Filler},
+    histogram::Histogram,
+    lazy::Lazy,
+    metrics::{Measure, M},
 };
 
-<span class="doccomment">/// Create a new IO system.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span> {
-    <span class="ident">Config::default</span>().<span class="ident">start</span>()
+<span class="doccomment">/// Create a new IO system.
+</span><span class="kw">pub fn </span>new() -&gt; io::Result&lt;Rio&gt; {
+    Config::default().start()
 }
 
-<span class="doccomment">/// Encompasses various types of IO structures that</span>
-<span class="doccomment">/// can be operated on as if they were a libc::iovec</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">AsIoVec</span> {
-    <span class="doccomment">/// Returns the address of this object.</span>
-    <span class="kw">fn</span> <span class="ident">into_new_iovec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">libc::iovec</span>;
+<span class="doccomment">/// Encompasses various types of IO structures that
+/// can be operated on as if they were a libc::iovec
+</span><span class="kw">pub trait </span>AsIoVec {
+    <span class="doccomment">/// Returns the address of this object.
+    </span><span class="kw">fn </span>into_new_iovec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; libc::iovec;
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="question-mark">?</span><span class="ident">Sized</span> <span class="op">+</span> <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">AsIoVec</span> <span class="kw">for</span> <span class="ident">A</span> {
-    <span class="kw">fn</span> <span class="ident">into_new_iovec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">libc::iovec</span> {
-        <span class="kw">let</span> <span class="ident">self_ref</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] <span class="op">=</span> <span class="self">self</span>.<span class="ident">as_ref</span>();
-        <span class="kw">let</span> <span class="ident">self_ptr</span>: <span class="kw-2">*const</span> [<span class="ident">u8</span>] <span class="op">=</span> <span class="ident">self_ref</span>;
-        <span class="ident">libc::iovec</span> {
-            <span class="ident">iov_base</span>: <span class="ident">self_ptr</span> <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="kw">_</span>,
-            <span class="ident">iov_len</span>: <span class="ident">self_ref</span>.<span class="ident">len</span>(),
+<span class="kw">impl</span>&lt;A: <span class="question-mark">?</span>Sized + AsRef&lt;[u8]&gt;&gt; AsIoVec <span class="kw">for </span>A {
+    <span class="kw">fn </span>into_new_iovec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; libc::iovec {
+        <span class="kw">let </span>self_ref: <span class="kw-2">&amp;</span>[u8] = <span class="self">self</span>.as_ref();
+        <span class="kw">let </span>self_ptr: <span class="kw-2">*const </span>[u8] = self_ref;
+        libc::iovec {
+            iov_base: self_ptr <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>,
+            iov_len: self_ref.len(),
         }
     }
 }
 
-<span class="doccomment">/// We use this internally as a way of communicating</span>
-<span class="doccomment">/// that for certain operations, we cannot accept a</span>
-<span class="doccomment">/// reference into read-only memory, like for reads.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// If your compilation fails because of something</span>
-<span class="doccomment">/// related to this, it&#39;s because you are trying</span>
-<span class="doccomment">/// to use memory as a destination for a read</span>
-<span class="doccomment">/// that could never actually be written to anyway,</span>
-<span class="doccomment">/// which the compiler may place in read-only</span>
-<span class="doccomment">/// memory in your process that cannot be written</span>
-<span class="doccomment">/// to by anybody.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Examples</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This will cause the following code to break,</span>
-<span class="doccomment">/// which would have caused an IO error anyway</span>
-<span class="doccomment">/// due to trying to write to static read-only</span>
-<span class="doccomment">/// memory:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```compile_fail</span>
-<span class="doccomment">/// let ring = rio::new().unwrap();</span>
-<span class="doccomment">/// let file = std::fs::File::open(&quot;failure&quot;).unwrap();</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// // the following buffer is placed in</span>
-<span class="doccomment">/// // static, read-only memory and would</span>
-<span class="doccomment">/// // never be valid to write to</span>
-<span class="doccomment">/// let buffer: &amp;[u8] = b&quot;this is read-only&quot;;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// // this fails to compile, because &amp;[u8]</span>
-<span class="doccomment">/// // does not implement `AsIoVecMut`:</span>
-<span class="doccomment">/// ring.read_at(&amp;file, &amp;buffer, 0).unwrap();</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// which can be fixed by making it a mutable</span>
-<span class="doccomment">/// slice:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```no_run</span>
-<span class="doccomment">/// let ring = rio::new().unwrap();</span>
-<span class="doccomment">/// let file = std::fs::File::open(&quot;failure&quot;).unwrap();</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// // the following buffer is placed in</span>
-<span class="doccomment">/// // readable and writable memory, due to</span>
-<span class="doccomment">/// // its mutability</span>
-<span class="doccomment">/// let buffer: &amp;mut [u8] = &amp;mut [0; 42];</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// // this now works</span>
-<span class="doccomment">/// ring.read_at(&amp;file, &amp;buffer, 0).wait();</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">AsIoVecMut</span> {}
+<span class="doccomment">/// We use this internally as a way of communicating
+/// that for certain operations, we cannot accept a
+/// reference into read-only memory, like for reads.
+///
+/// If your compilation fails because of something
+/// related to this, it&#39;s because you are trying
+/// to use memory as a destination for a read
+/// that could never actually be written to anyway,
+/// which the compiler may place in read-only
+/// memory in your process that cannot be written
+/// to by anybody.
+///
+/// # Examples
+///
+/// This will cause the following code to break,
+/// which would have caused an IO error anyway
+/// due to trying to write to static read-only
+/// memory:
+///
+/// ```compile_fail
+/// let ring = rio::new().unwrap();
+/// let file = std::fs::File::open(&quot;failure&quot;).unwrap();
+///
+/// // the following buffer is placed in
+/// // static, read-only memory and would
+/// // never be valid to write to
+/// let buffer: &amp;[u8] = b&quot;this is read-only&quot;;
+///
+/// // this fails to compile, because &amp;[u8]
+/// // does not implement `AsIoVecMut`:
+/// ring.read_at(&amp;file, &amp;buffer, 0).unwrap();
+/// ```
+///
+/// which can be fixed by making it a mutable
+/// slice:
+///
+/// ```no_run
+/// let ring = rio::new().unwrap();
+/// let file = std::fs::File::open(&quot;failure&quot;).unwrap();
+///
+/// // the following buffer is placed in
+/// // readable and writable memory, due to
+/// // its mutability
+/// let buffer: &amp;mut [u8] = &amp;mut [0; 42];
+///
+/// // this now works
+/// ring.read_at(&amp;file, &amp;buffer, 0).wait();
+/// ```
+</span><span class="kw">pub trait </span>AsIoVecMut {}
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="question-mark">?</span><span class="ident">Sized</span> <span class="op">+</span> <span class="ident">AsMut</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">AsIoVecMut</span> <span class="kw">for</span> <span class="ident">A</span> {}
+<span class="kw">impl</span>&lt;A: <span class="question-mark">?</span>Sized + AsMut&lt;[u8]&gt;&gt; AsIoVecMut <span class="kw">for </span>A {}
 
-<span class="doccomment">/// A trait for describing transformations from the</span>
-<span class="doccomment">/// `io_uring_cqe` type into an expected meaningful</span>
-<span class="doccomment">/// high-level result.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">FromCqe</span> {
-    <span class="doccomment">/// Describes a conversion from a successful</span>
-    <span class="doccomment">/// `io_uring_cqe` to a desired output type.</span>
-    <span class="kw">fn</span> <span class="ident">from_cqe</span>(<span class="ident">cqe</span>: <span class="ident">io_uring::io_uring_cqe</span>) -&gt; <span class="self">Self</span>;
+<span class="doccomment">/// A trait for describing transformations from the
+/// `io_uring_cqe` type into an expected meaningful
+/// high-level result.
+</span><span class="kw">pub trait </span>FromCqe {
+    <span class="doccomment">/// Describes a conversion from a successful
+    /// `io_uring_cqe` to a desired output type.
+    </span><span class="kw">fn </span>from_cqe(cqe: io_uring::io_uring_cqe) -&gt; <span class="self">Self</span>;
 }
 
-<span class="kw">impl</span> <span class="ident">FromCqe</span> <span class="kw">for</span> <span class="ident">usize</span> {
-    <span class="kw">fn</span> <span class="ident">from_cqe</span>(<span class="ident">cqe</span>: <span class="ident">io_uring::io_uring_cqe</span>) -&gt; <span class="ident">usize</span> {
-        <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
-        <span class="ident">usize::try_from</span>(<span class="ident">cqe</span>.<span class="ident">res</span>).<span class="ident">unwrap</span>()
+<span class="kw">impl </span>FromCqe <span class="kw">for </span>usize {
+    <span class="kw">fn </span>from_cqe(cqe: io_uring::io_uring_cqe) -&gt; usize {
+        <span class="kw">use </span>std::convert::TryFrom;
+        usize::try_from(cqe.res).unwrap()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">FromCqe</span> <span class="kw">for</span> () {
-    <span class="kw">fn</span> <span class="ident">from_cqe</span>(<span class="kw">_</span>: <span class="ident">io_uring::io_uring_cqe</span>) {}
+<span class="kw">impl </span>FromCqe <span class="kw">for </span>() {
+    <span class="kw">fn </span>from_cqe(<span class="kw">_</span>: io_uring::io_uring_cqe) {}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

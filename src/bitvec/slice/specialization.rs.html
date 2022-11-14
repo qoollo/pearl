@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/slice/specialization.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>specialization.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/slice/specialization.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>specialization.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -624,26 +619,26 @@ can be accelerated for specific type parameters.
 Call sites that wish to take advantage of specialization methods must first
 inspect their type arguments to determine if specialization is even possible,
 and transmute generic slices into slices with concrete type arguments applied.
-!*/</span>
+!*/
 
-<span class="kw">use</span> <span class="ident">core::ops::RangeBounds</span>;
+</span><span class="kw">use </span>core::ops::RangeBounds;
 
-<span class="kw">use</span> <span class="ident">funty</span>::{
-	<span class="ident">IsInteger</span>,
-	<span class="ident">IsNumber</span>,
+<span class="kw">use </span>funty::{
+	IsInteger,
+	IsNumber,
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::BitSlice</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{
-	<span class="ident">devel</span> <span class="kw">as</span> <span class="ident">dvl</span>,
-	<span class="ident">domain::Domain</span>,
-	<span class="ident">field::BitField</span>,
-	<span class="ident">order</span>::{
-		<span class="ident">BitOrder</span>,
-		<span class="ident">Lsb0</span>,
-		<span class="ident">Msb0</span>,
+<span class="kw">use </span><span class="kw">super</span>::BitSlice;
+<span class="kw">use crate</span>::{
+	devel <span class="kw">as </span>dvl,
+	domain::Domain,
+	field::BitField,
+	order::{
+		BitOrder,
+		Lsb0,
+		Msb0,
 	},
-	<span class="ident">store::BitStore</span>,
+	store::BitStore,
 };
 
 <span class="doccomment">/** Order-specialized function implementations.
@@ -654,40 +649,40 @@ behavior to ensure that bits stay in the correct order relative to each
 other, even as they may change position within an element.
 
 [`BitField`]: crate::field::BitField
-**/</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">Lsb0</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span> <span class="ident">T</span>: <span class="ident">BitStore</span>
+**/
+</span><span class="kw">impl</span>&lt;T&gt; BitSlice&lt;Lsb0, T&gt;
+<span class="kw">where </span>T: BitStore
 {
-	<span class="doccomment">/// Accelerates copies between disjoint slices with batch loads.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sp_copy_from_bitslice</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) {
+	<span class="doccomment">/// Accelerates copies between disjoint slices with batch loads.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sp_copy_from_bitslice(<span class="kw-2">&amp;mut </span><span class="self">self</span>, src: <span class="kw-2">&amp;</span><span class="self">Self</span>) {
 		<span class="macro">assert_eq!</span>(
-			<span class="self">self</span>.<span class="ident">len</span>(),
-			<span class="ident">src</span>.<span class="ident">len</span>(),
-			<span class="string">&quot;Copying between slices requires equal lengths&quot;</span>
-		);
+			<span class="self">self</span>.len(),
+			src.len(),
+			<span class="string">&quot;Copying between slices requires equal lengths&quot;
+		</span>);
 
-		<span class="kw">let</span> <span class="ident">chunk_size</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">usize</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">usize</span>;
-		<span class="kw">for</span> (<span class="ident">to</span>, <span class="ident">from</span>) <span class="kw">in</span> <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">chunks_mut</span>(<span class="ident">chunk_size</span>).<span class="ident">remove_alias</span>() }
-			.<span class="ident">zip</span>(<span class="ident">src</span>.<span class="ident">chunks</span>(<span class="ident">chunk_size</span>))
+		<span class="kw">let </span>chunk_size = &lt;usize <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>usize;
+		<span class="kw">for </span>(to, from) <span class="kw">in unsafe </span>{ <span class="self">self</span>.chunks_mut(chunk_size).remove_alias() }
+			.zip(src.chunks(chunk_size))
 		{
-			<span class="ident">to</span>.<span class="ident">store_le</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>(<span class="ident">from</span>.<span class="ident">load_le</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>())
+			to.store_le::&lt;usize&gt;(from.load_le::&lt;usize&gt;())
 		}
 	}
 
-	<span class="doccomment">/// Accelerates possibly-overlapping copies within a single slice with batch</span>
-	<span class="doccomment">/// loads.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">sp_copy_within_unchecked</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>(
-		<span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-		<span class="ident">src</span>: <span class="ident">R</span>,
-		<span class="ident">dest</span>: <span class="ident">usize</span>,
-	) <span class="kw">where</span>
-		<span class="ident">R</span>: <span class="ident">RangeBounds</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
+	<span class="doccomment">/// Accelerates possibly-overlapping copies within a single slice with batch
+	/// loads.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe fn </span>sp_copy_within_unchecked&lt;R&gt;(
+		<span class="kw-2">&amp;mut </span><span class="self">self</span>,
+		src: R,
+		dest: usize,
+	) <span class="kw">where
+		</span>R: RangeBounds&lt;usize&gt;,
 	{
-		<span class="kw">let</span> <span class="ident">source</span> <span class="op">=</span> <span class="ident">dvl::normalize_range</span>(<span class="ident">src</span>, <span class="self">self</span>.<span class="ident">len</span>());
-		<span class="kw">let</span> <span class="ident">rev</span> <span class="op">=</span> <span class="ident">source</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">dest</span>);
-		<span class="kw">let</span> <span class="ident">dest</span> <span class="op">=</span> <span class="ident">dest</span> .. <span class="ident">dest</span> <span class="op">+</span> <span class="ident">source</span>.<span class="ident">len</span>();
+		<span class="kw">let </span>source = dvl::normalize_range(src, <span class="self">self</span>.len());
+		<span class="kw">let </span>rev = source.contains(<span class="kw-2">&amp;</span>dest);
+		<span class="kw">let </span>dest = dest .. dest + source.len();
 
 		<span class="comment">/* The `&amp;mut self` receiver ensures that this method has an exclusive
 		access to the bits of its region prior to entry. In order to satisfy
@@ -705,246 +700,246 @@ other, even as they may change position within an element.
 		The actual alias tainting can be deferred to the loop header, since
 		construction of aliased *pointers* is fine, and the reference tainting
 		precludes the simultaneous liveness of untainted im/mut references.
-		*/</span>
-		<span class="kw">let</span> <span class="ident">from</span>: <span class="kw-2">*const</span> <span class="self">Self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_unchecked</span>(<span class="ident">source</span>) <span class="kw">as</span> <span class="kw-2">*const</span> <span class="kw">_</span>;
-		<span class="comment">//  This can stay unaliased for now, because `.{,r}chunks_mut()` taints.</span>
-		<span class="kw">let</span> <span class="ident">to</span>: <span class="kw-2">*mut</span> <span class="self">Self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_unchecked_mut</span>(<span class="ident">dest</span>) <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="kw">_</span>;
-		<span class="kw">let</span> <span class="ident">chunk_size</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">usize</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">usize</span>;
-		<span class="kw">if</span> <span class="ident">rev</span> {
-			<span class="kw">for</span> (<span class="ident">src</span>, <span class="ident">dst</span>) <span class="kw">in</span> (<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">from</span>)
-				.<span class="ident">alias</span>()
-				.<span class="ident">rchunks</span>(<span class="ident">chunk_size</span>)
-				.<span class="ident">zip</span>((<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="ident">to</span>).<span class="ident">rchunks_mut</span>(<span class="ident">chunk_size</span>))
+		*/
+		</span><span class="kw">let </span>from: <span class="kw-2">*const </span><span class="self">Self </span>= <span class="self">self</span>.get_unchecked(source) <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">_</span>;
+		<span class="comment">//  This can stay unaliased for now, because `.{,r}chunks_mut()` taints.
+		</span><span class="kw">let </span>to: <span class="kw-2">*mut </span><span class="self">Self </span>= <span class="self">self</span>.get_unchecked_mut(dest) <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>;
+		<span class="kw">let </span>chunk_size = &lt;usize <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>usize;
+		<span class="kw">if </span>rev {
+			<span class="kw">for </span>(src, dst) <span class="kw">in </span>(<span class="kw-2">&amp;*</span>from)
+				.alias()
+				.rchunks(chunk_size)
+				.zip((<span class="kw-2">&amp;mut *</span>to).rchunks_mut(chunk_size))
 			{
-				<span class="ident">dst</span>.<span class="ident">store_le</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>(<span class="ident">src</span>.<span class="ident">load_le</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>());
+				dst.store_le::&lt;usize&gt;(src.load_le::&lt;usize&gt;());
 			}
 		}
-		<span class="kw">else</span> {
-			<span class="kw">for</span> (<span class="ident">src</span>, <span class="ident">dst</span>) <span class="kw">in</span> (<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">from</span>)
-				.<span class="ident">alias</span>()
-				.<span class="ident">chunks</span>(<span class="ident">chunk_size</span>)
-				.<span class="ident">zip</span>((<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="ident">to</span>).<span class="ident">chunks_mut</span>(<span class="ident">chunk_size</span>))
+		<span class="kw">else </span>{
+			<span class="kw">for </span>(src, dst) <span class="kw">in </span>(<span class="kw-2">&amp;*</span>from)
+				.alias()
+				.chunks(chunk_size)
+				.zip((<span class="kw-2">&amp;mut *</span>to).chunks_mut(chunk_size))
 			{
-				<span class="ident">dst</span>.<span class="ident">store_le</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>(<span class="ident">src</span>.<span class="ident">load_le</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>());
+				dst.store_le::&lt;usize&gt;(src.load_le::&lt;usize&gt;());
 			}
 		}
 	}
 
-	<span class="doccomment">/// Accelerates equality checking with batch loads.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sp_eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-		<span class="kw">if</span> <span class="self">self</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">len</span>() {
-			<span class="kw">return</span> <span class="bool-val">false</span>;
+	<span class="doccomment">/// Accelerates equality checking with batch loads.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sp_eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+		<span class="kw">if </span><span class="self">self</span>.len() != other.len() {
+			<span class="kw">return </span><span class="bool-val">false</span>;
 		}
-		<span class="kw">let</span> <span class="ident">chunk_size</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">usize</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">usize</span>;
-		<span class="self">self</span>.<span class="ident">chunks</span>(<span class="ident">chunk_size</span>)
-			.<span class="ident">zip</span>(<span class="ident">other</span>.<span class="ident">chunks</span>(<span class="ident">chunk_size</span>))
-			.<span class="ident">all</span>(<span class="op">|</span>(<span class="ident">a</span>, <span class="ident">b</span>)<span class="op">|</span> <span class="ident">a</span>.<span class="ident">load_le</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>() <span class="op">==</span> <span class="ident">b</span>.<span class="ident">load_le</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>())
+		<span class="kw">let </span>chunk_size = &lt;usize <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>usize;
+		<span class="self">self</span>.chunks(chunk_size)
+			.zip(other.chunks(chunk_size))
+			.all(|(a, b)| a.load_le::&lt;usize&gt;() == b.load_le::&lt;usize&gt;())
 	}
 
-	<span class="doccomment">/// Seeks the index of the first `1` bit in the bit-slice.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sp_iter_ones_first</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accum</span> <span class="op">=</span> <span class="number">0</span>;
+	<span class="doccomment">/// Seeks the index of the first `1` bit in the bit-slice.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sp_iter_ones_first(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+		<span class="kw">let </span><span class="kw-2">mut </span>accum = <span class="number">0</span>;
 
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain</span>() {
-			<span class="ident">Domain::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span>
-					(<span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="ident">elem</span>.<span class="ident">load_value</span>()).<span class="ident">into_inner</span>();
-				<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-					<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>
-						<span class="op">-</span> <span class="ident">head</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+		<span class="kw">match </span><span class="self">self</span>.domain() {
+			Domain::Enclave { head, elem, tail } =&gt; {
+				<span class="kw">let </span>val =
+					(Lsb0::mask(head, tail) &amp; elem.load_value()).into_inner();
+				<span class="kw">if </span>val != T::Mem::ZERO {
+					accum += val.trailing_zeros() <span class="kw">as </span>usize
+						- head.into_inner() <span class="kw">as </span>usize;
+					<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 				}
-				<span class="prelude-val">None</span>
-			},
-			<span class="ident">Domain::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>) <span class="op">&amp;</span> <span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>
-						<span class="op">-</span> <span class="ident">head</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+				<span class="prelude-val">None
+			</span>},
+			Domain::Region { head, body, tail } =&gt; {
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					<span class="kw">let </span>val = (Lsb0::mask(head, <span class="prelude-val">None</span>) &amp; elem.load_value())
+						.into_inner();
+					accum += val.trailing_zeros() <span class="kw">as </span>usize
+						- head.into_inner() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 					}
 				}
 
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> <span class="ident">elem</span>.<span class="ident">load_value</span>();
-					<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+				<span class="kw">for </span>elem <span class="kw">in </span>body {
+					<span class="kw">let </span>val = elem.load_value();
+					accum += val.trailing_zeros() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 					}
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Lsb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					<span class="kw">let </span>val = (Lsb0::mask(<span class="prelude-val">None</span>, tail) &amp; elem.load_value())
+						.into_inner();
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						accum += val.trailing_zeros() <span class="kw">as </span>usize;
+						<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 					}
 				}
 
-				<span class="prelude-val">None</span>
-			},
+				<span class="prelude-val">None
+			</span>},
 		}
 	}
 
-	<span class="doccomment">/// Seeks the index of the last `1` bit in the bit-slice.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sp_iter_ones_last</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">len</span>() {
-			<span class="number">0</span> =&gt; <span class="kw">return</span> <span class="prelude-val">None</span>,
-			<span class="ident">n</span> =&gt; <span class="ident">n</span>,
+	<span class="doccomment">/// Seeks the index of the last `1` bit in the bit-slice.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sp_iter_ones_last(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+		<span class="kw">let </span><span class="kw-2">mut </span>out = <span class="kw">match </span><span class="self">self</span>.len() {
+			<span class="number">0 </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+			n =&gt; n,
 		};
-		(<span class="op">|</span><span class="op">|</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain</span>() {
-			<span class="ident">Domain::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span>
-					(<span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="ident">elem</span>.<span class="ident">load_value</span>()).<span class="ident">into_inner</span>();
-				<span class="kw">let</span> <span class="ident">dead_bits</span> <span class="op">=</span> <span class="ident">T::Mem::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>();
-				<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-					<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">dead_bits</span> <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+		(|| <span class="kw">match </span><span class="self">self</span>.domain() {
+			Domain::Enclave { head, elem, tail } =&gt; {
+				<span class="kw">let </span>val =
+					(Lsb0::mask(head, tail) &amp; elem.load_value()).into_inner();
+				<span class="kw">let </span>dead_bits = T::Mem::BITS <span class="kw">as </span>u8 - tail.into_inner();
+				<span class="kw">if </span>val != T::Mem::ZERO {
+					out -= val.leading_zeros() <span class="kw">as </span>usize - dead_bits <span class="kw">as </span>usize;
+					<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 				}
-				<span class="prelude-val">None</span>
-			},
-			<span class="ident">Domain::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Lsb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="kw">let</span> <span class="ident">dead_bits</span> <span class="op">=</span>
-						(<span class="ident">T::Mem::BITS</span> <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">-</span> (<span class="ident">tail</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>);
-					<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">dead_bits</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+				<span class="prelude-val">None
+			</span>},
+			Domain::Region { head, body, tail } =&gt; {
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					<span class="kw">let </span>val = (Lsb0::mask(<span class="prelude-val">None</span>, tail) &amp; elem.load_value())
+						.into_inner();
+					<span class="kw">let </span>dead_bits =
+						(T::Mem::BITS <span class="kw">as </span>usize) - (tail.into_inner() <span class="kw">as </span>usize);
+					out -= val.leading_zeros() <span class="kw">as </span>usize - dead_bits;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 					}
 				}
 
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span>.<span class="ident">iter</span>().<span class="ident">rev</span>() {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> <span class="ident">elem</span>.<span class="ident">load_value</span>();
-					<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+				<span class="kw">for </span>elem <span class="kw">in </span>body.iter().rev() {
+					<span class="kw">let </span>val = elem.load_value();
+					out -= val.leading_zeros() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 					}
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>) <span class="op">&amp;</span> <span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					<span class="kw">let </span>val = (Lsb0::mask(head, <span class="prelude-val">None</span>) &amp; elem.load_value())
+						.into_inner();
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						out -= val.leading_zeros() <span class="kw">as </span>usize;
+						<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 					}
 				}
 
-				<span class="prelude-val">None</span>
-			},
+				<span class="prelude-val">None
+			</span>},
 		})()
-		.<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx</span><span class="op">|</span> <span class="ident">idx</span> <span class="op">-</span> <span class="number">1</span>)
+		.map(|idx| idx - <span class="number">1</span>)
 	}
 
-	<span class="doccomment">/// Seeks the index of the first `0` bit in the bit-slice.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sp_iter_zeros_first</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accum</span> <span class="op">=</span> <span class="number">0</span>;
+	<span class="doccomment">/// Seeks the index of the first `0` bit in the bit-slice.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sp_iter_zeros_first(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+		<span class="kw">let </span><span class="kw-2">mut </span>accum = <span class="number">0</span>;
 
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain</span>() {
-			<span class="ident">Domain::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="comment">//  Load, invert, then mask and search for `1`.</span>
-				<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span>
-					(<span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>()).<span class="ident">into_inner</span>();
-				<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span>
-					<span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">head</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-				<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-					<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+		<span class="kw">match </span><span class="self">self</span>.domain() {
+			Domain::Enclave { head, elem, tail } =&gt; {
+				<span class="comment">//  Load, invert, then mask and search for `1`.
+				</span><span class="kw">let </span>val =
+					(Lsb0::mask(head, tail) &amp; !elem.load_value()).into_inner();
+				accum +=
+					val.trailing_zeros() <span class="kw">as </span>usize - head.into_inner() <span class="kw">as </span>usize;
+				<span class="kw">if </span>val != T::Mem::ZERO {
+					<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 				}
-				<span class="prelude-val">None</span>
-			},
-			<span class="ident">Domain::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>
-						<span class="op">-</span> <span class="ident">head</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+				<span class="prelude-val">None
+			</span>},
+			Domain::Region { head, body, tail } =&gt; {
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					<span class="kw">let </span>val = (Lsb0::mask(head, <span class="prelude-val">None</span>) &amp; !elem.load_value())
+						.into_inner();
+					accum += val.trailing_zeros() <span class="kw">as </span>usize
+						- head.into_inner() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 					}
 				}
 
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>();
-					<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+				<span class="kw">for </span>elem <span class="kw">in </span>body {
+					<span class="kw">let </span>val = !elem.load_value();
+					accum += val.trailing_zeros() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 					}
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Lsb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					<span class="kw">let </span>val = (Lsb0::mask(<span class="prelude-val">None</span>, tail) &amp; !elem.load_value())
+						.into_inner();
+					accum += val.trailing_zeros() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 					}
 				}
 
-				<span class="prelude-val">None</span>
-			},
+				<span class="prelude-val">None
+			</span>},
 		}
 	}
 
-	<span class="doccomment">/// Seeks the index of the last `0` bit in the bit-slice.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sp_iter_zeros_last</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">len</span>() {
-			<span class="number">0</span> =&gt; <span class="kw">return</span> <span class="prelude-val">None</span>,
-			<span class="ident">n</span> =&gt; <span class="ident">n</span>,
+	<span class="doccomment">/// Seeks the index of the last `0` bit in the bit-slice.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sp_iter_zeros_last(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+		<span class="kw">let </span><span class="kw-2">mut </span>out = <span class="kw">match </span><span class="self">self</span>.len() {
+			<span class="number">0 </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+			n =&gt; n,
 		};
-		(<span class="op">|</span><span class="op">|</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain</span>() {
-			<span class="ident">Domain::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span>
-					(<span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>()).<span class="ident">into_inner</span>();
-				<span class="kw">let</span> <span class="ident">dead_bits</span> <span class="op">=</span> <span class="ident">T::Mem::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>();
-				<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-					<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">dead_bits</span> <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+		(|| <span class="kw">match </span><span class="self">self</span>.domain() {
+			Domain::Enclave { head, elem, tail } =&gt; {
+				<span class="kw">let </span>val =
+					(Lsb0::mask(head, tail) &amp; !elem.load_value()).into_inner();
+				<span class="kw">let </span>dead_bits = T::Mem::BITS <span class="kw">as </span>u8 - tail.into_inner();
+				<span class="kw">if </span>val != T::Mem::ZERO {
+					out -= val.leading_zeros() <span class="kw">as </span>usize - dead_bits <span class="kw">as </span>usize;
+					<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 				}
-				<span class="prelude-val">None</span>
-			},
-			<span class="ident">Domain::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Lsb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="kw">let</span> <span class="ident">dead_bits</span> <span class="op">=</span>
-						<span class="ident">T::Mem::BITS</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">dead_bits</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+				<span class="prelude-val">None
+			</span>},
+			Domain::Region { head, body, tail } =&gt; {
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					<span class="kw">let </span>val = (Lsb0::mask(<span class="prelude-val">None</span>, tail) &amp; !elem.load_value())
+						.into_inner();
+					<span class="kw">let </span>dead_bits =
+						T::Mem::BITS <span class="kw">as </span>usize - tail.into_inner() <span class="kw">as </span>usize;
+					out -= val.leading_zeros() <span class="kw">as </span>usize - dead_bits;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 					}
 				}
 
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span>.<span class="ident">iter</span>().<span class="ident">rev</span>() {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>();
-					<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+				<span class="kw">for </span>elem <span class="kw">in </span>body.iter().rev() {
+					<span class="kw">let </span>val = !elem.load_value();
+					out -= val.leading_zeros() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 					}
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Lsb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					<span class="kw">let </span>val = (Lsb0::mask(head, <span class="prelude-val">None</span>) &amp; !elem.load_value())
+						.into_inner();
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						out -= val.leading_zeros() <span class="kw">as </span>usize;
+						<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 					}
 				}
 
-				<span class="prelude-val">None</span>
-			},
+				<span class="prelude-val">None
+			</span>},
 		})()
-		.<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx</span><span class="op">|</span> <span class="ident">idx</span> <span class="op">-</span> <span class="number">1</span>)
+		.map(|idx| idx - <span class="number">1</span>)
 	}
 }
 
@@ -956,279 +951,278 @@ behavior to ensure that bits stay in the correct order relative to each
 other, even as they may change position within an element.
 
 [`BitField`]: crate::field::BitField
-**/</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">Msb0</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span> <span class="ident">T</span>: <span class="ident">BitStore</span>
+**/
+</span><span class="kw">impl</span>&lt;T&gt; BitSlice&lt;Msb0, T&gt;
+<span class="kw">where </span>T: BitStore
 {
-	<span class="doccomment">/// Accelerates copies between disjoint slices with batch loads.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sp_copy_from_bitslice</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) {
+	<span class="doccomment">/// Accelerates copies between disjoint slices with batch loads.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sp_copy_from_bitslice(<span class="kw-2">&amp;mut </span><span class="self">self</span>, src: <span class="kw-2">&amp;</span><span class="self">Self</span>) {
 		<span class="macro">assert_eq!</span>(
-			<span class="self">self</span>.<span class="ident">len</span>(),
-			<span class="ident">src</span>.<span class="ident">len</span>(),
-			<span class="string">&quot;Copying between slices requires equal lengths&quot;</span>
-		);
+			<span class="self">self</span>.len(),
+			src.len(),
+			<span class="string">&quot;Copying between slices requires equal lengths&quot;
+		</span>);
 
-		<span class="kw">let</span> <span class="ident">chunk_size</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">usize</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">usize</span>;
-		<span class="kw">for</span> (<span class="ident">to</span>, <span class="ident">from</span>) <span class="kw">in</span> <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">chunks_mut</span>(<span class="ident">chunk_size</span>).<span class="ident">remove_alias</span>() }
-			.<span class="ident">zip</span>(<span class="ident">src</span>.<span class="ident">chunks</span>(<span class="ident">chunk_size</span>))
+		<span class="kw">let </span>chunk_size = &lt;usize <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>usize;
+		<span class="kw">for </span>(to, from) <span class="kw">in unsafe </span>{ <span class="self">self</span>.chunks_mut(chunk_size).remove_alias() }
+			.zip(src.chunks(chunk_size))
 		{
-			<span class="ident">to</span>.<span class="ident">store_be</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>(<span class="ident">from</span>.<span class="ident">load_be</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>())
+			to.store_be::&lt;usize&gt;(from.load_be::&lt;usize&gt;())
 		}
 	}
 
-	<span class="doccomment">/// Accelerates possibly-overlapping copies within a single slice with batch</span>
-	<span class="doccomment">/// loads.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">sp_copy_within_unchecked</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>(
-		<span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-		<span class="ident">src</span>: <span class="ident">R</span>,
-		<span class="ident">dest</span>: <span class="ident">usize</span>,
-	) <span class="kw">where</span>
-		<span class="ident">R</span>: <span class="ident">RangeBounds</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
+	<span class="doccomment">/// Accelerates possibly-overlapping copies within a single slice with batch
+	/// loads.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe fn </span>sp_copy_within_unchecked&lt;R&gt;(
+		<span class="kw-2">&amp;mut </span><span class="self">self</span>,
+		src: R,
+		dest: usize,
+	) <span class="kw">where
+		</span>R: RangeBounds&lt;usize&gt;,
 	{
-		<span class="kw">let</span> <span class="ident">source</span> <span class="op">=</span> <span class="ident">dvl::normalize_range</span>(<span class="ident">src</span>, <span class="self">self</span>.<span class="ident">len</span>());
-		<span class="kw">let</span> <span class="ident">rev</span> <span class="op">=</span> <span class="ident">source</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">dest</span>);
-		<span class="kw">let</span> <span class="ident">dest</span> <span class="op">=</span> <span class="ident">dest</span> .. <span class="ident">dest</span> <span class="op">+</span> <span class="ident">source</span>.<span class="ident">len</span>();
+		<span class="kw">let </span>source = dvl::normalize_range(src, <span class="self">self</span>.len());
+		<span class="kw">let </span>rev = source.contains(<span class="kw-2">&amp;</span>dest);
+		<span class="kw">let </span>dest = dest .. dest + source.len();
 
-		<span class="kw">let</span> <span class="ident">from</span>: <span class="kw-2">*const</span> <span class="self">Self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_unchecked</span>(<span class="ident">source</span>) <span class="kw">as</span> <span class="kw-2">*const</span> <span class="kw">_</span>;
-		<span class="kw">let</span> <span class="ident">to</span>: <span class="kw-2">*mut</span> <span class="self">Self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_unchecked_mut</span>(<span class="ident">dest</span>) <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="kw">_</span>;
-		<span class="kw">let</span> <span class="ident">chunk_size</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">usize</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">usize</span>;
-		<span class="kw">if</span> <span class="ident">rev</span> {
-			<span class="kw">for</span> (<span class="ident">src</span>, <span class="ident">dst</span>) <span class="kw">in</span> (<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">from</span>)
-				.<span class="ident">alias</span>()
-				.<span class="ident">rchunks</span>(<span class="ident">chunk_size</span>)
-				.<span class="ident">zip</span>((<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="ident">to</span>).<span class="ident">rchunks_mut</span>(<span class="ident">chunk_size</span>))
+		<span class="kw">let </span>from: <span class="kw-2">*const </span><span class="self">Self </span>= <span class="self">self</span>.get_unchecked(source) <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">_</span>;
+		<span class="kw">let </span>to: <span class="kw-2">*mut </span><span class="self">Self </span>= <span class="self">self</span>.get_unchecked_mut(dest) <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>;
+		<span class="kw">let </span>chunk_size = &lt;usize <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>usize;
+		<span class="kw">if </span>rev {
+			<span class="kw">for </span>(src, dst) <span class="kw">in </span>(<span class="kw-2">&amp;*</span>from)
+				.alias()
+				.rchunks(chunk_size)
+				.zip((<span class="kw-2">&amp;mut *</span>to).rchunks_mut(chunk_size))
 			{
-				<span class="ident">dst</span>.<span class="ident">store_be</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>(<span class="ident">src</span>.<span class="ident">load_be</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>());
+				dst.store_be::&lt;usize&gt;(src.load_be::&lt;usize&gt;());
 			}
 		}
-		<span class="kw">else</span> {
-			<span class="kw">for</span> (<span class="ident">src</span>, <span class="ident">dst</span>) <span class="kw">in</span> (<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">from</span>)
-				.<span class="ident">alias</span>()
-				.<span class="ident">chunks</span>(<span class="ident">chunk_size</span>)
-				.<span class="ident">zip</span>((<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="ident">to</span>).<span class="ident">chunks_mut</span>(<span class="ident">chunk_size</span>))
+		<span class="kw">else </span>{
+			<span class="kw">for </span>(src, dst) <span class="kw">in </span>(<span class="kw-2">&amp;*</span>from)
+				.alias()
+				.chunks(chunk_size)
+				.zip((<span class="kw-2">&amp;mut *</span>to).chunks_mut(chunk_size))
 			{
-				<span class="ident">dst</span>.<span class="ident">store_be</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>(<span class="ident">src</span>.<span class="ident">load_be</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>());
+				dst.store_be::&lt;usize&gt;(src.load_be::&lt;usize&gt;());
 			}
 		}
 	}
 
-	<span class="doccomment">/// Accelerates equality checking with batch loads.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sp_eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-		<span class="kw">if</span> <span class="self">self</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">len</span>() {
-			<span class="kw">return</span> <span class="bool-val">false</span>;
+	<span class="doccomment">/// Accelerates equality checking with batch loads.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sp_eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+		<span class="kw">if </span><span class="self">self</span>.len() != other.len() {
+			<span class="kw">return </span><span class="bool-val">false</span>;
 		}
-		<span class="kw">let</span> <span class="ident">chunk_size</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">usize</span> <span class="kw">as</span> <span class="ident">IsNumber</span><span class="op">&gt;</span><span class="ident">::BITS</span> <span class="kw">as</span> <span class="ident">usize</span>;
-		<span class="self">self</span>.<span class="ident">chunks</span>(<span class="ident">chunk_size</span>)
-			.<span class="ident">zip</span>(<span class="ident">other</span>.<span class="ident">chunks</span>(<span class="ident">chunk_size</span>))
-			.<span class="ident">all</span>(<span class="op">|</span>(<span class="ident">a</span>, <span class="ident">b</span>)<span class="op">|</span> <span class="ident">a</span>.<span class="ident">load_be</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>() <span class="op">==</span> <span class="ident">b</span>.<span class="ident">load_be</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>())
+		<span class="kw">let </span>chunk_size = &lt;usize <span class="kw">as </span>IsNumber&gt;::BITS <span class="kw">as </span>usize;
+		<span class="self">self</span>.chunks(chunk_size)
+			.zip(other.chunks(chunk_size))
+			.all(|(a, b)| a.load_be::&lt;usize&gt;() == b.load_be::&lt;usize&gt;())
 	}
 
-	<span class="doccomment">/// Seeks the index of the first `1` bit in the bit-slice.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sp_iter_ones_first</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accum</span> <span class="op">=</span> <span class="number">0</span>;
+	<span class="doccomment">/// Seeks the index of the first `1` bit in the bit-slice.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sp_iter_ones_first(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+		<span class="kw">let </span><span class="kw-2">mut </span>accum = <span class="number">0</span>;
 
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain</span>() {
-			<span class="ident">Domain::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span>
-					(<span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="ident">elem</span>.<span class="ident">load_value</span>()).<span class="ident">into_inner</span>();
-				<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span>
-					<span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">head</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-				<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-					<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+		<span class="kw">match </span><span class="self">self</span>.domain() {
+			Domain::Enclave { head, elem, tail } =&gt; {
+				<span class="kw">let </span>val =
+					(Msb0::mask(head, tail) &amp; elem.load_value()).into_inner();
+				accum +=
+					val.leading_zeros() <span class="kw">as </span>usize - head.into_inner() <span class="kw">as </span>usize;
+				<span class="kw">if </span>val != T::Mem::ZERO {
+					<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 				}
-				<span class="prelude-val">None</span>
-			},
-			<span class="ident">Domain::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>) <span class="op">&amp;</span> <span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>
-						<span class="op">-</span> <span class="ident">head</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+				<span class="prelude-val">None
+			</span>},
+			Domain::Region { head, body, tail } =&gt; {
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					<span class="kw">let </span>val = (Msb0::mask(head, <span class="prelude-val">None</span>) &amp; elem.load_value())
+						.into_inner();
+					accum += val.leading_zeros() <span class="kw">as </span>usize
+						- head.into_inner() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 					}
 				}
 
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> <span class="ident">elem</span>.<span class="ident">load_value</span>();
-					<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+				<span class="kw">for </span>elem <span class="kw">in </span>body {
+					<span class="kw">let </span>val = elem.load_value();
+					accum += val.leading_zeros() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 					}
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Msb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					<span class="kw">let </span>val = (Msb0::mask(<span class="prelude-val">None</span>, tail) &amp; elem.load_value())
+						.into_inner();
+					accum += val.leading_zeros() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 					}
 				}
 
-				<span class="prelude-val">None</span>
-			},
+				<span class="prelude-val">None
+			</span>},
 		}
 	}
 
-	<span class="doccomment">/// Seeks the index of the last `1` bit in the bit-slice.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sp_iter_ones_last</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-		<span class="comment">//  Set the state tracker to the last live index in the bit-slice.</span>
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">len</span>() {
-			<span class="number">0</span> =&gt; <span class="kw">return</span> <span class="prelude-val">None</span>,
-			<span class="ident">n</span> =&gt; <span class="ident">n</span> <span class="op">-</span> <span class="number">1</span>,
+	<span class="doccomment">/// Seeks the index of the last `1` bit in the bit-slice.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sp_iter_ones_last(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+		<span class="comment">//  Set the state tracker to the last live index in the bit-slice.
+		</span><span class="kw">let </span><span class="kw-2">mut </span>out = <span class="kw">match </span><span class="self">self</span>.len() {
+			<span class="number">0 </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+			n =&gt; n - <span class="number">1</span>,
 		};
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain</span>() {
-			<span class="ident">Domain::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span>
-					(<span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="ident">elem</span>.<span class="ident">load_value</span>()).<span class="ident">into_inner</span>();
-				<span class="kw">let</span> <span class="ident">dead_bits</span> <span class="op">=</span> <span class="ident">T::Mem::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>();
-				<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-					<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">dead_bits</span> <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+		<span class="kw">match </span><span class="self">self</span>.domain() {
+			Domain::Enclave { head, elem, tail } =&gt; {
+				<span class="kw">let </span>val =
+					(Msb0::mask(head, tail) &amp; elem.load_value()).into_inner();
+				<span class="kw">let </span>dead_bits = T::Mem::BITS <span class="kw">as </span>u8 - tail.into_inner();
+				<span class="kw">if </span>val != T::Mem::ZERO {
+					out -= val.trailing_zeros() <span class="kw">as </span>usize - dead_bits <span class="kw">as </span>usize;
+					<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 				}
-				<span class="prelude-val">None</span>
-			},
-			<span class="ident">Domain::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Msb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="kw">let</span> <span class="ident">dead_bits</span> <span class="op">=</span>
-						<span class="ident">T::Mem::BITS</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">dead_bits</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+				<span class="prelude-val">None
+			</span>},
+			Domain::Region { head, body, tail } =&gt; {
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					<span class="kw">let </span>val = (Msb0::mask(<span class="prelude-val">None</span>, tail) &amp; elem.load_value())
+						.into_inner();
+					<span class="kw">let </span>dead_bits =
+						T::Mem::BITS <span class="kw">as </span>usize - tail.into_inner() <span class="kw">as </span>usize;
+					out -= val.trailing_zeros() <span class="kw">as </span>usize - dead_bits;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 					}
 				}
 
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span>.<span class="ident">iter</span>().<span class="ident">rev</span>() {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> <span class="ident">elem</span>.<span class="ident">load_value</span>();
-					<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+				<span class="kw">for </span>elem <span class="kw">in </span>body.iter().rev() {
+					<span class="kw">let </span>val = elem.load_value();
+					out -= val.trailing_zeros() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 					}
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>) <span class="op">&amp;</span> <span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					<span class="kw">let </span>val = (Msb0::mask(head, <span class="prelude-val">None</span>) &amp; elem.load_value())
+						.into_inner();
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						out -= val.trailing_zeros() <span class="kw">as </span>usize;
+						<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 					}
 				}
 
-				<span class="prelude-val">None</span>
-			},
+				<span class="prelude-val">None
+			</span>},
 		}
 	}
 
-	<span class="doccomment">/// Seeks the index of the first `0` bit in the bit-slice.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sp_iter_zeros_first</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accum</span> <span class="op">=</span> <span class="number">0</span>;
+	<span class="doccomment">/// Seeks the index of the first `0` bit in the bit-slice.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sp_iter_zeros_first(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+		<span class="kw">let </span><span class="kw-2">mut </span>accum = <span class="number">0</span>;
 
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain</span>() {
-			<span class="ident">Domain::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span>
-					(<span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>()).<span class="ident">into_inner</span>();
-				<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span>
-					<span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">head</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-				<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-					<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+		<span class="kw">match </span><span class="self">self</span>.domain() {
+			Domain::Enclave { head, elem, tail } =&gt; {
+				<span class="kw">let </span>val =
+					(Msb0::mask(head, tail) &amp; !elem.load_value()).into_inner();
+				accum +=
+					val.leading_zeros() <span class="kw">as </span>usize - head.into_inner() <span class="kw">as </span>usize;
+				<span class="kw">if </span>val != T::Mem::ZERO {
+					<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 				}
-				<span class="prelude-val">None</span>
-			},
-			<span class="ident">Domain::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>
-						<span class="op">-</span> <span class="ident">head</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+				<span class="prelude-val">None
+			</span>},
+			Domain::Region { head, body, tail } =&gt; {
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					<span class="kw">let </span>val = (Msb0::mask(head, <span class="prelude-val">None</span>) &amp; !elem.load_value())
+						.into_inner();
+					accum += val.leading_zeros() <span class="kw">as </span>usize
+						- head.into_inner() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 					}
 				}
 
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>();
-					<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+				<span class="kw">for </span>elem <span class="kw">in </span>body {
+					<span class="kw">let </span>val = !elem.load_value();
+					accum += val.leading_zeros() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 					}
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Msb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="ident">accum</span> <span class="op">+</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">leading_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">accum</span>);
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					<span class="kw">let </span>val = (Msb0::mask(<span class="prelude-val">None</span>, tail) &amp; !elem.load_value())
+						.into_inner();
+					accum += val.leading_zeros() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(accum);
 					}
 				}
 
-				<span class="prelude-val">None</span>
-			},
+				<span class="prelude-val">None
+			</span>},
 		}
 	}
 
-	<span class="doccomment">/// Seeks the index of the last `0` bit in the bit-slice.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sp_iter_zeros_last</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">len</span>() {
-			<span class="number">0</span> =&gt; <span class="kw">return</span> <span class="prelude-val">None</span>,
-			<span class="ident">n</span> =&gt; <span class="ident">n</span> <span class="op">-</span> <span class="number">1</span>,
+	<span class="doccomment">/// Seeks the index of the last `0` bit in the bit-slice.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sp_iter_zeros_last(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+		<span class="kw">let </span><span class="kw-2">mut </span>out = <span class="kw">match </span><span class="self">self</span>.len() {
+			<span class="number">0 </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+			n =&gt; n - <span class="number">1</span>,
 		};
-		<span class="kw">match</span> <span class="self">self</span>.<span class="ident">domain</span>() {
-			<span class="ident">Domain::Enclave</span> { <span class="ident">head</span>, <span class="ident">elem</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span>
-					(<span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>()).<span class="ident">into_inner</span>();
-				<span class="kw">let</span> <span class="ident">dead_bits</span> <span class="op">=</span> <span class="ident">T::Mem::BITS</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>();
-				<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-					<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">dead_bits</span> <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+		<span class="kw">match </span><span class="self">self</span>.domain() {
+			Domain::Enclave { head, elem, tail } =&gt; {
+				<span class="kw">let </span>val =
+					(Msb0::mask(head, tail) &amp; !elem.load_value()).into_inner();
+				<span class="kw">let </span>dead_bits = T::Mem::BITS <span class="kw">as </span>u8 - tail.into_inner();
+				<span class="kw">if </span>val != T::Mem::ZERO {
+					out -= val.trailing_zeros() <span class="kw">as </span>usize - dead_bits <span class="kw">as </span>usize;
+					<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 				}
-				<span class="prelude-val">None</span>
-			},
-			<span class="ident">Domain::Region</span> { <span class="ident">head</span>, <span class="ident">body</span>, <span class="ident">tail</span> } =&gt; {
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">elem</span>, <span class="ident">tail</span>)) <span class="op">=</span> <span class="ident">tail</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Msb0::mask</span>(<span class="prelude-val">None</span>, <span class="ident">tail</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="kw">let</span> <span class="ident">dead_bits</span> <span class="op">=</span>
-						<span class="ident">T::Mem::BITS</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">into_inner</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">dead_bits</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+				<span class="prelude-val">None
+			</span>},
+			Domain::Region { head, body, tail } =&gt; {
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((elem, tail)) = tail {
+					<span class="kw">let </span>val = (Msb0::mask(<span class="prelude-val">None</span>, tail) &amp; !elem.load_value())
+						.into_inner();
+					<span class="kw">let </span>dead_bits =
+						T::Mem::BITS <span class="kw">as </span>usize - tail.into_inner() <span class="kw">as </span>usize;
+					out -= val.trailing_zeros() <span class="kw">as </span>usize - dead_bits;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 					}
 				}
 
-				<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">body</span>.<span class="ident">iter</span>().<span class="ident">rev</span>() {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>();
-					<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+				<span class="kw">for </span>elem <span class="kw">in </span>body.iter().rev() {
+					<span class="kw">let </span>val = !elem.load_value();
+					out -= val.trailing_zeros() <span class="kw">as </span>usize;
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 					}
 				}
 
-				<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">head</span>, <span class="ident">elem</span>)) <span class="op">=</span> <span class="ident">head</span> {
-					<span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> (<span class="ident">Msb0::mask</span>(<span class="ident">head</span>, <span class="prelude-val">None</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="ident">elem</span>.<span class="ident">load_value</span>())
-						.<span class="ident">into_inner</span>();
-					<span class="kw">if</span> <span class="ident">val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">T::Mem::ZERO</span> {
-						<span class="ident">out</span> <span class="op">-</span><span class="op">=</span> <span class="ident">val</span>.<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-						<span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">out</span>);
+				<span class="kw">if let </span><span class="prelude-val">Some</span>((head, elem)) = head {
+					<span class="kw">let </span>val = (Msb0::mask(head, <span class="prelude-val">None</span>) &amp; !elem.load_value())
+						.into_inner();
+					<span class="kw">if </span>val != T::Mem::ZERO {
+						out -= val.trailing_zeros() <span class="kw">as </span>usize;
+						<span class="kw">return </span><span class="prelude-val">Some</span>(out);
 					}
 				}
 
-				<span class="prelude-val">None</span>
-			},
+				<span class="prelude-val">None
+			</span>},
 		}
 	}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

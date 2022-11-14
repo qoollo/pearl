@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/index/bptree/node.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>node.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script src="../../../../../crates.js"></script><script defer src="../../../../../main.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../pearl/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/index/bptree/node.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>node.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../../normalize.css"><link rel="stylesheet" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../../dark.css" disabled><link rel="stylesheet" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../pearl/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -227,230 +222,229 @@
 <span id="222">222</span>
 <span id="223">223</span>
 <span id="224">224</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">std::mem::size_of</span>;
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>std::mem::size_of;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct</span> <span class="ident">Node</span> {
-    <span class="ident">keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">offsets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span>Node {
+    keys: Vec&lt;Vec&lt;u8&gt;&gt;,
+    offsets: Vec&lt;u64&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Node</span> {
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">offsets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">keys</span>.<span class="ident">is_empty</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">keys</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="number">1</span>, <span class="ident">offsets</span>.<span class="ident">len</span>());
-        <span class="self">Self</span> { <span class="ident">keys</span>, <span class="ident">offsets</span> }
+<span class="kw">impl </span>Node {
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new(keys: Vec&lt;Vec&lt;u8&gt;&gt;, offsets: Vec&lt;u64&gt;) -&gt; <span class="self">Self </span>{
+        <span class="macro">assert!</span>(!keys.is_empty());
+        <span class="macro">assert_eq!</span>(keys.len() + <span class="number">1</span>, offsets.len());
+        <span class="self">Self </span>{ keys, offsets }
     }
 
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">new_serialized</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="ident">keys</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span>,
-        <span class="ident">offsets</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">u64</span><span class="op">&gt;</span>,
-        <span class="ident">key_size</span>: <span class="ident">usize</span>,
-        <span class="ident">keys_amount</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">meta_buf</span> <span class="op">=</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">NodeMeta::new</span>(<span class="ident">keys_amount</span> <span class="kw">as</span> <span class="ident">u64</span>))<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">buf_size</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::serialized_size_with_keys</span>(<span class="ident">key_size</span>, <span class="ident">keys_amount</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">buf_size</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="ident">buf</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">meta_buf</span>);
-        <span class="ident">keys</span>.<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> <span class="ident">buf</span>.<span class="ident">extend_from_slice</span>(<span class="ident">k</span>));
-        <span class="ident">offsets</span>
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">off</span><span class="op">|</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">off</span>))
-            .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">res</span><span class="op">|</span> <span class="prelude-ty">Result</span>::<span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="ident">::Ok</span>(<span class="ident">buf</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">res</span><span class="question-mark">?</span>)))<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">buf</span>)
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new_serialized&lt;<span class="lifetime">&#39;a</span>&gt;(
+        keys: <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;,
+        offsets: <span class="kw">impl </span>Iterator&lt;Item = u64&gt;,
+        key_size: usize,
+        keys_amount: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+        <span class="kw">let </span>meta_buf = serialize(<span class="kw-2">&amp;</span>NodeMeta::new(keys_amount <span class="kw">as </span>u64))<span class="question-mark">?</span>;
+        <span class="kw">let </span>buf_size = <span class="self">Self</span>::serialized_size_with_keys(key_size, keys_amount)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::with_capacity(buf_size <span class="kw">as </span>usize);
+        buf.extend_from_slice(<span class="kw-2">&amp;</span>meta_buf);
+        keys.for_each(|k| buf.extend_from_slice(k));
+        offsets
+            .map(|off| serialize(<span class="kw-2">&amp;</span>off))
+            .try_for_each(|res| <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>&gt;::Ok(buf.extend_from_slice(<span class="kw-2">&amp;</span>res<span class="question-mark">?</span>)))<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(buf)
     }
 
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">serialized_size_with_keys</span>(<span class="ident">key_size</span>: <span class="ident">usize</span>, <span class="ident">keys_amount</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">meta_size</span> <span class="op">=</span> <span class="ident">NodeMeta::serialized_size_default</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">keys_buf_size</span> <span class="op">=</span> <span class="ident">key_size</span> <span class="op">*</span> <span class="ident">keys_amount</span>;
-        <span class="kw">let</span> <span class="ident">offsets_buf_size</span> <span class="op">=</span> (<span class="ident">keys_amount</span> <span class="op">+</span> <span class="number">1</span>) <span class="op">*</span> <span class="ident">size_of</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">meta_size</span> <span class="op">+</span> (<span class="ident">keys_buf_size</span> <span class="op">+</span> <span class="ident">offsets_buf_size</span>) <span class="kw">as</span> <span class="ident">u64</span>)
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>serialized_size_with_keys(key_size: usize, keys_amount: usize) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
+        <span class="kw">let </span>meta_size = NodeMeta::serialized_size_default()<span class="question-mark">?</span>;
+        <span class="kw">let </span>keys_buf_size = key_size * keys_amount;
+        <span class="kw">let </span>offsets_buf_size = (keys_amount + <span class="number">1</span>) * size_of::&lt;u64&gt;();
+        <span class="prelude-val">Ok</span>(meta_size + (keys_buf_size + offsets_buf_size) <span class="kw">as </span>u64)
     }
 
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">binary_search_serialized</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>(<span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">usize</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>binary_search_serialized&lt;K&gt;(key: <span class="kw-2">&amp;</span>K, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;usize, usize&gt;
+    <span class="kw">where
+        for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
     {
-        <span class="kw">let</span> <span class="ident">key_size</span> <span class="op">=</span> <span class="ident">K::LEN</span> <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">l</span> <span class="op">=</span> <span class="number">0i32</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">r</span>: <span class="ident">i32</span> <span class="op">=</span> (<span class="ident">buf</span>.<span class="ident">len</span>() <span class="op">/</span> <span class="ident">key_size</span> <span class="op">-</span> <span class="number">1</span>) <span class="kw">as</span> <span class="ident">i32</span>;
-        <span class="kw">while</span> <span class="ident">l</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">r</span> {
-            <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> (<span class="ident">l</span> <span class="op">+</span> <span class="ident">r</span>) <span class="op">/</span> <span class="number">2</span>;
-            <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">key_size</span>;
-            <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">K::Ref::from</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">offset</span>..(<span class="ident">offset</span> <span class="op">+</span> <span class="ident">key_size</span>)]);
-            <span class="kw">match</span> <span class="ident">key</span>.<span class="ident">as_ref_key</span>().<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>) {
-                <span class="ident">CmpOrdering::Less</span> =&gt; <span class="ident">r</span> <span class="op">=</span> <span class="ident">m</span> <span class="op">-</span> <span class="number">1</span>,
-                <span class="ident">CmpOrdering::Greater</span> =&gt; <span class="ident">l</span> <span class="op">=</span> <span class="ident">m</span> <span class="op">+</span> <span class="number">1</span>,
-                <span class="ident">CmpOrdering::Equal</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>),
+        <span class="kw">let </span>key_size = K::LEN <span class="kw">as </span>usize;
+        <span class="kw">let </span><span class="kw-2">mut </span>l = <span class="number">0i32</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>r: i32 = (buf.len() / key_size - <span class="number">1</span>) <span class="kw">as </span>i32;
+        <span class="kw">while </span>l &lt;= r {
+            <span class="kw">let </span>m = (l + r) / <span class="number">2</span>;
+            <span class="kw">let </span>offset = m <span class="kw">as </span>usize * key_size;
+            <span class="kw">let </span>k = K::Ref::from(<span class="kw-2">&amp;</span>buf[offset..(offset + key_size)]);
+            <span class="kw">match </span>key.as_ref_key().cmp(<span class="kw-2">&amp;</span>k) {
+                CmpOrdering::Less =&gt; r = m - <span class="number">1</span>,
+                CmpOrdering::Greater =&gt; l = m + <span class="number">1</span>,
+                CmpOrdering::Equal =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(m <span class="kw">as </span>usize),
             }
         }
-        <span class="prelude-val">Err</span>(<span class="ident">l</span> <span class="kw">as</span> <span class="ident">usize</span>)
+        <span class="prelude-val">Err</span>(l <span class="kw">as </span>usize)
     }
 
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">key_offset_serialized</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>(<span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>key_offset_serialized&lt;K&gt;(buf: <span class="kw-2">&amp;</span>[u8], key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt;
+    <span class="kw">where
+        for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
     {
-        <span class="kw">let</span> <span class="ident">meta_size</span> <span class="op">=</span> <span class="ident">NodeMeta::serialized_size_default</span>()<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="ident">node_size</span> <span class="op">=</span> <span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">NodeMeta</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[..<span class="ident">meta_size</span>])<span class="question-mark">?</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="ident">offsets_offset</span> <span class="op">=</span> <span class="ident">meta_size</span> <span class="op">+</span> <span class="ident">node_size</span> <span class="op">*</span> (<span class="ident">K::LEN</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="kw">let</span> <span class="ident">ind</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::binary_search_serialized</span>(<span class="ident">key</span>, <span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">meta_size</span>..<span class="ident">offsets_offset</span>]) {
-            <span class="prelude-val">Ok</span>(<span class="ident">pos</span>) =&gt; <span class="ident">pos</span> <span class="op">+</span> <span class="number">1</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">pos</span>) =&gt; <span class="ident">pos</span>,
+        <span class="kw">let </span>meta_size = NodeMeta::serialized_size_default()<span class="question-mark">? </span><span class="kw">as </span>usize;
+        <span class="kw">let </span>node_size = deserialize::&lt;NodeMeta&gt;(<span class="kw-2">&amp;</span>buf[..meta_size])<span class="question-mark">?</span>.size <span class="kw">as </span>usize;
+        <span class="kw">let </span>offsets_offset = meta_size + node_size * (K::LEN <span class="kw">as </span>usize);
+        <span class="kw">let </span>ind = <span class="kw">match </span><span class="self">Self</span>::binary_search_serialized(key, <span class="kw-2">&amp;</span>buf[meta_size..offsets_offset]) {
+            <span class="prelude-val">Ok</span>(pos) =&gt; pos + <span class="number">1</span>,
+            <span class="prelude-val">Err</span>(pos) =&gt; pos,
         };
-        <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">offsets_offset</span> <span class="op">+</span> <span class="ident">ind</span> <span class="op">*</span> <span class="ident">size_of</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>();
-        <span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">offset</span>..(<span class="ident">offset</span> <span class="op">+</span> <span class="ident">size_of</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>())]).<span class="ident">map_err</span>(<span class="ident">Into::into</span>)
+        <span class="kw">let </span>offset = offsets_offset + ind * size_of::&lt;u64&gt;();
+        deserialize(<span class="kw-2">&amp;</span>buf[offset..(offset + size_of::&lt;u64&gt;())]).map_err(Into::into)
     }
 
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">key_offset</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="ident">u64</span>
-    <span class="kw">where</span>
-        <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    <span class="attribute">#[allow(dead_code)]
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>key_offset&lt;K&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; u64
+    <span class="kw">where
+        for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
     {
-        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">key</span>.<span class="ident">as_ref_key</span>();
-        <span class="kw">match</span> <span class="self">self</span>
-            .<span class="ident">keys</span>
-            .<span class="ident">binary_search_by</span>(<span class="op">|</span><span class="ident">elem</span><span class="op">|</span> <span class="ident">K::Ref::from</span>(<span class="ident">elem</span>).<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">key</span>))
+        <span class="kw">let </span>key = key.as_ref_key();
+        <span class="kw">match </span><span class="self">self
+            </span>.keys
+            .binary_search_by(|elem| K::Ref::from(elem).cmp(<span class="kw-2">&amp;</span>key))
         {
-            <span class="prelude-val">Ok</span>(<span class="ident">pos</span>) =&gt; <span class="self">self</span>.<span class="ident">offsets</span>[<span class="ident">pos</span> <span class="op">+</span> <span class="number">1</span>],
-            <span class="prelude-val">Err</span>(<span class="ident">pos</span>) =&gt; <span class="self">self</span>.<span class="ident">offsets</span>[<span class="ident">pos</span>],
+            <span class="prelude-val">Ok</span>(pos) =&gt; <span class="self">self</span>.offsets[pos + <span class="number">1</span>],
+            <span class="prelude-val">Err</span>(pos) =&gt; <span class="self">self</span>.offsets[pos],
         }
     }
 
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">let</span> <span class="ident">meta</span> <span class="op">=</span> <span class="ident">NodeMeta::new</span>(<span class="self">self</span>.<span class="ident">keys</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>);
-        <span class="ident">buf</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">meta</span>)<span class="question-mark">?</span>);
-        <span class="ident">buf</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">keys</span>.<span class="ident">iter</span>().<span class="ident">flatten</span>());
-        <span class="self">self</span>.<span class="ident">offsets</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>(<span class="ident">buf</span>, <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">acc</span>, <span class="ident">offset</span><span class="op">|</span> {
-            <span class="ident">acc</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">serialize</span>(<span class="ident">offset</span>)<span class="question-mark">?</span>);
-            <span class="prelude-val">Ok</span>(<span class="ident">acc</span>)
+    <span class="attribute">#[allow(dead_code)]
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
+        <span class="kw">let </span>meta = NodeMeta::new(<span class="self">self</span>.keys.len() <span class="kw">as </span>u64);
+        buf.extend_from_slice(<span class="kw-2">&amp;</span>serialize(<span class="kw-2">&amp;</span>meta)<span class="question-mark">?</span>);
+        buf.extend(<span class="self">self</span>.keys.iter().flatten());
+        <span class="self">self</span>.offsets.iter().try_fold(buf, |<span class="kw-2">mut </span>acc, offset| {
+            acc.extend_from_slice(<span class="kw-2">&amp;</span>serialize(offset)<span class="question-mark">?</span>);
+            <span class="prelude-val">Ok</span>(acc)
         })
     }
 
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>(<span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    <span class="attribute">#[allow(dead_code)]
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>deserialize&lt;K&gt;(buf: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt;
+    <span class="kw">where
+        for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
     {
-        <span class="kw">let</span> <span class="ident">key_size</span> <span class="op">=</span> <span class="ident">K::LEN</span> <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="kw">let</span> <span class="ident">meta_size</span> <span class="op">=</span> <span class="ident">NodeMeta::serialized_size_default</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> (<span class="ident">meta_buf</span>, <span class="ident">data_buf</span>) <span class="op">=</span> <span class="ident">buf</span>.<span class="ident">split_at</span>(<span class="ident">meta_size</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="kw">let</span> <span class="ident">meta</span>: <span class="ident">NodeMeta</span> <span class="op">=</span> <span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">meta_buf</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">keys_buf_size</span> <span class="op">=</span> <span class="ident">meta</span>.<span class="ident">size</span> <span class="op">*</span> <span class="ident">key_size</span>;
-        <span class="kw">let</span> (<span class="ident">keys_buf</span>, <span class="ident">rest_buf</span>) <span class="op">=</span> <span class="ident">data_buf</span>.<span class="ident">split_at</span>(<span class="ident">keys_buf_size</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="kw">let</span> <span class="ident">keys</span> <span class="op">=</span> <span class="ident">keys_buf</span>
-            .<span class="ident">chunks</span>(<span class="ident">key_size</span> <span class="kw">as</span> <span class="ident">usize</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">key</span><span class="op">|</span> <span class="ident">key</span>.<span class="ident">to_vec</span>())
-            .<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">offsets_buf_size</span> <span class="op">=</span> (<span class="ident">meta</span>.<span class="ident">size</span> <span class="op">+</span> <span class="number">1</span>) <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">std::mem::size_of</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>();
-        <span class="kw">let</span> (<span class="ident">offsets_buf</span>, <span class="ident">_rest_buf</span>) <span class="op">=</span> <span class="ident">rest_buf</span>.<span class="ident">split_at</span>(<span class="ident">offsets_buf_size</span>);
-        <span class="kw">let</span> <span class="ident">offsets</span> <span class="op">=</span> <span class="ident">offsets_buf</span>
-            .<span class="ident">chunks</span>(<span class="ident">std::mem::size_of</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>())
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">bytes</span><span class="op">|</span> <span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>(<span class="ident">bytes</span>).<span class="ident">map_err</span>(<span class="ident">Into::into</span>))
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">Node::new</span>(<span class="ident">keys</span>, <span class="ident">offsets</span>))
+        <span class="kw">let </span>key_size = K::LEN <span class="kw">as </span>u64;
+        <span class="kw">let </span>meta_size = NodeMeta::serialized_size_default()<span class="question-mark">?</span>;
+        <span class="kw">let </span>(meta_buf, data_buf) = buf.split_at(meta_size <span class="kw">as </span>usize);
+        <span class="kw">let </span>meta: NodeMeta = deserialize(<span class="kw-2">&amp;</span>meta_buf)<span class="question-mark">?</span>;
+        <span class="kw">let </span>keys_buf_size = meta.size * key_size;
+        <span class="kw">let </span>(keys_buf, rest_buf) = data_buf.split_at(keys_buf_size <span class="kw">as </span>usize);
+        <span class="kw">let </span>keys = keys_buf
+            .chunks(key_size <span class="kw">as </span>usize)
+            .map(|key| key.to_vec())
+            .collect();
+        <span class="kw">let </span>offsets_buf_size = (meta.size + <span class="number">1</span>) <span class="kw">as </span>usize * std::mem::size_of::&lt;u64&gt;();
+        <span class="kw">let </span>(offsets_buf, _rest_buf) = rest_buf.split_at(offsets_buf_size);
+        <span class="kw">let </span>offsets = offsets_buf
+            .chunks(std::mem::size_of::&lt;u64&gt;())
+            .map(|bytes| deserialize::&lt;u64&gt;(bytes).map_err(Into::into))
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;u64&gt;&gt;&gt;()<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(Node::new(keys, offsets))
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">std::ops::Range</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>std::ops::Range;
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>)]</span>
-    <span class="kw">struct</span> <span class="ident">KeyType</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>);
+    <span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+    </span><span class="kw">struct </span>KeyType(Vec&lt;u8&gt;);
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>)]</span>
-    <span class="kw">struct</span> <span class="ident">RefKeyType</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]);
+    <span class="attribute">#[derive(PartialEq, Eq, PartialOrd, Ord)]
+    </span><span class="kw">struct </span>RefKeyType&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]);
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RefKeyType</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">v</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]) -&gt; <span class="self">Self</span> {
-            <span class="self">Self</span>(<span class="ident">v</span>)
+    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; <span class="kw">for </span>RefKeyType&lt;<span class="lifetime">&#39;a</span>&gt; {
+        <span class="kw">fn </span>from(v: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]) -&gt; <span class="self">Self </span>{
+            <span class="self">Self</span>(v)
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">RefKey</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RefKeyType</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {}
+    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; RefKey&lt;<span class="lifetime">&#39;a</span>&gt; <span class="kw">for </span>RefKeyType&lt;<span class="lifetime">&#39;a</span>&gt; {}
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">KeyType</span> {
-        <span class="kw">const</span> <span class="ident">LEN</span>: <span class="ident">u16</span> <span class="op">=</span> <span class="number">4</span>;
+    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Key&lt;<span class="lifetime">&#39;a</span>&gt; <span class="kw">for </span>KeyType {
+        <span class="kw">const </span>LEN: u16 = <span class="number">4</span>;
 
-        <span class="kw">type</span> <span class="ident">Ref</span> <span class="op">=</span> <span class="ident">RefKeyType</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
+        <span class="kw">type </span>Ref = RefKeyType&lt;<span class="lifetime">&#39;a</span>&gt;;
     }
 
-    <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">KeyType</span> {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="kw-2">mut</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-            <span class="ident">v</span>.<span class="ident">resize</span>(<span class="ident">KeyType::LEN</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="number">0</span>);
-            <span class="self">Self</span>(<span class="ident">v</span>)
+    <span class="kw">impl </span>From&lt;Vec&lt;u8&gt;&gt; <span class="kw">for </span>KeyType {
+        <span class="kw">fn </span>from(<span class="kw-2">mut </span>v: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+            v.resize(KeyType::LEN <span class="kw">as </span>usize, <span class="number">0</span>);
+            <span class="self">Self</span>(v)
         }
     }
 
-    <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">KeyType</span> {
-        <span class="kw">fn</span> <span class="ident">as_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-            <span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_ref</span>()
+    <span class="kw">impl </span>AsRef&lt;[u8]&gt; <span class="kw">for </span>KeyType {
+        <span class="kw">fn </span>as_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+            <span class="self">self</span>.<span class="number">0</span>.as_ref()
         }
     }
 
-    <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">KeyType</span> {
-        <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-            <span class="self">Self</span>(<span class="macro">vec!</span>[<span class="number">0_u8</span>; <span class="ident"><span class="self">Self</span>::LEN</span> <span class="kw">as</span> <span class="ident">usize</span>])
+    <span class="kw">impl </span>Default <span class="kw">for </span>KeyType {
+        <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+            <span class="self">Self</span>(<span class="macro">vec!</span>[<span class="number">0_u8</span>; <span class="self">Self</span>::LEN <span class="kw">as </span>usize])
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">to_key</span>(<span class="ident">i</span>: <span class="ident">usize</span>) -&gt; <span class="ident">KeyType</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">i</span>).<span class="ident">unwrap</span>();
-        <span class="ident">v</span>.<span class="ident">resize</span>(<span class="ident">KeyType::LEN</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="number">0</span>);
-        <span class="ident">KeyType</span>(<span class="ident">v</span>)
+    <span class="kw">fn </span>to_key(i: usize) -&gt; KeyType {
+        <span class="kw">let </span><span class="kw-2">mut </span>v = serialize(<span class="kw-2">&amp;</span>i).unwrap();
+        v.resize(KeyType::LEN <span class="kw">as </span>usize, <span class="number">0</span>);
+        KeyType(v)
     }
 
-    <span class="kw">fn</span> <span class="ident">create_node</span>(<span class="ident">amount</span>: <span class="ident">usize</span>, <span class="ident">kf</span>: <span class="kw">impl</span> <span class="ident">Fn</span>(<span class="ident">usize</span>) -&gt; <span class="ident">KeyType</span>, <span class="ident">of</span>: <span class="kw">impl</span> <span class="ident">Fn</span>(<span class="ident">u64</span>) -&gt; <span class="ident">u64</span>) -&gt; <span class="ident">Node</span> {
-        <span class="kw">let</span> <span class="ident">keys</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">amount</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">kf</span>(<span class="ident">e</span>).<span class="ident">to_vec</span>()).<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">offsets</span> <span class="op">=</span> (<span class="number">0u64</span>..(<span class="ident">amount</span> <span class="kw">as</span> <span class="ident">u64</span> <span class="op">+</span> <span class="number">1</span>)).<span class="ident">map</span>(<span class="ident">of</span>).<span class="ident">collect</span>();
-        <span class="ident">Node::new</span>(<span class="ident">keys</span>, <span class="ident">offsets</span>)
+    <span class="kw">fn </span>create_node(amount: usize, kf: <span class="kw">impl </span>Fn(usize) -&gt; KeyType, of: <span class="kw">impl </span>Fn(u64) -&gt; u64) -&gt; Node {
+        <span class="kw">let </span>keys = (<span class="number">0</span>..amount).map(|e| kf(e).to_vec()).collect();
+        <span class="kw">let </span>offsets = (<span class="number">0u64</span>..(amount <span class="kw">as </span>u64 + <span class="number">1</span>)).map(of).collect();
+        Node::new(keys, offsets)
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">serialize_deserialize_node</span>() {
-        <span class="kw">const</span> <span class="ident">KEYS_AMOUNTS</span>: [<span class="ident">usize</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">1</span>, <span class="number">2</span>, <span class="number">100</span>];
-        <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">keys_amount</span> <span class="kw">in</span> <span class="ident">KEYS_AMOUNTS</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">create_node</span>(<span class="ident">keys_amount</span>, <span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">to_key</span>(<span class="ident">e</span>), <span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span> <span class="op">*</span> <span class="number">2</span>);
-            <span class="kw">let</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">node</span>.<span class="ident">serialize</span>().<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">node_deserialized</span> <span class="op">=</span> <span class="ident">Node::deserialize</span>::<span class="op">&lt;</span><span class="ident">KeyType</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>).<span class="ident">unwrap</span>();
-            <span class="macro">assert_eq!</span>(<span class="ident">node</span>, <span class="ident">node_deserialized</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>serialize_deserialize_node() {
+        <span class="kw">const </span>KEYS_AMOUNTS: [usize; <span class="number">3</span>] = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">100</span>];
+        <span class="kw">for </span><span class="kw-2">&amp;</span>keys_amount <span class="kw">in </span>KEYS_AMOUNTS.iter() {
+            <span class="kw">let </span>node = create_node(keys_amount, |e| to_key(e), |o| o * <span class="number">2</span>);
+            <span class="kw">let </span>buf = node.serialize().unwrap();
+            <span class="kw">let </span>node_deserialized = Node::deserialize::&lt;KeyType&gt;(<span class="kw-2">&amp;</span>buf).unwrap();
+            <span class="macro">assert_eq!</span>(node, node_deserialized);
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">check_offset</span>(
-        <span class="ident">keys</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>],
-        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">KeyType</span>,
-        <span class="ident">offset</span>: <span class="ident">u64</span>,
-        <span class="ident">off_to_index</span>: <span class="kw">impl</span> <span class="ident">Fn</span>(<span class="ident">u64</span>) -&gt; <span class="ident">u64</span>,
+    <span class="kw">fn </span>check_offset(
+        keys: <span class="kw-2">&amp;</span>[Vec&lt;u8&gt;],
+        key: <span class="kw-2">&amp;</span>KeyType,
+        offset: u64,
+        off_to_index: <span class="kw">impl </span>Fn(u64) -&gt; u64,
     ) {
-        <span class="kw">let</span> <span class="ident">offset_index</span> <span class="op">=</span> <span class="ident">off_to_index</span>(<span class="ident">offset</span>) <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">if</span> <span class="ident">offset_index</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
-            <span class="macro">assert!</span>(<span class="ident">key</span>.<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">keys</span>[<span class="ident">offset_index</span> <span class="op">-</span> <span class="number">1</span>].<span class="ident">to_vec</span>().<span class="ident">into</span>()).<span class="ident">is_ge</span>());
+        <span class="kw">let </span>offset_index = off_to_index(offset) <span class="kw">as </span>usize;
+        <span class="kw">if </span>offset_index != <span class="number">0 </span>{
+            <span class="macro">assert!</span>(key.cmp(<span class="kw-2">&amp;</span>keys[offset_index - <span class="number">1</span>].to_vec().into()).is_ge());
         }
-        <span class="kw">if</span> <span class="ident">offset_index</span> <span class="op">!</span><span class="op">=</span> <span class="ident">keys</span>.<span class="ident">len</span>() {
-            <span class="macro">assert!</span>(<span class="ident">key</span>.<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">keys</span>[<span class="ident">offset_index</span>].<span class="ident">to_vec</span>().<span class="ident">into</span>()).<span class="ident">is_lt</span>())
+        <span class="kw">if </span>offset_index != keys.len() {
+            <span class="macro">assert!</span>(key.cmp(<span class="kw-2">&amp;</span>keys[offset_index].to_vec().into()).is_lt())
         }
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">node_key_offset</span>() {
-        <span class="kw">const</span> <span class="ident">SCALE</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">113</span>;
-        <span class="kw">const</span> <span class="ident">REQUESTS</span>: <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="number">0</span>..<span class="number">100</span>;
-        <span class="kw">const</span> <span class="ident">KEYS_AMOUNTS</span>: [<span class="ident">usize</span>; <span class="number">8</span>] <span class="op">=</span> [<span class="number">1</span>, <span class="number">2</span>, <span class="number">13</span>, <span class="number">13</span>, <span class="number">14</span>, <span class="number">14</span>, <span class="number">1</span>, <span class="number">2</span>];
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>node_key_offset() {
+        <span class="kw">const </span>SCALE: u64 = <span class="number">113</span>;
+        <span class="kw">const </span>REQUESTS: Range&lt;usize&gt; = <span class="number">0</span>..<span class="number">100</span>;
+        <span class="kw">const </span>KEYS_AMOUNTS: [usize; <span class="number">8</span>] = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">13</span>, <span class="number">13</span>, <span class="number">14</span>, <span class="number">14</span>, <span class="number">1</span>, <span class="number">2</span>];
 
-        <span class="kw">for</span> (<span class="ident">i</span>, <span class="kw-2">&amp;</span><span class="ident">keys_amount</span>) <span class="kw">in</span> <span class="ident">KEYS_AMOUNTS</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">create_node</span>(<span class="ident">keys_amount</span>, <span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">to_key</span>(<span class="ident">e</span> <span class="op">*</span> <span class="ident">i</span>), <span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span> <span class="op">*</span> <span class="ident">SCALE</span>);
-            <span class="kw">for</span> <span class="ident">k</span> <span class="kw">in</span> <span class="ident">REQUESTS</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">to_key</span>(<span class="ident">v</span>)) {
-                <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">node</span>.<span class="ident">key_offset</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>);
-                <span class="ident">check_offset</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>.<span class="ident">keys</span>, <span class="kw-2">&amp;</span><span class="ident">k</span>, <span class="ident">offset</span>, <span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span> <span class="op">/</span> <span class="ident">SCALE</span>);
+        <span class="kw">for </span>(i, <span class="kw-2">&amp;</span>keys_amount) <span class="kw">in </span>KEYS_AMOUNTS.iter().enumerate() {
+            <span class="kw">let </span>node = create_node(keys_amount, |e| to_key(e * i), |o| o * SCALE);
+            <span class="kw">for </span>k <span class="kw">in </span>REQUESTS.map(|v| to_key(v)) {
+                <span class="kw">let </span>offset = node.key_offset(<span class="kw-2">&amp;</span>k);
+                check_offset(<span class="kw-2">&amp;</span>node.keys, <span class="kw-2">&amp;</span>k, offset, |o| o / SCALE);
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/storage/config.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>config.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/storage/config.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>config.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -168,171 +163,170 @@
 <span id="163">163</span>
 <span id="164">164</span>
 <span id="165">165</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Config</span> {
-    <span class="ident">work_dir</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>,
-    <span class="ident">create_work_dir</span>: <span class="ident">bool</span>,
-    <span class="ident">max_blob_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    <span class="ident">max_data_in_blob</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    <span class="ident">blob_file_name_prefix</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">debounce_interval_ms</span>: <span class="ident">u64</span>,
-    <span class="ident">allow_duplicates</span>: <span class="ident">bool</span>,
-    <span class="ident">ignore_corrupted</span>: <span class="ident">bool</span>,
-    <span class="ident">index</span>: <span class="ident">IndexConfig</span>,
-    <span class="ident">dump_sem</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Semaphore</span><span class="op">&gt;</span>,
-    <span class="ident">corrupted_dir_name</span>: <span class="ident">String</span>,
-    <span class="ident">bloom_filter_group_size</span>: <span class="ident">usize</span>,
-    <span class="ident">deferred_min_time</span>: <span class="ident">Duration</span>,
-    <span class="ident">deferred_max_time</span>: <span class="ident">Duration</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Config {
+    work_dir: <span class="prelude-ty">Option</span>&lt;PathBuf&gt;,
+    create_work_dir: bool,
+    max_blob_size: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    max_data_in_blob: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    blob_file_name_prefix: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    debounce_interval_ms: u64,
+    allow_duplicates: bool,
+    ignore_corrupted: bool,
+    index: IndexConfig,
+    dump_sem: Arc&lt;Semaphore&gt;,
+    corrupted_dir_name: String,
+    bloom_filter_group_size: usize,
+    deferred_min_time: Duration,
+    deferred_max_time: Duration,
 }
 
-<span class="comment">// Getters</span>
-<span class="kw">impl</span> <span class="ident">Config</span> {
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">work_dir</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Path</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">work_dir</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="ident">AsRef::as_ref</span>)
+<span class="comment">// Getters
+</span><span class="kw">impl </span>Config {
+    <span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>work_dir(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Path&gt; {
+        <span class="self">self</span>.work_dir.as_ref().map(AsRef::as_ref)
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">max_blob_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">max_blob_size</span>
+    <span class="attribute">#[inline]
+    </span><span class="kw">pub const fn </span>max_blob_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
+        <span class="self">self</span>.max_blob_size
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">max_data_in_blob</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">max_data_in_blob</span>
+    <span class="attribute">#[inline]
+    </span><span class="kw">pub const fn </span>max_data_in_blob(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
+        <span class="self">self</span>.max_data_in_blob
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">blob_file_name_prefix</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">blob_file_name_prefix</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="ident">AsRef::as_ref</span>)
+    <span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>blob_file_name_prefix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+        <span class="self">self</span>.blob_file_name_prefix.as_ref().map(AsRef::as_ref)
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">debounce_interval_ms</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">debounce_interval_ms</span>
+    <span class="attribute">#[inline]
+    </span><span class="kw">pub const fn </span>debounce_interval_ms(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.debounce_interval_ms
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">allow_duplicates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">allow_duplicates</span>
+    <span class="attribute">#[inline]
+    </span><span class="kw">pub const fn </span>allow_duplicates(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.allow_duplicates
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">ignore_corrupted</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">ignore_corrupted</span>
+    <span class="attribute">#[inline]
+    </span><span class="kw">pub const fn </span>ignore_corrupted(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.ignore_corrupted
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">corrupted_dir_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
-        <span class="self">self</span>.<span class="ident">corrupted_dir_name</span>.<span class="ident">as_str</span>()
+    <span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>corrupted_dir_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="self">self</span>.corrupted_dir_name.as_str()
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IndexConfig</span> {
-        <span class="self">self</span>.<span class="ident">index</span>.<span class="ident">clone</span>()
+    <span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; IndexConfig {
+        <span class="self">self</span>.index.clone()
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_work_dir</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">create_work_dir</span>
+    <span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>create_work_dir(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.create_work_dir
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dump_sem</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Semaphore</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">dump_sem</span>.<span class="ident">clone</span>()
+    <span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>dump_sem(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Arc&lt;Semaphore&gt; {
+        <span class="self">self</span>.dump_sem.clone()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bloom_filter_group_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">bloom_filter_group_size</span>
+    <span class="kw">pub fn </span>bloom_filter_group_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.bloom_filter_group_size
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deferred_min_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
-        <span class="self">self</span>.<span class="ident">deferred_min_time</span>
+    <span class="kw">pub fn </span>deferred_min_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Duration {
+        <span class="self">self</span>.deferred_min_time
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deferred_max_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
-        <span class="self">self</span>.<span class="ident">deferred_max_time</span>
-    }
-}
-
-<span class="comment">//Setters</span>
-<span class="kw">impl</span> <span class="ident">Config</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_work_dir</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">path</span>: <span class="ident">PathBuf</span>) {
-        <span class="self">self</span>.<span class="ident">work_dir</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>);
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_max_blob_size</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">max_blob_size</span>: <span class="ident">u64</span>) {
-        <span class="self">self</span>.<span class="ident">max_blob_size</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">max_blob_size</span>);
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_max_data_in_blob</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">max_data_in_blob</span>: <span class="ident">u64</span>) {
-        <span class="self">self</span>.<span class="ident">max_data_in_blob</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">max_data_in_blob</span>);
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_blob_file_name_prefix</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">blob_file_name_prefix</span>: <span class="ident">String</span>) {
-        <span class="self">self</span>.<span class="ident">blob_file_name_prefix</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">blob_file_name_prefix</span>);
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_allow_duplicates</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">allow_duplicates</span>: <span class="ident">bool</span>) {
-        <span class="self">self</span>.<span class="ident">allow_duplicates</span> <span class="op">=</span> <span class="ident">allow_duplicates</span>;
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ignore_corrupted</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ignore_corrupted</span>: <span class="ident">bool</span>) {
-        <span class="self">self</span>.<span class="ident">ignore_corrupted</span> <span class="op">=</span> <span class="ident">ignore_corrupted</span>;
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_corrupted_dir_name</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="ident">String</span>) {
-        <span class="self">self</span>.<span class="ident">corrupted_dir_name</span> <span class="op">=</span> <span class="ident">name</span>;
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_index</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">index</span>: <span class="ident">IndexConfig</span>) {
-        <span class="self">self</span>.<span class="ident">index</span> <span class="op">=</span> <span class="ident">index</span>
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_create_work_dir</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">create</span>: <span class="ident">bool</span>) {
-        <span class="self">self</span>.<span class="ident">create_work_dir</span> <span class="op">=</span> <span class="ident">create</span>;
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_dump_sem</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">dump_sem</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Semaphore</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">dump_sem</span> <span class="op">=</span> <span class="ident">dump_sem</span>
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_bloom_filter_group_size</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">bloom_filter_group_size</span>: <span class="ident">usize</span>) {
-        <span class="self">self</span>.<span class="ident">bloom_filter_group_size</span> <span class="op">=</span> <span class="ident">bloom_filter_group_size</span>
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_deferred_index_dump_times</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">min</span>: <span class="ident">Duration</span>, <span class="ident">max</span>: <span class="ident">Duration</span>) {
-        <span class="self">self</span>.<span class="ident">deferred_min_time</span> <span class="op">=</span> <span class="ident">min</span>;
-        <span class="self">self</span>.<span class="ident">deferred_max_time</span> <span class="op">=</span> <span class="ident">max</span>;
+    <span class="kw">pub fn </span>deferred_max_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Duration {
+        <span class="self">self</span>.deferred_max_time
     }
 }
 
-<span class="comment">// Impl Traits</span>
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Config</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">work_dir</span>: <span class="prelude-val">None</span>,
-            <span class="ident">create_work_dir</span>: <span class="bool-val">true</span>,
-            <span class="ident">max_blob_size</span>: <span class="prelude-val">None</span>,
-            <span class="ident">max_data_in_blob</span>: <span class="prelude-val">None</span>,
-            <span class="ident">blob_file_name_prefix</span>: <span class="prelude-val">None</span>,
-            <span class="ident">debounce_interval_ms</span>: <span class="number">200</span>,
-            <span class="ident">allow_duplicates</span>: <span class="bool-val">false</span>,
-            <span class="ident">ignore_corrupted</span>: <span class="bool-val">false</span>,
-            <span class="ident">index</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">dump_sem</span>: <span class="ident">Arc::new</span>(<span class="ident">Semaphore::new</span>(<span class="number">1</span>)),
-            <span class="ident">corrupted_dir_name</span>: <span class="string">&quot;corrupted&quot;</span>.<span class="ident">into</span>(),
-            <span class="ident">bloom_filter_group_size</span>: <span class="number">8</span>,
-            <span class="ident">deferred_min_time</span>: <span class="ident">Duration::from_secs</span>(<span class="number">60</span>),
-            <span class="ident">deferred_max_time</span>: <span class="ident">Duration::from_secs</span>(<span class="number">180</span>),
+<span class="comment">//Setters
+</span><span class="kw">impl </span>Config {
+    <span class="kw">pub fn </span>set_work_dir(<span class="kw-2">&amp;mut </span><span class="self">self</span>, path: PathBuf) {
+        <span class="self">self</span>.work_dir = <span class="prelude-val">Some</span>(path);
+    }
+
+    <span class="kw">pub fn </span>set_max_blob_size(<span class="kw-2">&amp;mut </span><span class="self">self</span>, max_blob_size: u64) {
+        <span class="self">self</span>.max_blob_size = <span class="prelude-val">Some</span>(max_blob_size);
+    }
+
+    <span class="kw">pub fn </span>set_max_data_in_blob(<span class="kw-2">&amp;mut </span><span class="self">self</span>, max_data_in_blob: u64) {
+        <span class="self">self</span>.max_data_in_blob = <span class="prelude-val">Some</span>(max_data_in_blob);
+    }
+
+    <span class="kw">pub fn </span>set_blob_file_name_prefix(<span class="kw-2">&amp;mut </span><span class="self">self</span>, blob_file_name_prefix: String) {
+        <span class="self">self</span>.blob_file_name_prefix = <span class="prelude-val">Some</span>(blob_file_name_prefix);
+    }
+
+    <span class="kw">pub fn </span>set_allow_duplicates(<span class="kw-2">&amp;mut </span><span class="self">self</span>, allow_duplicates: bool) {
+        <span class="self">self</span>.allow_duplicates = allow_duplicates;
+    }
+
+    <span class="kw">pub fn </span>set_ignore_corrupted(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ignore_corrupted: bool) {
+        <span class="self">self</span>.ignore_corrupted = ignore_corrupted;
+    }
+
+    <span class="kw">pub fn </span>set_corrupted_dir_name(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: String) {
+        <span class="self">self</span>.corrupted_dir_name = name;
+    }
+
+    <span class="kw">pub fn </span>set_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: IndexConfig) {
+        <span class="self">self</span>.index = index
+    }
+
+    <span class="kw">pub fn </span>set_create_work_dir(<span class="kw-2">&amp;mut </span><span class="self">self</span>, create: bool) {
+        <span class="self">self</span>.create_work_dir = create;
+    }
+
+    <span class="kw">pub fn </span>set_dump_sem(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dump_sem: Arc&lt;Semaphore&gt;) {
+        <span class="self">self</span>.dump_sem = dump_sem
+    }
+
+    <span class="kw">pub fn </span>set_bloom_filter_group_size(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bloom_filter_group_size: usize) {
+        <span class="self">self</span>.bloom_filter_group_size = bloom_filter_group_size
+    }
+
+    <span class="kw">pub fn </span>set_deferred_index_dump_times(<span class="kw-2">&amp;mut </span><span class="self">self</span>, min: Duration, max: Duration) {
+        <span class="self">self</span>.deferred_min_time = min;
+        <span class="self">self</span>.deferred_max_time = max;
+    }
+}
+
+<span class="comment">// Impl Traits
+</span><span class="kw">impl </span>Default <span class="kw">for </span>Config {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            work_dir: <span class="prelude-val">None</span>,
+            create_work_dir: <span class="bool-val">true</span>,
+            max_blob_size: <span class="prelude-val">None</span>,
+            max_data_in_blob: <span class="prelude-val">None</span>,
+            blob_file_name_prefix: <span class="prelude-val">None</span>,
+            debounce_interval_ms: <span class="number">200</span>,
+            allow_duplicates: <span class="bool-val">false</span>,
+            ignore_corrupted: <span class="bool-val">false</span>,
+            index: Default::default(),
+            dump_sem: Arc::new(Semaphore::new(<span class="number">1</span>)),
+            corrupted_dir_name: <span class="string">&quot;corrupted&quot;</span>.into(),
+            bloom_filter_group_size: <span class="number">8</span>,
+            deferred_min_time: Duration::from_secs(<span class="number">60</span>),
+            deferred_max_time: Duration::from_secs(<span class="number">180</span>),
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

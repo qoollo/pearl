@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/error.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../pearl/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/error.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../pearl/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -183,186 +178,185 @@
 <span id="178">178</span>
 <span id="179">179</span>
 <span id="180">180</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// The error type for `Storage` operations.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Error</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Error</span> {
-    <span class="ident">kind</span>: <span class="ident">Kind</span>,
+<span class="doccomment">/// The error type for `Storage` operations.
+</span><span class="attribute">#[derive(Debug, Error)]
+</span><span class="kw">pub struct </span>Error {
+    kind: Kind,
 }
 
-<span class="kw">impl</span> <span class="ident">Error</span> {
-    <span class="doccomment">/// Returns the corresponding `Kind` for this error.</span>
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">kind</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Kind</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">kind</span>
+<span class="kw">impl </span>Error {
+    <span class="doccomment">/// Returns the corresponding `Kind` for this error.
+    </span><span class="attribute">#[must_use]
+    </span><span class="kw">pub fn </span>kind(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Kind {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.kind
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">kind</span>: <span class="ident">Kind</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">kind</span> }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(kind: Kind) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ kind }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">file_pattern</span>(<span class="ident">path</span>: <span class="ident">PathBuf</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">Kind::WrongFileNamePattern</span>(<span class="ident">path</span>))
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>file_pattern(path: PathBuf) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(Kind::WrongFileNamePattern(path))
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">validation</span>(<span class="ident">kind</span>: <span class="ident">ValidationErrorKind</span>, <span class="ident">cause</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">cause</span> <span class="op">=</span> <span class="ident">cause</span>.<span class="ident">into</span>();
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">Kind::Validation</span> { <span class="ident">kind</span>, <span class="ident">cause</span> })
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validation(kind: ValidationErrorKind, cause: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>cause = cause.into();
+        <span class="self">Self</span>::new(Kind::Validation { kind, cause })
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">uninitialized</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">Kind::Uninitialized</span>)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>uninitialized() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(Kind::Uninitialized)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">active_blob_not_set</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">Kind::ActiveBlobNotSet</span>)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>active_blob_not_set() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(Kind::ActiveBlobNotSet)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">active_blob_doesnt_exist</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">Kind::ActiveBlobDoesntExist</span>)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>active_blob_doesnt_exist() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(Kind::ActiveBlobDoesntExist)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">active_blob_already_exists</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">Kind::ActiveBlobExists</span>)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>active_blob_already_exists() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(Kind::ActiveBlobExists)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">not_found</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">Kind::RecordNotFound</span>)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>not_found() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(Kind::RecordNotFound)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">io</span>(<span class="ident">s</span>: <span class="ident">String</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">Kind::IO</span>(<span class="ident">s</span>))
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>io(s: String) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(Kind::IO(s))
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">file_unavailable</span>(<span class="ident">kind</span>: <span class="ident">IOErrorKind</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">Kind::FileUnavailable</span>(<span class="ident">kind</span>))
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>file_unavailable(kind: IOErrorKind) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(Kind::FileUnavailable(kind))
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">work_dir_unavailable</span>(
-        <span class="ident">path</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;</span>,
-        <span class="ident">msg</span>: <span class="ident">String</span>,
-        <span class="ident">io_err_kind</span>: <span class="ident">IOErrorKind</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">Kind::WorkDirUnavailable</span> {
-            <span class="ident">path</span>: <span class="ident">path</span>.<span class="ident">as_ref</span>().<span class="ident">into</span>(),
-            <span class="ident">msg</span>,
-            <span class="ident">io_err_kind</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>work_dir_unavailable(
+        path: <span class="kw">impl </span>AsRef&lt;Path&gt;,
+        msg: String,
+        io_err_kind: IOErrorKind,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(Kind::WorkDirUnavailable {
+            path: path.as_ref().into(),
+            msg,
+            io_err_kind,
         })
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">FmtResult</span> {
-        <span class="ident">Debug::fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">kind</span>, <span class="ident">f</span>)
+<span class="kw">impl </span>Display <span class="kw">for </span>Error {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; FmtResult {
+        Debug::fmt(<span class="kw-2">&amp;</span><span class="self">self</span>.kind, f)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Kind</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="attribute">#[<span class="ident">must_use</span>]</span>
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">kind</span>: <span class="ident">Kind</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">kind</span> }
+<span class="kw">impl </span>From&lt;Kind&gt; <span class="kw">for </span>Error {
+    <span class="attribute">#[must_use]
+    </span><span class="kw">fn </span>from(kind: Kind) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ kind }
     }
 }
 
-<span class="doccomment">/// A list specifying categories of Storage error.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Kind</span> {
-    <span class="doccomment">/// Active blob not set, often initialization failed.</span>
-    <span class="ident">ActiveBlobNotSet</span>,
-    <span class="doccomment">/// Input configuration is wrong.</span>
-    <span class="ident">WrongConfig</span>,
-    <span class="doccomment">/// Probably storage initialization failed.</span>
-    <span class="ident">Uninitialized</span>,
-    <span class="doccomment">/// Record not found</span>
-    <span class="ident">RecordNotFound</span>,
-    <span class="doccomment">/// Work directory is locked by another storage.</span>
-    <span class="doccomment">/// Or the operation lacked the necessary privileges to complete.</span>
-    <span class="doccomment">/// Stop another storage or delete `*.lock` file</span>
-    <span class="ident">WorkDirInUse</span>,
-    <span class="doccomment">/// Happens when try to write/read from work dir that doesn&#39;t exist.</span>
-    <span class="doccomment">/// In case when work dir wasn&#39;t created or disk was unmounted.</span>
-    <span class="doccomment">/// Contains path to failed work dir, IOError description and IOErrorKind.</span>
-    <span class="ident">WorkDirUnavailable</span> {
-        <span class="doccomment">/// path of unavailable dir</span>
-        <span class="ident">path</span>: <span class="ident">PathBuf</span>,
-        <span class="doccomment">/// os error message (or custom one if we can&#39;t create directory during initialization)</span>
-        <span class="ident">msg</span>: <span class="ident">String</span>,
-        <span class="doccomment">/// IO Error Kind (`NotFound` or `Other`)</span>
-        <span class="ident">io_err_kind</span>: <span class="ident">IOErrorKind</span>,
+<span class="doccomment">/// A list specifying categories of Storage error.
+</span><span class="attribute">#[derive(Debug, Clone, PartialEq)]
+</span><span class="kw">pub enum </span>Kind {
+    <span class="doccomment">/// Active blob not set, often initialization failed.
+    </span>ActiveBlobNotSet,
+    <span class="doccomment">/// Input configuration is wrong.
+    </span>WrongConfig,
+    <span class="doccomment">/// Probably storage initialization failed.
+    </span>Uninitialized,
+    <span class="doccomment">/// Record not found
+    </span>RecordNotFound,
+    <span class="doccomment">/// Work directory is locked by another storage.
+    /// Or the operation lacked the necessary privileges to complete.
+    /// Stop another storage or delete `*.lock` file
+    </span>WorkDirInUse,
+    <span class="doccomment">/// Happens when try to write/read from work dir that doesn&#39;t exist.
+    /// In case when work dir wasn&#39;t created or disk was unmounted.
+    /// Contains path to failed work dir, IOError description and IOErrorKind.
+    </span>WorkDirUnavailable {
+        <span class="doccomment">/// path of unavailable dir
+        </span>path: PathBuf,
+        <span class="doccomment">/// os error message (or custom one if we can&#39;t create directory during initialization)
+        </span>msg: String,
+        <span class="doccomment">/// IO Error Kind (`NotFound` or `Other`)
+        </span>io_err_kind: IOErrorKind,
     },
-    <span class="doccomment">/// Blob detects os errors during IO operation which indicate possible problems with disk</span>
-    <span class="ident">FileUnavailable</span>(<span class="ident">IOErrorKind</span>),
-    <span class="doccomment">/// Storage was initialized with different key size</span>
-    <span class="ident">KeySizeMismatch</span>,
-    <span class="doccomment">/// Active blob doesn&#39;t exist</span>
-    <span class="ident">ActiveBlobDoesntExist</span>,
-    <span class="doccomment">/// Active blob already exists</span>
-    <span class="ident">ActiveBlobExists</span>,
-    <span class="doccomment">/// Record with the same key and the same metadata already exists</span>
-    <span class="ident">RecordExists</span>,
-    <span class="doccomment">/// Any error not part of this list</span>
-    <span class="ident">EmptyIndexBunch</span>,
-    <span class="doccomment">/// Index error</span>
-    <span class="ident">Index</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Bincode serialization deserialization error</span>
-    <span class="ident">Bincode</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// std::io::Error</span>
-    <span class="ident">IO</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Wrong file name pattern in config</span>
-    <span class="ident">WrongFileNamePattern</span>(<span class="ident">PathBuf</span>),
-    <span class="doccomment">/// Conversion error</span>
-    <span class="ident">Conversion</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// Validation errors, eg. magic byte check</span>
-    <span class="ident">Validation</span> {
-        <span class="doccomment">/// Describes what check failed.</span>
-        <span class="ident">kind</span>: <span class="ident">ValidationErrorKind</span>,
-        <span class="doccomment">/// Description of an error cause.</span>
-        <span class="ident">cause</span>: <span class="ident">String</span>,
+    <span class="doccomment">/// Blob detects os errors during IO operation which indicate possible problems with disk
+    </span>FileUnavailable(IOErrorKind),
+    <span class="doccomment">/// Storage was initialized with different key size
+    </span>KeySizeMismatch,
+    <span class="doccomment">/// Active blob doesn&#39;t exist
+    </span>ActiveBlobDoesntExist,
+    <span class="doccomment">/// Active blob already exists
+    </span>ActiveBlobExists,
+    <span class="doccomment">/// Record with the same key and the same metadata already exists
+    </span>RecordExists,
+    <span class="doccomment">/// Any error not part of this list
+    </span>EmptyIndexBunch,
+    <span class="doccomment">/// Index error
+    </span>Index(String),
+    <span class="doccomment">/// Bincode serialization deserialization error
+    </span>Bincode(String),
+    <span class="doccomment">/// std::io::Error
+    </span>IO(String),
+    <span class="doccomment">/// Wrong file name pattern in config
+    </span>WrongFileNamePattern(PathBuf),
+    <span class="doccomment">/// Conversion error
+    </span>Conversion(String),
+    <span class="doccomment">/// Validation errors, eg. magic byte check
+    </span>Validation {
+        <span class="doccomment">/// Describes what check failed.
+        </span>kind: ValidationErrorKind,
+        <span class="doccomment">/// Description of an error cause.
+        </span>cause: String,
     },
 
-    <span class="doccomment">/// Other error</span>
-    <span class="ident">Other</span>,
+    <span class="doccomment">/// Other error
+    </span>Other,
 }
 
-<span class="doccomment">/// Variants of validation errors.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ValidationErrorKind</span> {
-    <span class="doccomment">/// Blob key size.</span>
-    <span class="ident">BlobKeySize</span>,
-    <span class="doccomment">/// Blob magic byte.</span>
-    <span class="ident">BlobMagicByte</span>,
-    <span class="doccomment">/// Blob version.</span>
-    <span class="ident">BlobVersion</span>,
-    <span class="doccomment">/// Index checksum.</span>
-    <span class="ident">IndexChecksum</span>,
-    <span class="doccomment">/// Index version.</span>
-    <span class="ident">IndexVersion</span>,
-    <span class="doccomment">/// Index magic byte</span>
-    <span class="ident">IndexMagicByte</span>,
-    <span class="doccomment">/// Record data checksum.</span>
-    <span class="ident">RecordDataChecksum</span>,
-    <span class="doccomment">/// Record header checksum.</span>
-    <span class="ident">RecordHeaderChecksum</span>,
-    <span class="doccomment">/// Record magic byte.</span>
-    <span class="ident">RecordMagicByte</span>,
-    <span class="doccomment">/// Index blob size</span>
-    <span class="ident">IndexBlobSize</span>,
-    <span class="doccomment">/// Index is not written (index header corrupted)</span>
-    <span class="ident">IndexNotWritten</span>,
+<span class="doccomment">/// Variants of validation errors.
+</span><span class="attribute">#[derive(Debug, Clone, PartialEq)]
+</span><span class="kw">pub enum </span>ValidationErrorKind {
+    <span class="doccomment">/// Blob key size.
+    </span>BlobKeySize,
+    <span class="doccomment">/// Blob magic byte.
+    </span>BlobMagicByte,
+    <span class="doccomment">/// Blob version.
+    </span>BlobVersion,
+    <span class="doccomment">/// Index checksum.
+    </span>IndexChecksum,
+    <span class="doccomment">/// Index version.
+    </span>IndexVersion,
+    <span class="doccomment">/// Index magic byte
+    </span>IndexMagicByte,
+    <span class="doccomment">/// Record data checksum.
+    </span>RecordDataChecksum,
+    <span class="doccomment">/// Record header checksum.
+    </span>RecordHeaderChecksum,
+    <span class="doccomment">/// Record magic byte.
+    </span>RecordMagicByte,
+    <span class="doccomment">/// Index blob size
+    </span>IndexBlobSize,
+    <span class="doccomment">/// Index is not written (index header corrupted)
+    </span>IndexNotWritten,
 }
 
-<span class="doccomment">/// Convenient helper for downcasting anyhow error to pearl error.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">AsPearlError</span> {
-    <span class="doccomment">/// Performs conversion.</span>
-    <span class="kw">fn</span> <span class="ident">as_pearl_error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Error</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Convenient helper for downcasting anyhow error to pearl error.
+</span><span class="kw">pub trait </span>AsPearlError {
+    <span class="doccomment">/// Performs conversion.
+    </span><span class="kw">fn </span>as_pearl_error(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Error&gt;;
 }
 
-<span class="kw">impl</span> <span class="ident">AsPearlError</span> <span class="kw">for</span> <span class="ident">anyhow::Error</span> {
-    <span class="kw">fn</span> <span class="ident">as_pearl_error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">downcast_ref</span>()
+<span class="kw">impl </span>AsPearlError <span class="kw">for </span>anyhow::Error {
+    <span class="kw">fn </span>as_pearl_error(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Error&gt; {
+        <span class="self">self</span>.downcast_ref()
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

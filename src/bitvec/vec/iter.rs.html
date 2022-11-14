@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/vec/iter.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>iter.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/vec/iter.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>iter.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -795,49 +790,49 @@
 <span id="790">790</span>
 <span id="791">791</span>
 <span id="792">792</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Iterators over `Vec&lt;T&gt;`.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Iterators over `Vec&lt;T&gt;`.
 
-<span class="kw">use</span> <span class="ident">alloc::vec::Vec</span>;
-<span class="kw">use</span> <span class="ident">core</span>::{
-	<span class="ident">fmt</span>::{
+</span><span class="kw">use </span>alloc::vec::Vec;
+<span class="kw">use </span>core::{
+	fmt::{
 		<span class="self">self</span>,
-		<span class="ident">Debug</span>,
-		<span class="ident">Formatter</span>,
+		Debug,
+		Formatter,
 	},
-	<span class="ident">iter</span>::{
-		<span class="ident">FromIterator</span>,
-		<span class="ident">FusedIterator</span>,
+	iter::{
+		FromIterator,
+		FusedIterator,
 	},
-	<span class="ident">mem</span>::{
+	mem::{
 		<span class="self">self</span>,
-		<span class="ident">ManuallyDrop</span>,
+		ManuallyDrop,
 	},
-	<span class="ident">ops</span>::{
-		<span class="ident">Range</span>,
-		<span class="ident">RangeBounds</span>,
+	ops::{
+		Range,
+		RangeBounds,
 	},
 };
 
-<span class="kw">use</span> <span class="ident">tap</span>::{
-	<span class="ident">Pipe</span>,
-	<span class="ident">Tap</span>,
-	<span class="ident">TapOptional</span>,
+<span class="kw">use </span>tap::{
+	Pipe,
+	Tap,
+	TapOptional,
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::BitVec</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{
-	<span class="ident">boxed::BitBox</span>,
-	<span class="ident">devel</span> <span class="kw">as</span> <span class="ident">dvl</span>,
-	<span class="ident">order::BitOrder</span>,
-	<span class="ident">ptr</span>::{
-		<span class="ident">BitPtrRange</span>,
-		<span class="ident">BitRef</span>,
-		<span class="ident">Mut</span>,
-		<span class="ident">Mutability</span>,
+<span class="kw">use </span><span class="kw">super</span>::BitVec;
+<span class="kw">use crate</span>::{
+	boxed::BitBox,
+	devel <span class="kw">as </span>dvl,
+	order::BitOrder,
+	ptr::{
+		BitPtrRange,
+		BitRef,
+		Mut,
+		Mutability,
 	},
-	<span class="ident">slice::BitSlice</span>,
-	<span class="ident">store::BitStore</span>,
-	<span class="ident">view::BitView</span>,
+	slice::BitSlice,
+	store::BitStore,
+	view::BitView,
 };
 
 <span class="doccomment">/** Extends a `BitVec` from a `bool` producer.
@@ -854,138 +849,138 @@ than this. When the source bit-slice does not match the destination bit-vector�
 type parameters, it will still be faster by virtue of knowing the bit-slice
 length upfront; when the type parameters match, it will optimize to `memcpy`
 with some bookkeeping.
-**/</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Extend</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="kw">impl</span>&lt;O, T&gt; Extend&lt;bool&gt; <span class="kw">for </span>BitVec&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">extend</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">iter</span>: <span class="ident">I</span>)
-	<span class="kw">where</span> <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">iter</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>();
-		<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">irrefutable_let_patterns</span>)]</span> <span class="comment">// Removing the `if` is unstable.</span>
-		<span class="kw">if</span> <span class="kw">let</span> (<span class="kw">_</span>, <span class="prelude-val">Some</span>(<span class="ident">n</span>)) <span class="op">|</span> (<span class="ident">n</span>, <span class="prelude-val">None</span>) <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">size_hint</span>() {
-			<span class="self">self</span>.<span class="ident">reserve</span>(<span class="ident">n</span>);
-			<span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">len</span>();
-			<span class="kw">let</span> <span class="ident">new_len</span> <span class="op">=</span> <span class="ident">len</span> <span class="op">+</span> <span class="ident">n</span>;
-			<span class="kw">let</span> <span class="ident">new</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">get_unchecked_mut</span>(<span class="ident">len</span> .. <span class="ident">new_len</span>) };
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>extend&lt;I&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, iter: I)
+	<span class="kw">where </span>I: IntoIterator&lt;Item = bool&gt; {
+		<span class="kw">let </span><span class="kw-2">mut </span>iter = iter.into_iter();
+		<span class="attribute">#[allow(irrefutable_let_patterns)] </span><span class="comment">// Removing the `if` is unstable.
+		</span><span class="kw">if let </span>(<span class="kw">_</span>, <span class="prelude-val">Some</span>(n)) | (n, <span class="prelude-val">None</span>) = iter.size_hint() {
+			<span class="self">self</span>.reserve(n);
+			<span class="kw">let </span>len = <span class="self">self</span>.len();
+			<span class="kw">let </span>new_len = len + n;
+			<span class="kw">let </span>new = <span class="kw">unsafe </span>{ <span class="self">self</span>.get_unchecked_mut(len .. new_len) };
 
-			<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pulled</span> <span class="op">=</span> <span class="number">0</span>;
-			<span class="comment">//  In theory, using direct pointer writes ought to be the fastest</span>
-			<span class="comment">//  general condition.</span>
-			<span class="kw">for</span> (<span class="ident">ptr</span>, <span class="ident">bit</span>) <span class="kw">in</span> <span class="ident">new</span>.<span class="ident">as_mut_bitptr_range</span>().<span class="ident">zip</span>(<span class="ident">iter</span>.<span class="ident">by_ref</span>()) {
-				<span class="kw">unsafe</span> {
-					<span class="ident">ptr</span>.<span class="ident">write</span>(<span class="ident">bit</span>);
+			<span class="kw">let </span><span class="kw-2">mut </span>pulled = <span class="number">0</span>;
+			<span class="comment">//  In theory, using direct pointer writes ought to be the fastest
+			//  general condition.
+			</span><span class="kw">for </span>(ptr, bit) <span class="kw">in </span>new.as_mut_bitptr_range().zip(iter.by_ref()) {
+				<span class="kw">unsafe </span>{
+					ptr.write(bit);
 				}
-				<span class="ident">pulled</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+				pulled += <span class="number">1</span>;
 			}
-			<span class="kw">unsafe</span> {
-				<span class="self">self</span>.<span class="ident">set_len</span>(<span class="ident">len</span> <span class="op">+</span> <span class="ident">pulled</span>);
+			<span class="kw">unsafe </span>{
+				<span class="self">self</span>.set_len(len + pulled);
 			}
 		}
 
-		<span class="comment">//  Well-behaved iterators will reduce this to a single branch.</span>
-		<span class="ident">iter</span>.<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">bit</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">push</span>(<span class="ident">bit</span>));
+		<span class="comment">//  Well-behaved iterators will reduce this to a single branch.
+		</span>iter.for_each(|bit| <span class="self">self</span>.push(bit));
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Extend</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">bool</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O, T&gt; Extend&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>bool&gt; <span class="kw">for </span>BitVec&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">extend</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">iter</span>: <span class="ident">I</span>)
-	<span class="kw">where</span> <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">bool</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">extend</span>(<span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">copied</span>());
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>extend&lt;I&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, iter: I)
+	<span class="kw">where </span>I: IntoIterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>bool&gt; {
+		<span class="self">self</span>.extend(iter.into_iter().copied());
 	}
 }
 
-<span class="doccomment">/// ***DO NOT*** use this. You clearly have a [`BitSlice`]. Use</span>
-<span class="doccomment">/// [`BitVec::extend_from_bitslice`].</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">M</span>, <span class="ident">O1</span>, <span class="ident">O2</span>, <span class="ident">T1</span>, <span class="ident">T2</span><span class="op">&gt;</span> <span class="ident">Extend</span><span class="op">&lt;</span><span class="ident">BitRef</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">M</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O1</span>, <span class="ident">T1</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O1</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">O2</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T1</span>: <span class="ident">BitStore</span>,
-	<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+<span class="doccomment">/// ***DO NOT*** use this. You clearly have a [`BitSlice`]. Use
+/// [`BitVec::extend_from_bitslice`].
+</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, M, O1, O2, T1, T2&gt; Extend&lt;BitRef&lt;<span class="lifetime">&#39;a</span>, M, O2, T2&gt;&gt; <span class="kw">for </span>BitVec&lt;O1, T1&gt;
+<span class="kw">where
+	</span>M: Mutability,
+	O1: BitOrder,
+	O2: BitOrder,
+	T1: BitStore,
+	T2: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">extend</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">iter</span>: <span class="ident">I</span>)
-	<span class="kw">where</span> <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">BitRef</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">M</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">extend</span>(<span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">bit</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">bit</span>));
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>extend&lt;I&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, iter: I)
+	<span class="kw">where </span>I: IntoIterator&lt;Item = BitRef&lt;<span class="lifetime">&#39;a</span>, M, O2, T2&gt;&gt; {
+		<span class="self">self</span>.extend(iter.into_iter().map(|bit| <span class="kw-2">*</span>bit));
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Extend</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;O, T&gt; Extend&lt;T&gt; <span class="kw">for </span>BitVec&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">extend</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">iter</span>: <span class="ident">I</span>)
-	<span class="kw">where</span> <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>() {
-			<span class="self">self</span>.<span class="ident">extend_from_bitslice</span>(<span class="ident">elem</span>.<span class="ident">view_bits</span>::<span class="op">&lt;</span><span class="ident">O</span><span class="op">&gt;</span>());
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>extend&lt;I&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, iter: I)
+	<span class="kw">where </span>I: IntoIterator&lt;Item = T&gt; {
+		<span class="kw">for </span>elem <span class="kw">in </span>iter.into_iter() {
+			<span class="self">self</span>.extend_from_bitslice(elem.view_bits::&lt;O&gt;());
 		}
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Extend</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O, T&gt; Extend&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>T&gt; <span class="kw">for </span>BitVec&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">extend</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">iter</span>: <span class="ident">I</span>)
-	<span class="kw">where</span> <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="kw">for</span> <span class="ident">elem</span> <span class="kw">in</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>() {
-			<span class="self">self</span>.<span class="ident">extend_from_bitslice</span>(<span class="ident">elem</span>.<span class="ident">view_bits</span>::<span class="op">&lt;</span><span class="ident">O</span><span class="op">&gt;</span>());
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>extend&lt;I&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, iter: I)
+	<span class="kw">where </span>I: IntoIterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>T&gt; {
+		<span class="kw">for </span>elem <span class="kw">in </span>iter.into_iter() {
+			<span class="self">self</span>.extend_from_bitslice(elem.view_bits::&lt;O&gt;());
 		}
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">FromIterator</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;O, T&gt; FromIterator&lt;bool&gt; <span class="kw">for </span>BitVec&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="ident">iter</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span>
-	<span class="kw">where</span> <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span><span class="op">&gt;</span> {
-		<span class="ident"><span class="self">Self</span>::new</span>().<span class="ident">tap_mut</span>(<span class="op">|</span><span class="ident">bv</span><span class="op">|</span> <span class="ident">bv</span>.<span class="ident">extend</span>(<span class="ident">iter</span>.<span class="ident">into_iter</span>()))
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from_iter&lt;I&gt;(iter: I) -&gt; <span class="self">Self
+	</span><span class="kw">where </span>I: IntoIterator&lt;Item = bool&gt; {
+		<span class="self">Self</span>::new().tap_mut(|bv| bv.extend(iter.into_iter()))
 	}
 }
 
-<span class="doccomment">/// ***DO NOT*** use this. You clearly have a [`BitSlice`]. Use</span>
-<span class="doccomment">/// [`BitVec::from_bitslice`] instead.</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">M</span>, <span class="ident">O1</span>, <span class="ident">O2</span>, <span class="ident">T1</span>, <span class="ident">T2</span><span class="op">&gt;</span> <span class="ident">FromIterator</span><span class="op">&lt;</span><span class="ident">BitRef</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">M</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span><span class="op">&gt;</span>
-	<span class="kw">for</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O1</span>, <span class="ident">T1</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">M</span>: <span class="ident">Mutability</span>,
-	<span class="ident">O1</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">O2</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T1</span>: <span class="ident">BitStore</span>,
-	<span class="ident">T2</span>: <span class="ident">BitStore</span>,
+<span class="doccomment">/// ***DO NOT*** use this. You clearly have a [`BitSlice`]. Use
+/// [`BitVec::from_bitslice`] instead.
+</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, M, O1, O2, T1, T2&gt; FromIterator&lt;BitRef&lt;<span class="lifetime">&#39;a</span>, M, O2, T2&gt;&gt;
+	<span class="kw">for </span>BitVec&lt;O1, T1&gt;
+<span class="kw">where
+	</span>M: Mutability,
+	O1: BitOrder,
+	O2: BitOrder,
+	T1: BitStore,
+	T2: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="ident">iter</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span>
-	<span class="kw">where</span> <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">BitRef</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">M</span>, <span class="ident">O2</span>, <span class="ident">T2</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-		<span class="ident"><span class="self">Self</span>::new</span>().<span class="ident">tap_mut</span>(<span class="op">|</span><span class="ident">bv</span><span class="op">|</span> <span class="ident">bv</span>.<span class="ident">extend</span>(<span class="ident">iter</span>.<span class="ident">into_iter</span>()))
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from_iter&lt;I&gt;(iter: I) -&gt; <span class="self">Self
+	</span><span class="kw">where </span>I: IntoIterator&lt;Item = BitRef&lt;<span class="lifetime">&#39;a</span>, M, O2, T2&gt;&gt; {
+		<span class="self">Self</span>::new().tap_mut(|bv| bv.extend(iter.into_iter()))
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">FromIterator</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">bool</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O, T&gt; FromIterator&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>bool&gt; <span class="kw">for </span>BitVec&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="ident">iter</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span>
-	<span class="kw">where</span> <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">bool</span><span class="op">&gt;</span> {
-		<span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">copied</span>().<span class="ident">pipe</span>(<span class="ident"><span class="self">Self</span>::from_iter</span>)
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from_iter&lt;I&gt;(iter: I) -&gt; <span class="self">Self
+	</span><span class="kw">where </span>I: IntoIterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>bool&gt; {
+		iter.into_iter().copied().pipe(<span class="self">Self</span>::from_iter)
 	}
 }
 
@@ -996,80 +991,80 @@ This is a short-hand for, and implemented as, `iter.collect::&lt;Vec&lt;_&gt;&gt
 This is not a standard-library API, and was added for [Issue #83].
 
 [Issue #83]: https://github.com/bitvecto-rs/bitvec/issues/83
-**/</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">FromIterator</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="kw">impl</span>&lt;O, T&gt; FromIterator&lt;T&gt; <span class="kw">for </span>BitVec&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="ident">iter</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span>
-	<span class="kw">where</span> <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>().<span class="ident">pipe</span>(<span class="ident"><span class="self">Self</span>::from_vec</span>)
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from_iter&lt;I&gt;(iter: I) -&gt; <span class="self">Self
+	</span><span class="kw">where </span>I: IntoIterator&lt;Item = T&gt; {
+		iter.into_iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().pipe(<span class="self">Self</span>::from_vec)
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">FromIterator</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O, T&gt; FromIterator&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>T&gt; <span class="kw">for </span>BitVec&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="ident">iter</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span>
-	<span class="kw">where</span> <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vec</span> <span class="op">=</span> <span class="ident">iter</span>
-			.<span class="ident">into_iter</span>()
-			.<span class="ident">map</span>(<span class="ident">BitStore::load_value</span>)
-			.<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T::Mem</span><span class="op">&gt;</span><span class="op">&gt;</span>()
-			.<span class="ident">pipe</span>(<span class="ident">ManuallyDrop::new</span>);
-		<span class="kw">let</span> (<span class="ident">ptr</span>, <span class="ident">len</span>, <span class="ident">capa</span>) <span class="op">=</span> (<span class="ident">vec</span>.<span class="ident">as_mut_ptr</span>(), <span class="ident">vec</span>.<span class="ident">len</span>(), <span class="ident">vec</span>.<span class="ident">capacity</span>());
-		<span class="kw">unsafe</span> { <span class="ident">Vec::from_raw_parts</span>(<span class="ident">ptr</span> <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="ident">T</span>, <span class="ident">len</span>, <span class="ident">capa</span>) }
-			.<span class="ident">pipe</span>(<span class="ident"><span class="self">Self</span>::from_vec</span>)
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from_iter&lt;I&gt;(iter: I) -&gt; <span class="self">Self
+	</span><span class="kw">where </span>I: IntoIterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>T&gt; {
+		<span class="kw">let </span><span class="kw-2">mut </span>vec = iter
+			.into_iter()
+			.map(BitStore::load_value)
+			.collect::&lt;Vec&lt;T::Mem&gt;&gt;()
+			.pipe(ManuallyDrop::new);
+		<span class="kw">let </span>(ptr, len, capa) = (vec.as_mut_ptr(), vec.len(), vec.capacity());
+		<span class="kw">unsafe </span>{ Vec::from_raw_parts(ptr <span class="kw">as </span><span class="kw-2">*mut </span>T, len, capa) }
+			.pipe(<span class="self">Self</span>::from_vec)
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">IntoIterator</span> <span class="kw">for</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;O, T&gt; IntoIterator <span class="kw">for </span>BitVec&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="kw">type</span> <span class="ident">IntoIter</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">BitBox</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">IntoIterator</span><span class="op">&gt;</span><span class="ident">::IntoIter</span>;
-	<span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">BitBox</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">IntoIterator</span><span class="op">&gt;</span><span class="ident">::Item</span>;
+	<span class="kw">type </span>IntoIter = &lt;BitBox&lt;O, T&gt; <span class="kw">as </span>IntoIterator&gt;::IntoIter;
+	<span class="kw">type </span>Item = &lt;BitBox&lt;O, T&gt; <span class="kw">as </span>IntoIterator&gt;::Item;
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">into_iter</span>(<span class="self">self</span>) -&gt; <span class="ident"><span class="self">Self</span>::IntoIter</span> {
-		<span class="self">self</span>.<span class="ident">into_boxed_bitslice</span>().<span class="ident">into_iter</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
+		<span class="self">self</span>.into_boxed_bitslice().into_iter()
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">IntoIterator</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O, T&gt; IntoIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BitVec&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="kw">type</span> <span class="ident">IntoIter</span> <span class="op">=</span> <span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">IntoIterator</span><span class="op">&gt;</span><span class="ident">::IntoIter</span>;
-	<span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">IntoIterator</span><span class="op">&gt;</span><span class="ident">::Item</span>;
+	<span class="kw">type </span>IntoIter = &lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BitSlice&lt;O, T&gt; <span class="kw">as </span>IntoIterator&gt;::IntoIter;
+	<span class="kw">type </span>Item = &lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BitSlice&lt;O, T&gt; <span class="kw">as </span>IntoIterator&gt;::Item;
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">into_iter</span>(<span class="self">self</span>) -&gt; <span class="ident"><span class="self">Self</span>::IntoIter</span> {
-		<span class="self">self</span>.<span class="ident">as_bitslice</span>().<span class="ident">into_iter</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
+		<span class="self">self</span>.as_bitslice().into_iter()
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">IntoIterator</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O, T&gt; IntoIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>BitVec&lt;O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="kw">type</span> <span class="ident">IntoIter</span> <span class="op">=</span> <span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">IntoIterator</span><span class="op">&gt;</span><span class="ident">::IntoIter</span>;
-	<span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">IntoIterator</span><span class="op">&gt;</span><span class="ident">::Item</span>;
+	<span class="kw">type </span>IntoIter = &lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>BitSlice&lt;O, T&gt; <span class="kw">as </span>IntoIterator&gt;::IntoIter;
+	<span class="kw">type </span>Item = &lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>BitSlice&lt;O, T&gt; <span class="kw">as </span>IntoIterator&gt;::Item;
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">into_iter</span>(<span class="self">self</span>) -&gt; <span class="ident"><span class="self">Self</span>::IntoIter</span> {
-		<span class="self">self</span>.<span class="ident">as_mut_bitslice</span>().<span class="ident">into_iter</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
+		<span class="self">self</span>.as_mut_bitslice().into_iter()
 	}
 }
 
@@ -1083,312 +1078,312 @@ This `struct` is created by the [`.drain()`] method on [`BitVec`].
 
 [`BitVec`]: crate::vec::BitVec
 [`.drain()`]: crate::vec::BitVec::drain
-**/</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+**/
+</span><span class="kw">pub struct </span>Drain&lt;<span class="lifetime">&#39;a</span>, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="doccomment">/// Exclusive reference to the vector this drains.</span>
-	<span class="ident">source</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>,
-	<span class="doccomment">/// The range of the source vector’s buffer being drained.</span>
-	<span class="ident">drain</span>: <span class="ident">BitPtrRange</span><span class="op">&lt;</span><span class="ident">Mut</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>,
-	<span class="doccomment">/// The range of the source vector’s preserved tail. This runs from the back</span>
-	<span class="doccomment">/// edge of the drained region to the vector’s original length.</span>
-	<span class="ident">tail</span>: <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
+	<span class="doccomment">/// Exclusive reference to the vector this drains.
+	</span>source: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>BitVec&lt;O, T&gt;,
+	<span class="doccomment">/// The range of the source vector’s buffer being drained.
+	</span>drain: BitPtrRange&lt;Mut, O, T&gt;,
+	<span class="doccomment">/// The range of the source vector’s preserved tail. This runs from the back
+	/// edge of the drained region to the vector’s original length.
+	</span>tail: Range&lt;usize&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O, T&gt; Drain&lt;<span class="lifetime">&#39;a</span>, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>(<span class="ident">source</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">range</span>: <span class="ident">R</span>) -&gt; <span class="self">Self</span>
-	<span class="kw">where</span> <span class="ident">R</span>: <span class="ident">RangeBounds</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-		<span class="comment">//  Hold the current vector size for bounds comparison.</span>
-		<span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">source</span>.<span class="ident">len</span>();
-		<span class="comment">//  Normalize the input range and assert that it is within bounds.</span>
-		<span class="kw">let</span> <span class="ident">drain</span> <span class="op">=</span> <span class="ident">dvl::normalize_range</span>(<span class="ident">range</span>, <span class="ident">len</span>);
-		<span class="ident">dvl::assert_range</span>(<span class="ident">drain</span>.<span class="ident">clone</span>(), <span class="ident">len</span>);
+	<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new&lt;R&gt;(source: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>BitVec&lt;O, T&gt;, range: R) -&gt; <span class="self">Self
+	</span><span class="kw">where </span>R: RangeBounds&lt;usize&gt; {
+		<span class="comment">//  Hold the current vector size for bounds comparison.
+		</span><span class="kw">let </span>len = source.len();
+		<span class="comment">//  Normalize the input range and assert that it is within bounds.
+		</span><span class="kw">let </span>drain = dvl::normalize_range(range, len);
+		dvl::assert_range(drain.clone(), len);
 
-		<span class="comment">//  The tail region is everything after the drain, before the real end.</span>
-		<span class="kw">let</span> <span class="ident">tail</span> <span class="op">=</span> <span class="ident">drain</span>.<span class="ident">end</span> .. <span class="ident">len</span>;
-		<span class="comment">//  The drain span is an iterator over the provided range.</span>
-		<span class="kw">let</span> <span class="ident">drain</span> <span class="op">=</span> <span class="kw">unsafe</span> {
-			<span class="comment">//  Set the source vector to end before the drain.</span>
-			<span class="ident">source</span>.<span class="ident">set_len</span>(<span class="ident">drain</span>.<span class="ident">start</span>);
-			<span class="comment">//  Grab the drain range and produce an iterator over it.</span>
-			<span class="ident">source</span>
-				.<span class="ident">as_mut_bitslice</span>()
-				.<span class="ident">get_unchecked_mut</span>(<span class="ident">drain</span>)
-				<span class="comment">//  Detach the region from the `source` borrow.</span>
-				.<span class="ident">as_mut_bitptr_range</span>()
+		<span class="comment">//  The tail region is everything after the drain, before the real end.
+		</span><span class="kw">let </span>tail = drain.end .. len;
+		<span class="comment">//  The drain span is an iterator over the provided range.
+		</span><span class="kw">let </span>drain = <span class="kw">unsafe </span>{
+			<span class="comment">//  Set the source vector to end before the drain.
+			</span>source.set_len(drain.start);
+			<span class="comment">//  Grab the drain range and produce an iterator over it.
+			</span>source
+				.as_mut_bitslice()
+				.get_unchecked_mut(drain)
+				<span class="comment">//  Detach the region from the `source` borrow.
+				</span>.as_mut_bitptr_range()
 		};
-		<span class="self">Self</span> {
-			<span class="ident">source</span>,
-			<span class="ident">drain</span>,
-			<span class="ident">tail</span>,
+		<span class="self">Self </span>{
+			source,
+			drain,
+			tail,
 		}
 	}
 
-	<span class="doccomment">/// Returns the remaining bits of this iterator as a [`BitSlice`].</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Original</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`Drain::as_slice`](alloc::vec::Drain::as_slice)</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # API Differences</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This method is renamed, as it operates on a [`BitSlice`] rather than an</span>
-	<span class="doccomment">/// element slice.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`BitSlice`]: crate::slice::BitSlice</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_bitslice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">clone</span>().<span class="ident">into_bitspan</span>().<span class="ident">to_bitslice_ref</span>()
+	<span class="doccomment">/// Returns the remaining bits of this iterator as a [`BitSlice`].
+	///
+	/// # Original
+	///
+	/// [`Drain::as_slice`](alloc::vec::Drain::as_slice)
+	///
+	/// # API Differences
+	///
+	/// This method is renamed, as it operates on a [`BitSlice`] rather than an
+	/// element slice.
+	///
+	/// [`BitSlice`]: crate::slice::BitSlice
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub fn </span>as_bitslice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BitSlice&lt;O, T&gt; {
+		<span class="self">self</span>.drain.clone().into_bitspan().to_bitslice_ref()
 	}
 
-	<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-	<span class="attribute">#[<span class="ident">deprecated</span> <span class="op">=</span> <span class="string">&quot;Use `as_bitslice` to view the underlying slice&quot;</span>]</span>
-	<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">as_bitslice</span>()
+	<span class="attribute">#[doc(hidden)]
+	#[inline(always)]
+	#[cfg(not(tarpaulin_include))]
+	#[deprecated = <span class="string">&quot;Use `as_bitslice` to view the underlying slice&quot;</span>]
+	</span><span class="kw">pub fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BitSlice&lt;O, T&gt; {
+		<span class="self">self</span>.as_bitslice()
 	}
 
-	<span class="doccomment">/// Attempts to overwrite the drained region with another iterator.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Type Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `I`: Some source of `bool`s.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `&amp;mut self`</span>
-	<span class="doccomment">/// - `iter`: A source of `bool`s with which to overwrite the drained span.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// Whether the drained span was completely filled, or if the replacement</span>
-	<span class="doccomment">/// source `iter`ator was exhausted first.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Effects</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The source vector is extended to include all bits filled in from the</span>
-	<span class="doccomment">/// replacement `iter`ator, but is *not* extended to include the tail, even</span>
-	<span class="doccomment">/// if drained region is completely filled. This work is done in the</span>
-	<span class="doccomment">/// destructor.</span>
-	<span class="kw">fn</span> <span class="ident">fill</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">iter</span>: <span class="kw-2">&amp;mut</span> <span class="ident">I</span>) -&gt; <span class="ident">FillStatus</span>
-	<span class="kw">where</span> <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span><span class="op">&gt;</span> {
-		<span class="kw">let</span> <span class="ident">bitvec</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">source</span>;
-		<span class="comment">//  Get the length of the source vector. This will be grown as `iter`</span>
-		<span class="comment">//  writes into the drain span.</span>
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">bitvec</span>.<span class="ident">len</span>();
-		<span class="comment">//  Get the drain span as a bit-pointer range.</span>
-		<span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">bitvec</span>.<span class="ident">get_unchecked_mut</span>(<span class="ident">len</span> .. <span class="self">self</span>.<span class="ident">tail</span>.<span class="ident">start</span>) }
-			.<span class="ident">as_mut_bitptr_range</span>();
+	<span class="doccomment">/// Attempts to overwrite the drained region with another iterator.
+	///
+	/// # Type Parameters
+	///
+	/// - `I`: Some source of `bool`s.
+	///
+	/// # Parameters
+	///
+	/// - `&amp;mut self`
+	/// - `iter`: A source of `bool`s with which to overwrite the drained span.
+	///
+	/// # Returns
+	///
+	/// Whether the drained span was completely filled, or if the replacement
+	/// source `iter`ator was exhausted first.
+	///
+	/// # Effects
+	///
+	/// The source vector is extended to include all bits filled in from the
+	/// replacement `iter`ator, but is *not* extended to include the tail, even
+	/// if drained region is completely filled. This work is done in the
+	/// destructor.
+	</span><span class="kw">fn </span>fill&lt;I&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, iter: <span class="kw-2">&amp;mut </span>I) -&gt; FillStatus
+	<span class="kw">where </span>I: Iterator&lt;Item = bool&gt; {
+		<span class="kw">let </span>bitvec = <span class="kw-2">&amp;mut *</span><span class="self">self</span>.source;
+		<span class="comment">//  Get the length of the source vector. This will be grown as `iter`
+		//  writes into the drain span.
+		</span><span class="kw">let </span><span class="kw-2">mut </span>len = bitvec.len();
+		<span class="comment">//  Get the drain span as a bit-pointer range.
+		</span><span class="kw">let </span>span = <span class="kw">unsafe </span>{ bitvec.get_unchecked_mut(len .. <span class="self">self</span>.tail.start) }
+			.as_mut_bitptr_range();
 
-		<span class="comment">//  Set the exit flag to assume completion.</span>
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">FillStatus::FullSpan</span>;
-		<span class="comment">//  Write the `iter` bits into the drain `span`.</span>
-		<span class="kw">for</span> <span class="ident">ptr</span> <span class="kw">in</span> <span class="ident">span</span> {
-			<span class="comment">//  While the `iter` is not exhausted, write it into the span and</span>
-			<span class="comment">//  increase the vector length counter.</span>
-			<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">bit</span>) <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">next</span>() {
-				<span class="kw">unsafe</span> {
-					<span class="ident">ptr</span>.<span class="ident">write</span>(<span class="ident">bit</span>);
+		<span class="comment">//  Set the exit flag to assume completion.
+		</span><span class="kw">let </span><span class="kw-2">mut </span>out = FillStatus::FullSpan;
+		<span class="comment">//  Write the `iter` bits into the drain `span`.
+		</span><span class="kw">for </span>ptr <span class="kw">in </span>span {
+			<span class="comment">//  While the `iter` is not exhausted, write it into the span and
+			//  increase the vector length counter.
+			</span><span class="kw">if let </span><span class="prelude-val">Some</span>(bit) = iter.next() {
+				<span class="kw">unsafe </span>{
+					ptr.write(bit);
 				}
-				<span class="ident">len</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+				len += <span class="number">1</span>;
 			}
-			<span class="comment">//  If the `iter` exhausts before the drain `span` is filled, set</span>
-			<span class="comment">//  the exit flag accordingly.</span>
-			<span class="kw">else</span> {
-				<span class="ident">out</span> <span class="op">=</span> <span class="ident">FillStatus::EmptyInput</span>;
+			<span class="comment">//  If the `iter` exhausts before the drain `span` is filled, set
+			//  the exit flag accordingly.
+			</span><span class="kw">else </span>{
+				out = FillStatus::EmptyInput;
 				<span class="kw">break</span>;
 			}
 		}
-		<span class="comment">//  Update the vector length counter to include the bits written by</span>
-		<span class="comment">//  `iter`.</span>
-		<span class="kw">unsafe</span> {
-			<span class="ident">bitvec</span>.<span class="ident">set_len</span>(<span class="ident">len</span>);
+		<span class="comment">//  Update the vector length counter to include the bits written by
+		//  `iter`.
+		</span><span class="kw">unsafe </span>{
+			bitvec.set_len(len);
 		}
-		<span class="ident">out</span>
+		out
 	}
 
-	<span class="doccomment">/// Inserts `additional` capacity between the vector and the tail.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `&amp;mut self`</span>
-	<span class="doccomment">/// - `additional`: The amount of new bits to reserve between the head and</span>
-	<span class="doccomment">///   tail sections of the vector.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Effects</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This is permitted to reällocate the buffer in order to grow capacity.</span>
-	<span class="doccomment">/// After completion, the tail segment will be relocated to begin</span>
-	<span class="doccomment">/// `additional` bits after the head segment ends. The drain iteration</span>
-	<span class="doccomment">/// cursor will not be modified.</span>
-	<span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">move_tail</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">additional</span>: <span class="ident">usize</span>) {
-		<span class="kw">if</span> <span class="ident">additional</span> <span class="op">==</span> <span class="number">0</span> {
+	<span class="doccomment">/// Inserts `additional` capacity between the vector and the tail.
+	///
+	/// # Parameters
+	///
+	/// - `&amp;mut self`
+	/// - `additional`: The amount of new bits to reserve between the head and
+	///   tail sections of the vector.
+	///
+	/// # Effects
+	///
+	/// This is permitted to reällocate the buffer in order to grow capacity.
+	/// After completion, the tail segment will be relocated to begin
+	/// `additional` bits after the head segment ends. The drain iteration
+	/// cursor will not be modified.
+	</span><span class="kw">unsafe fn </span>move_tail(<span class="kw-2">&amp;mut </span><span class="self">self</span>, additional: usize) {
+		<span class="kw">if </span>additional == <span class="number">0 </span>{
 			<span class="kw">return</span>;
 		}
 
-		<span class="kw">let</span> <span class="ident">bitvec</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">source</span>;
-		<span class="kw">let</span> <span class="ident">tail_len</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tail</span>.<span class="ident">end</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">tail</span>.<span class="ident">start</span>;
+		<span class="kw">let </span>bitvec = <span class="kw-2">&amp;mut *</span><span class="self">self</span>.source;
+		<span class="kw">let </span>tail_len = <span class="self">self</span>.tail.end - <span class="self">self</span>.tail.start;
 
-		<span class="comment">//  Reserve allocation capacity for `additional` and the tail.</span>
-		<span class="comment">//  `.reserve()` begins from the `bitvec.len()`, so the tail length must</span>
-		<span class="comment">//  still be included.</span>
-		<span class="kw">let</span> <span class="ident">full_len</span> <span class="op">=</span> <span class="ident">additional</span> <span class="op">+</span> <span class="ident">tail_len</span>;
-		<span class="ident">bitvec</span>.<span class="ident">reserve</span>(<span class="ident">full_len</span>);
-		<span class="kw">let</span> <span class="ident">new_tail_start</span> <span class="op">=</span> <span class="ident">additional</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">tail</span>.<span class="ident">start</span>;
-		<span class="kw">let</span> <span class="ident">orig_tail</span> <span class="op">=</span> <span class="ident">mem::replace</span>(
-			<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">tail</span>,
-			<span class="ident">new_tail_start</span> .. <span class="ident">new_tail_start</span> <span class="op">+</span> <span class="ident">tail_len</span>,
+		<span class="comment">//  Reserve allocation capacity for `additional` and the tail.
+		//  `.reserve()` begins from the `bitvec.len()`, so the tail length must
+		//  still be included.
+		</span><span class="kw">let </span>full_len = additional + tail_len;
+		bitvec.reserve(full_len);
+		<span class="kw">let </span>new_tail_start = additional + <span class="self">self</span>.tail.start;
+		<span class="kw">let </span>orig_tail = mem::replace(
+			<span class="kw-2">&amp;mut </span><span class="self">self</span>.tail,
+			new_tail_start .. new_tail_start + tail_len,
 		);
-		<span class="comment">//  Temporarily resize the vector to include the full buffer. This is</span>
-		<span class="comment">//  necessary until `copy_within_unchecked` stops using `.len()`</span>
-		<span class="comment">//  internally.</span>
-		<span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">bitvec</span>.<span class="ident">len</span>();
-		<span class="ident">bitvec</span>.<span class="ident">set_len</span>(<span class="ident">full_len</span>);
-		<span class="ident">bitvec</span>.<span class="ident">copy_within_unchecked</span>(<span class="ident">orig_tail</span>, <span class="ident">new_tail_start</span>);
-		<span class="ident">bitvec</span>.<span class="ident">set_len</span>(<span class="ident">len</span>);
+		<span class="comment">//  Temporarily resize the vector to include the full buffer. This is
+		//  necessary until `copy_within_unchecked` stops using `.len()`
+		//  internally.
+		</span><span class="kw">let </span>len = bitvec.len();
+		bitvec.set_len(full_len);
+		bitvec.copy_within_unchecked(orig_tail, new_tail_start);
+		bitvec.set_len(len);
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;O, T&gt; AsRef&lt;BitSlice&lt;O, T&gt;&gt; <span class="kw">for </span>Drain&lt;<span class="lifetime">&#39;_</span>, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">as_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">as_bitslice</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>as_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BitSlice&lt;O, T&gt; {
+		<span class="self">self</span>.as_bitslice()
 	}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">tarpaulin_include</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O, T&gt; Debug <span class="kw">for </span>Drain&lt;<span class="lifetime">&#39;a</span>, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
-		<span class="ident">fmt</span>.<span class="ident">debug_tuple</span>(<span class="string">&quot;Drain&quot;</span>).<span class="ident">field</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">as_bitslice</span>()).<span class="ident">finish</span>()
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>Formatter) -&gt; fmt::Result {
+		fmt.debug_tuple(<span class="string">&quot;Drain&quot;</span>).field(<span class="kw-2">&amp;</span><span class="self">self</span>.as_bitslice()).finish()
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Iterator</span> <span class="kw">for</span> <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;O, T&gt; Iterator <span class="kw">for </span>Drain&lt;<span class="lifetime">&#39;_</span>, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span>;
+	<span class="kw">type </span>Item = bool;
 
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">next</span>().<span class="ident">map</span>(<span class="ident"><span class="kw">crate</span>::ptr::range::read_raw</span>)
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+		<span class="self">self</span>.drain.next().map(<span class="kw">crate</span>::ptr::range::read_raw)
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">size_hint</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">usize</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>) {
-		<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">size_hint</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+		<span class="self">self</span>.drain.size_hint()
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">count</span>(<span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-		<span class="self">self</span>.<span class="ident">len</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>count(<span class="self">self</span>) -&gt; usize {
+		<span class="self">self</span>.len()
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">nth</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">n</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">nth</span>(<span class="ident">n</span>).<span class="ident">map</span>(<span class="ident"><span class="kw">crate</span>::ptr::range::read_raw</span>)
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>nth(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+		<span class="self">self</span>.drain.nth(n).map(<span class="kw">crate</span>::ptr::range::read_raw)
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">last</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">next_back</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>last(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+		<span class="self">self</span>.next_back()
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">DoubleEndedIterator</span> <span class="kw">for</span> <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;O, T&gt; DoubleEndedIterator <span class="kw">for </span>Drain&lt;<span class="lifetime">&#39;_</span>, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">next_back</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">next_back</span>().<span class="ident">map</span>(<span class="ident"><span class="kw">crate</span>::ptr::range::read_raw</span>)
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>next_back(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+		<span class="self">self</span>.drain.next_back().map(<span class="kw">crate</span>::ptr::range::read_raw)
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">nth_back</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">n</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">nth_back</span>(<span class="ident">n</span>).<span class="ident">map</span>(<span class="ident"><span class="kw">crate</span>::ptr::range::read_raw</span>)
-	}
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">ExactSizeIterator</span> <span class="kw">for</span> <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-{
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-		<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">len</span>()
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>nth_back(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+		<span class="self">self</span>.drain.nth_back(n).map(<span class="kw">crate</span>::ptr::range::read_raw)
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">FusedIterator</span> <span class="kw">for</span> <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;O, T&gt; ExactSizeIterator <span class="kw">for </span>Drain&lt;<span class="lifetime">&#39;_</span>, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
+{
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+		<span class="self">self</span>.drain.len()
+	}
+}
+
+<span class="kw">impl</span>&lt;O, T&gt; FusedIterator <span class="kw">for </span>Drain&lt;<span class="lifetime">&#39;_</span>, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
 }
 
-<span class="kw">unsafe</span> <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Send</span> <span class="kw">for</span> <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">unsafe impl</span>&lt;O, T&gt; Send <span class="kw">for </span>Drain&lt;<span class="lifetime">&#39;_</span>, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
 }
 
-<span class="kw">unsafe</span> <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Sync</span> <span class="kw">for</span> <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">unsafe impl</span>&lt;O, T&gt; Sync <span class="kw">for </span>Drain&lt;<span class="lifetime">&#39;_</span>, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
+<span class="kw">impl</span>&lt;O, T&gt; Drop <span class="kw">for </span>Drain&lt;<span class="lifetime">&#39;_</span>, O, T&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
 {
-	<span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-		<span class="comment">//  Grab the tail range descriptor</span>
-		<span class="kw">let</span> <span class="ident">tail</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tail</span>.<span class="ident">clone</span>();
-		<span class="comment">//  And compute its length.</span>
-		<span class="kw">let</span> <span class="ident">tail_len</span> <span class="op">=</span> <span class="ident">tail</span>.<span class="ident">end</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">start</span>;
-		<span class="comment">//  If the tail region is empty, then there is no cleanup work to do.</span>
-		<span class="kw">if</span> <span class="ident">tail_len</span> <span class="op">==</span> <span class="number">0</span> {
+	<span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+		<span class="comment">//  Grab the tail range descriptor
+		</span><span class="kw">let </span>tail = <span class="self">self</span>.tail.clone();
+		<span class="comment">//  And compute its length.
+		</span><span class="kw">let </span>tail_len = tail.end - tail.start;
+		<span class="comment">//  If the tail region is empty, then there is no cleanup work to do.
+		</span><span class="kw">if </span>tail_len == <span class="number">0 </span>{
 			<span class="kw">return</span>;
 		}
-		<span class="comment">//  Otherwise, access the source vector,</span>
-		<span class="kw">let</span> <span class="ident">bitvec</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">source</span>;
-		<span class="comment">//  And grab its current end.</span>
-		<span class="kw">let</span> <span class="ident">old_len</span> <span class="op">=</span> <span class="ident">bitvec</span>.<span class="ident">len</span>();
-		<span class="kw">let</span> <span class="ident">new_len</span> <span class="op">=</span> <span class="ident">old_len</span> <span class="op">+</span> <span class="ident">tail_len</span>;
-		<span class="kw">unsafe</span> {
-			<span class="comment">//  Expand the vector to include where the tail bits will be.</span>
-			<span class="ident">bitvec</span>.<span class="ident">set_len</span>(<span class="ident">new_len</span>);
-			<span class="comment">//  Then move the tail bits into the new location.</span>
-			<span class="ident">bitvec</span>.<span class="ident">copy_within_unchecked</span>(<span class="ident">tail</span>, <span class="ident">old_len</span>);
-			<span class="comment">//  This ordering is important! `copy_within_unchecked` uses the</span>
-			<span class="comment">//  `len` boundary.</span>
-		}
+		<span class="comment">//  Otherwise, access the source vector,
+		</span><span class="kw">let </span>bitvec = <span class="kw-2">&amp;mut *</span><span class="self">self</span>.source;
+		<span class="comment">//  And grab its current end.
+		</span><span class="kw">let </span>old_len = bitvec.len();
+		<span class="kw">let </span>new_len = old_len + tail_len;
+		<span class="kw">unsafe </span>{
+			<span class="comment">//  Expand the vector to include where the tail bits will be.
+			</span>bitvec.set_len(new_len);
+			<span class="comment">//  Then move the tail bits into the new location.
+			</span>bitvec.copy_within_unchecked(tail, old_len);
+			<span class="comment">//  This ordering is important! `copy_within_unchecked` uses the
+			//  `len` boundary.
+		</span>}
 	}
 }
 
@@ -1396,14 +1391,14 @@ This `struct` is created by the [`.drain()`] method on [`BitVec`].
 it signals.
 
 See &lt;https://github.com/rust-lang/rust/blob/5779815/library/alloc/src/vec.rs#L3327-L3348&gt;.
-**/</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">PartialOrd</span>)]</span>
-<span class="kw">enum</span> <span class="ident">FillStatus</span> {
-	<span class="doccomment">/// The drain span is completely filled.</span>
-	<span class="ident">FullSpan</span>   <span class="op">=</span> <span class="number">0</span>,
-	<span class="doccomment">/// The replacement source is completely emptied.</span>
-	<span class="ident">EmptyInput</span> <span class="op">=</span> <span class="number">1</span>,
+**/
+</span><span class="attribute">#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+</span><span class="kw">enum </span>FillStatus {
+	<span class="doccomment">/// The drain span is completely filled.
+	</span>FullSpan   = <span class="number">0</span>,
+	<span class="doccomment">/// The replacement source is completely emptied.
+	</span>EmptyInput = <span class="number">1</span>,
 }
 
 <span class="doccomment">/** A splicing iterator for [`BitVec`].
@@ -1417,176 +1412,175 @@ documentation for more.
 
 [`BitVec`]: crate::vec::BitVec
 [`.splice()`]: crate::vec::BitVec::splice
-**/</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Splice</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-	<span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span><span class="op">&gt;</span>,
+**/
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>Splice&lt;<span class="lifetime">&#39;a</span>, O, T, I&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
+	I: Iterator&lt;Item = bool&gt;,
 {
-	<span class="doccomment">/// The region of the vector being spliced.</span>
-	<span class="ident">drain</span>: <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>,
-	<span class="doccomment">/// The bitstream to be written into the drain.</span>
-	<span class="ident">splice</span>: <span class="ident">I</span>,
+	<span class="doccomment">/// The region of the vector being spliced.
+	</span>drain: Drain&lt;<span class="lifetime">&#39;a</span>, O, T&gt;,
+	<span class="doccomment">/// The bitstream to be written into the drain.
+	</span>splice: I,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span> <span class="ident">Splice</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-	<span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O, T, I&gt; Splice&lt;<span class="lifetime">&#39;a</span>, O, T, I&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
+	I: Iterator&lt;Item = bool&gt;,
 {
-	<span class="doccomment">/// Constructs a splice out of a drain and a replacement.</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">IntoIter</span><span class="op">&gt;</span>(
-		<span class="ident">drain</span>: <span class="ident">Drain</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">O</span>, <span class="ident">T</span><span class="op">&gt;</span>,
-		<span class="ident">splice</span>: <span class="ident">IntoIter</span>,
-	) -&gt; <span class="self">Self</span>
-	<span class="kw">where</span>
-		<span class="ident">IntoIter</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">IntoIter</span> <span class="op">=</span> <span class="ident">I</span>, <span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span><span class="op">&gt;</span>,
+	<span class="doccomment">/// Constructs a splice out of a drain and a replacement.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new&lt;IntoIter&gt;(
+		drain: Drain&lt;<span class="lifetime">&#39;a</span>, O, T&gt;,
+		splice: IntoIter,
+	) -&gt; <span class="self">Self
+	</span><span class="kw">where
+		</span>IntoIter: IntoIterator&lt;IntoIter = I, Item = bool&gt;,
 	{
-		<span class="kw">let</span> <span class="ident">splice</span> <span class="op">=</span> <span class="ident">splice</span>.<span class="ident">into_iter</span>();
-		<span class="self">Self</span> { <span class="ident">drain</span>, <span class="ident">splice</span> }
+		<span class="kw">let </span>splice = splice.into_iter();
+		<span class="self">Self </span>{ drain, splice }
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span> <span class="ident">Iterator</span> <span class="kw">for</span> <span class="ident">Splice</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-	<span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;O, T, I&gt; Iterator <span class="kw">for </span>Splice&lt;<span class="lifetime">&#39;_</span>, O, T, I&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
+	I: Iterator&lt;Item = bool&gt;,
 {
-	<span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span>;
+	<span class="kw">type </span>Item = bool;
 
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">next</span>().<span class="ident">tap_some</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+		<span class="self">self</span>.drain.next().tap_some(|<span class="kw">_</span>| {
 			<span class="comment">/* Attempt to write a bit into the now-vacated slot at the front of
 			the `Drain`. If the `splice` stream produces a bit, then it is
 			written into the end of the `Drain`’s buffer, extending it by one.
 			This works because `Drain` always truncates its vector to the front
 			edge of the drain region, so `bv.len()` is always the first bit of
 			the `Drain` region if the `Drain` is willing to yield a bit.
-			*/</span>
-			<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">bit</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">splice</span>.<span class="ident">next</span>() {
-				<span class="kw">unsafe</span> {
-					<span class="kw">let</span> <span class="ident">bv</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">source</span>;
-					<span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">bv</span>.<span class="ident">len</span>();
-					<span class="ident">bv</span>.<span class="ident">set_len_unchecked</span>(<span class="ident">len</span> <span class="op">+</span> <span class="number">1</span>);
-					<span class="ident">bv</span>.<span class="ident">set_unchecked</span>(<span class="ident">len</span>, <span class="ident">bit</span>);
+			*/
+			</span><span class="kw">if let </span><span class="prelude-val">Some</span>(bit) = <span class="self">self</span>.splice.next() {
+				<span class="kw">unsafe </span>{
+					<span class="kw">let </span>bv = <span class="kw-2">&amp;mut *</span><span class="self">self</span>.drain.source;
+					<span class="kw">let </span>len = bv.len();
+					bv.set_len_unchecked(len + <span class="number">1</span>);
+					bv.set_unchecked(len, bit);
 				}
 			}
 		})
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">size_hint</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">usize</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>) {
-		<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">size_hint</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+		<span class="self">self</span>.drain.size_hint()
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">count</span>(<span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-		<span class="self">self</span>.<span class="ident">len</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>count(<span class="self">self</span>) -&gt; usize {
+		<span class="self">self</span>.len()
 	}
 
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">last</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">next_back</span>()
-	}
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span> <span class="ident">DoubleEndedIterator</span> <span class="kw">for</span> <span class="ident">Splice</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-	<span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span><span class="op">&gt;</span>,
-{
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">next_back</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">next_back</span>()
-	}
-
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">nth_back</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">n</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span> {
-		<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">nth_back</span>(<span class="ident">n</span>)
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>last(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+		<span class="self">self</span>.next_back()
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span> <span class="ident">ExactSizeIterator</span> <span class="kw">for</span> <span class="ident">Splice</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-	<span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;O, T, I&gt; DoubleEndedIterator <span class="kw">for </span>Splice&lt;<span class="lifetime">&#39;_</span>, O, T, I&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
+	I: Iterator&lt;Item = bool&gt;,
 {
-	<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-	<span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-		<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">len</span>()
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>next_back(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+		<span class="self">self</span>.drain.next_back()
+	}
+
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>nth_back(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+		<span class="self">self</span>.drain.nth_back(n)
 	}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span> <span class="ident">FusedIterator</span> <span class="kw">for</span> <span class="ident">Splice</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-	<span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;O, T, I&gt; ExactSizeIterator <span class="kw">for </span>Splice&lt;<span class="lifetime">&#39;_</span>, O, T, I&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
+	I: Iterator&lt;Item = bool&gt;,
+{
+	<span class="attribute">#[inline(always)]
+	</span><span class="kw">fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+		<span class="self">self</span>.drain.len()
+	}
+}
+
+<span class="kw">impl</span>&lt;O, T, I&gt; FusedIterator <span class="kw">for </span>Splice&lt;<span class="lifetime">&#39;_</span>, O, T, I&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
+	I: Iterator&lt;Item = bool&gt;,
 {
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">Splice</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">O</span>, <span class="ident">T</span>, <span class="ident">I</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-	<span class="ident">O</span>: <span class="ident">BitOrder</span>,
-	<span class="ident">T</span>: <span class="ident">BitStore</span>,
-	<span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">bool</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;O, T, I&gt; Drop <span class="kw">for </span>Splice&lt;<span class="lifetime">&#39;_</span>, O, T, I&gt;
+<span class="kw">where
+	</span>O: BitOrder,
+	T: BitStore,
+	I: Iterator&lt;Item = bool&gt;,
 {
-	<span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-		<span class="kw">let</span> <span class="ident">tail</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">tail</span>.<span class="ident">clone</span>();
-		<span class="kw">let</span> <span class="ident">tail_len</span> <span class="op">=</span> <span class="ident">tail</span>.<span class="ident">end</span> <span class="op">-</span> <span class="ident">tail</span>.<span class="ident">start</span>;
-		<span class="kw">let</span> <span class="ident">bitvec</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">source</span>;
+	<span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+		<span class="kw">let </span>tail = <span class="self">self</span>.drain.tail.clone();
+		<span class="kw">let </span>tail_len = tail.end - tail.start;
+		<span class="kw">let </span>bitvec = <span class="kw-2">&amp;mut *</span><span class="self">self</span>.drain.source;
 
-		<span class="comment">//  If the `drain` has no tail span, then extend the vector with the</span>
-		<span class="comment">//  splice and exit.</span>
-		<span class="kw">if</span> <span class="ident">tail_len</span> <span class="op">==</span> <span class="number">0</span> {
-			<span class="ident">bitvec</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">splice</span>.<span class="ident">by_ref</span>());
+		<span class="comment">//  If the `drain` has no tail span, then extend the vector with the
+		//  splice and exit.
+		</span><span class="kw">if </span>tail_len == <span class="number">0 </span>{
+			bitvec.extend(<span class="self">self</span>.splice.by_ref());
 			<span class="kw">return</span>;
 		}
 
-		<span class="comment">//  Fill the drained range first. If the `splice` exhausts, then the</span>
-		<span class="comment">//  `Drain` destructor will handle relocating the vector tail segment.</span>
-		<span class="kw">if</span> <span class="kw">let</span> <span class="ident">FillStatus::EmptyInput</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">fill</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">splice</span>) {
+		<span class="comment">//  Fill the drained range first. If the `splice` exhausts, then the
+		//  `Drain` destructor will handle relocating the vector tail segment.
+		</span><span class="kw">if let </span>FillStatus::EmptyInput = <span class="self">self</span>.drain.fill(<span class="kw-2">&amp;mut </span><span class="self">self</span>.splice) {
 			<span class="kw">return</span>;
 		}
 
-		<span class="comment">//  If the `splice` has not yet exhausted, then the `Drain` needs to</span>
-		<span class="comment">//  adjust to receive its contents.</span>
-		<span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">splice</span>.<span class="ident">size_hint</span>() {
-			(<span class="ident">n</span>, <span class="prelude-val">None</span>) <span class="op">|</span> (<span class="kw">_</span>, <span class="prelude-val">Some</span>(<span class="ident">n</span>)) =&gt; <span class="ident">n</span>,
+		<span class="comment">//  If the `splice` has not yet exhausted, then the `Drain` needs to
+		//  adjust to receive its contents.
+		</span><span class="kw">let </span>len = <span class="kw">match </span><span class="self">self</span>.splice.size_hint() {
+			(n, <span class="prelude-val">None</span>) | (<span class="kw">_</span>, <span class="prelude-val">Some</span>(n)) =&gt; n,
 		};
-		<span class="kw">unsafe</span> {
-			<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">move_tail</span>(<span class="ident">len</span>);
+		<span class="kw">unsafe </span>{
+			<span class="self">self</span>.drain.move_tail(len);
 		}
-		<span class="comment">//  Now that the tail has been relocated, fill the `splice` into it. If</span>
-		<span class="comment">//  this exhausts the `splice`, exit.</span>
-		<span class="kw">if</span> <span class="kw">let</span> <span class="ident">FillStatus::EmptyInput</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">fill</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">splice</span>) {
+		<span class="comment">//  Now that the tail has been relocated, fill the `splice` into it. If
+		//  this exhausts the `splice`, exit.
+		</span><span class="kw">if let </span>FillStatus::EmptyInput = <span class="self">self</span>.drain.fill(<span class="kw-2">&amp;mut </span><span class="self">self</span>.splice) {
 			<span class="kw">return</span>;
 		}
 
 		<span class="comment">/* If the `splice` *still* has bits to provide, then its `.size_hint()`
 		is untrustworthy. Collect the `splice` into a vector, then insert the
 		vector into the spliced region.
-		*/</span>
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">collected</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">splice</span>.<span class="ident">by_ref</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">BitVec</span><span class="op">&gt;</span>().<span class="ident">into_iter</span>();
-		<span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">collected</span>.<span class="ident">len</span>();
-		<span class="kw">if</span> <span class="ident">len</span> <span class="op">&gt;</span> <span class="number">0</span> {
-			<span class="kw">unsafe</span> {
-				<span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">move_tail</span>(<span class="ident">len</span>);
+		*/
+		</span><span class="kw">let </span><span class="kw-2">mut </span>collected = <span class="self">self</span>.splice.by_ref().collect::&lt;BitVec&gt;().into_iter();
+		<span class="kw">let </span>len = collected.len();
+		<span class="kw">if </span>len &gt; <span class="number">0 </span>{
+			<span class="kw">unsafe </span>{
+				<span class="self">self</span>.drain.move_tail(len);
 			}
-			<span class="kw">let</span> <span class="ident">filled</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">drain</span>.<span class="ident">fill</span>(<span class="kw-2">&amp;mut</span> <span class="ident">collected</span>);
-			<span class="macro">debug_assert_eq!</span>(<span class="ident">filled</span>, <span class="ident">FillStatus::EmptyInput</span>);
-			<span class="macro">debug_assert_eq!</span>(<span class="ident">collected</span>.<span class="ident">len</span>(), <span class="number">0</span>);
+			<span class="kw">let </span>filled = <span class="self">self</span>.drain.fill(<span class="kw-2">&amp;mut </span>collected);
+			<span class="macro">debug_assert_eq!</span>(filled, FillStatus::EmptyInput);
+			<span class="macro">debug_assert_eq!</span>(collected.len(), <span class="number">0</span>);
 		}
 	}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/store.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>store.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../bitvec/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/store.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>store.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../bitvec/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -539,26 +534,26 @@ coërced to interfere with each other.
 [`::Alias`]: crate::store::BitStore::Alias
 [`::Unalias`]: crate::store::BitStore::Unalias
 [`.split_at_mut()`]: crate::slice::BitSlice::split_at_mut
-!*/</span>
+!*/
 
-<span class="kw">use</span> <span class="ident">core</span>::{
-	<span class="ident">cell::Cell</span>,
-	<span class="ident">fmt::Debug</span>,
+</span><span class="kw">use </span>core::{
+	cell::Cell,
+	fmt::Debug,
 };
 
-<span class="kw">use</span> <span class="ident">tap::pipe::Pipe</span>;
+<span class="kw">use </span>tap::pipe::Pipe;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-	<span class="ident">access</span>::<span class="kw-2">*</span>,
-	<span class="ident">index</span>::{
-		<span class="ident">BitIdx</span>,
-		<span class="ident">BitMask</span>,
+<span class="kw">use crate</span>::{
+	access::<span class="kw-2">*</span>,
+	index::{
+		BitIdx,
+		BitMask,
 	},
-	<span class="ident">mem</span>::{
+	mem::{
 		<span class="self">self</span>,
-		<span class="ident">BitRegister</span>,
+		BitRegister,
 	},
-	<span class="ident">order::BitOrder</span>,
+	order::BitOrder,
 };
 
 <span class="doccomment">/** Common interface for memory regions.
@@ -606,315 +601,314 @@ but `u64` will only do so on 64-bit targets. This is a necessary restriction of
 [`bitvec`]: crate
 [`.set_aliased()`]: crate::slice::BitSlice::set_aliased
 [`.set_aliased_unchecked()`]: crate::slice::BitSlice::set_aliased_unchecked
-**/</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">BitStore</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">seal::Sealed</span> <span class="op">+</span> <span class="ident">Debug</span> {
-	<span class="doccomment">/// The register type used in the slice region underlying a [`BitSlice`]</span>
-	<span class="doccomment">/// handle. It is always an unsigned integer.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`BitSlice`]: crate::slice::BitSlice</span>
-	<span class="kw">type</span> <span class="ident">Mem</span>: <span class="ident">BitRegister</span> <span class="op">+</span> <span class="ident">BitStore</span><span class="op">&lt;</span><span class="ident">Mem</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Mem</span><span class="op">&gt;</span>;
-	<span class="doccomment">/// A type that selects appropriate load/store instructions used for</span>
-	<span class="doccomment">/// accessing the memory bus. It determines what instructions are used when</span>
-	<span class="doccomment">/// moving a `Self::Mem` value between the processor and the memory system.</span>
-	<span class="kw">type</span> <span class="ident">Access</span>: <span class="ident">BitAccess</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Mem</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">BitStore</span><span class="op">&lt;</span><span class="ident">Mem</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Mem</span><span class="op">&gt;</span>;
-	<span class="doccomment">/// A sibling `BitStore` implementor. It is used when a [`BitSlice`]</span>
-	<span class="doccomment">/// introduces multiple handles that view the same memory location, and at</span>
-	<span class="doccomment">/// least one of them has write permission to it.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`BitSlice`]: crate::slice::BitSlice</span>
-	<span class="kw">type</span> <span class="ident">Alias</span>: <span class="ident">BitStore</span><span class="op">&lt;</span><span class="ident">Mem</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Mem</span><span class="op">&gt;</span>;
-	<span class="doccomment">/// The inverse of `Alias`. It is used when a [`BitSlice`] removes the</span>
-	<span class="doccomment">/// conditions that required a `T -&gt; T::Alias` transition.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`BitSlice`]: crate::slice::BitSlice</span>
-	<span class="kw">type</span> <span class="ident">Unalias</span>: <span class="ident">BitStore</span><span class="op">&lt;</span><span class="ident">Mem</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Mem</span><span class="op">&gt;</span>;
+**/
+</span><span class="kw">pub trait </span>BitStore: <span class="lifetime">&#39;static </span>+ seal::Sealed + Debug {
+	<span class="doccomment">/// The register type used in the slice region underlying a [`BitSlice`]
+	/// handle. It is always an unsigned integer.
+	///
+	/// [`BitSlice`]: crate::slice::BitSlice
+	</span><span class="kw">type </span>Mem: BitRegister + BitStore&lt;Mem = <span class="self">Self</span>::Mem&gt;;
+	<span class="doccomment">/// A type that selects appropriate load/store instructions used for
+	/// accessing the memory bus. It determines what instructions are used when
+	/// moving a `Self::Mem` value between the processor and the memory system.
+	</span><span class="kw">type </span>Access: BitAccess&lt;Item = <span class="self">Self</span>::Mem&gt; + BitStore&lt;Mem = <span class="self">Self</span>::Mem&gt;;
+	<span class="doccomment">/// A sibling `BitStore` implementor. It is used when a [`BitSlice`]
+	/// introduces multiple handles that view the same memory location, and at
+	/// least one of them has write permission to it.
+	///
+	/// [`BitSlice`]: crate::slice::BitSlice
+	</span><span class="kw">type </span>Alias: BitStore&lt;Mem = <span class="self">Self</span>::Mem&gt;;
+	<span class="doccomment">/// The inverse of `Alias`. It is used when a [`BitSlice`] removes the
+	/// conditions that required a `T -&gt; T::Alias` transition.
+	///
+	/// [`BitSlice`]: crate::slice::BitSlice
+	</span><span class="kw">type </span>Unalias: BitStore&lt;Mem = <span class="self">Self</span>::Mem&gt;;
 
-	<span class="doccomment">/// Loads a value out of the memory system according to the `::Access`</span>
-	<span class="doccomment">/// rules.</span>
-	<span class="kw">fn</span> <span class="ident">load_value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident"><span class="self">Self</span>::Mem</span>;
+	<span class="doccomment">/// Loads a value out of the memory system according to the `::Access`
+	/// rules.
+	</span><span class="kw">fn </span>load_value(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Mem;
 
-	<span class="doccomment">/// Stores a value into the memory system according to the `::Access` rules.</span>
-	<span class="kw">fn</span> <span class="ident">store_value</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident"><span class="self">Self</span>::Mem</span>);
+	<span class="doccomment">/// Stores a value into the memory system according to the `::Access` rules.
+	</span><span class="kw">fn </span>store_value(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="self">Self</span>::Mem);
 
-	<span class="doccomment">/// Reads a single bit out of the memory system according to the `::Access`</span>
-	<span class="doccomment">/// rules. This is lifted from [`BitAccess`] so that it can be used</span>
-	<span class="doccomment">/// elsewhere without additional casts.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Type Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `O`: The ordering of bits within `Self::Mem` to use for looking up the</span>
-	<span class="doccomment">///   bit at `index`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Parameters</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// - `&amp;self`</span>
-	<span class="doccomment">/// - `index`: The semantic index of the bit in `*self` to read.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// # Returns</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// The value of the bit in `*self` at `index`.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// [`BitAccess`]: crate::access::BitAccess</span>
-	<span class="attribute">#[<span class="ident">inline</span>]</span>
-	<span class="kw">fn</span> <span class="ident">get_bit</span><span class="op">&lt;</span><span class="ident">O</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>: <span class="ident">BitIdx</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Mem</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span>
-	<span class="kw">where</span> <span class="ident">O</span>: <span class="ident">BitOrder</span> {
-		<span class="self">self</span>.<span class="ident">load_value</span>()
-			.<span class="ident">pipe</span>(<span class="ident">BitMask::new</span>)
-			.<span class="ident">test</span>(<span class="ident">index</span>.<span class="ident">select</span>::<span class="op">&lt;</span><span class="ident">O</span><span class="op">&gt;</span>())
+	<span class="doccomment">/// Reads a single bit out of the memory system according to the `::Access`
+	/// rules. This is lifted from [`BitAccess`] so that it can be used
+	/// elsewhere without additional casts.
+	///
+	/// # Type Parameters
+	///
+	/// - `O`: The ordering of bits within `Self::Mem` to use for looking up the
+	///   bit at `index`.
+	///
+	/// # Parameters
+	///
+	/// - `&amp;self`
+	/// - `index`: The semantic index of the bit in `*self` to read.
+	///
+	/// # Returns
+	///
+	/// The value of the bit in `*self` at `index`.
+	///
+	/// [`BitAccess`]: crate::access::BitAccess
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">fn </span>get_bit&lt;O&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, index: BitIdx&lt;<span class="self">Self</span>::Mem&gt;) -&gt; bool
+	<span class="kw">where </span>O: BitOrder {
+		<span class="self">self</span>.load_value()
+			.pipe(BitMask::new)
+			.test(index.select::&lt;O&gt;())
 	}
 
-	<span class="doccomment">/// Require that all implementors are aligned to their width.</span>
-	<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-	<span class="kw">const</span> <span class="ident">__ALIGNED_TO_SIZE</span>: [(); <span class="number">0</span>];
+	<span class="doccomment">/// Require that all implementors are aligned to their width.
+	</span><span class="attribute">#[doc(hidden)]
+	</span><span class="kw">const </span>__ALIGNED_TO_SIZE: [(); <span class="number">0</span>];
 
-	<span class="doccomment">/// Require that the `::Alias` associated type has the same width and</span>
-	<span class="doccomment">/// alignment as `Self`.</span>
-	<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-	<span class="kw">const</span> <span class="ident">__ALIAS_WIDTH</span>: [(); <span class="number">0</span>];
+	<span class="doccomment">/// Require that the `::Alias` associated type has the same width and
+	/// alignment as `Self`.
+	</span><span class="attribute">#[doc(hidden)]
+	</span><span class="kw">const </span>__ALIAS_WIDTH: [(); <span class="number">0</span>];
 }
 
-<span class="doccomment">/// Batch implementation of `BitStore` on integers, safety wrappers, and `Cell`s</span>
-<span class="macro">macro_rules!</span> <span class="ident">store</span> {
-	( $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">base</span>:<span class="ident">ty</span> =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">safe</span>:<span class="ident">ty</span>),<span class="op">+</span> $(,)<span class="question-mark">?</span> ) =&gt; { $(
-		<span class="kw">impl</span> <span class="ident">BitStore</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">base</span> {
-			<span class="kw">type</span> <span class="ident">Mem</span> <span class="op">=</span> <span class="self">Self</span>;
-			<span class="doccomment">/// The unsigned integers will only be `BitStore` type parameters</span>
-			<span class="doccomment">/// for handles to unaliased memory, following the normal Rust</span>
-			<span class="doccomment">/// reference rules.</span>
-			<span class="kw">type</span> <span class="ident">Access</span> <span class="op">=</span> <span class="ident">Cell</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">base</span><span class="op">&gt;</span>;
-			<span class="kw">type</span> <span class="ident">Alias</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">safe</span>;
-			<span class="kw">type</span> <span class="ident">Unalias</span> <span class="op">=</span> <span class="self">Self</span>;
+<span class="doccomment">/// Batch implementation of `BitStore` on integers, safety wrappers, and `Cell`s
+</span><span class="macro">macro_rules! </span>store {
+	( $(<span class="macro-nonterminal">$base</span>:ty =&gt; <span class="macro-nonterminal">$safe</span>:ty),+ $(,)<span class="question-mark">? </span>) =&gt; { $(
+		<span class="kw">impl </span>BitStore <span class="kw">for </span><span class="macro-nonterminal">$base </span>{
+			<span class="kw">type </span>Mem = <span class="self">Self</span>;
+			<span class="doccomment">/// The unsigned integers will only be `BitStore` type parameters
+			/// for handles to unaliased memory, following the normal Rust
+			/// reference rules.
+			</span><span class="kw">type </span>Access = Cell&lt;<span class="macro-nonterminal">$base</span>&gt;;
+			<span class="kw">type </span>Alias = <span class="macro-nonterminal">$safe</span>;
+			<span class="kw">type </span>Unalias = <span class="self">Self</span>;
 
-			<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-			<span class="kw">fn</span> <span class="ident">load_value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident"><span class="self">Self</span>::Mem</span> {
-				<span class="kw-2">*</span><span class="self">self</span>
+			<span class="attribute">#[inline(always)]
+			</span><span class="kw">fn </span>load_value(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Mem {
+				<span class="kw-2">*</span><span class="self">self
+			</span>}
+
+			<span class="attribute">#[inline(always)]
+			</span><span class="kw">fn </span>store_value(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="self">Self</span>::Mem) {
+				<span class="kw-2">*</span><span class="self">self </span>= value;
 			}
 
-			<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-			<span class="kw">fn</span> <span class="ident">store_value</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident"><span class="self">Self</span>::Mem</span>) {
-				<span class="kw-2">*</span><span class="self">self</span> <span class="op">=</span> <span class="ident">value</span>;
-			}
+			<span class="attribute">#[doc(hidden)]
+			</span><span class="kw">const </span>__ALIGNED_TO_SIZE: [(); <span class="number">0</span>]
+				= [(); mem::aligned_to_size::&lt;<span class="self">Self</span>&gt;()];
 
-			<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-			<span class="kw">const</span> <span class="ident">__ALIGNED_TO_SIZE</span>: [(); <span class="number">0</span>]
-				<span class="op">=</span> [(); <span class="ident">mem::aligned_to_size</span>::<span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>()];
-
-			<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-			<span class="kw">const</span> <span class="ident">__ALIAS_WIDTH</span>: [(); <span class="number">0</span>]
-				<span class="op">=</span> [(); <span class="ident">mem::cmp_layout</span>::<span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Alias</span><span class="op">&gt;</span>()];
+			<span class="attribute">#[doc(hidden)]
+			</span><span class="kw">const </span>__ALIAS_WIDTH: [(); <span class="number">0</span>]
+				= [(); mem::cmp_layout::&lt;<span class="self">Self</span>, <span class="self">Self</span>::Alias&gt;()];
 		}
 
-		<span class="doccomment">/// This type is only ever produced by calling [`.split_at_mut()`] on</span>
-		<span class="doccomment">/// [`BitSlice&lt;_, T&gt;`] where `T` is an unsigned integer. It cannot be</span>
-		<span class="doccomment">/// constructed as a base data source.</span>
-		<span class="doccomment">///</span>
-		<span class="doccomment">/// [`BitSlice&lt;_, T&gt;`]: crate::slice::BitSlice</span>
-		<span class="doccomment">/// [`.split_at_mut()`]: crate::slice::BitSlice::split_at_mut</span>
-		<span class="kw">impl</span> <span class="ident">BitStore</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">safe</span> {
-			<span class="kw">type</span> <span class="ident">Mem</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">base</span>;
-			<span class="kw">type</span> <span class="ident">Access</span> <span class="op">=</span> <span class="op">&lt;</span><span class="self">Self</span> <span class="kw">as</span> <span class="ident">BitSafe</span><span class="op">&gt;</span><span class="ident">::Rad</span>;
-			<span class="kw">type</span> <span class="ident">Alias</span> <span class="op">=</span> <span class="self">Self</span>;
-			<span class="kw">type</span> <span class="ident">Unalias</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">base</span>;
+		<span class="doccomment">/// This type is only ever produced by calling [`.split_at_mut()`] on
+		/// [`BitSlice&lt;_, T&gt;`] where `T` is an unsigned integer. It cannot be
+		/// constructed as a base data source.
+		///
+		/// [`BitSlice&lt;_, T&gt;`]: crate::slice::BitSlice
+		/// [`.split_at_mut()`]: crate::slice::BitSlice::split_at_mut
+		</span><span class="kw">impl </span>BitStore <span class="kw">for </span><span class="macro-nonterminal">$safe </span>{
+			<span class="kw">type </span>Mem = <span class="macro-nonterminal">$base</span>;
+			<span class="kw">type </span>Access = &lt;<span class="self">Self </span><span class="kw">as </span>BitSafe&gt;::Rad;
+			<span class="kw">type </span>Alias = <span class="self">Self</span>;
+			<span class="kw">type </span>Unalias = <span class="macro-nonterminal">$base</span>;
 
-			<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-			<span class="kw">fn</span> <span class="ident">load_value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident"><span class="self">Self</span>::Mem</span> {
-				<span class="self">self</span>.<span class="ident">load</span>()
+			<span class="attribute">#[inline(always)]
+			</span><span class="kw">fn </span>load_value(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Mem {
+				<span class="self">self</span>.load()
 			}
 
-			<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-			<span class="kw">fn</span> <span class="ident">store_value</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident"><span class="self">Self</span>::Mem</span>) {
-				<span class="self">self</span>.<span class="ident">store</span>(<span class="ident">value</span>);
+			<span class="attribute">#[inline(always)]
+			</span><span class="kw">fn </span>store_value(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="self">Self</span>::Mem) {
+				<span class="self">self</span>.store(value);
 			}
 
-			<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-			<span class="kw">const</span> <span class="ident">__ALIGNED_TO_SIZE</span>: [(); <span class="number">0</span>]
-				<span class="op">=</span> [(); <span class="ident">mem::aligned_to_size</span>::<span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>()];
+			<span class="attribute">#[doc(hidden)]
+			</span><span class="kw">const </span>__ALIGNED_TO_SIZE: [(); <span class="number">0</span>]
+				= [(); mem::aligned_to_size::&lt;<span class="self">Self</span>&gt;()];
 
-			<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-			<span class="kw">const</span> <span class="ident">__ALIAS_WIDTH</span>: [(); <span class="number">0</span>]
-				<span class="op">=</span> [(); <span class="ident">mem::cmp_layout</span>::<span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Unalias</span><span class="op">&gt;</span>()];
+			<span class="attribute">#[doc(hidden)]
+			</span><span class="kw">const </span>__ALIAS_WIDTH: [(); <span class="number">0</span>]
+				= [(); mem::cmp_layout::&lt;<span class="self">Self</span>, <span class="self">Self</span>::Unalias&gt;()];
 		}
 
-		<span class="kw">impl</span> <span class="ident">BitStore</span> <span class="kw">for</span> <span class="ident">Cell</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">base</span><span class="op">&gt;</span> {
-			<span class="kw">type</span> <span class="ident">Mem</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">base</span>;
-			<span class="kw">type</span> <span class="ident">Access</span> <span class="op">=</span> <span class="self">Self</span>;
-			<span class="kw">type</span> <span class="ident">Alias</span> <span class="op">=</span> <span class="self">Self</span>;
-			<span class="kw">type</span> <span class="ident">Unalias</span> <span class="op">=</span> <span class="self">Self</span>;
+		<span class="kw">impl </span>BitStore <span class="kw">for </span>Cell&lt;<span class="macro-nonterminal">$base</span>&gt; {
+			<span class="kw">type </span>Mem = <span class="macro-nonterminal">$base</span>;
+			<span class="kw">type </span>Access = <span class="self">Self</span>;
+			<span class="kw">type </span>Alias = <span class="self">Self</span>;
+			<span class="kw">type </span>Unalias = <span class="self">Self</span>;
 
-			<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-			<span class="kw">fn</span> <span class="ident">load_value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident"><span class="self">Self</span>::Mem</span> {
-				<span class="self">self</span>.<span class="ident">get</span>()
+			<span class="attribute">#[inline(always)]
+			</span><span class="kw">fn </span>load_value(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Mem {
+				<span class="self">self</span>.get()
 			}
 
-			<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-			<span class="kw">fn</span> <span class="ident">store_value</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident"><span class="self">Self</span>::Mem</span>) {
-				<span class="self">self</span>.<span class="ident">set</span>(<span class="ident">value</span>);
+			<span class="attribute">#[inline(always)]
+			</span><span class="kw">fn </span>store_value(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="self">Self</span>::Mem) {
+				<span class="self">self</span>.set(value);
 			}
 
-			<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-			<span class="kw">const</span> <span class="ident">__ALIGNED_TO_SIZE</span>: [(); <span class="number">0</span>]
-				<span class="op">=</span> [(); <span class="ident">mem::aligned_to_size</span>::<span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>()];
+			<span class="attribute">#[doc(hidden)]
+			</span><span class="kw">const </span>__ALIGNED_TO_SIZE: [(); <span class="number">0</span>]
+				= [(); mem::aligned_to_size::&lt;<span class="self">Self</span>&gt;()];
 
-			<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-			<span class="kw">const</span> <span class="ident">__ALIAS_WIDTH</span>: [(); <span class="number">0</span>] <span class="op">=</span> [];
+			<span class="attribute">#[doc(hidden)]
+			</span><span class="kw">const </span>__ALIAS_WIDTH: [(); <span class="number">0</span>] = [];
 		}
 
-		<span class="kw">impl</span> <span class="ident">seal::Sealed</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">base</span> {}
-		<span class="kw">impl</span> <span class="ident">seal::Sealed</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">safe</span> {}
-		<span class="kw">impl</span> <span class="ident">seal::Sealed</span> <span class="kw">for</span> <span class="ident">Cell</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">base</span><span class="op">&gt;</span> {}
-	)<span class="op">+</span> };
+		<span class="kw">impl </span>seal::Sealed <span class="kw">for </span><span class="macro-nonterminal">$base </span>{}
+		<span class="kw">impl </span>seal::Sealed <span class="kw">for </span><span class="macro-nonterminal">$safe </span>{}
+		<span class="kw">impl </span>seal::Sealed <span class="kw">for </span>Cell&lt;<span class="macro-nonterminal">$base</span>&gt; {}
+	)+ };
 }
 
-<span class="macro">store!</span> {
-	<span class="ident">u8</span> =&gt; <span class="ident">BitSafeU8</span>,
-	<span class="ident">u16</span> =&gt; <span class="ident">BitSafeU16</span>,
-	<span class="ident">u32</span> =&gt; <span class="ident">BitSafeU32</span>,
+<span class="macro">store! </span>{
+	u8 =&gt; BitSafeU8,
+	u16 =&gt; BitSafeU16,
+	u32 =&gt; BitSafeU32,
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;64&quot;</span>)]</span>
-<span class="macro">store!</span>(<span class="ident">u64</span> =&gt; <span class="ident">BitSafeU64</span>);
+<span class="attribute">#[cfg(target_pointer_width = <span class="string">&quot;64&quot;</span>)]
+</span><span class="macro">store!</span>(u64 =&gt; BitSafeU64);
 
-<span class="macro">store!</span>(<span class="ident">usize</span> =&gt; <span class="ident">BitSafeUsize</span>);
+<span class="macro">store!</span>(usize =&gt; BitSafeUsize);
 
-<span class="macro">macro_rules!</span> <span class="ident">atomic_store</span> {
-	($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>:<span class="ident">tt</span> , <span class="macro-nonterminal">$</span><span class="macro-nonterminal">base</span>:<span class="ident">ty</span> =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">atom</span>:<span class="ident">ident</span>);<span class="op">+</span> $(;)<span class="question-mark">?</span>) =&gt; { $(
-		<span class="macro">radium::if_atomic!</span>(<span class="kw">if</span> <span class="ident">atomic</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>) {
-			<span class="kw">use</span> <span class="ident">core::sync::atomic</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">atom</span>;
+<span class="macro">macro_rules! </span>atomic_store {
+	($(<span class="macro-nonterminal">$w</span>:tt , <span class="macro-nonterminal">$base</span>:ty =&gt; <span class="macro-nonterminal">$atom</span>:ident);+ $(;)<span class="question-mark">?</span>) =&gt; { $(
+		<span class="macro">radium::if_atomic!</span>(<span class="kw">if </span>atomic(<span class="macro-nonterminal">$w</span>) {
+			<span class="kw">use </span>core::sync::atomic::<span class="macro-nonterminal">$atom</span>;
 
-			<span class="kw">impl</span> <span class="ident">BitStore</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">atom</span> {
-				<span class="kw">type</span> <span class="ident">Mem</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">base</span>;
-				<span class="kw">type</span> <span class="ident">Access</span> <span class="op">=</span> <span class="self">Self</span>;
-				<span class="kw">type</span> <span class="ident">Alias</span> <span class="op">=</span> <span class="self">Self</span>;
-				<span class="kw">type</span> <span class="ident">Unalias</span> <span class="op">=</span> <span class="self">Self</span>;
+			<span class="kw">impl </span>BitStore <span class="kw">for </span><span class="macro-nonterminal">$atom </span>{
+				<span class="kw">type </span>Mem = <span class="macro-nonterminal">$base</span>;
+				<span class="kw">type </span>Access = <span class="self">Self</span>;
+				<span class="kw">type </span>Alias = <span class="self">Self</span>;
+				<span class="kw">type </span>Unalias = <span class="self">Self</span>;
 
-				<span class="attribute">#[<span class="ident">inline</span>]</span>
-				<span class="kw">fn</span> <span class="ident">load_value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident"><span class="self">Self</span>::Mem</span> {
-					<span class="self">self</span>.<span class="ident">load</span>(<span class="ident">core::sync::atomic::Ordering::Relaxed</span>)
+				<span class="attribute">#[inline]
+				</span><span class="kw">fn </span>load_value(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Mem {
+					<span class="self">self</span>.load(core::sync::atomic::Ordering::Relaxed)
 				}
 
-				<span class="attribute">#[<span class="ident">inline</span>]</span>
-				<span class="kw">fn</span> <span class="ident">store_value</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident"><span class="self">Self</span>::Mem</span>) {
-					<span class="self">self</span>.<span class="ident">store</span>(<span class="ident">value</span>, <span class="ident">core::sync::atomic::Ordering::Relaxed</span>);
+				<span class="attribute">#[inline]
+				</span><span class="kw">fn </span>store_value(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="self">Self</span>::Mem) {
+					<span class="self">self</span>.store(value, core::sync::atomic::Ordering::Relaxed);
 				}
 
-				<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-				<span class="kw">const</span> <span class="ident">__ALIGNED_TO_SIZE</span>: [(); <span class="number">0</span>]
-					<span class="op">=</span> [(); <span class="ident">mem::aligned_to_size</span>::<span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>()];
+				<span class="attribute">#[doc(hidden)]
+				</span><span class="kw">const </span>__ALIGNED_TO_SIZE: [(); <span class="number">0</span>]
+					= [(); mem::aligned_to_size::&lt;<span class="self">Self</span>&gt;()];
 
-				<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-				<span class="kw">const</span> <span class="ident">__ALIAS_WIDTH</span>: [(); <span class="number">0</span>] <span class="op">=</span> [];
+				<span class="attribute">#[doc(hidden)]
+				</span><span class="kw">const </span>__ALIAS_WIDTH: [(); <span class="number">0</span>] = [];
 			}
 
-			<span class="kw">impl</span> <span class="ident">seal::Sealed</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">atom</span> {}
+			<span class="kw">impl </span>seal::Sealed <span class="kw">for </span><span class="macro-nonterminal">$atom </span>{}
 		});
-	)<span class="op">+</span> };
+	)+ };
 }
 
-<span class="macro">atomic_store!</span> {
-	<span class="number">8</span>, <span class="ident">u8</span> =&gt; <span class="ident">AtomicU8</span>;
-	<span class="number">16</span>, <span class="ident">u16</span> =&gt; <span class="ident">AtomicU16</span>;
-	<span class="number">32</span>, <span class="ident">u32</span> =&gt; <span class="ident">AtomicU32</span>;
+<span class="macro">atomic_store! </span>{
+	<span class="number">8</span>, u8 =&gt; AtomicU8;
+	<span class="number">16</span>, u16 =&gt; AtomicU16;
+	<span class="number">32</span>, u32 =&gt; AtomicU32;
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;64&quot;</span>)]</span>
-<span class="macro">atomic_store!</span>(<span class="number">64</span>, <span class="ident">u64</span> =&gt; <span class="ident">AtomicU64</span>);
+<span class="attribute">#[cfg(target_pointer_width = <span class="string">&quot;64&quot;</span>)]
+</span><span class="macro">atomic_store!</span>(<span class="number">64</span>, u64 =&gt; AtomicU64);
 
-<span class="macro">atomic_store!</span>(<span class="ident">size</span>, <span class="ident">usize</span> =&gt; <span class="ident">AtomicUsize</span>);
+<span class="macro">atomic_store!</span>(size, usize =&gt; AtomicUsize);
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">any</span>(<span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;32&quot;</span>, <span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;64&quot;</span>)))]</span>
-<span class="macro">compile_fail!</span>(<span class="macro">concat!</span>(
+<span class="attribute">#[cfg(not(any(target_pointer_width = <span class="string">&quot;32&quot;</span>, target_pointer_width = <span class="string">&quot;64&quot;</span>)))]
+</span><span class="macro">compile_fail!</span>(<span class="macro">concat!</span>(
 	<span class="string">&quot;This architecture is currently not supported. File an issue at &quot;</span>,
 	<span class="macro">env!</span>(<span class="string">&quot;CARGO_PKG_REPOSITORY&quot;</span>)
 ));
 
-<span class="doccomment">/// Enclose the `Sealed` trait against client use.</span>
-<span class="kw">mod</span> <span class="ident">seal</span> {
-	<span class="doccomment">/// Marker trait to seal `BitStore` against downstream implementation.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This trait is public in the module, so that other modules in the crate</span>
-	<span class="doccomment">/// can use it, but so long as it is not exported by the crate root and this</span>
-	<span class="doccomment">/// module is private, this trait effectively forbids downstream</span>
-	<span class="doccomment">/// implementation of the `BitStore` trait.</span>
-	<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-	<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Sealed</span> {}
+<span class="doccomment">/// Enclose the `Sealed` trait against client use.
+</span><span class="kw">mod </span>seal {
+	<span class="doccomment">/// Marker trait to seal `BitStore` against downstream implementation.
+	///
+	/// This trait is public in the module, so that other modules in the crate
+	/// can use it, but so long as it is not exported by the crate root and this
+	/// module is private, this trait effectively forbids downstream
+	/// implementation of the `BitStore` trait.
+	</span><span class="attribute">#[doc(hidden)]
+	</span><span class="kw">pub trait </span>Sealed {}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-	<span class="kw">use</span> <span class="ident">core::cell::Cell</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+	<span class="kw">use </span>core::cell::Cell;
 
-	<span class="kw">use</span> <span class="ident">static_assertions</span>::<span class="kw-2">*</span>;
+	<span class="kw">use </span>static_assertions::<span class="kw-2">*</span>;
 
-	<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-	<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
+	<span class="kw">use super</span>::<span class="kw-2">*</span>;
+	<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
-	<span class="attribute">#[<span class="ident">test</span>]</span>
-	<span class="kw">fn</span> <span class="ident">load_store</span>() {
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">word</span> <span class="op">=</span> <span class="number">0usize</span>;
+	<span class="attribute">#[test]
+	</span><span class="kw">fn </span>load_store() {
+		<span class="kw">let </span><span class="kw-2">mut </span>word = <span class="number">0usize</span>;
 
-		<span class="ident">word</span>.<span class="ident">store_value</span>(<span class="number">39usize</span>);
-		<span class="macro">assert_eq!</span>(<span class="ident">word</span>.<span class="ident">load_value</span>(), <span class="number">39usize</span>);
+		word.store_value(<span class="number">39usize</span>);
+		<span class="macro">assert_eq!</span>(word.load_value(), <span class="number">39usize</span>);
 
-		<span class="kw">let</span> <span class="ident">safe</span>: <span class="kw-2">&amp;mut</span> <span class="ident">BitSafeUsize</span> <span class="op">=</span>
-			<span class="kw">unsafe</span> { <span class="kw-2">&amp;mut</span> <span class="kw-2">*</span>(<span class="kw-2">&amp;mut</span> <span class="ident">word</span> <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="kw">_</span> <span class="kw">as</span> <span class="kw-2">*mut</span> <span class="kw">_</span>) };
-		<span class="ident">safe</span>.<span class="ident">store_value</span>(<span class="number">57usize</span>);
-		<span class="macro">assert_eq!</span>(<span class="ident">safe</span>.<span class="ident">load_value</span>(), <span class="number">57</span>);
+		<span class="kw">let </span>safe: <span class="kw-2">&amp;mut </span>BitSafeUsize =
+			<span class="kw">unsafe </span>{ <span class="kw-2">&amp;mut *</span>(<span class="kw-2">&amp;mut </span>word <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_ as </span><span class="kw-2">*mut </span><span class="kw">_</span>) };
+		safe.store_value(<span class="number">57usize</span>);
+		<span class="macro">assert_eq!</span>(safe.load_value(), <span class="number">57</span>);
 
-		<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cell</span> <span class="op">=</span> <span class="ident">Cell::new</span>(<span class="number">0usize</span>);
-		<span class="ident">cell</span>.<span class="ident">store_value</span>(<span class="number">39</span>);
-		<span class="macro">assert_eq!</span>(<span class="ident">cell</span>.<span class="ident">load_value</span>(), <span class="number">39</span>);
+		<span class="kw">let </span><span class="kw-2">mut </span>cell = Cell::new(<span class="number">0usize</span>);
+		cell.store_value(<span class="number">39</span>);
+		<span class="macro">assert_eq!</span>(cell.load_value(), <span class="number">39</span>);
 
-		<span class="macro">radium::if_atomic!</span>(<span class="kw">if</span> <span class="ident">atomic</span>(<span class="ident">size</span>) {
-			<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">atom</span> <span class="op">=</span> <span class="ident">AtomicUsize::new</span>(<span class="number">0</span>);
-			<span class="ident">atom</span>.<span class="ident">store_value</span>(<span class="number">39</span>);
-			<span class="macro">assert_eq!</span>(<span class="ident">atom</span>.<span class="ident">load_value</span>(), <span class="number">39usize</span>);
+		<span class="macro">radium::if_atomic!</span>(<span class="kw">if </span>atomic(size) {
+			<span class="kw">let </span><span class="kw-2">mut </span>atom = AtomicUsize::new(<span class="number">0</span>);
+			atom.store_value(<span class="number">39</span>);
+			<span class="macro">assert_eq!</span>(atom.load_value(), <span class="number">39usize</span>);
 		});
 	}
 
-	<span class="doccomment">/// Unaliased `BitSlice`s are universally threadsafe, because they satisfy</span>
-	<span class="doccomment">/// Rust’s unysnchronized mutation rules.</span>
-	<span class="attribute">#[<span class="ident">test</span>]</span>
-	<span class="kw">fn</span> <span class="ident">unaliased_send_sync</span>() {
-		<span class="macro">assert_impl_all!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">u8</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-		<span class="macro">assert_impl_all!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">u16</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-		<span class="macro">assert_impl_all!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">u32</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-		<span class="macro">assert_impl_all!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">usize</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
+	<span class="doccomment">/// Unaliased `BitSlice`s are universally threadsafe, because they satisfy
+	/// Rust’s unysnchronized mutation rules.
+	</span><span class="attribute">#[test]
+	</span><span class="kw">fn </span>unaliased_send_sync() {
+		<span class="macro">assert_impl_all!</span>(BitSlice&lt;LocalBits, u8&gt;: Send, Sync);
+		<span class="macro">assert_impl_all!</span>(BitSlice&lt;LocalBits, u16&gt;: Send, Sync);
+		<span class="macro">assert_impl_all!</span>(BitSlice&lt;LocalBits, u32&gt;: Send, Sync);
+		<span class="macro">assert_impl_all!</span>(BitSlice&lt;LocalBits, usize&gt;: Send, Sync);
 
-		<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;64&quot;</span>)]</span>
-		<span class="macro">assert_impl_all!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">u64</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
+		<span class="attribute">#[cfg(target_pointer_width = <span class="string">&quot;64&quot;</span>)]
+		</span><span class="macro">assert_impl_all!</span>(BitSlice&lt;LocalBits, u64&gt;: Send, Sync);
 	}
 
-	<span class="attribute">#[<span class="ident">test</span>]</span>
-	<span class="kw">fn</span> <span class="ident">cell_unsend_unsync</span>() {
-		<span class="macro">assert_not_impl_any!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">Cell</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-		<span class="macro">assert_not_impl_any!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">Cell</span><span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-		<span class="macro">assert_not_impl_any!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">Cell</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-		<span class="macro">assert_not_impl_any!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">Cell</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-		<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;64&quot;</span>)]</span>
-		<span class="macro">assert_not_impl_any!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">Cell</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
+	<span class="attribute">#[test]
+	</span><span class="kw">fn </span>cell_unsend_unsync() {
+		<span class="macro">assert_not_impl_any!</span>(BitSlice&lt;LocalBits, Cell&lt;u8&gt;&gt;: Send, Sync);
+		<span class="macro">assert_not_impl_any!</span>(BitSlice&lt;LocalBits, Cell&lt;u16&gt;&gt;: Send, Sync);
+		<span class="macro">assert_not_impl_any!</span>(BitSlice&lt;LocalBits, Cell&lt;u32&gt;&gt;: Send, Sync);
+		<span class="macro">assert_not_impl_any!</span>(BitSlice&lt;LocalBits, Cell&lt;usize&gt;&gt;: Send, Sync);
+		<span class="attribute">#[cfg(target_pointer_width = <span class="string">&quot;64&quot;</span>)]
+		</span><span class="macro">assert_not_impl_any!</span>(BitSlice&lt;LocalBits, Cell&lt;u64&gt;&gt;: Send, Sync);
 	}
 
-	<span class="doccomment">/// In non-atomic builds, aliased `BitSlice`s become universally</span>
-	<span class="doccomment">/// thread-unsafe. An `&amp;mut BitSlice` is an `&amp;Cell`, and `&amp;Cell` cannot be</span>
-	<span class="doccomment">/// sent across threads.</span>
-	<span class="doccomment">///</span>
-	<span class="doccomment">/// This test cannot be meaningfully expressed in atomic builds, because the</span>
-	<span class="doccomment">/// atomiticy of a `BitSafeUN` type is target-specific, and expressed in</span>
-	<span class="doccomment">/// `radium` rather than in `bitvec`.</span>
-	<span class="attribute">#[<span class="ident">test</span>]</span>
-	<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;atomic&quot;</span>))]</span>
-	<span class="kw">fn</span> <span class="ident">aliased_nonatomic_unsend_unsync</span>() {
-		<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::access</span>::<span class="kw-2">*</span>;
+	<span class="doccomment">/// In non-atomic builds, aliased `BitSlice`s become universally
+	/// thread-unsafe. An `&amp;mut BitSlice` is an `&amp;Cell`, and `&amp;Cell` cannot be
+	/// sent across threads.
+	///
+	/// This test cannot be meaningfully expressed in atomic builds, because the
+	/// atomiticy of a `BitSafeUN` type is target-specific, and expressed in
+	/// `radium` rather than in `bitvec`.
+	</span><span class="attribute">#[test]
+	#[cfg(not(feature = <span class="string">&quot;atomic&quot;</span>))]
+	</span><span class="kw">fn </span>aliased_nonatomic_unsend_unsync() {
+		<span class="kw">use </span><span class="kw">crate</span>::access::<span class="kw-2">*</span>;
 
-		<span class="macro">assert_not_impl_any!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">BitSafeU8</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-		<span class="macro">assert_not_impl_any!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">BitSafeU16</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-		<span class="macro">assert_not_impl_any!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">BitSafeU32</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-		<span class="macro">assert_not_impl_any!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">BitSafeUsize</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
+		<span class="macro">assert_not_impl_any!</span>(BitSlice&lt;LocalBits, BitSafeU8&gt;: Send, Sync);
+		<span class="macro">assert_not_impl_any!</span>(BitSlice&lt;LocalBits, BitSafeU16&gt;: Send, Sync);
+		<span class="macro">assert_not_impl_any!</span>(BitSlice&lt;LocalBits, BitSafeU32&gt;: Send, Sync);
+		<span class="macro">assert_not_impl_any!</span>(BitSlice&lt;LocalBits, BitSafeUsize&gt;: Send, Sync);
 
-		<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;64&quot;</span>)]</span>
-		<span class="macro">assert_not_impl_any!</span>(<span class="ident">BitSlice</span><span class="op">&lt;</span><span class="ident">LocalBits</span>, <span class="ident">BitSafeU64</span><span class="op">&gt;</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
+		<span class="attribute">#[cfg(target_pointer_width = <span class="string">&quot;64&quot;</span>)]
+		</span><span class="macro">assert_not_impl_any!</span>(BitSlice&lt;LocalBits, BitSafeU64&gt;: Send, Sync);
 	}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/index/bptree/core.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script src="../../../../../crates.js"></script><script defer src="../../../../../main.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../pearl/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/index/bptree/core.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../../normalize.css"><link rel="stylesheet" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../../dark.css" disabled><link rel="stylesheet" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../pearl/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -418,421 +413,436 @@
 <span id="413">413</span>
 <span id="414">414</span>
 <span id="415">415</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ValidationErrorKind</span>;
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ValidationErrorKind;
 
-<span class="doccomment">/// structure of b+-tree index file from the beginning:</span>
-<span class="doccomment">/// 1. Header</span>
-<span class="doccomment">/// 2. b+-tree user buffer (now Bloom filter is stored as this buffer)</span>
-<span class="doccomment">/// 3. Tree metadata (tree_offset [4] (tree starts from root, so that is also root_offset),</span>
-<span class="doccomment">///    and leaves_offset [5])</span>
-<span class="doccomment">/// 4. Tree: Non-leaf nodes of bptree in format</span>
-<span class="doccomment">///    `NodeMeta | keys_arr | pointers_arr`,</span>
-<span class="doccomment">///    where pointer is offset in file of underlying node with searched key</span>
-<span class="doccomment">/// 5. Sorted by key array of record headers (coupled leaf nodes)</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prelude</span>::<span class="kw-2">*</span>;
+<span class="doccomment">/// structure of b+-tree index file from the beginning:
+/// 1. Header
+/// 2. b+-tree user buffer (now Bloom filter is stored as this buffer)
+/// 3. Tree metadata (tree_offset [4] (tree starts from root, so that is also root_offset),
+///    and leaves_offset [5])
+/// 4. Tree: Non-leaf nodes of bptree in format
+///    `NodeMeta | keys_arr | pointers_arr`,
+///    where pointer is offset in file of underlying node with searched key
+/// 5. Sorted by key array of record headers (coupled leaf nodes)
+</span><span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">const</span> <span class="ident">BLOCK_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4096</span>;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">const </span>BLOCK_SIZE: usize = <span class="number">4096</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">BPTreeFileIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> {
-    <span class="ident">file</span>: <span class="ident">File</span>,
-    <span class="ident">header</span>: <span class="ident">IndexHeader</span>,
-    <span class="ident">metadata</span>: <span class="ident">TreeMeta</span>,
-    <span class="ident">root_node</span>: [<span class="ident">u8</span>; <span class="ident">BLOCK_SIZE</span>],
-    <span class="ident">key_type_marker</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>BPTreeFileIndex&lt;K&gt; {
+    file: File,
+    header: IndexHeader,
+    metadata: TreeMeta,
+    root_node: [u8; BLOCK_SIZE],
+    key_type_marker: PhantomData&lt;K&gt;,
 }
 
-<span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="ident">FileIndexTrait</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BPTreeFileIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="attribute">#[async_trait::async_trait]
+</span><span class="kw">impl</span>&lt;K&gt; FileIndexTrait&lt;K&gt; <span class="kw">for </span>BPTreeFileIndex&lt;K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static</span>,
 {
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">from_file</span>(<span class="ident">name</span>: <span class="ident">FileName</span>, <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+    <span class="kw">async fn </span>from_file(name: FileName, ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
         <span class="macro">trace!</span>(<span class="string">&quot;open index file&quot;</span>);
-        <span class="kw">let</span> <span class="ident">file</span> <span class="op">=</span> <span class="ident">File::open</span>(<span class="ident">name</span>.<span class="ident">to_path</span>(), <span class="ident">ioring</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">context</span>(<span class="macro">format!</span>(<span class="string">&quot;failed to open index file: {}&quot;</span>, <span class="ident">name</span>))<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">header</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::read_index_header</span>(<span class="kw-2">&amp;</span><span class="ident">file</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">metadata</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::read_tree_meta</span>(<span class="kw-2">&amp;</span><span class="ident">file</span>, <span class="kw-2">&amp;</span><span class="ident">header</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">root_node</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::read_root</span>(<span class="kw-2">&amp;</span><span class="ident">file</span>, <span class="ident">metadata</span>.<span class="ident">tree_offset</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>file = File::open(name.to_path(), ioring)
+            .<span class="kw">await
+            </span>.context(<span class="macro">format!</span>(<span class="string">&quot;failed to open index file: {}&quot;</span>, name))<span class="question-mark">?</span>;
+        <span class="kw">let </span>header = <span class="self">Self</span>::read_index_header(<span class="kw-2">&amp;</span>file).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>metadata = <span class="self">Self</span>::read_tree_meta(<span class="kw-2">&amp;</span>file, <span class="kw-2">&amp;</span>header).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>root_node = <span class="self">Self</span>::read_root(<span class="kw-2">&amp;</span>file, metadata.tree_offset).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
-            <span class="ident">file</span>,
-            <span class="ident">header</span>,
-            <span class="ident">metadata</span>,
-            <span class="ident">root_node</span>,
-            <span class="ident">key_type_marker</span>: <span class="ident">PhantomData</span>,
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+            file,
+            header,
+            metadata,
+            root_node,
+            key_type_marker: PhantomData,
         })
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">from_records</span>(
-        <span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>,
-        <span class="ident">ioring</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rio</span><span class="op">&gt;</span>,
-        <span class="ident">headers</span>: <span class="kw-2">&amp;</span><span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-        <span class="ident">meta</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-        <span class="ident">recreate_index_file</span>: <span class="ident">bool</span>,
-        <span class="ident">blob_size</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="ident">clean_file</span>(<span class="ident">path</span>, <span class="ident">recreate_index_file</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::serialize</span>(<span class="ident">headers</span>, <span class="ident">meta</span>, <span class="ident">blob_size</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">header</span>, <span class="ident">metadata</span>, <span class="ident">buf</span>) <span class="op">=</span> <span class="ident">res</span>;
-        <span class="kw">let</span> <span class="ident">file</span> <span class="op">=</span> <span class="ident">File::create</span>(<span class="ident">path</span>, <span class="ident">ioring</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">with_context</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;file open failed {:?}&quot;</span>, <span class="ident">path</span>))<span class="question-mark">?</span>;
-        <span class="ident">file</span>.<span class="ident">write_append</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="ident">header</span>.<span class="ident">set_written</span>(<span class="bool-val">true</span>);
-        <span class="kw">let</span> <span class="ident">serialized_header</span> <span class="op">=</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">header</span>)<span class="question-mark">?</span>;
-        <span class="ident">file</span>.<span class="ident">write_at</span>(<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="ident">serialized_header</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="ident">file</span>.<span class="ident">fsyncdata</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">root_node</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::read_root</span>(<span class="kw-2">&amp;</span><span class="ident">file</span>, <span class="ident">metadata</span>.<span class="ident">tree_offset</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
-            <span class="ident">file</span>,
-            <span class="ident">metadata</span>,
-            <span class="ident">header</span>,
-            <span class="ident">root_node</span>,
-            <span class="ident">key_type_marker</span>: <span class="ident">PhantomData</span>,
+    <span class="kw">async fn </span>from_records(
+        path: <span class="kw-2">&amp;</span>Path,
+        ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
+        headers: <span class="kw-2">&amp;</span>InMemoryIndex&lt;K&gt;,
+        meta: Vec&lt;u8&gt;,
+        recreate_index_file: bool,
+        blob_size: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        clean_file(path, recreate_index_file)<span class="question-mark">?</span>;
+        <span class="kw">let </span>res = <span class="self">Self</span>::serialize(headers, meta, blob_size)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(<span class="kw-2">mut </span>header, metadata, buf) = res;
+        <span class="kw">let </span>file = File::create(path, ioring)
+            .<span class="kw">await
+            </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;file open failed {:?}&quot;</span>, path))<span class="question-mark">?</span>;
+        file.write_append(<span class="kw-2">&amp;</span>buf).<span class="kw">await</span><span class="question-mark">?</span>;
+        header.set_written(<span class="bool-val">true</span>);
+        <span class="kw">let </span>serialized_header = serialize(<span class="kw-2">&amp;</span>header)<span class="question-mark">?</span>;
+        file.write_at(<span class="number">0</span>, <span class="kw-2">&amp;</span>serialized_header).<span class="kw">await</span><span class="question-mark">?</span>;
+        file.fsyncdata().<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>root_node = <span class="self">Self</span>::read_root(<span class="kw-2">&amp;</span>file, metadata.tree_offset).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+            file,
+            metadata,
+            header,
+            root_node,
+            key_type_marker: PhantomData,
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">file_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">file</span>.<span class="ident">size</span>()
+    <span class="kw">fn </span>file_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.file.size()
     }
 
-    <span class="kw">fn</span> <span class="ident">records_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">records_count</span>
+    <span class="kw">fn </span>records_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.header.records_count
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_meta</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">async fn </span>read_meta(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="macro">trace!</span>(<span class="string">&quot;load meta&quot;</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0</span>; <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">meta_size</span>];
-        <span class="macro">trace!</span>(<span class="string">&quot;read meta into buf: [0; {}]&quot;</span>, <span class="ident">buf</span>.<span class="ident">len</span>());
-        <span class="self">self</span>.<span class="ident">file</span>
-            .<span class="ident">read_at</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>, <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">serialized_size</span>()<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">u64</span>)
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; <span class="self">self</span>.header.meta_size];
+        <span class="macro">trace!</span>(<span class="string">&quot;read meta into buf: [0; {}]&quot;</span>, buf.len());
+        <span class="self">self</span>.file
+            .read_at(<span class="kw-2">&amp;mut </span>buf, <span class="self">self</span>.header.serialized_size()<span class="question-mark">? </span><span class="kw">as </span>u64)
             .<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">buf</span>)
+        <span class="prelude-val">Ok</span>(buf)
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_meta_at</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">i</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">async fn </span>read_meta_at(<span class="kw-2">&amp;</span><span class="self">self</span>, i: u64) -&gt; <span class="prelude-ty">Result</span>&lt;u8&gt; {
         <span class="macro">trace!</span>(<span class="string">&quot;load byte from meta&quot;</span>);
-        <span class="kw">if</span> <span class="ident">i</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">meta_size</span> <span class="kw">as</span> <span class="ident">u64</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">anyhow::anyhow!</span>(<span class="string">&quot;read meta out of range&quot;</span>));
+        <span class="kw">if </span>i &gt;= <span class="self">self</span>.header.meta_size <span class="kw">as </span>u64 {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow::anyhow!</span>(<span class="string">&quot;read meta out of range&quot;</span>));
         }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">1</span>];
-        <span class="self">self</span>.<span class="ident">file</span>
-            .<span class="ident">read_at</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>, <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">serialized_size</span>()<span class="question-mark">?</span> <span class="op">+</span> <span class="ident">i</span>)
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0</span>; <span class="number">1</span>];
+        <span class="self">self</span>.file
+            .read_at(<span class="kw-2">&amp;mut </span>buf, <span class="self">self</span>.header.serialized_size()<span class="question-mark">? </span>+ i)
             .<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">buf</span>[<span class="number">0</span>])
+        <span class="prelude-val">Ok</span>(buf[<span class="number">0</span>])
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">find_by_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">root_offset</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">metadata</span>.<span class="ident">tree_offset</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="ident">BLOCK_SIZE</span>];
-        <span class="kw">let</span> <span class="ident">leaf_offset</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">find_leaf_node</span>(<span class="ident">key</span>, <span class="ident">root_offset</span>, <span class="kw-2">&amp;mut</span> <span class="ident">buf</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">read_headers</span>(<span class="ident">leaf_offset</span>, <span class="ident">key</span>, <span class="kw-2">&amp;mut</span> <span class="ident">buf</span>).<span class="kw">await</span>
-    }
+    <span class="kw">async fn </span>find_by_key(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;RecordHeader&gt;&gt;&gt; {
+        <span class="kw">let </span>root_offset = <span class="self">self</span>.metadata.tree_offset;
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0u8</span>; BLOCK_SIZE];
+        <span class="kw">let </span>leaf_offset = <span class="self">self</span>.find_leaf_node(key, root_offset, <span class="kw-2">&amp;mut </span>buf).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="self">self</span>.read_headers(leaf_offset, key, <span class="kw-2">&amp;mut </span>buf).<span class="kw">await
+    </span>}
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_records_headers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blob_size</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>, <span class="ident">usize</span>)<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">file</span>.<span class="ident">read_all</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">validate_header</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>, <span class="ident">blob_size</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">metadata</span>.<span class="ident">leaves_offset</span> <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="ident">records_end</span> <span class="op">=</span> <span class="ident">FileIndexTrait</span>::<span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span><span class="ident">::file_size</span>(<span class="self">self</span>) <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="ident">records_buf</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">offset</span>..<span class="ident">records_end</span>];
-        (<span class="number">0</span>..<span class="self">self</span>.<span class="ident">header</span>.<span class="ident">records_count</span>)
-            .<span class="ident">try_fold</span>(<span class="ident">InMemoryIndex::new</span>(), <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">headers</span>, <span class="ident">i</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">i</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">record_header_size</span>;
-                <span class="kw">let</span> <span class="ident">header</span>: <span class="ident">RecordHeader</span> <span class="op">=</span> <span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">records_buf</span>[<span class="ident">offset</span>..])<span class="question-mark">?</span>;
-                <span class="comment">// We use get mut instead of entry(..).or_insert(..) because in second case we</span>
-                <span class="comment">// need to clone header.</span>
-                <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">header</span>.<span class="ident">key</span>().<span class="ident">to_vec</span>().<span class="ident">into</span>();
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">key</span>) {
-                    <span class="ident">v</span>.<span class="ident">push</span>(<span class="ident">header</span>)
-                } <span class="kw">else</span> {
-                    <span class="ident">headers</span>.<span class="ident">insert</span>(<span class="ident">key</span>, <span class="macro">vec!</span>[<span class="ident">header</span>]);
+    <span class="kw">async fn </span>get_records_headers(<span class="kw-2">&amp;</span><span class="self">self</span>, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(InMemoryIndex&lt;K&gt;, usize)&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="self">self</span>.file.read_all().<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="self">self</span>.validate_header(<span class="kw-2">&amp;mut </span>buf, blob_size).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>offset = <span class="self">self</span>.metadata.leaves_offset <span class="kw">as </span>usize;
+        <span class="kw">let </span>records_end = FileIndexTrait::&lt;K&gt;::file_size(<span class="self">self</span>) <span class="kw">as </span>usize;
+        <span class="kw">let </span>records_buf = <span class="kw-2">&amp;</span>buf[offset..records_end];
+        (<span class="number">0</span>..<span class="self">self</span>.header.records_count)
+            .try_fold(InMemoryIndex::new(), |<span class="kw-2">mut </span>headers, i| {
+                <span class="kw">let </span>offset = i * <span class="self">self</span>.header.record_header_size;
+                <span class="kw">let </span>header: RecordHeader = deserialize(<span class="kw-2">&amp;</span>records_buf[offset..])<span class="question-mark">?</span>;
+                <span class="comment">// We use get mut instead of entry(..).or_insert(..) because in second case we
+                // need to clone header.
+                </span><span class="kw">let </span>key = header.key().to_vec().into();
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = headers.get_mut(<span class="kw-2">&amp;</span>key) {
+                    v.push(header)
+                } <span class="kw">else </span>{
+                    headers.insert(key, <span class="macro">vec!</span>[header]);
                 }
-                <span class="prelude-val">Ok</span>(<span class="ident">headers</span>)
+                <span class="prelude-val">Ok</span>(headers)
             })
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">headers</span><span class="op">|</span> (<span class="ident">headers</span>, <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">records_count</span>))
+            .map(|<span class="kw-2">mut </span>headers| {
+                <span class="kw">for </span>val <span class="kw">in </span>headers.values_mut() {
+                    <span class="kw">if </span>val.len() &gt; <span class="number">1 </span>{
+                        val.reverse();
+                    }
+                }
+                headers
+            })
+            .map(|headers| (headers, <span class="self">self</span>.header.records_count))
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_any</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">root_offset</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">metadata</span>.<span class="ident">tree_offset</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="ident">BLOCK_SIZE</span>];
-        <span class="kw">let</span> <span class="ident">leaf_offset</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">find_leaf_node</span>(<span class="ident">key</span>, <span class="ident">root_offset</span>, <span class="kw-2">&amp;mut</span> <span class="ident">buf</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">read_header</span>(<span class="ident">leaf_offset</span>, <span class="ident">key</span>, <span class="kw-2">&amp;mut</span> <span class="ident">buf</span>).<span class="kw">await</span>
-    }
+    <span class="kw">async fn </span>get_any(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;RecordHeader&gt;&gt; {
+        <span class="kw">let </span>root_offset = <span class="self">self</span>.metadata.tree_offset;
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0u8</span>; BLOCK_SIZE];
+        <span class="kw">let </span>leaf_offset = <span class="self">self</span>.find_leaf_node(key, root_offset, <span class="kw-2">&amp;mut </span>buf).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="self">self</span>.read_header(leaf_offset, key, <span class="kw-2">&amp;mut </span>buf).<span class="kw">await
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blob_size</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="comment">// FIXME: check hash here?</span>
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">header</span>.<span class="ident">is_written</span>() {
-            <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">ValidationErrorKind::IndexNotWritten</span>;
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(
-                <span class="ident">Error::validation</span>(<span class="ident">param</span>, <span class="string">&quot;Index is incomplete (no &#39;is_written&#39; flag)&quot;</span>).<span class="ident">into</span>(),
+    <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="comment">// FIXME: check hash here?
+        </span><span class="kw">if </span>!<span class="self">self</span>.header.is_written() {
+            <span class="kw">let </span>param = ValidationErrorKind::IndexNotWritten;
+            <span class="kw">return </span><span class="prelude-val">Err</span>(
+                Error::validation(param, <span class="string">&quot;Index is incomplete (no &#39;is_written&#39; flag)&quot;</span>).into(),
             );
         }
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">version</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">HEADER_VERSION</span> {
-            <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">ValidationErrorKind::IndexVersion</span>;
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::validation</span>(<span class="ident">param</span>, <span class="string">&quot;Index Header version is not valid&quot;</span>).<span class="ident">into</span>());
+        <span class="kw">if </span><span class="self">self</span>.header.version() != HEADER_VERSION {
+            <span class="kw">let </span>param = ValidationErrorKind::IndexVersion;
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::validation(param, <span class="string">&quot;Index Header version is not valid&quot;</span>).into());
         }
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">blob_size</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">blob_size</span> {
-            <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">ValidationErrorKind::IndexBlobSize</span>;
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::validation</span>(
-                <span class="ident">param</span>,
+        <span class="kw">if </span><span class="self">self</span>.header.blob_size() != blob_size {
+            <span class="kw">let </span>param = ValidationErrorKind::IndexBlobSize;
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::validation(
+                param,
                 <span class="macro">format!</span>(
                     <span class="string">&quot;Index Header is for blob of size {}, but actual blob size is {}&quot;</span>,
-                    <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">blob_size</span>(),
-                    <span class="ident">blob_size</span>
+                    <span class="self">self</span>.header.blob_size(),
+                    blob_size
                 ),
             )
-            .<span class="ident">into</span>());
+            .into());
         }
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">magic_byte</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">INDEX_HEADER_MAGIC_BYTE</span> {
-            <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">ValidationErrorKind::IndexMagicByte</span>;
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::validation</span>(<span class="ident">param</span>, <span class="string">&quot;Index magic byte is not valid&quot;</span>).<span class="ident">into</span>());
+        <span class="kw">if </span><span class="self">self</span>.header.magic_byte() != INDEX_HEADER_MAGIC_BYTE {
+            <span class="kw">let </span>param = ValidationErrorKind::IndexMagicByte;
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::validation(param, <span class="string">&quot;Index magic byte is not valid&quot;</span>).into());
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="ident">BPTreeFileIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">K</span>: <span class="ident">Key</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">impl</span>&lt;K&gt; BPTreeFileIndex&lt;K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static</span>,
 {
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">find_leaf_node</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>, <span class="kw-2">mut</span> <span class="ident">offset</span>: <span class="ident">u64</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="kw">while</span> <span class="ident">offset</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">metadata</span>.<span class="ident">leaves_offset</span> {
-            <span class="ident">offset</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">offset</span> <span class="op">==</span> <span class="self">self</span>.<span class="ident">metadata</span>.<span class="ident">tree_offset</span> {
-                <span class="ident">Node::key_offset_serialized</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">root_node</span>, <span class="ident">key</span>)<span class="question-mark">?</span>
-            } <span class="kw">else</span> {
-                <span class="self">self</span>.<span class="ident">file</span>.<span class="ident">read_at</span>(<span class="ident">buf</span>, <span class="ident">offset</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="ident">Node::key_offset_serialized</span>(<span class="ident">buf</span>, <span class="ident">key</span>)<span class="question-mark">?</span>
-            };
+    <span class="kw">async fn </span>find_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K, <span class="kw-2">mut </span>offset: u64, buf: <span class="kw-2">&amp;mut </span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
+        <span class="kw">while </span>offset &lt; <span class="self">self</span>.metadata.leaves_offset {
+            offset = <span class="kw">if </span>offset == <span class="self">self</span>.metadata.tree_offset {
+                Node::key_offset_serialized(<span class="kw-2">&amp;</span><span class="self">self</span>.root_node, key)<span class="question-mark">?
+            </span>} <span class="kw">else </span>{
+                <span class="self">self</span>.file.read_at(buf, offset).<span class="kw">await</span><span class="question-mark">?</span>;
+                Node::key_offset_serialized(buf, key)<span class="question-mark">?
+            </span>};
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">offset</span>)
+        <span class="prelude-val">Ok</span>(offset)
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_header</span>(
+    <span class="kw">async fn </span>read_header(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">leaf_offset</span>: <span class="ident">u64</span>,
-        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>,
-        <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">buf_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">leaf_node_buf_size</span>(<span class="ident">leaf_offset</span>);
-        <span class="kw">let</span> <span class="ident">read_buf_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">file</span>.<span class="ident">read_at</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>[..<span class="ident">buf_size</span>], <span class="ident">leaf_offset</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">read_buf_size</span> <span class="op">!</span><span class="op">=</span> <span class="ident">buf_size</span> {
+        leaf_offset: u64,
+        key: <span class="kw-2">&amp;</span>K,
+        buf: <span class="kw-2">&amp;mut </span>[u8],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;RecordHeader&gt;&gt; {
+        <span class="kw">let </span>buf_size = <span class="self">self</span>.leaf_node_buf_size(leaf_offset);
+        <span class="kw">let </span>read_buf_size = <span class="self">self</span>.file.read_at(<span class="kw-2">&amp;mut </span>buf[..buf_size], leaf_offset).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">if </span>read_buf_size != buf_size {
             <span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;Can&#39;t read entire leaf node&quot;</span>))
-        } <span class="kw">else</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">record_header</span>, <span class="ident">offset</span>)) <span class="op">=</span>
-                <span class="self">self</span>.<span class="ident">read_header_buf</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[..<span class="ident">buf_size</span>], <span class="ident">key</span>, <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">record_header_size</span>)<span class="question-mark">?</span>
-            {
-                <span class="kw">let</span> <span class="ident">leftmost_header</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_leftmost</span>(
-                    <span class="kw-2">&amp;</span><span class="ident">buf</span>[..<span class="ident">buf_size</span>],
-                    <span class="ident">key</span>,
-                    <span class="ident">offset</span> <span class="kw">as</span> <span class="ident">usize</span>,
-                    <span class="ident">record_header</span>,
-                    <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">record_header_size</span>,
+        } <span class="kw">else </span>{
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((record_header, offset)) =
+                <span class="self">self</span>.read_header_buf(<span class="kw-2">&amp;</span>buf[..buf_size], key, <span class="self">self</span>.header.record_header_size)<span class="question-mark">?
+            </span>{
+                <span class="kw">let </span>leftmost_header = <span class="self">self</span>.get_leftmost(
+                    <span class="kw-2">&amp;</span>buf[..buf_size],
+                    key,
+                    offset <span class="kw">as </span>usize,
+                    record_header,
+                    <span class="self">self</span>.header.record_header_size,
                 )<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">leftmost_header</span>))
-            } <span class="kw">else</span> {
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(leftmost_header))
+            } <span class="kw">else </span>{
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
             }
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">get_leftmost</span>(
+    <span class="kw">fn </span>get_leftmost(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">raw_headers_buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>,
-        <span class="kw-2">mut</span> <span class="ident">offset</span>: <span class="ident">usize</span>,
-        <span class="kw-2">mut</span> <span class="ident">prev_header</span>: <span class="ident">RecordHeader</span>, <span class="comment">// it&#39;s expected, that this header is from raw_headers_buf[offset..]</span>
-        <span class="ident">record_header_size</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span> {
-        <span class="kw">while</span> <span class="ident">offset</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="ident">offset</span> <span class="op">=</span> <span class="ident">offset</span>.<span class="ident">saturating_sub</span>(<span class="ident">record_header_size</span>);
-            <span class="kw">let</span> <span class="ident">record_end</span> <span class="op">=</span> <span class="ident">offset</span> <span class="op">+</span> <span class="ident">record_header_size</span>;
-            <span class="kw">let</span> <span class="ident">current_header</span>: <span class="ident">RecordHeader</span> <span class="op">=</span> <span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">raw_headers_buf</span>[<span class="ident">offset</span>..<span class="ident">record_end</span>])<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">current_header</span>.<span class="ident">key</span>().<span class="ident">eq</span>(<span class="ident">key</span>.<span class="ident">as_ref</span>()) {
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">prev_header</span>);
+        raw_headers_buf: <span class="kw-2">&amp;</span>[u8],
+        key: <span class="kw-2">&amp;</span>K,
+        <span class="kw-2">mut </span>offset: usize,
+        <span class="kw-2">mut </span>prev_header: RecordHeader, <span class="comment">// it&#39;s expected, that this header is from raw_headers_buf[offset..]
+        </span>record_header_size: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;RecordHeader&gt; {
+        <span class="kw">while </span>offset &gt; <span class="number">0 </span>{
+            offset = offset.saturating_sub(record_header_size);
+            <span class="kw">let </span>record_end = offset + record_header_size;
+            <span class="kw">let </span>current_header: RecordHeader = deserialize(<span class="kw-2">&amp;</span>raw_headers_buf[offset..record_end])<span class="question-mark">?</span>;
+            <span class="kw">if </span>!current_header.key().eq(key.as_ref()) {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(prev_header);
             }
-            <span class="ident">prev_header</span> <span class="op">=</span> <span class="ident">current_header</span>;
+            prev_header = current_header;
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">prev_header</span>)
+        <span class="prelude-val">Ok</span>(prev_header)
     }
 
-    <span class="kw">fn</span> <span class="ident">leaf_node_buf_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">leaf_offset</span>: <span class="ident">u64</span>) -&gt; <span class="ident">usize</span> {
-        <span class="comment">// if we read last leaf, it may be shorter</span>
-        ((<span class="self">self</span>.<span class="ident">file_size</span>() <span class="op">-</span> <span class="ident">leaf_offset</span>) <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">min</span>(<span class="ident">BLOCK_SIZE</span>)
+    <span class="kw">fn </span>leaf_node_buf_size(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_offset: u64) -&gt; usize {
+        <span class="comment">// if we read last leaf, it may be shorter
+        </span>((<span class="self">self</span>.file_size() - leaf_offset) <span class="kw">as </span>usize).min(BLOCK_SIZE)
     }
 
-    <span class="kw">fn</span> <span class="ident">read_header_buf</span>(
+    <span class="kw">fn </span>read_header_buf(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">raw_headers_buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>,
-        <span class="ident">record_header_size</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">RecordHeader</span>, <span class="ident">usize</span>)<span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">l</span> <span class="op">=</span> <span class="number">0i32</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">r</span>: <span class="ident">i32</span> <span class="op">=</span> (<span class="ident">raw_headers_buf</span>.<span class="ident">len</span>() <span class="op">/</span> <span class="ident">record_header_size</span>) <span class="kw">as</span> <span class="ident">i32</span> <span class="op">-</span> <span class="number">1</span>;
-        <span class="kw">while</span> <span class="ident">l</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">r</span> {
-            <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> (<span class="ident">l</span> <span class="op">+</span> <span class="ident">r</span>) <span class="op">/</span> <span class="number">2</span>;
-            <span class="kw">let</span> <span class="ident">m_off</span> <span class="op">=</span> <span class="ident">record_header_size</span> <span class="op">*</span> <span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>;
-            <span class="kw">let</span> <span class="ident">record_end</span> <span class="op">=</span> <span class="ident">m_off</span> <span class="op">+</span> <span class="ident">record_header_size</span>;
-            <span class="kw">let</span> <span class="ident">record_header</span>: <span class="ident">RecordHeader</span> <span class="op">=</span> <span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">raw_headers_buf</span>[<span class="ident">m_off</span>..<span class="ident">record_end</span>])<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">cmp_res</span> <span class="op">=</span> <span class="ident">key</span>.<span class="ident">as_ref_key</span>().<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">record_header</span>.<span class="ident">key</span>().<span class="ident">into</span>());
-            <span class="kw">match</span> <span class="ident">cmp_res</span> {
-                <span class="ident">CmpOrdering::Less</span> =&gt; <span class="ident">r</span> <span class="op">=</span> <span class="ident">m</span> <span class="op">-</span> <span class="number">1</span>,
-                <span class="ident">CmpOrdering::Greater</span> =&gt; <span class="ident">l</span> <span class="op">=</span> <span class="ident">m</span> <span class="op">+</span> <span class="number">1</span>,
-                <span class="ident">CmpOrdering::Equal</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((<span class="ident">record_header</span>, <span class="ident">m_off</span>))),
+        raw_headers_buf: <span class="kw-2">&amp;</span>[u8],
+        key: <span class="kw-2">&amp;</span>K,
+        record_header_size: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;(RecordHeader, usize)&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>l = <span class="number">0i32</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>r: i32 = (raw_headers_buf.len() / record_header_size) <span class="kw">as </span>i32 - <span class="number">1</span>;
+        <span class="kw">while </span>l &lt;= r {
+            <span class="kw">let </span>m = (l + r) / <span class="number">2</span>;
+            <span class="kw">let </span>m_off = record_header_size * m <span class="kw">as </span>usize;
+            <span class="kw">let </span>record_end = m_off + record_header_size;
+            <span class="kw">let </span>record_header: RecordHeader = deserialize(<span class="kw-2">&amp;</span>raw_headers_buf[m_off..record_end])<span class="question-mark">?</span>;
+            <span class="kw">let </span>cmp_res = key.as_ref_key().cmp(<span class="kw-2">&amp;</span>record_header.key().into());
+            <span class="kw">match </span>cmp_res {
+                CmpOrdering::Less =&gt; r = m - <span class="number">1</span>,
+                CmpOrdering::Greater =&gt; l = m + <span class="number">1</span>,
+                CmpOrdering::Equal =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((record_header, m_off))),
             }
         }
         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_headers</span>(
+    <span class="kw">async fn </span>read_headers(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">leaf_offset</span>: <span class="ident">u64</span>,
-        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">K</span>,
-        <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">u8</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">buf_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">leaf_node_buf_size</span>(<span class="ident">leaf_offset</span>);
-        <span class="kw">let</span> <span class="ident">read_buf_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">file</span>.<span class="ident">read_at</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>[..<span class="ident">buf_size</span>], <span class="ident">leaf_offset</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">rh_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">record_header_size</span>;
-        <span class="kw">if</span> <span class="ident">read_buf_size</span> <span class="op">!</span><span class="op">=</span> <span class="ident">buf_size</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;Can&#39;t read entire leaf node&quot;</span>));
+        leaf_offset: u64,
+        key: <span class="kw-2">&amp;</span>K,
+        buf: <span class="kw-2">&amp;mut </span>[u8],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;RecordHeader&gt;&gt;&gt; {
+        <span class="kw">let </span>buf_size = <span class="self">self</span>.leaf_node_buf_size(leaf_offset);
+        <span class="kw">let </span>read_buf_size = <span class="self">self</span>.file.read_at(<span class="kw-2">&amp;mut </span>buf[..buf_size], leaf_offset).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>rh_size = <span class="self">self</span>.header.record_header_size;
+        <span class="kw">if </span>read_buf_size != buf_size {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;Can&#39;t read entire leaf node&quot;</span>));
         }
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">header</span>, <span class="ident">offset</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">read_header_buf</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[..<span class="ident">buf_size</span>], <span class="ident">key</span>, <span class="ident">rh_size</span>)<span class="question-mark">?</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">headers</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">header</span>];
-            <span class="self">self</span>.<span class="ident">go_left</span>(<span class="kw-2">&amp;mut</span> <span class="ident">headers</span>, <span class="kw-2">&amp;</span><span class="ident">buf</span>[..<span class="ident">buf_size</span>], <span class="ident">offset</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="self">self</span>.<span class="ident">go_right</span>(<span class="kw-2">&amp;mut</span> <span class="ident">headers</span>, <span class="kw-2">&amp;</span><span class="ident">buf</span>[..<span class="ident">buf_size</span>], <span class="ident">offset</span>, <span class="ident">leaf_offset</span>)
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((header, offset)) = <span class="self">self</span>.read_header_buf(<span class="kw-2">&amp;</span>buf[..buf_size], key, rh_size)<span class="question-mark">? </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>headers = <span class="macro">vec!</span>[header];
+            <span class="self">self</span>.go_left(<span class="kw-2">&amp;mut </span>headers, <span class="kw-2">&amp;</span>buf[..buf_size], offset).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="self">self</span>.go_right(<span class="kw-2">&amp;mut </span>headers, <span class="kw-2">&amp;</span>buf[..buf_size], offset, leaf_offset)
                 .<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">headers</span>))
-        } <span class="kw">else</span> {
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(headers))
+        } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">go_right</span>(
+    <span class="kw">async fn </span>go_right(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">headers</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span>,
-        <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="kw-2">mut</span> <span class="ident">offset</span>: <span class="ident">usize</span>,
-        <span class="ident">leaf_offset</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">record_header_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">record_header_size</span>;
-        <span class="kw">let</span> <span class="ident">records_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">record_header_size</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">records_count</span>;
-        <span class="kw">let</span> <span class="ident">leaves_end</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">metadata</span>.<span class="ident">leaves_offset</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">+</span> <span class="ident">records_size</span>;
-        <span class="kw">let</span> <span class="ident">right_bound</span> <span class="op">=</span> <span class="ident">std::cmp::min</span>(<span class="ident">leaves_end</span> <span class="op">-</span> <span class="ident">leaf_offset</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">buf</span>.<span class="ident">len</span>());
-        <span class="ident">offset</span> <span class="op">+</span><span class="op">=</span> <span class="ident">record_header_size</span>;
-        <span class="kw">while</span> <span class="ident">offset</span> <span class="op">+</span> <span class="ident">record_header_size</span> <span class="op">&lt;</span> <span class="ident">right_bound</span> {
-            <span class="kw">let</span> <span class="ident">record_end</span> <span class="op">=</span> <span class="ident">offset</span> <span class="op">+</span> <span class="ident">record_header_size</span>;
-            <span class="kw">let</span> <span class="ident">rh</span>: <span class="ident">RecordHeader</span> <span class="op">=</span> <span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">offset</span>..<span class="ident">record_end</span>])<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="ident">rh</span>.<span class="ident">key</span>() <span class="op">==</span> <span class="ident">headers</span>[<span class="number">0</span>].<span class="ident">key</span>() {
-                <span class="ident">headers</span>.<span class="ident">push</span>(<span class="ident">rh</span>);
-            } <span class="kw">else</span> {
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+        headers: <span class="kw-2">&amp;mut </span>Vec&lt;RecordHeader&gt;,
+        buf: <span class="kw-2">&amp;</span>[u8],
+        <span class="kw-2">mut </span>offset: usize,
+        leaf_offset: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>record_header_size = <span class="self">self</span>.header.record_header_size;
+        <span class="kw">let </span>records_size = <span class="self">self</span>.header.record_header_size * <span class="self">self</span>.header.records_count;
+        <span class="kw">let </span>leaves_end = <span class="self">self</span>.metadata.leaves_offset <span class="kw">as </span>usize + records_size;
+        <span class="kw">let </span>right_bound = std::cmp::min(leaves_end - leaf_offset <span class="kw">as </span>usize, buf.len());
+        offset += record_header_size;
+        <span class="kw">while </span>offset + record_header_size &lt; right_bound {
+            <span class="kw">let </span>record_end = offset + record_header_size;
+            <span class="kw">let </span>rh: RecordHeader = deserialize(<span class="kw-2">&amp;</span>buf[offset..record_end])<span class="question-mark">?</span>;
+            <span class="kw">if </span>rh.key() == headers[<span class="number">0</span>].key() {
+                headers.push(rh);
+            } <span class="kw">else </span>{
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
-            <span class="ident">offset</span> <span class="op">=</span> <span class="ident">record_end</span>;
+            offset = record_end;
         }
-        <span class="self">self</span>.<span class="ident">go_right_file</span>(<span class="ident">headers</span>, <span class="ident">leaf_offset</span> <span class="op">+</span> <span class="ident">offset</span> <span class="kw">as</span> <span class="ident">u64</span>)
+        <span class="self">self</span>.go_right_file(headers, leaf_offset + offset <span class="kw">as </span>u64)
             .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">go_right_file</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">headers</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span>, <span class="kw-2">mut</span> <span class="ident">offset</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="comment">// TODO: read headers one by one from file may be inefficient</span>
-        <span class="kw">let</span> <span class="ident">record_header_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">record_header_size</span> <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="kw">let</span> <span class="ident">records_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">record_header_size</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">records_count</span>;
-        <span class="kw">let</span> <span class="ident">leaves_end</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">metadata</span>.<span class="ident">leaves_offset</span> <span class="op">+</span> <span class="ident">records_size</span> <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0</span>; <span class="ident">record_header_size</span> <span class="kw">as</span> <span class="ident">usize</span>];
-        <span class="kw">while</span> <span class="ident">offset</span> <span class="op">+</span> <span class="ident">record_header_size</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">leaves_end</span> {
-            <span class="kw">let</span> <span class="ident">read_buf_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">file</span>.<span class="ident">read_at</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>, <span class="ident">offset</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="ident">read_buf_size</span> <span class="op">!</span><span class="op">=</span> <span class="ident">buf</span>.<span class="ident">len</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;Can&#39;t read header from file&quot;</span>));
+    <span class="kw">async fn </span>go_right_file(<span class="kw-2">&amp;</span><span class="self">self</span>, headers: <span class="kw-2">&amp;mut </span>Vec&lt;RecordHeader&gt;, <span class="kw-2">mut </span>offset: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="comment">// TODO: read headers one by one from file may be inefficient
+        </span><span class="kw">let </span>record_header_size = <span class="self">self</span>.header.record_header_size <span class="kw">as </span>u64;
+        <span class="kw">let </span>records_size = <span class="self">self</span>.header.record_header_size * <span class="self">self</span>.header.records_count;
+        <span class="kw">let </span>leaves_end = <span class="self">self</span>.metadata.leaves_offset + records_size <span class="kw">as </span>u64;
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; record_header_size <span class="kw">as </span>usize];
+        <span class="kw">while </span>offset + record_header_size &lt;= leaves_end {
+            <span class="kw">let </span>read_buf_size = <span class="self">self</span>.file.read_at(<span class="kw-2">&amp;mut </span>buf, offset).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">if </span>read_buf_size != buf.len() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;Can&#39;t read header from file&quot;</span>));
             }
-            <span class="kw">let</span> <span class="ident">header</span>: <span class="ident">RecordHeader</span> <span class="op">=</span> <span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>)<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="ident">header</span>.<span class="ident">key</span>() <span class="op">==</span> <span class="ident">headers</span>[<span class="number">0</span>].<span class="ident">key</span>() {
-                <span class="ident">headers</span>.<span class="ident">push</span>(<span class="ident">header</span>);
-            } <span class="kw">else</span> {
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+            <span class="kw">let </span>header: RecordHeader = deserialize(<span class="kw-2">&amp;</span>buf)<span class="question-mark">?</span>;
+            <span class="kw">if </span>header.key() == headers[<span class="number">0</span>].key() {
+                headers.push(header);
+            } <span class="kw">else </span>{
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
-            <span class="ident">offset</span> <span class="op">+</span><span class="op">=</span> <span class="ident">record_header_size</span>;
+            offset += record_header_size;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="comment">// notice that every node starts from first header with key (i.e. there is no way for record</span>
-    <span class="comment">// with the same key to be on the left side from the start of leaf node, where it is)</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">go_left</span>(
+    <span class="comment">// notice that every node starts from first header with key (i.e. there is no way for record
+    // with the same key to be on the left side from the start of leaf node, where it is)
+    </span><span class="kw">async fn </span>go_left(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">headers</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RecordHeader</span><span class="op">&gt;</span>,
-        <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="kw-2">mut</span> <span class="ident">offset</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">record_header_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">header</span>.<span class="ident">record_header_size</span>;
-        <span class="kw">while</span> <span class="ident">offset</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">record_header_size</span> {
-            <span class="kw">let</span> <span class="ident">record_start</span> <span class="op">=</span> <span class="ident">offset</span> <span class="op">-</span> <span class="ident">record_header_size</span>;
-            <span class="kw">let</span> <span class="ident">rh</span>: <span class="ident">RecordHeader</span> <span class="op">=</span> <span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">record_start</span>..<span class="ident">offset</span>])<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="ident">rh</span>.<span class="ident">key</span>() <span class="op">==</span> <span class="ident">headers</span>[<span class="number">0</span>].<span class="ident">key</span>() {
-                <span class="ident">headers</span>.<span class="ident">push</span>(<span class="ident">rh</span>);
-            } <span class="kw">else</span> {
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+        headers: <span class="kw-2">&amp;mut </span>Vec&lt;RecordHeader&gt;,
+        buf: <span class="kw-2">&amp;</span>[u8],
+        <span class="kw-2">mut </span>offset: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>record_header_size = <span class="self">self</span>.header.record_header_size;
+        <span class="kw">while </span>offset &gt;= record_header_size {
+            <span class="kw">let </span>record_start = offset - record_header_size;
+            <span class="kw">let </span>rh: RecordHeader = deserialize(<span class="kw-2">&amp;</span>buf[record_start..offset])<span class="question-mark">?</span>;
+            <span class="kw">if </span>rh.key() == headers[<span class="number">0</span>].key() {
+                headers.push(rh);
+            } <span class="kw">else </span>{
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
-            <span class="ident">offset</span> <span class="op">=</span> <span class="ident">record_start</span>;
+            offset = record_start;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">validate_header</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">blob_size</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">validate</span>(<span class="ident">blob_size</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="op">!</span><span class="ident"><span class="self">Self</span>::hash_valid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">header</span>, <span class="ident">buf</span>)<span class="question-mark">?</span> {
-            <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">ValidationErrorKind::IndexChecksum</span>;
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::validation</span>(<span class="ident">param</span>, <span class="string">&quot;header hash mismatch&quot;</span>).<span class="ident">into</span>());
+    <span class="kw">async fn </span>validate_header(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="self">self</span>.validate(blob_size)<span class="question-mark">?</span>;
+        <span class="kw">if </span>!<span class="self">Self</span>::hash_valid(<span class="kw-2">&amp;</span><span class="self">self</span>.header, buf)<span class="question-mark">? </span>{
+            <span class="kw">let </span>param = ValidationErrorKind::IndexChecksum;
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::validation(param, <span class="string">&quot;header hash mismatch&quot;</span>).into());
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn</span> <span class="ident">hash_valid</span>(<span class="ident">header</span>: <span class="kw-2">&amp;</span><span class="ident">IndexHeader</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">header</span>.<span class="ident">hash</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">header</span> <span class="op">=</span> <span class="ident">header</span>.<span class="ident">clone</span>();
-        <span class="ident">header</span>.<span class="ident">hash</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0</span>; <span class="ident">ring::digest::SHA256</span>.<span class="ident">output_len</span>];
-        <span class="ident">header</span>.<span class="ident">set_written</span>(<span class="bool-val">false</span>);
-        <span class="ident">serialize_into</span>(<span class="ident">buf</span>.<span class="ident">as_mut_slice</span>(), <span class="kw-2">&amp;</span><span class="ident">header</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">new_hash</span> <span class="op">=</span> <span class="ident">get_hash</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">hash</span> <span class="op">==</span> <span class="ident">new_hash</span>)
+    <span class="kw">fn </span>hash_valid(header: <span class="kw-2">&amp;</span>IndexHeader, buf: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+        <span class="kw">let </span>hash = header.hash.clone();
+        <span class="kw">let </span><span class="kw-2">mut </span>header = header.clone();
+        header.hash = <span class="macro">vec!</span>[<span class="number">0</span>; ring::digest::SHA256.output_len];
+        header.set_written(<span class="bool-val">false</span>);
+        serialize_into(buf.as_mut_slice(), <span class="kw-2">&amp;</span>header)<span class="question-mark">?</span>;
+        <span class="kw">let </span>new_hash = get_hash(<span class="kw-2">&amp;</span>buf);
+        <span class="prelude-val">Ok</span>(hash == new_hash)
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_index_header</span>(<span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="ident">File</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">IndexHeader</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">header_size</span> <span class="op">=</span> <span class="ident">IndexHeader::serialized_size_default</span>()<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0</span>; <span class="ident">header_size</span>];
-        <span class="ident">file</span>.<span class="ident">read_at</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>, <span class="number">0</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="ident">IndexHeader::from_raw</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>).<span class="ident">map_err</span>(<span class="ident">Into::into</span>)
+    <span class="kw">async fn </span>read_index_header(file: <span class="kw-2">&amp;</span>File) -&gt; <span class="prelude-ty">Result</span>&lt;IndexHeader&gt; {
+        <span class="kw">let </span>header_size = IndexHeader::serialized_size_default()<span class="question-mark">? </span><span class="kw">as </span>usize;
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; header_size];
+        file.read_at(<span class="kw-2">&amp;mut </span>buf, <span class="number">0</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+        IndexHeader::from_raw(<span class="kw-2">&amp;</span>buf).map_err(Into::into)
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_root</span>(<span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="ident">File</span>, <span class="ident">root_offset</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="ident">BLOCK_SIZE</span>]<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> [<span class="number">0</span>; <span class="ident">BLOCK_SIZE</span>];
-        <span class="kw">let</span> <span class="ident">buf_size</span> <span class="op">=</span> <span class="ident">std::cmp::min</span>((<span class="ident">file</span>.<span class="ident">size</span>() <span class="op">-</span> <span class="ident">root_offset</span>) <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BLOCK_SIZE</span>);
-        <span class="ident">file</span>.<span class="ident">read_at</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>[..<span class="ident">buf_size</span>], <span class="ident">root_offset</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">buf</span>)
+    <span class="kw">async fn </span>read_root(file: <span class="kw-2">&amp;</span>File, root_offset: u64) -&gt; <span class="prelude-ty">Result</span>&lt;[u8; BLOCK_SIZE]&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0</span>; BLOCK_SIZE];
+        <span class="kw">let </span>buf_size = std::cmp::min((file.size() - root_offset) <span class="kw">as </span>usize, BLOCK_SIZE);
+        file.read_at(<span class="kw-2">&amp;mut </span>buf[..buf_size], root_offset).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(buf)
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_tree_meta</span>(<span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="ident">File</span>, <span class="ident">header</span>: <span class="kw-2">&amp;</span><span class="ident">IndexHeader</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TreeMeta</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">meta_size</span> <span class="op">=</span> <span class="ident">TreeMeta::serialized_size_default</span>()<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0</span>; <span class="ident">meta_size</span>];
-        <span class="kw">let</span> <span class="ident">fsize</span> <span class="op">=</span> <span class="ident">header</span>.<span class="ident">meta_size</span> <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="kw">let</span> <span class="ident">hs</span> <span class="op">=</span> <span class="ident">header</span>.<span class="ident">serialized_size</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">meta_offset</span> <span class="op">=</span> <span class="ident">hs</span> <span class="op">+</span> <span class="ident">fsize</span>;
-        <span class="ident">file</span>.<span class="ident">read_at</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>, <span class="ident">meta_offset</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="ident">TreeMeta::from_raw</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>).<span class="ident">map_err</span>(<span class="ident">Into::into</span>)
+    <span class="kw">async fn </span>read_tree_meta(file: <span class="kw-2">&amp;</span>File, header: <span class="kw-2">&amp;</span>IndexHeader) -&gt; <span class="prelude-ty">Result</span>&lt;TreeMeta&gt; {
+        <span class="kw">let </span>meta_size = TreeMeta::serialized_size_default()<span class="question-mark">? </span><span class="kw">as </span>usize;
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; meta_size];
+        <span class="kw">let </span>fsize = header.meta_size <span class="kw">as </span>u64;
+        <span class="kw">let </span>hs = header.serialized_size()<span class="question-mark">?</span>;
+        <span class="kw">let </span>meta_offset = hs + fsize;
+        file.read_at(<span class="kw-2">&amp;mut </span>buf, meta_offset).<span class="kw">await</span><span class="question-mark">?</span>;
+        TreeMeta::from_raw(<span class="kw-2">&amp;</span>buf).map_err(Into::into)
     }
 
-    <span class="kw">fn</span> <span class="ident">serialize</span>(
-        <span class="ident">headers_btree</span>: <span class="kw-2">&amp;</span><span class="ident">InMemoryIndex</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-        <span class="ident">meta</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-        <span class="ident">blob_size</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">IndexHeader</span>, <span class="ident">TreeMeta</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
-        <span class="ident">Serializer::new</span>(<span class="ident">headers_btree</span>)
-            .<span class="ident">header_stage</span>(<span class="ident">meta</span>, <span class="ident">blob_size</span>)<span class="question-mark">?</span>
-            .<span class="ident">tree_stage</span>()<span class="question-mark">?</span>
-            .<span class="ident">build</span>()
+    <span class="kw">fn </span>serialize(
+        headers_btree: <span class="kw-2">&amp;</span>InMemoryIndex&lt;K&gt;,
+        meta: Vec&lt;u8&gt;,
+        blob_size: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(IndexHeader, TreeMeta, Vec&lt;u8&gt;)&gt; {
+        Serializer::new(headers_btree)
+            .header_stage(meta, blob_size)<span class="question-mark">?
+            </span>.tree_stage()<span class="question-mark">?
+            </span>.build()
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

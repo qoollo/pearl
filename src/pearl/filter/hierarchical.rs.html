@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/filter/hierarchical.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>hierarchical.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/filter/hierarchical.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>hierarchical.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -650,653 +645,652 @@
 <span id="645">645</span>
 <span id="646">646</span>
 <span id="647">647</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">borrow::Cow</span>, <span class="ident">collections::BTreeSet</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>std::{borrow::Cow, collections::BTreeSet};
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="kw">type</span> <span class="ident">InnerId</span> <span class="op">=</span> <span class="ident">usize</span>;
-<span class="doccomment">/// Child id</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">ChildId</span> <span class="op">=</span> <span class="ident">usize</span>;
+<span class="kw">type </span>InnerId = usize;
+<span class="doccomment">/// Child id
+</span><span class="kw">pub type </span>ChildId = usize;
 
-<span class="doccomment">/// Container for types which is support bloom filtering</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HierarchicalFilters</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> {
-    <span class="ident">inner</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Inner</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Leaf</span><span class="op">&lt;</span><span class="ident">Child</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">root</span>: <span class="ident">usize</span>,
-    <span class="ident">group_size</span>: <span class="ident">usize</span>,
-    <span class="ident">level</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// Container for types which is support bloom filtering
+</span><span class="kw">pub struct </span>HierarchicalFilters&lt;Key, Filter, Child&gt; {
+    inner: Vec&lt;<span class="prelude-ty">Option</span>&lt;Inner&lt;Key, Filter&gt;&gt;&gt;,
+    children: Vec&lt;<span class="prelude-ty">Option</span>&lt;Leaf&lt;Child&gt;&gt;&gt;,
+    root: usize,
+    group_size: usize,
+    level: usize,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">F</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">HierarchicalFilters</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">F</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">Debug</span>,
+<span class="kw">impl</span>&lt;K, F, T&gt; Debug <span class="kw">for </span>HierarchicalFilters&lt;K, F, T&gt;
+<span class="kw">where
+    </span>F: Debug,
 {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">FmtResult</span> {
-        <span class="kw">struct</span> <span class="ident">DebugInner</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span>, <span class="ident">F</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">HierarchicalFilters</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">F</span>, <span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">InnerId</span>);
-        <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span>, <span class="ident">F</span>: <span class="ident">Debug</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">DebugInner</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">K</span>, <span class="ident">F</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-            <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">FmtResult</span> {
-                <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">get_inner</span>(<span class="self">self</span>.<span class="number">1</span>) {
-                    <span class="prelude-val">Some</span>(<span class="ident">Inner::Node</span>(<span class="ident">node</span>)) =&gt; <span class="ident">f</span>
-                        .<span class="ident">debug_struct</span>(<span class="string">&quot;Node&quot;</span>)
-                        .<span class="ident">field</span>(<span class="string">&quot;filter&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">node</span>.<span class="ident">filter</span>)
-                        .<span class="ident">field</span>(
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; FmtResult {
+        <span class="kw">struct </span>DebugInner&lt;<span class="lifetime">&#39;a</span>, K, F, T&gt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>HierarchicalFilters&lt;K, F, T&gt;, InnerId);
+        <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, K, F: Debug, T&gt; Debug <span class="kw">for </span>DebugInner&lt;<span class="lifetime">&#39;a</span>, K, F, T&gt; {
+            <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; FmtResult {
+                <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.get_inner(<span class="self">self</span>.<span class="number">1</span>) {
+                    <span class="prelude-val">Some</span>(Inner::Node(node)) =&gt; f
+                        .debug_struct(<span class="string">&quot;Node&quot;</span>)
+                        .field(<span class="string">&quot;filter&quot;</span>, <span class="kw-2">&amp;</span>node.filter)
+                        .field(
                             <span class="string">&quot;children&quot;</span>,
-                            <span class="kw-2">&amp;</span><span class="ident">node</span>
-                                .<span class="ident">children</span>
-                                .<span class="ident">iter</span>()
-                                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">DebugInner</span>(<span class="self">self</span>.<span class="number">0</span>, <span class="kw-2">*</span><span class="ident">x</span>))
-                                .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+                            <span class="kw-2">&amp;</span>node
+                                .children
+                                .iter()
+                                .map(|x| DebugInner(<span class="self">self</span>.<span class="number">0</span>, <span class="kw-2">*</span>x))
+                                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
                         )
-                        .<span class="ident">finish</span>(),
-                    <span class="prelude-val">Some</span>(<span class="ident">Inner::Leaf</span>(<span class="ident">leaf</span>)) =&gt; {
-                        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Leaf&quot;</span>).<span class="ident">field</span>(<span class="string">&quot;leaf&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">leaf</span>.<span class="ident">leaf</span>).<span class="ident">finish</span>()
+                        .finish(),
+                    <span class="prelude-val">Some</span>(Inner::Leaf(leaf)) =&gt; {
+                        f.debug_struct(<span class="string">&quot;Leaf&quot;</span>).field(<span class="string">&quot;leaf&quot;</span>, <span class="kw-2">&amp;</span>leaf.leaf).finish()
                     }
-                    <span class="prelude-val">None</span> =&gt; <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Empty&quot;</span>).<span class="ident">finish</span>(),
+                    <span class="prelude-val">None </span>=&gt; f.debug_struct(<span class="string">&quot;Empty&quot;</span>).finish(),
                 }
             }
         }
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;HierarchicalBloom&quot;</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;inner&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">DebugInner</span>(<span class="self">self</span>, <span class="self">self</span>.<span class="ident">root</span>))
-            .<span class="ident">field</span>(<span class="string">&quot;group_size&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_size</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;level&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">level</span>)
-            .<span class="ident">finish</span>()
+        f.debug_struct(<span class="string">&quot;HierarchicalBloom&quot;</span>)
+            .field(<span class="string">&quot;inner&quot;</span>, <span class="kw-2">&amp;</span>DebugInner(<span class="self">self</span>, <span class="self">self</span>.root))
+            .field(<span class="string">&quot;group_size&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.group_size)
+            .field(<span class="string">&quot;level&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.level)
+            .finish()
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="doccomment">/// Leaf</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Leaf</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Leaf parent id</span>
-    <span class="kw">pub</span> <span class="ident">parent</span>: <span class="ident">InnerId</span>,
-    <span class="doccomment">/// Leaf data</span>
-    <span class="kw">pub</span> <span class="ident">data</span>: <span class="ident">T</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="doccomment">/// Leaf
+</span><span class="kw">pub struct </span>Leaf&lt;T&gt; {
+    <span class="doccomment">/// Leaf parent id
+    </span><span class="kw">pub </span>parent: InnerId,
+    <span class="doccomment">/// Leaf data
+    </span><span class="kw">pub </span>data: T,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">struct</span> <span class="ident">InnerNode</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> {
-    <span class="ident">filter</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Filter</span><span class="op">&gt;</span>,
-    <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InnerId</span><span class="op">&gt;</span>,
-    <span class="ident">parent</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">InnerId</span><span class="op">&gt;</span>,
-    <span class="ident">_marker</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">Key</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">struct </span>InnerNode&lt;Key, Filter&gt; {
+    filter: <span class="prelude-ty">Option</span>&lt;Filter&gt;,
+    children: Vec&lt;InnerId&gt;,
+    parent: <span class="prelude-ty">Option</span>&lt;InnerId&gt;,
+    _marker: PhantomData&lt;Key&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">InnerNode</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">InnerNode</span> {
-            <span class="ident">filter</span>: <span class="prelude-val">None</span>,
-            <span class="ident">children</span>: <span class="macro">vec!</span>[],
-            <span class="ident">parent</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">_marker</span>: <span class="ident">Default::default</span>(),
+<span class="kw">impl</span>&lt;Key, Filter&gt; Default <span class="kw">for </span>InnerNode&lt;Key, Filter&gt; {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        InnerNode {
+            filter: <span class="prelude-val">None</span>,
+            children: <span class="macro">vec!</span>[],
+            parent: Default::default(),
+            _marker: Default::default(),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">struct</span> <span class="ident">InnerLeaf</span> {
-    <span class="ident">parent</span>: <span class="ident">InnerId</span>,
-    <span class="ident">leaf</span>: <span class="ident">ChildId</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">struct </span>InnerLeaf {
+    parent: InnerId,
+    leaf: ChildId,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">enum</span> <span class="ident">Inner</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> {
-    <span class="ident">Node</span>(<span class="ident">InnerNode</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span>),
-    <span class="ident">Leaf</span>(<span class="ident">InnerLeaf</span>),
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">enum </span>Inner&lt;Key, Filter&gt; {
+    Node(InnerNode&lt;Key, Filter&gt;),
+    Leaf(InnerLeaf),
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Inner</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::Node</span>(<span class="ident">Default::default</span>())
+<span class="kw">impl</span>&lt;Key, Filter&gt; Default <span class="kw">for </span>Inner&lt;Key, Filter&gt; {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::Node(Default::default())
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> <span class="ident">Inner</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">parent_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">InnerId</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
-            <span class="ident"><span class="self">Self</span>::Node</span>(<span class="ident">node</span>) =&gt; <span class="ident">node</span>.<span class="ident">parent</span>.<span class="ident">clone</span>(),
-            <span class="ident"><span class="self">Self</span>::Leaf</span>(<span class="ident">leaf</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">leaf</span>.<span class="ident">parent</span>.<span class="ident">clone</span>()),
+<span class="kw">impl</span>&lt;Key, Filter&gt; Inner&lt;Key, Filter&gt; {
+    <span class="kw">fn </span>parent_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;InnerId&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{
+            <span class="self">Self</span>::Node(node) =&gt; node.parent.clone(),
+            <span class="self">Self</span>::Leaf(leaf) =&gt; <span class="prelude-val">Some</span>(leaf.parent.clone()),
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> <span class="ident">Inner</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">Key</span>: <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Send</span>,
-    <span class="ident">Filter</span>: <span class="ident">FilterTrait</span><span class="op">&lt;</span><span class="ident">Key</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;Key, Filter&gt; Inner&lt;Key, Filter&gt;
+<span class="kw">where
+    </span>Key: Sync + Send,
+    Filter: FilterTrait&lt;Key&gt;,
 {
-    <span class="kw">fn</span> <span class="ident">add_to_filter</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">Key</span>) {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident"><span class="self">Self</span>::Node</span>(<span class="ident">node</span>) =&gt; {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">filter</span>) <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">node</span>.<span class="ident">filter</span> {
-                    <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">filter</span>.<span class="ident">add</span>(<span class="ident">item</span>);
+    <span class="kw">fn </span>add_to_filter(<span class="kw-2">&amp;mut </span><span class="self">self</span>, item: <span class="kw-2">&amp;</span>Key) {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::Node(node) =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = <span class="kw-2">&amp;mut </span>node.filter {
+                    <span class="kw">let _ </span>= filter.add(item);
                 }
             }
-            <span class="kw">_</span> =&gt; {}
+            <span class="kw">_ </span>=&gt; {}
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">merge_filters</span>(<span class="ident">dest</span>: <span class="kw-2">&amp;mut</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Filter</span><span class="op">&gt;</span>, <span class="ident">source</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&gt;</span>) {
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">dest</span>
-            .<span class="ident">as_mut</span>()
-            .<span class="ident">zip</span>(<span class="ident">source</span>)
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">dest</span>, <span class="ident">source</span>)<span class="op">|</span> <span class="ident">dest</span>.<span class="ident">checked_add_assign</span>(<span class="ident">source</span>))
-            .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>)
+    <span class="kw">fn </span>merge_filters(dest: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;Filter&gt;, source: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Filter&gt;) {
+        <span class="kw">if </span>!dest
+            .as_mut()
+            .zip(source)
+            .map(|(dest, source)| dest.checked_add_assign(source))
+            .unwrap_or(<span class="bool-val">false</span>)
         {
-            <span class="kw-2">*</span><span class="ident">dest</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+            <span class="kw-2">*</span>dest = <span class="prelude-val">None</span>;
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> <span class="ident">BloomProvider</span><span class="op">&lt;</span><span class="ident">Key</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">HierarchicalFilters</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">Key</span>: <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Send</span>,
-    <span class="ident">Child</span>: <span class="ident">BloomProvider</span><span class="op">&lt;</span><span class="ident">Key</span><span class="op">&gt;</span>,
-    <span class="ident">Filter</span>: <span class="ident">FilterTrait</span><span class="op">&lt;</span><span class="ident">Key</span><span class="op">&gt;</span>,
+<span class="attribute">#[async_trait::async_trait]
+</span><span class="kw">impl</span>&lt;Key, Filter, Child&gt; BloomProvider&lt;Key&gt; <span class="kw">for </span>HierarchicalFilters&lt;Key, Filter, Child&gt;
+<span class="kw">where
+    </span>Key: Sync + Send,
+    Child: BloomProvider&lt;Key&gt;,
+    Filter: FilterTrait&lt;Key&gt;,
 {
-    <span class="kw">type</span> <span class="ident">Filter</span> <span class="op">=</span> <span class="ident">Filter</span>;
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">check_filter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">Key</span>) -&gt; <span class="ident">FilterResult</span> {
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">iter_possible_childs</span>(<span class="ident">item</span>)
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">leaf</span>)<span class="op">|</span> <span class="ident">leaf</span>.<span class="ident">data</span>.<span class="ident">check_filter</span>(<span class="ident">item</span>))
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">FuturesUnordered</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()
-            .<span class="ident">fold</span>(<span class="ident">FilterResult::NotContains</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">x</span>)
+    <span class="kw">type </span>Filter = Filter;
+    <span class="kw">async fn </span>check_filter(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span>Key) -&gt; FilterResult {
+        <span class="kw">let </span>res = <span class="self">self
+            </span>.iter_possible_childs(item)
+            .map(|(<span class="kw">_</span>, leaf)| leaf.data.check_filter(item))
+            .collect::&lt;FuturesUnordered&lt;<span class="kw">_</span>&gt;&gt;()
+            .fold(FilterResult::NotContains, |acc, x| acc + x)
             .<span class="kw">await</span>;
-        <span class="ident">res</span>
+        res
     }
 
-    <span class="kw">fn</span> <span class="ident">check_filter_fast</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">Key</span>) -&gt; <span class="ident">FilterResult</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">iter_possible_childs</span>(<span class="ident">item</span>).<span class="ident">next</span>().<span class="ident">is_some</span>() {
-            <span class="ident">FilterResult::NeedAdditionalCheck</span>
-        } <span class="kw">else</span> {
-            <span class="ident">FilterResult::NotContains</span>
+    <span class="kw">fn </span>check_filter_fast(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span>Key) -&gt; FilterResult {
+        <span class="kw">if </span><span class="self">self</span>.iter_possible_childs(item).next().is_some() {
+            FilterResult::NeedAdditionalCheck
+        } <span class="kw">else </span>{
+            FilterResult::NotContains
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">offload_buffer</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">needed_memory</span>: <span class="ident">usize</span>, <span class="ident">level</span>: <span class="ident">usize</span>) -&gt; <span class="ident">usize</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">freed</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">parents</span> <span class="op">=</span> <span class="ident">BTreeSet::new</span>();
-        <span class="comment">// Firstly try to free needed amount of memory by offloading childs</span>
-        <span class="kw">for</span> <span class="ident">child</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">iter_mut</span>().<span class="ident">flatten</span>() {
-            <span class="kw">if</span> <span class="ident">freed</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">needed_memory</span> {
-                <span class="kw">return</span> <span class="ident">freed</span>;
+    <span class="kw">async fn </span>offload_buffer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, needed_memory: usize, level: usize) -&gt; usize {
+        <span class="kw">let </span><span class="kw-2">mut </span>freed = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>parents = BTreeSet::new();
+        <span class="comment">// Firstly try to free needed amount of memory by offloading childs
+        </span><span class="kw">for </span>child <span class="kw">in </span><span class="self">self</span>.children.iter_mut().flatten() {
+            <span class="kw">if </span>freed &gt;= needed_memory {
+                <span class="kw">return </span>freed;
             }
-            <span class="comment">// Collect parents of childs to go through them further</span>
-            <span class="comment">// Skip if level is low</span>
-            <span class="kw">if</span> <span class="ident">level</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">level</span> {
-                <span class="ident">parents</span>.<span class="ident">insert</span>(<span class="ident">child</span>.<span class="ident">parent</span>);
+            <span class="comment">// Collect parents of childs to go through them further
+            // Skip if level is low
+            </span><span class="kw">if </span>level &gt;= <span class="self">self</span>.level {
+                parents.insert(child.parent);
             }
-            <span class="ident">freed</span> <span class="op">+</span><span class="op">=</span> <span class="ident">child</span>
-                .<span class="ident">data</span>
-                .<span class="ident">offload_buffer</span>(<span class="ident">needed_memory</span> <span class="op">-</span> <span class="ident">freed</span>, <span class="ident">level</span>)
+            freed += child
+                .data
+                .offload_buffer(needed_memory - freed, level)
                 .<span class="kw">await</span>;
         }
-        <span class="kw">match</span> <span class="ident">level</span>.<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">level</span>) {
-            <span class="comment">// Level of current container is higher than we need to offload</span>
-            <span class="ident">std::cmp::Ordering::Less</span> =&gt; <span class="ident">freed</span>,
-            <span class="comment">// Offload filters from nodes starting from deeper ones</span>
-            <span class="kw">_</span> =&gt; {
-                <span class="kw">while</span> <span class="op">!</span><span class="ident">parents</span>.<span class="ident">is_empty</span>() {
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_parents</span> <span class="op">=</span> <span class="ident">BTreeSet::new</span>();
-                    <span class="kw">for</span> <span class="ident">parent</span> <span class="kw">in</span> <span class="ident">parents</span>.<span class="ident">iter</span>().<span class="ident">copied</span>() {
-                        <span class="kw">if</span> <span class="ident">freed</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">needed_memory</span> {
-                            <span class="kw">return</span> <span class="ident">freed</span>;
+        <span class="kw">match </span>level.cmp(<span class="kw-2">&amp;</span><span class="self">self</span>.level) {
+            <span class="comment">// Level of current container is higher than we need to offload
+            </span>std::cmp::Ordering::Less =&gt; freed,
+            <span class="comment">// Offload filters from nodes starting from deeper ones
+            </span><span class="kw">_ </span>=&gt; {
+                <span class="kw">while </span>!parents.is_empty() {
+                    <span class="kw">let </span><span class="kw-2">mut </span>new_parents = BTreeSet::new();
+                    <span class="kw">for </span>parent <span class="kw">in </span>parents.iter().copied() {
+                        <span class="kw">if </span>freed &gt;= needed_memory {
+                            <span class="kw">return </span>freed;
                         }
-                        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">get_inner_mut</span>(<span class="ident">parent</span>) {
-                            <span class="prelude-val">Some</span>(<span class="ident">Inner::Node</span>(<span class="ident">node</span>)) =&gt; {
-                                <span class="ident">freed</span> <span class="op">+</span><span class="op">=</span> <span class="ident">node</span>
-                                    .<span class="ident">filter</span>
-                                    .<span class="ident">as_mut</span>()
-                                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">offload_filter</span>())
-                                    .<span class="ident">unwrap_or_default</span>();
-                                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">parent</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">node</span>.<span class="ident">parent</span> {
-                                    <span class="ident">new_parents</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">parent</span>);
+                        <span class="kw">match </span><span class="self">self</span>.get_inner_mut(parent) {
+                            <span class="prelude-val">Some</span>(Inner::Node(node)) =&gt; {
+                                freed += node
+                                    .filter
+                                    .as_mut()
+                                    .map(|x| x.offload_filter())
+                                    .unwrap_or_default();
+                                <span class="kw">if let </span><span class="prelude-val">Some</span>(parent) = <span class="kw-2">&amp;</span>node.parent {
+                                    new_parents.insert(<span class="kw-2">*</span>parent);
                                 }
                             }
-                            <span class="kw">_</span> =&gt; {}
+                            <span class="kw">_ </span>=&gt; {}
                         }
                     }
-                    <span class="ident">parents</span> <span class="op">=</span> <span class="ident">new_parents</span>;
+                    parents = new_parents;
                 }
-                <span class="ident">freed</span>
+                freed
             }
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_filter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Filter</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_inner</span>(<span class="self">self</span>.<span class="ident">root</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">Inner::Node</span>(<span class="ident">node</span>)) =&gt; <span class="ident">node</span>.<span class="ident">filter</span>.<span class="ident">clone</span>(),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+    <span class="kw">async fn </span>get_filter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Filter&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.get_inner(<span class="self">self</span>.root) {
+            <span class="prelude-val">Some</span>(Inner::Node(node)) =&gt; node.filter.clone(),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">filter_memory_allocated</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">allocated</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">for</span> <span class="ident">value</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">iter</span>().<span class="ident">flatten</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Inner::Node</span>(<span class="ident">InnerNode</span> {
-                <span class="ident">filter</span>: <span class="prelude-val">Some</span>(<span class="ident">filter</span>),
+    <span class="kw">async fn </span>filter_memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="kw">let </span><span class="kw-2">mut </span>allocated = <span class="number">0</span>;
+        <span class="kw">for </span>value <span class="kw">in </span><span class="self">self</span>.inner.iter().flatten() {
+            <span class="kw">if let </span>Inner::Node(InnerNode {
+                filter: <span class="prelude-val">Some</span>(filter),
                 ..
-            }) <span class="op">=</span> <span class="ident">value</span>
+            }) = value
             {
-                <span class="ident">allocated</span> <span class="op">+</span><span class="op">=</span> <span class="ident">filter</span>.<span class="ident">memory_allocated</span>();
+                allocated += filter.memory_allocated();
             }
         }
-        <span class="kw">for</span> <span class="ident">child</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">iter</span>().<span class="ident">flatten</span>() {
-            <span class="ident">allocated</span> <span class="op">+</span><span class="op">=</span> <span class="ident">child</span>.<span class="ident">data</span>.<span class="ident">filter_memory_allocated</span>().<span class="kw">await</span>;
+        <span class="kw">for </span>child <span class="kw">in </span><span class="self">self</span>.children.iter().flatten() {
+            allocated += child.data.filter_memory_allocated().<span class="kw">await</span>;
         }
-        <span class="ident">allocated</span>
+        allocated
     }
 
-    <span class="kw">fn</span> <span class="ident">get_filter_fast</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_inner</span>(<span class="self">self</span>.<span class="ident">root</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">Inner::Node</span>(<span class="ident">node</span>)) =&gt; <span class="ident">node</span>.<span class="ident">filter</span>.<span class="ident">as_ref</span>(),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+    <span class="kw">fn </span>get_filter_fast(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Filter&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.get_inner(<span class="self">self</span>.root) {
+            <span class="prelude-val">Some</span>(Inner::Node(node)) =&gt; node.filter.as_ref(),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> <span class="ident">HierarchicalFilters</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">Key</span>: <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Send</span>,
-    <span class="ident">Child</span>: <span class="ident">BloomProvider</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span> <span class="op">=</span> <span class="ident">Filter</span><span class="op">&gt;</span>,
-    <span class="ident">Filter</span>: <span class="ident">FilterTrait</span><span class="op">&lt;</span><span class="ident">Key</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;Key, Filter, Child&gt; HierarchicalFilters&lt;Key, Filter, Child&gt;
+<span class="kw">where
+    </span>Key: Sync + Send,
+    Child: BloomProvider&lt;Key, Filter = Filter&gt;,
+    Filter: FilterTrait&lt;Key&gt;,
 {
-    <span class="doccomment">/// Create collection from vec</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">from_vec</span>(<span class="ident">group_size</span>: <span class="ident">usize</span>, <span class="ident">level</span>: <span class="ident">usize</span>, <span class="ident">childs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Child</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">group_size</span>, <span class="ident">level</span>);
-        <span class="kw">for</span> <span class="ident">child</span> <span class="kw">in</span> <span class="ident">childs</span> {
-            <span class="ident">ret</span>.<span class="ident">push</span>(<span class="ident">child</span>).<span class="kw">await</span>;
+    <span class="doccomment">/// Create collection from vec
+    </span><span class="kw">pub async fn </span>from_vec(group_size: usize, level: usize, childs: Vec&lt;Child&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>ret = <span class="self">Self</span>::new(group_size, level);
+        <span class="kw">for </span>child <span class="kw">in </span>childs {
+            ret.push(child).<span class="kw">await</span>;
         }
-        <span class="ident">ret</span>
+        ret
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_filter_from_child</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Child</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Filter</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">Filter</span>: <span class="lifetime">&#39;a</span>,
+    <span class="kw">async fn </span>get_filter_from_child&lt;<span class="lifetime">&#39;a</span>&gt;(item: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Child) -&gt; <span class="prelude-ty">Option</span>&lt;Cow&lt;<span class="lifetime">&#39;a</span>, Filter&gt;&gt;
+    <span class="kw">where
+        </span>Filter: <span class="lifetime">&#39;a</span>,
     {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">filter</span>) <span class="op">=</span> <span class="ident">item</span>.<span class="ident">get_filter_fast</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">Cow::Borrowed</span>(<span class="ident">filter</span>))
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">item</span>.<span class="ident">get_filter</span>().<span class="kw">await</span>;
-            <span class="ident">filter</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">Cow::Owned</span>(<span class="ident">x</span>))
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = item.get_filter_fast() {
+            <span class="prelude-val">Some</span>(Cow::Borrowed(filter))
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>filter = item.get_filter().<span class="kw">await</span>;
+            filter.map(|x| Cow::Owned(x))
         }
     }
 
-    <span class="doccomment">/// Reload all filters and recreate container</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">reload</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">clear_and_get_values</span>();
-        <span class="self">self</span>.<span class="ident">extend</span>(<span class="ident">values</span>).<span class="kw">await</span>;
+    <span class="doccomment">/// Reload all filters and recreate container
+    </span><span class="kw">pub async fn </span>reload(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>values = <span class="self">self</span>.clear_and_get_values();
+        <span class="self">self</span>.extend(values).<span class="kw">await</span>;
     }
 
-    <span class="doccomment">/// Add child to collection</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">push</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">child</span>: <span class="ident">Child</span>) -&gt; <span class="ident">ChildId</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">group_size</span> {
-            <span class="comment">// Add child to root child list</span>
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">add_child</span>(<span class="self">self</span>.<span class="ident">root</span>, <span class="ident">child</span>).<span class="kw">await</span>;
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">group_size</span> {
-                <span class="comment">// Replace root with new node and push to it</span>
-                <span class="kw">let</span> <span class="ident">new_root_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">len</span>();
-                <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> {
-                    <span class="kw">let</span> <span class="ident">root</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">root_mut</span>();
-                    <span class="ident">root</span>.<span class="ident">parent</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">new_root_id</span>);
-                    <span class="ident">root</span>.<span class="ident">filter</span>.<span class="ident">clone</span>()
+    <span class="doccomment">/// Add child to collection
+    </span><span class="kw">pub async fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, child: Child) -&gt; ChildId {
+        <span class="kw">if </span><span class="self">self</span>.children.len() &lt; <span class="self">self</span>.group_size {
+            <span class="comment">// Add child to root child list
+            </span><span class="kw">let </span>res = <span class="self">self</span>.add_child(<span class="self">self</span>.root, child).<span class="kw">await</span>;
+            <span class="kw">if </span><span class="self">self</span>.children.len() &gt;= <span class="self">self</span>.group_size {
+                <span class="comment">// Replace root with new node and push to it
+                </span><span class="kw">let </span>new_root_id = <span class="self">self</span>.inner.len();
+                <span class="kw">let </span>filter = {
+                    <span class="kw">let </span>root = <span class="self">self</span>.root_mut();
+                    root.parent = <span class="prelude-val">Some</span>(new_root_id);
+                    root.filter.clone()
                 };
-                <span class="kw">let</span> <span class="ident">new_root</span> <span class="op">=</span> <span class="ident">Inner::Node</span>(<span class="ident">InnerNode</span> {
-                    <span class="ident">filter</span>,
-                    <span class="ident">children</span>: <span class="macro">vec!</span>[<span class="self">self</span>.<span class="ident">root</span>],
-                    ..<span class="ident">Default::default</span>()
+                <span class="kw">let </span>new_root = Inner::Node(InnerNode {
+                    filter,
+                    children: <span class="macro">vec!</span>[<span class="self">self</span>.root],
+                    ..Default::default()
                 });
-                <span class="self">self</span>.<span class="ident">root</span> <span class="op">=</span> <span class="ident">new_root_id</span>;
-                <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">push</span>(<span class="prelude-val">Some</span>(<span class="ident">new_root</span>));
+                <span class="self">self</span>.root = new_root_id;
+                <span class="self">self</span>.inner.push(<span class="prelude-val">Some</span>(new_root));
             }
-            <span class="ident">res</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// Push child to node</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">last_inner_node</span>().<span class="ident">unwrap</span>();
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get</span>(<span class="ident">id</span>).<span class="ident">children</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">group_size</span> {
-                <span class="comment">// Create new node if needed</span>
-                <span class="ident">id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">new_inner_node</span>();
+            res
+        } <span class="kw">else </span>{
+            <span class="comment">// Push child to node
+            </span><span class="kw">let </span><span class="kw-2">mut </span>id = <span class="self">self</span>.last_inner_node().unwrap();
+            <span class="kw">if </span><span class="self">self</span>.get(id).children.len() &gt;= <span class="self">self</span>.group_size {
+                <span class="comment">// Create new node if needed
+                </span>id = <span class="self">self</span>.new_inner_node();
             }
-            <span class="self">self</span>.<span class="ident">add_child</span>(<span class="ident">id</span>, <span class="ident">child</span>).<span class="kw">await</span>
-        }
+            <span class="self">self</span>.add_child(id, child).<span class="kw">await
+        </span>}
     }
 
-    <span class="comment">// Add child to node and adds child filter data to node and it&#39;s parents</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_child</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">node</span>: <span class="ident">InnerId</span>, <span class="ident">child</span>: <span class="ident">Child</span>) -&gt; <span class="ident">ChildId</span> {
-        <span class="kw">let</span> <span class="ident">item_filter</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::get_filter_from_child</span>(<span class="kw-2">&amp;</span><span class="ident">child</span>).<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">inner_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">len</span>();
-        <span class="kw">let</span> <span class="ident">child_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">len</span>();
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">push</span>(<span class="prelude-val">Some</span>(<span class="ident">Inner::Leaf</span>(<span class="ident">InnerLeaf</span> {
-            <span class="ident">parent</span>: <span class="ident">node</span>,
-            <span class="ident">leaf</span>: <span class="ident">child_id</span>,
+    <span class="comment">// Add child to node and adds child filter data to node and it&#39;s parents
+    </span><span class="kw">async fn </span>add_child(<span class="kw-2">&amp;mut </span><span class="self">self</span>, node: InnerId, child: Child) -&gt; ChildId {
+        <span class="kw">let </span>item_filter = <span class="self">Self</span>::get_filter_from_child(<span class="kw-2">&amp;</span>child).<span class="kw">await</span>;
+        <span class="kw">let </span>inner_id = <span class="self">self</span>.inner.len();
+        <span class="kw">let </span>child_id = <span class="self">self</span>.children.len();
+        <span class="self">self</span>.inner.push(<span class="prelude-val">Some</span>(Inner::Leaf(InnerLeaf {
+            parent: node,
+            leaf: child_id,
         })));
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">parent</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut</span>(<span class="ident">node</span>);
-            <span class="kw">if</span> <span class="ident">node</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() {
-                <span class="ident"><span class="self">Self</span>::init_filter_from_cow</span>(<span class="kw-2">&amp;mut</span> <span class="ident">node</span>.<span class="ident">filter</span>, <span class="kw-2">&amp;</span><span class="ident">item_filter</span>);
-            } <span class="kw">else</span> {
-                <span class="ident"><span class="self">Self</span>::add_filter_from_cow</span>(<span class="kw-2">&amp;mut</span> <span class="ident">node</span>.<span class="ident">filter</span>, <span class="kw-2">&amp;</span><span class="ident">item_filter</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>parent = {
+            <span class="kw">let </span>node = <span class="self">self</span>.get_mut(node);
+            <span class="kw">if </span>node.children.is_empty() {
+                <span class="self">Self</span>::init_filter_from_cow(<span class="kw-2">&amp;mut </span>node.filter, <span class="kw-2">&amp;</span>item_filter);
+            } <span class="kw">else </span>{
+                <span class="self">Self</span>::add_filter_from_cow(<span class="kw-2">&amp;mut </span>node.filter, <span class="kw-2">&amp;</span>item_filter);
             }
-            <span class="ident">node</span>.<span class="ident">children</span>.<span class="ident">push</span>(<span class="ident">inner_id</span>);
-            <span class="ident">node</span>.<span class="ident">parent</span>
+            node.children.push(inner_id);
+            node.parent
         };
 
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">id</span>) <span class="op">=</span> <span class="ident">parent</span> {
-            <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut</span>(<span class="ident">id</span>);
-            <span class="ident"><span class="self">Self</span>::add_filter_from_cow</span>(<span class="kw-2">&amp;mut</span> <span class="ident">node</span>.<span class="ident">filter</span>, <span class="kw-2">&amp;</span><span class="ident">item_filter</span>);
-            <span class="ident">parent</span> <span class="op">=</span> <span class="ident">node</span>.<span class="ident">parent</span>;
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(id) = parent {
+            <span class="kw">let </span>node = <span class="self">self</span>.get_mut(id);
+            <span class="self">Self</span>::add_filter_from_cow(<span class="kw-2">&amp;mut </span>node.filter, <span class="kw-2">&amp;</span>item_filter);
+            parent = node.parent;
         }
 
-        <span class="ident">drop</span>(<span class="ident">item_filter</span>);
-        <span class="kw">let</span> <span class="ident">child</span> <span class="op">=</span> <span class="ident">Leaf</span> {
-            <span class="ident">data</span>: <span class="ident">child</span>,
-            <span class="ident">parent</span>: <span class="ident">node</span>,
+        drop(item_filter);
+        <span class="kw">let </span>child = Leaf {
+            data: child,
+            parent: node,
         };
-        <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">push</span>(<span class="prelude-val">Some</span>(<span class="ident">child</span>));
-        <span class="ident">child_id</span>
+        <span class="self">self</span>.children.push(<span class="prelude-val">Some</span>(child));
+        child_id
     }
 
-    <span class="kw">fn</span> <span class="ident">last_inner_node</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">InnerId</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">root</span>().<span class="ident">children</span>.<span class="ident">last</span>().<span class="ident">copied</span>()
+    <span class="kw">fn </span>last_inner_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;InnerId&gt; {
+        <span class="self">self</span>.root().children.last().copied()
     }
 
-    <span class="doccomment">/// Extends conatiner with values</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">extend</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">values</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Child</span><span class="op">&gt;</span>) {
-        <span class="kw">for</span> <span class="ident">child</span> <span class="kw">in</span> <span class="ident">values</span> {
-            <span class="self">self</span>.<span class="ident">push</span>(<span class="ident">child</span>).<span class="kw">await</span>;
+    <span class="doccomment">/// Extends conatiner with values
+    </span><span class="kw">pub async fn </span>extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, values: Vec&lt;Child&gt;) {
+        <span class="kw">for </span>child <span class="kw">in </span>values {
+            <span class="self">self</span>.push(child).<span class="kw">await</span>;
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> <span class="ident">HierarchicalFilters</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">Key</span>: <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Send</span>,
-    <span class="ident">Filter</span>: <span class="ident">FilterTrait</span><span class="op">&lt;</span><span class="ident">Key</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;Key, Filter, Child&gt; HierarchicalFilters&lt;Key, Filter, Child&gt;
+<span class="kw">where
+    </span>Key: Sync + Send,
+    Filter: FilterTrait&lt;Key&gt;,
 {
-    <span class="doccomment">/// Iter over childs which may contain key</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter_possible_childs</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Key</span>,
-    ) -&gt; <span class="ident">PossibleRevIter</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> {
-        <span class="ident">PossibleRevIter::new</span>(<span class="self">self</span>, <span class="ident">key</span>, <span class="bool-val">false</span>)
+    <span class="doccomment">/// Iter over childs which may contain key
+    </span><span class="kw">pub fn </span>iter_possible_childs&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        key: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Key,
+    ) -&gt; PossibleRevIter&lt;<span class="lifetime">&#39;a</span>, Key, Filter, Child&gt; {
+        PossibleRevIter::new(<span class="self">self</span>, key, <span class="bool-val">false</span>)
     }
 
-    <span class="doccomment">/// Iter over childs which may contain key in reverse order</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter_possible_childs_rev</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Key</span>,
-    ) -&gt; <span class="ident">PossibleRevIter</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> {
-        <span class="ident">PossibleRevIter::new</span>(<span class="self">self</span>, <span class="ident">key</span>, <span class="bool-val">true</span>)
+    <span class="doccomment">/// Iter over childs which may contain key in reverse order
+    </span><span class="kw">pub fn </span>iter_possible_childs_rev&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        key: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Key,
+    ) -&gt; PossibleRevIter&lt;<span class="lifetime">&#39;a</span>, Key, Filter, Child&gt; {
+        PossibleRevIter::new(<span class="self">self</span>, key, <span class="bool-val">true</span>)
     }
 
-    <span class="doccomment">/// Add key to all parents in collection</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_to_parents</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">child_id</span>: <span class="ident">ChildId</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">Key</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">child</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_child</span>(<span class="ident">child_id</span>) {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">child</span>.<span class="ident">parent</span>;
-            <span class="kw">loop</span> {
-                <span class="kw">let</span> <span class="ident">curr</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_inner_mut</span>(<span class="ident">id</span>);
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">curr</span>) <span class="op">=</span> <span class="ident">curr</span> {
-                    <span class="ident">curr</span>.<span class="ident">add_to_filter</span>(<span class="ident">item</span>);
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">parent</span>) <span class="op">=</span> <span class="ident">curr</span>.<span class="ident">parent_id</span>() {
-                        <span class="ident">id</span> <span class="op">=</span> <span class="ident">parent</span>;
-                    } <span class="kw">else</span> {
+    <span class="doccomment">/// Add key to all parents in collection
+    </span><span class="kw">pub fn </span>add_to_parents(<span class="kw-2">&amp;mut </span><span class="self">self</span>, child_id: ChildId, item: <span class="kw-2">&amp;</span>Key) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(child) = <span class="self">self</span>.get_child(child_id) {
+            <span class="kw">let </span><span class="kw-2">mut </span>id = child.parent;
+            <span class="kw">loop </span>{
+                <span class="kw">let </span>curr = <span class="self">self</span>.get_inner_mut(id);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(curr) = curr {
+                    curr.add_to_filter(item);
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(parent) = curr.parent_id() {
+                        id = parent;
+                    } <span class="kw">else </span>{
                         <span class="kw">return</span>;
                     }
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="kw">return</span>;
                 }
             }
         }
     }
-    <span class="kw">fn</span> <span class="ident">add_filter_from_cow</span>(<span class="ident">dest</span>: <span class="kw-2">&amp;mut</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Filter</span><span class="op">&gt;</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">Filter</span><span class="op">&gt;</span><span class="op">&gt;</span>)
-    <span class="kw">where</span>
-        <span class="ident">Filter</span>: <span class="ident">Clone</span>,
+    <span class="kw">fn </span>add_filter_from_cow(dest: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;Filter&gt;, item: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Cow&lt;<span class="lifetime">&#39;_</span>, Filter&gt;&gt;)
+    <span class="kw">where
+        </span>Filter: Clone,
     {
-        <span class="ident">Inner::merge_filters</span>(<span class="ident">dest</span>, <span class="ident">item</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">as_ref</span>()));
+        Inner::merge_filters(dest, item.as_ref().map(|x| x.as_ref()));
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> <span class="ident">HierarchicalFilters</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">Filter</span>: <span class="ident">Clone</span>,
+<span class="kw">impl</span>&lt;Key, Filter, Child&gt; HierarchicalFilters&lt;Key, Filter, Child&gt;
+<span class="kw">where
+    </span>Filter: Clone,
 {
-    <span class="kw">fn</span> <span class="ident">init_filter_from_cow</span>(<span class="ident">dest</span>: <span class="kw-2">&amp;mut</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Filter</span><span class="op">&gt;</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">Filter</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">filter</span>) <span class="op">=</span> <span class="ident">item</span> {
-            <span class="kw-2">*</span><span class="ident">dest</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_owned</span>());
-        } <span class="kw">else</span> {
-            <span class="kw-2">*</span><span class="ident">dest</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+    <span class="kw">fn </span>init_filter_from_cow(dest: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;Filter&gt;, item: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Cow&lt;<span class="lifetime">&#39;_</span>, Filter&gt;&gt;) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = item {
+            <span class="kw-2">*</span>dest = <span class="prelude-val">Some</span>(filter.clone().into_owned());
+        } <span class="kw">else </span>{
+            <span class="kw-2">*</span>dest = <span class="prelude-val">None</span>;
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> <span class="ident">HierarchicalFilters</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Returns children elements as Vec</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_vec</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Leaf</span><span class="op">&lt;</span><span class="ident">Child</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">into_iter</span>().<span class="ident">flatten</span>().<span class="ident">collect</span>()
+<span class="kw">impl</span>&lt;Key, Filter, Child&gt; HierarchicalFilters&lt;Key, Filter, Child&gt; {
+    <span class="doccomment">/// Returns children elements as Vec
+    </span><span class="kw">pub fn </span>into_vec(<span class="self">self</span>) -&gt; Vec&lt;Leaf&lt;Child&gt;&gt; {
+        <span class="self">self</span>.children.into_iter().flatten().collect()
     }
 
-    <span class="kw">fn</span> <span class="ident">root</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">InnerNode</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get</span>(<span class="self">self</span>.<span class="ident">root</span>)
+    <span class="kw">fn </span>root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>InnerNode&lt;Key, Filter&gt; {
+        <span class="self">self</span>.get(<span class="self">self</span>.root)
     }
 
-    <span class="kw">fn</span> <span class="ident">root_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">InnerNode</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_mut</span>(<span class="self">self</span>.<span class="ident">root</span>)
+    <span class="kw">fn </span>root_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>InnerNode&lt;Key, Filter&gt; {
+        <span class="self">self</span>.get_mut(<span class="self">self</span>.root)
     }
 
-    <span class="kw">fn</span> <span class="ident">get_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">InnerId</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">InnerNode</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">get_inner_mut</span>(<span class="ident">id</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">Inner::Node</span>(<span class="ident">node</span>)) =&gt; <span class="ident">node</span>,
-            <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;node not found&quot;</span>),
+    <span class="kw">fn </span>get_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: InnerId) -&gt; <span class="kw-2">&amp;mut </span>InnerNode&lt;Key, Filter&gt; {
+        <span class="kw">match </span><span class="self">self</span>.get_inner_mut(id) {
+            <span class="prelude-val">Some</span>(Inner::Node(node)) =&gt; node,
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;node not found&quot;</span>),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">InnerId</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">InnerNode</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">get_inner</span>(<span class="ident">id</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">Inner::Node</span>(<span class="ident">node</span>)) =&gt; <span class="ident">node</span>,
-            <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;node not found&quot;</span>),
+    <span class="kw">fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, id: InnerId) -&gt; <span class="kw-2">&amp;</span>InnerNode&lt;Key, Filter&gt; {
+        <span class="kw">match </span><span class="self">self</span>.get_inner(id) {
+            <span class="prelude-val">Some</span>(Inner::Node(node)) =&gt; node,
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;node not found&quot;</span>),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">new_inner_node</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">InnerId</span> {
-        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Inner::Node</span>(<span class="ident">InnerNode</span> {
-            <span class="ident">parent</span>: <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">root</span>),
-            ..<span class="ident">Default::default</span>()
+    <span class="kw">fn </span>new_inner_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; InnerId {
+        <span class="kw">let </span>node = Inner::Node(InnerNode {
+            parent: <span class="prelude-val">Some</span>(<span class="self">self</span>.root),
+            ..Default::default()
         });
-        <span class="kw">let</span> <span class="ident">node_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">len</span>();
-        <span class="self">self</span>.<span class="ident">root_mut</span>().<span class="ident">children</span>.<span class="ident">push</span>(<span class="ident">node_id</span>);
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">push</span>(<span class="prelude-val">Some</span>(<span class="ident">node</span>));
-        <span class="ident">node_id</span>
+        <span class="kw">let </span>node_id = <span class="self">self</span>.inner.len();
+        <span class="self">self</span>.root_mut().children.push(node_id);
+        <span class="self">self</span>.inner.push(<span class="prelude-val">Some</span>(node));
+        node_id
     }
 
-    <span class="doccomment">/// Remove last child from collection</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Child</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">len</span>().<span class="ident">checked_sub</span>(<span class="number">1</span>)<span class="question-mark">?</span>;
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="prelude-val">None</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">get</span>(<span class="ident">last</span>) {
-            <span class="ident">last</span> <span class="op">=</span> <span class="ident">last</span>.<span class="ident">checked_sub</span>(<span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="doccomment">/// Remove last child from collection
+    </span><span class="kw">pub fn </span>pop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Child&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>last = <span class="self">self</span>.children.len().checked_sub(<span class="number">1</span>)<span class="question-mark">?</span>;
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="prelude-val">None</span>) = <span class="self">self</span>.children.get(last) {
+            last = last.checked_sub(<span class="number">1</span>)<span class="question-mark">?</span>;
         }
-        <span class="self">self</span>.<span class="ident">remove</span>(<span class="ident">last</span>)
+        <span class="self">self</span>.remove(last)
     }
 
-    <span class="doccomment">/// Remove child by id</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">ChildId</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Child</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">child</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">get_mut</span>(<span class="ident">id</span>) {
-            <span class="kw">let</span> <span class="ident">child</span> <span class="op">=</span> <span class="ident">std::mem::replace</span>(<span class="ident">child</span>, <span class="prelude-val">None</span>);
-            <span class="ident">child</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">data</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
+    <span class="doccomment">/// Remove child by id
+    </span><span class="kw">pub fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: ChildId) -&gt; <span class="prelude-ty">Option</span>&lt;Child&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(child) = <span class="self">self</span>.children.get_mut(id) {
+            <span class="kw">let </span>child = std::mem::replace(child, <span class="prelude-val">None</span>);
+            child.map(|x| x.data)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
+    }
+
+    <span class="doccomment">/// Get id of last child
+    </span><span class="kw">pub fn </span>last_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;ChildId&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>last = <span class="self">self</span>.children.len().checked_sub(<span class="number">1</span>)<span class="question-mark">?</span>;
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="prelude-val">None</span>) = <span class="self">self</span>.children.get(last) {
+            last = last.checked_sub(<span class="number">1</span>)<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Some</span>(last)
+    }
+
+    <span class="doccomment">/// Get last child
+    </span><span class="kw">pub fn </span>last(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Child&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(last) = <span class="self">self</span>.last_id() {
+            <span class="self">self</span>.get_child(last).map(|x| <span class="kw-2">&amp;</span>x.data)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
+    }
+
+    <span class="doccomment">/// Get child by id
+    </span><span class="kw">pub fn </span>get_child(<span class="kw-2">&amp;</span><span class="self">self</span>, id: ChildId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Leaf&lt;Child&gt;&gt; {
+        <span class="self">self</span>.children.get(id).map(|x| x.as_ref()).flatten()
+    }
+
+    <span class="doccomment">/// Get mutable child by id
+    </span><span class="kw">pub fn </span>get_child_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: ChildId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>Leaf&lt;Child&gt;&gt; {
+        <span class="self">self</span>.children.get_mut(id).map(|x| x.as_mut()).flatten()
+    }
+
+    <span class="kw">fn </span>get_inner(<span class="kw-2">&amp;</span><span class="self">self</span>, id: InnerId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Inner&lt;Key, Filter&gt;&gt; {
+        <span class="self">self</span>.inner.get(id).map(|x| x.as_ref()).flatten()
+    }
+
+    <span class="kw">fn </span>get_inner_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: InnerId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>Inner&lt;Key, Filter&gt;&gt; {
+        <span class="self">self</span>.inner.get_mut(id).map(|x| x.as_mut()).flatten()
+    }
+
+    <span class="doccomment">/// Returns a iterator over the childs
+    </span><span class="kw">pub fn </span>iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>Child&gt; {
+        <span class="self">self</span>.children
+            .iter()
+            .map(|x| x.as_ref())
+            .flatten()
+            .map(|x| <span class="kw-2">&amp;</span>x.data)
+    }
+
+    <span class="doccomment">/// Returns a iterator over the childs
+    </span><span class="kw">pub fn </span>iter_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;mut </span>Child&gt; {
+        <span class="self">self</span>.children
+            .iter_mut()
+            .map(|x| x.as_mut())
+            .flatten()
+            .map(|x| <span class="kw-2">&amp;mut </span>x.data)
+    }
+
+    <span class="doccomment">/// Create new container
+    </span><span class="kw">pub fn </span>new(group_size: usize, level: usize) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            inner: <span class="macro">vec!</span>[<span class="prelude-val">Some</span>(Default::default())],
+            children: Default::default(),
+            root: <span class="number">0</span>,
+            group_size,
+            level,
         }
     }
 
-    <span class="doccomment">/// Get id of last child</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">last_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ChildId</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">len</span>().<span class="ident">checked_sub</span>(<span class="number">1</span>)<span class="question-mark">?</span>;
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="prelude-val">None</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">get</span>(<span class="ident">last</span>) {
-            <span class="ident">last</span> <span class="op">=</span> <span class="ident">last</span>.<span class="ident">checked_sub</span>(<span class="number">1</span>)<span class="question-mark">?</span>;
-        }
-        <span class="prelude-val">Some</span>(<span class="ident">last</span>)
+    <span class="doccomment">/// Count of childs in container
+    </span><span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.children.len()
     }
 
-    <span class="doccomment">/// Get last child</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">last</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Child</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">last_id</span>() {
-            <span class="self">self</span>.<span class="ident">get_child</span>(<span class="ident">last</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">x</span>.<span class="ident">data</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        }
+    <span class="doccomment">/// Clear container
+    </span><span class="kw">pub fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw-2">*</span><span class="self">self </span>= <span class="self">Self</span>::new(<span class="self">self</span>.group_size, <span class="self">self</span>.level);
     }
 
-    <span class="doccomment">/// Get child by id</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_child</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">ChildId</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Leaf</span><span class="op">&lt;</span><span class="ident">Child</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">get</span>(<span class="ident">id</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">as_ref</span>()).<span class="ident">flatten</span>()
-    }
-
-    <span class="doccomment">/// Get mutable child by id</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_child_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">ChildId</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">Leaf</span><span class="op">&lt;</span><span class="ident">Child</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">get_mut</span>(<span class="ident">id</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">as_mut</span>()).<span class="ident">flatten</span>()
-    }
-
-    <span class="kw">fn</span> <span class="ident">get_inner</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">InnerId</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Inner</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">get</span>(<span class="ident">id</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">as_ref</span>()).<span class="ident">flatten</span>()
-    }
-
-    <span class="kw">fn</span> <span class="ident">get_inner_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">InnerId</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">Inner</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">get_mut</span>(<span class="ident">id</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">as_mut</span>()).<span class="ident">flatten</span>()
-    }
-
-    <span class="doccomment">/// Returns a iterator over the childs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Child</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">children</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">as_ref</span>())
-            .<span class="ident">flatten</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">x</span>.<span class="ident">data</span>)
-    }
-
-    <span class="doccomment">/// Returns a iterator over the childs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">Child</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">children</span>
-            .<span class="ident">iter_mut</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">as_mut</span>())
-            .<span class="ident">flatten</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="kw-2">&amp;mut</span> <span class="ident">x</span>.<span class="ident">data</span>)
-    }
-
-    <span class="doccomment">/// Create new container</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">group_size</span>: <span class="ident">usize</span>, <span class="ident">level</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">inner</span>: <span class="macro">vec!</span>[<span class="prelude-val">Some</span>(<span class="ident">Default::default</span>())],
-            <span class="ident">children</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">root</span>: <span class="number">0</span>,
-            <span class="ident">group_size</span>,
-            <span class="ident">level</span>,
-        }
-    }
-
-    <span class="doccomment">/// Count of childs in container</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">len</span>()
-    }
-
-    <span class="doccomment">/// Clear container</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw-2">*</span><span class="self">self</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::new</span>(<span class="self">self</span>.<span class="ident">group_size</span>, <span class="self">self</span>.<span class="ident">level</span>);
-    }
-
-    <span class="doccomment">/// Clear container and return children values as Vec</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_and_get_values</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Child</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">std::mem::replace</span>(<span class="self">self</span>, <span class="ident"><span class="self">Self</span>::new</span>(<span class="self">self</span>.<span class="ident">group_size</span>, <span class="self">self</span>.<span class="ident">level</span>))
-            .<span class="ident">children</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">flatten</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">data</span>)
-            .<span class="ident">collect</span>();
-        <span class="ident">values</span>
+    <span class="doccomment">/// Clear container and return children values as Vec
+    </span><span class="kw">pub fn </span>clear_and_get_values(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Vec&lt;Child&gt; {
+        <span class="kw">let </span>values = std::mem::replace(<span class="self">self</span>, <span class="self">Self</span>::new(<span class="self">self</span>.group_size, <span class="self">self</span>.level))
+            .children
+            .into_iter()
+            .flatten()
+            .map(|v| v.data)
+            .collect();
+        values
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> <span class="ident">IntoIterator</span> <span class="kw">for</span> <span class="ident">HierarchicalFilters</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">Key</span>: <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Send</span>,
-    <span class="ident">Child</span>: <span class="ident">BloomProvider</span><span class="op">&lt;</span><span class="ident">Key</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;Key, Filter, Child&gt; IntoIterator <span class="kw">for </span>HierarchicalFilters&lt;Key, Filter, Child&gt;
+<span class="kw">where
+    </span>Key: Sync + Send,
+    Child: BloomProvider&lt;Key&gt;,
 {
-    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="ident">Leaf</span><span class="op">&lt;</span><span class="ident">Child</span><span class="op">&gt;</span>;
+    <span class="kw">type </span>Item = Leaf&lt;Child&gt;;
 
-    <span class="kw">type</span> <span class="ident">IntoIter</span> <span class="op">=</span> <span class="ident">core::iter::Flatten</span><span class="op">&lt;</span><span class="ident">std::vec::IntoIter</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Leaf</span><span class="op">&lt;</span><span class="ident">Child</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="kw">type </span>IntoIter = core::iter::Flatten&lt;std::vec::IntoIter&lt;<span class="prelude-ty">Option</span>&lt;Leaf&lt;Child&gt;&gt;&gt;&gt;;
 
-    <span class="kw">fn</span> <span class="ident">into_iter</span>(<span class="self">self</span>) -&gt; <span class="ident"><span class="self">Self</span>::IntoIter</span> {
-        <span class="self">self</span>.<span class="ident">children</span>.<span class="ident">into_iter</span>().<span class="ident">flatten</span>()
+    <span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
+        <span class="self">self</span>.children.into_iter().flatten()
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="doccomment">/// PossibleIter</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PossibleRevIter</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> {
-    <span class="ident">this</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">HierarchicalFilters</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span>,
-    <span class="ident">stack</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Inner</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-    <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Key</span>,
-    <span class="ident">rev</span>: <span class="ident">bool</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="doccomment">/// PossibleIter
+</span><span class="kw">pub struct </span>PossibleRevIter&lt;<span class="lifetime">&#39;a</span>, Key, Filter, Child&gt; {
+    this: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>HierarchicalFilters&lt;Key, Filter, Child&gt;,
+    stack: Vec&lt;(usize, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Inner&lt;Key, Filter&gt;)&gt;,
+    key: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Key,
+    rev: bool,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> <span class="ident">PossibleRevIter</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">Key</span>: <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Send</span>,
-    <span class="ident">Filter</span>: <span class="ident">FilterTrait</span><span class="op">&lt;</span><span class="ident">Key</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, Key, Filter, Child&gt; PossibleRevIter&lt;<span class="lifetime">&#39;a</span>, Key, Filter, Child&gt;
+<span class="kw">where
+    </span>Key: Sync + Send,
+    Filter: FilterTrait&lt;Key&gt;,
 {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">this</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">HierarchicalFilters</span><span class="op">&lt;</span><span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Key</span>, <span class="ident">rev</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">stack</span>: <span class="macro">vec!</span>[(<span class="number">0</span>, <span class="ident">this</span>.<span class="ident">get_inner</span>(<span class="ident">this</span>.<span class="ident">root</span>).<span class="ident">expect</span>(<span class="string">&quot;should exist&quot;</span>))],
-            <span class="ident">this</span>,
-            <span class="ident">key</span>,
-            <span class="ident">rev</span>,
+    <span class="kw">fn </span>new(this: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>HierarchicalFilters&lt;Key, Filter, Child&gt;, key: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Key, rev: bool) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            stack: <span class="macro">vec!</span>[(<span class="number">0</span>, this.get_inner(this.root).expect(<span class="string">&quot;should exist&quot;</span>))],
+            this,
+            key,
+            rev,
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span> <span class="ident">Iterator</span> <span class="kw">for</span> <span class="ident">PossibleRevIter</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Key</span>, <span class="ident">Filter</span>, <span class="ident">Child</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">Key</span>: <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Send</span>,
-    <span class="ident">Filter</span>: <span class="ident">FilterTrait</span><span class="op">&lt;</span><span class="ident">Key</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, Key, Filter, Child&gt; Iterator <span class="kw">for </span>PossibleRevIter&lt;<span class="lifetime">&#39;a</span>, Key, Filter, Child&gt;
+<span class="kw">where
+    </span>Key: Sync + Send,
+    Filter: FilterTrait&lt;Key&gt;,
 {
-    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> (<span class="ident">ChildId</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Leaf</span><span class="op">&lt;</span><span class="ident">Child</span><span class="op">&gt;</span>);
+    <span class="kw">type </span>Item = (ChildId, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Leaf&lt;Child&gt;);
 
-    <span class="doccomment">/// Postorder traversal implementation for HierarchicalFilters</span>
-    <span class="doccomment">/// Ignores nodes which not contains key and returns leafs</span>
-    <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span> {
-        <span class="comment">// Iter to next leaf</span>
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">index</span>, <span class="ident">Inner::Node</span>(<span class="ident">node</span>))) <span class="op">=</span> <span class="self">self</span>.<span class="ident">stack</span>.<span class="ident">last</span>().<span class="ident">copied</span>() {
-            <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">node</span>.<span class="ident">children</span>.<span class="ident">len</span>();
-            <span class="kw">if</span> <span class="ident">index</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">len</span> {
-                <span class="comment">// Remove last node from stack if all it&#39;s childs was seen</span>
-                <span class="self">self</span>.<span class="ident">stack</span>.<span class="ident">pop</span>();
-            } <span class="kw">else</span> {
-                <span class="comment">// Get next child of node and push it to stack</span>
-                <span class="comment">// Iterate in reverse order if `self.rev` flag is `true`</span>
-                <span class="self">self</span>.<span class="ident">stack</span>.<span class="ident">last_mut</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">id</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>);
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span> <span class="self">self</span>
-                    .<span class="ident">this</span>
-                    .<span class="ident">get_inner</span>(<span class="ident">node</span>.<span class="ident">children</span>[<span class="kw">if</span> <span class="self">self</span>.<span class="ident">rev</span> { <span class="ident">len</span> <span class="op">-</span> <span class="ident">index</span> <span class="op">-</span> <span class="number">1</span> } <span class="kw">else</span> { <span class="ident">index</span> }])
+    <span class="doccomment">/// Postorder traversal implementation for HierarchicalFilters
+    /// Ignores nodes which not contains key and returns leafs
+    </span><span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+        <span class="comment">// Iter to next leaf
+        </span><span class="kw">while let </span><span class="prelude-val">Some</span>((index, Inner::Node(node))) = <span class="self">self</span>.stack.last().copied() {
+            <span class="kw">let </span>len = node.children.len();
+            <span class="kw">if </span>index &gt;= len {
+                <span class="comment">// Remove last node from stack if all it&#39;s childs was seen
+                </span><span class="self">self</span>.stack.pop();
+            } <span class="kw">else </span>{
+                <span class="comment">// Get next child of node and push it to stack
+                // Iterate in reverse order if `self.rev` flag is `true`
+                </span><span class="self">self</span>.stack.last_mut().map(|(id, <span class="kw">_</span>)| <span class="kw-2">*</span>id += <span class="number">1</span>);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(inner) = <span class="self">self
+                    </span>.this
+                    .get_inner(node.children[<span class="kw">if </span><span class="self">self</span>.rev { len - index - <span class="number">1 </span>} <span class="kw">else </span>{ index }])
                 {
-                    <span class="kw">match</span> <span class="ident">inner</span> {
-                        <span class="comment">// Ignore nodes which is not contains key</span>
-                        <span class="ident">Inner::Node</span>(<span class="ident">node</span>)
-                            <span class="kw">if</span> <span class="ident">node</span>.<span class="ident">filter</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">f</span><span class="op">|</span> <span class="ident">f</span>.<span class="ident">contains_fast</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key</span>))
-                                <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="ident">FilterResult::NotContains</span>) =&gt; {}
-                        <span class="comment">// Ignore if leaf was removed</span>
-                        <span class="ident">Inner::Leaf</span>(<span class="ident">leaf</span>) <span class="kw">if</span> <span class="self">self</span>.<span class="ident">this</span>.<span class="ident">get_child</span>(<span class="ident">leaf</span>.<span class="ident">leaf</span>).<span class="ident">is_none</span>() =&gt; {}
-                        <span class="kw">_</span> =&gt; {
-                            <span class="self">self</span>.<span class="ident">stack</span>.<span class="ident">push</span>((<span class="number">0</span>, <span class="ident">inner</span>));
+                    <span class="kw">match </span>inner {
+                        <span class="comment">// Ignore nodes which is not contains key
+                        </span>Inner::Node(node)
+                            <span class="kw">if </span>node.filter.as_ref().map(|f| f.contains_fast(<span class="kw-2">&amp;</span><span class="self">self</span>.key))
+                                == <span class="prelude-val">Some</span>(FilterResult::NotContains) =&gt; {}
+                        <span class="comment">// Ignore if leaf was removed
+                        </span>Inner::Leaf(leaf) <span class="kw">if </span><span class="self">self</span>.this.get_child(leaf.leaf).is_none() =&gt; {}
+                        <span class="kw">_ </span>=&gt; {
+                            <span class="self">self</span>.stack.push((<span class="number">0</span>, inner));
                         }
                     }
                 }
             }
         }
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">Inner::Leaf</span>(<span class="ident">leaf</span>))) <span class="op">=</span> <span class="self">self</span>.<span class="ident">stack</span>.<span class="ident">pop</span>() {
-            <span class="self">self</span>.<span class="ident">this</span>.<span class="ident">get_child</span>(<span class="ident">leaf</span>.<span class="ident">leaf</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> (<span class="ident">leaf</span>.<span class="ident">leaf</span>, <span class="ident">x</span>))
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, Inner::Leaf(leaf))) = <span class="self">self</span>.stack.pop() {
+            <span class="self">self</span>.this.get_child(leaf.leaf).map(|x| (leaf.leaf, x))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

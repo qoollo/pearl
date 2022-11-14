@@ -1,11 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/completion.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>completion.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../rio/index.html"><div class="logo-container">
-                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../rio/index.html">
-                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/rio-0.9.4/src/completion.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>completion.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../rio/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../rio/index.html"><div class="logo-container">
+                    <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../rio/index.html">
+                        <img src="https://raw.githubusercontent.com/spacejam/sled/master/art/tree_face_anti-transphobia.png" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -168,169 +163,168 @@
 <span id="161">161</span>
 <span id="162">162</span>
 <span id="163">163</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">future::Future</span>,
-    <span class="ident">io</span>,
-    <span class="ident">marker::PhantomData</span>,
-    <span class="ident">pin::Pin</span>,
-    <span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Condvar</span>, <span class="ident">Mutex</span>},
-    <span class="ident">task</span>::{<span class="ident">Context</span>, <span class="ident">Poll</span>, <span class="ident">Waker</span>},
+</pre><pre class="rust"><code><span class="kw">use </span>std::{
+    future::Future,
+    io,
+    marker::PhantomData,
+    pin::Pin,
+    sync::{Arc, Condvar, Mutex},
+    task::{Context, Poll, Waker},
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">io_uring::io_uring_cqe</span>, <span class="ident">FromCqe</span>, <span class="ident">Measure</span>, <span class="ident">Uring</span>, <span class="ident">M</span>,
+<span class="kw">use super</span>::{
+    io_uring::io_uring_cqe, FromCqe, Measure, Uring, M,
 };
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">CompletionState</span> {
-    <span class="ident">done</span>: <span class="ident">bool</span>,
-    <span class="ident">item</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">io_uring_cqe</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">waker</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Waker</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">struct </span>CompletionState {
+    done: bool,
+    item: <span class="prelude-ty">Option</span>&lt;io::Result&lt;io_uring_cqe&gt;&gt;,
+    waker: <span class="prelude-ty">Option</span>&lt;Waker&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CompletionState</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="ident">CompletionState</span> {
-        <span class="ident">CompletionState</span> {
-            <span class="ident">done</span>: <span class="bool-val">false</span>,
-            <span class="ident">item</span>: <span class="prelude-val">None</span>,
-            <span class="ident">waker</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>Default <span class="kw">for </span>CompletionState {
+    <span class="kw">fn </span>default() -&gt; CompletionState {
+        CompletionState {
+            done: <span class="bool-val">false</span>,
+            item: <span class="prelude-val">None</span>,
+            waker: <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="doccomment">/// A Future value which may or may not be filled</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Safety</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// To prevent undefined behavior in the form of</span>
-<span class="doccomment">/// use-after-free, never allow a Completion&#39;s</span>
-<span class="doccomment">/// lifetime to end without dropping it. This can</span>
-<span class="doccomment">/// happen with `std::mem::forget`, cycles in</span>
-<span class="doccomment">/// `Arc` or `Rc`, and in other ways.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">C</span>: <span class="ident">FromCqe</span><span class="op">&gt;</span> {
-    <span class="ident">lifetime</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">C</span><span class="op">&gt;</span>,
-    <span class="ident">mu</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">CompletionState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">cv</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Condvar</span><span class="op">&gt;</span>,
-    <span class="ident">uring</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Uring</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">sqe_id</span>: <span class="ident">u64</span>,
+<span class="doccomment">/// A Future value which may or may not be filled
+///
+/// # Safety
+///
+/// To prevent undefined behavior in the form of
+/// use-after-free, never allow a Completion&#39;s
+/// lifetime to end without dropping it. This can
+/// happen with `std::mem::forget`, cycles in
+/// `Arc` or `Rc`, and in other ways.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>Completion&lt;<span class="lifetime">&#39;a</span>, C: FromCqe&gt; {
+    lifetime: PhantomData&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>C&gt;,
+    mu: Arc&lt;Mutex&lt;CompletionState&gt;&gt;,
+    cv: Arc&lt;Condvar&gt;,
+    uring: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Uring,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) sqe_id: u64,
 }
 
-<span class="doccomment">/// The completer side of the Future</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Filler</span> {
-    <span class="ident">mu</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">CompletionState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">cv</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Condvar</span><span class="op">&gt;</span>,
+<span class="doccomment">/// The completer side of the Future
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>Filler {
+    mu: Arc&lt;Mutex&lt;CompletionState&gt;&gt;,
+    cv: Arc&lt;Condvar&gt;,
 }
 
-<span class="doccomment">/// Create a new `Filler` and the `Completion`</span>
-<span class="doccomment">/// that will be filled by its completion.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pair</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">C</span>: <span class="ident">FromCqe</span><span class="op">&gt;</span>(
-    <span class="ident">uring</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Uring</span>,
-) -&gt; (<span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">C</span><span class="op">&gt;</span>, <span class="ident">Filler</span>) {
-    <span class="kw">let</span> <span class="ident">mu</span> <span class="op">=</span>
-        <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">CompletionState::default</span>()));
-    <span class="kw">let</span> <span class="ident">cv</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Condvar::new</span>());
-    <span class="kw">let</span> <span class="ident">future</span> <span class="op">=</span> <span class="ident">Completion</span> {
-        <span class="ident">lifetime</span>: <span class="ident">PhantomData</span>,
-        <span class="ident">mu</span>: <span class="ident">mu</span>.<span class="ident">clone</span>(),
-        <span class="ident">cv</span>: <span class="ident">cv</span>.<span class="ident">clone</span>(),
-        <span class="ident">sqe_id</span>: <span class="number">0</span>,
-        <span class="ident">uring</span>,
+<span class="doccomment">/// Create a new `Filler` and the `Completion`
+/// that will be filled by its completion.
+</span><span class="kw">pub fn </span>pair&lt;<span class="lifetime">&#39;a</span>, C: FromCqe&gt;(
+    uring: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Uring,
+) -&gt; (Completion&lt;<span class="lifetime">&#39;a</span>, C&gt;, Filler) {
+    <span class="kw">let </span>mu =
+        Arc::new(Mutex::new(CompletionState::default()));
+    <span class="kw">let </span>cv = Arc::new(Condvar::new());
+    <span class="kw">let </span>future = Completion {
+        lifetime: PhantomData,
+        mu: mu.clone(),
+        cv: cv.clone(),
+        sqe_id: <span class="number">0</span>,
+        uring,
     };
-    <span class="kw">let</span> <span class="ident">filler</span> <span class="op">=</span> <span class="ident">Filler</span> { <span class="ident">mu</span>, <span class="ident">cv</span> };
+    <span class="kw">let </span>filler = Filler { mu, cv };
 
-    (<span class="ident">future</span>, <span class="ident">filler</span>)
+    (future, filler)
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">C</span>: <span class="ident">FromCqe</span><span class="op">&gt;</span> <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">C</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Block on the `Completion`&#39;s completion</span>
-    <span class="doccomment">/// or dropping of the `Filler`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wait</span>(<span class="self">self</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">C</span>: <span class="ident">FromCqe</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, C: FromCqe&gt; Completion&lt;<span class="lifetime">&#39;a</span>, C&gt; {
+    <span class="doccomment">/// Block on the `Completion`&#39;s completion
+    /// or dropping of the `Filler`
+    </span><span class="kw">pub fn </span>wait(<span class="self">self</span>) -&gt; io::Result&lt;C&gt;
+    <span class="kw">where
+        </span>C: FromCqe,
     {
-        <span class="self">self</span>.<span class="ident">wait_inner</span>().<span class="ident">unwrap</span>()
+        <span class="self">self</span>.wait_inner().unwrap()
     }
 
-    <span class="kw">fn</span> <span class="ident">wait_inner</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">C</span>: <span class="ident">FromCqe</span>,
+    <span class="kw">fn </span>wait_inner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;io::Result&lt;C&gt;&gt;
+    <span class="kw">where
+        </span>C: FromCqe,
     {
         <span class="macro">debug_assert_ne!</span>(
-            <span class="self">self</span>.<span class="ident">sqe_id</span>,
+            <span class="self">self</span>.sqe_id,
             <span class="number">0</span>,
             <span class="string">&quot;sqe_id was never filled-in for this Completion&quot;</span>,
         );
 
-        <span class="self">self</span>.<span class="ident">uring</span>
-            .<span class="ident">ensure_submitted</span>(<span class="self">self</span>.<span class="ident">sqe_id</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;failed to submit SQE from wait_inner&quot;</span>);
+        <span class="self">self</span>.uring
+            .ensure_submitted(<span class="self">self</span>.sqe_id)
+            .expect(<span class="string">&quot;failed to submit SQE from wait_inner&quot;</span>);
 
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">Measure::new</span>(<span class="kw-2">&amp;</span><span class="ident">M</span>.<span class="ident">wait</span>);
+        <span class="kw">let _ </span>= Measure::new(<span class="kw-2">&amp;</span>M.wait);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mu</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>inner = <span class="self">self</span>.mu.lock().unwrap();
 
-        <span class="kw">while</span> <span class="op">!</span><span class="ident">inner</span>.<span class="ident">done</span> {
-            <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cv</span>.<span class="ident">wait</span>(<span class="ident">inner</span>).<span class="ident">unwrap</span>();
+        <span class="kw">while </span>!inner.done {
+            inner = <span class="self">self</span>.cv.wait(inner).unwrap();
         }
 
-        <span class="ident">inner</span>.<span class="ident">item</span>.<span class="ident">take</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">io_result</span><span class="op">|</span> {
-            <span class="ident">io_result</span>.<span class="ident">map</span>(<span class="ident">FromCqe::from_cqe</span>)
+        inner.item.take().map(|io_result| {
+            io_result.map(FromCqe::from_cqe)
         })
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">C</span>: <span class="ident">FromCqe</span><span class="op">&gt;</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">C</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">wait_inner</span>();
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, C: FromCqe&gt; Drop <span class="kw">for </span>Completion&lt;<span class="lifetime">&#39;a</span>, C&gt; {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.wait_inner();
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">C</span>: <span class="ident">FromCqe</span><span class="op">&gt;</span> <span class="ident">Future</span> <span class="kw">for</span> <span class="ident">Completion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">C</span><span class="op">&gt;</span> {
-    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, C: FromCqe&gt; Future <span class="kw">for </span>Completion&lt;<span class="lifetime">&#39;a</span>, C&gt; {
+    <span class="kw">type </span>Output = io::Result&lt;C&gt;;
 
-    <span class="kw">fn</span> <span class="ident">poll</span>(
-        <span class="self">self</span>: <span class="ident">Pin</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">cx</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Poll</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Output</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">uring</span>
-            .<span class="ident">ensure_submitted</span>(<span class="self">self</span>.<span class="ident">sqe_id</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;failed to submit SQE from wait_inner&quot;</span>);
+    <span class="kw">fn </span>poll(
+        <span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
+        cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">&#39;_</span>&gt;,
+    ) -&gt; Poll&lt;<span class="self">Self</span>::Output&gt; {
+        <span class="self">self</span>.uring
+            .ensure_submitted(<span class="self">self</span>.sqe_id)
+            .expect(<span class="string">&quot;failed to submit SQE from wait_inner&quot;</span>);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mu</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-        <span class="kw">if</span> <span class="ident">state</span>.<span class="ident">item</span>.<span class="ident">is_some</span>() {
-            <span class="ident">Poll::Ready</span>(
-                <span class="ident">state</span>
-                    .<span class="ident">item</span>
-                    .<span class="ident">take</span>()
-                    .<span class="ident">unwrap</span>()
-                    .<span class="ident">map</span>(<span class="ident">FromCqe::from_cqe</span>),
+        <span class="kw">let </span><span class="kw-2">mut </span>state = <span class="self">self</span>.mu.lock().unwrap();
+        <span class="kw">if </span>state.item.is_some() {
+            Poll::Ready(
+                state
+                    .item
+                    .take()
+                    .unwrap()
+                    .map(FromCqe::from_cqe),
             )
-        } <span class="kw">else</span> {
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">state</span>.<span class="ident">done</span> {
-                <span class="ident">state</span>.<span class="ident">waker</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">cx</span>.<span class="ident">waker</span>().<span class="ident">clone</span>());
+        } <span class="kw">else </span>{
+            <span class="kw">if </span>!state.done {
+                state.waker = <span class="prelude-val">Some</span>(cx.waker().clone());
             }
-            <span class="ident">Poll::Pending</span>
+            Poll::Pending
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Filler</span> {
-    <span class="doccomment">/// Complete the `Completion`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fill</span>(<span class="self">self</span>, <span class="ident">inner</span>: <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">io_uring_cqe</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mu</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+<span class="kw">impl </span>Filler {
+    <span class="doccomment">/// Complete the `Completion`
+    </span><span class="kw">pub fn </span>fill(<span class="self">self</span>, inner: io::Result&lt;io_uring_cqe&gt;) {
+        <span class="kw">let </span><span class="kw-2">mut </span>state = <span class="self">self</span>.mu.lock().unwrap();
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">waker</span>) <span class="op">=</span> <span class="ident">state</span>.<span class="ident">waker</span>.<span class="ident">take</span>() {
-            <span class="ident">waker</span>.<span class="ident">wake</span>();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(waker) = state.waker.take() {
+            waker.wake();
         }
 
-        <span class="ident">state</span>.<span class="ident">item</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>);
-        <span class="ident">state</span>.<span class="ident">done</span> <span class="op">=</span> <span class="bool-val">true</span>;
+        state.item = <span class="prelude-val">Some</span>(inner);
+        state.done = <span class="bool-val">true</span>;
 
-        <span class="self">self</span>.<span class="ident">cv</span>.<span class="ident">notify_all</span>();
+        <span class="self">self</span>.cv.notify_all();
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="rio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
