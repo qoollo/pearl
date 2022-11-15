@@ -1,14 +1,49 @@
 use super::*;
 use ahash::AHasher;
-use bitvec::order::Lsb0;
-use bitvec::prelude::*;
 use std::hash::Hasher;
+
+#[derive(Clone, Default)]
+struct AtomicBitVec {}
+
+impl AtomicBitVec {
+    fn new(size: usize) -> Self {
+        todo!()
+    }
+
+    fn get(&self, ind: usize) -> Option<bool> {
+        todo!()
+    }
+
+    fn set(&self, ind: usize, val: bool) {
+        todo!()
+    }
+
+    fn elemwise_or(&self, other: &AtomicBitVec) {
+        todo!()
+    }
+
+    fn from_vec(vec: Vec<u64>, bits_count: usize) -> Self {
+        todo!()
+    }
+
+    fn count_ones(&self) -> usize {
+        todo!()
+    }
+
+    fn len(&self) -> usize {
+        todo!()
+    }
+
+    fn to_vec(&self) -> Vec<u64> {
+        todo!()
+    }
+}
 
 // All usizes in structures are serialized as u64 in binary
 #[derive(Clone)]
 /// Bloom filter
 pub struct Bloom {
-    inner: Option<BitVec<Lsb0, u64>>,
+    inner: Option<AtomicBitVec>,
     bits_count: usize,
     hashers: Vec<AHasher>,
     config: Config,
@@ -178,7 +213,7 @@ impl Bloom {
     pub fn new(config: Config) -> Self {
         let bits_count = bits_count_from_formula(&config);
         Self {
-            inner: Some(bitvec![Lsb0, u64; 0; bits_count]),
+            inner: Some(AtomicBitVec::new(bits_count)),
             hashers: Self::hashers(config.hashers_count),
             config,
             bits_count,
@@ -190,11 +225,7 @@ impl Bloom {
     pub fn checked_add_assign(&mut self, other: &Bloom) -> bool {
         match (&mut self.inner, &other.inner) {
             (Some(inner), Some(other_inner)) if inner.len() == other_inner.len() => {
-                inner
-                    .as_mut_raw_slice()
-                    .iter_mut()
-                    .zip(other_inner.as_raw_slice())
-                    .for_each(|(a, b)| *a |= *b);
+                inner.elemwise_or(other_inner);
                 true
             }
             _ => false,
@@ -203,7 +234,7 @@ impl Bloom {
 
     /// Set in-memory filter buffer to zeroed array
     pub fn clear(&mut self) {
-        self.inner = Some(bitvec![Lsb0, u64; 0; self.bits_count]);
+        self.inner = Some(AtomicBitVec::new(self.bits_count));
     }
 
     /// Check if filter offloaded
@@ -213,7 +244,7 @@ impl Bloom {
 
     /// Clear in-memory filter buffer
     pub fn offload_from_memory(&mut self) -> usize {
-        let freed = self.inner.as_ref().map(|x| x.capacity() / 8).unwrap_or(0);
+        let freed = self.inner.as_ref().map(|x| x.len() / 8).unwrap_or(0);
         self.inner = None;
         freed
     }
@@ -229,7 +260,7 @@ impl Bloom {
         if let Some(inner) = &self.inner {
             Some(Save {
                 config: self.config.clone(),
-                buf: inner.as_raw_slice().to_vec(),
+                buf: inner.to_vec(),
                 bits_count: inner.len(),
             })
         } else {
@@ -238,8 +269,7 @@ impl Bloom {
     }
 
     fn from(save: Save) -> Self {
-        let mut inner = BitVec::from_vec(save.buf);
-        inner.truncate(save.bits_count);
+        let mut inner = AtomicBitVec::from_vec(save.buf, save.bits_count);
         Self {
             hashers: Self::hashers(save.config.hashers_count),
             config: save.config,
@@ -267,9 +297,7 @@ impl Bloom {
         if let Some(inner) = &mut self.inner {
             let len = inner.len() as u64;
             for h in Self::iter_indices_for_key(&self.hashers, len, item.as_ref()) {
-                *inner
-                    .get_mut(h as usize)
-                    .expect("impossible due to mod by len") = true;
+                inner.set(h as usize, true);
             }
             Ok(())
         } else {
@@ -286,7 +314,7 @@ impl Bloom {
                 return None;
             }
             if Self::iter_indices_for_key(&self.hashers, len, item.as_ref())
-                .all(|i| *inner.get(i as usize).expect("unreachable"))
+                .all(|i| inner.get(i as usize).expect("unreachable"))
             {
                 Some(FilterResult::NeedAdditionalCheck)
             } else {
@@ -324,12 +352,13 @@ impl Bloom {
             hasher.write(item.as_ref());
             hasher.finish() % self.bits_count as u64
         }) {
-            let byte = provider.read_byte(start_pos + index / 8).await?;
-
-            if !byte
-                .view_bits::<Lsb0>()
-                .get(index as usize % 8)
-                .expect("unreachable")
+            todo!("Add proper byte handling");
+            // let byte = provider.read_byte(start_pos + index / 8).await?;
+            //
+            // if !byte
+            // .view_bits::<Lsb0>()
+            // .get(index as usize % 8)
+            // .expect("unreachable")
             {
                 return Ok(FilterResult::NotContains);
             }
@@ -344,7 +373,7 @@ impl Bloom {
 
     /// Get amount of memory allocated for filter
     pub fn memory_allocated(&self) -> usize {
-        self.inner.as_ref().map_or(0, |buf| buf.capacity() / 8)
+        self.inner.as_ref().map_or(0, |buf| buf.len() / 8)
     }
 }
 
