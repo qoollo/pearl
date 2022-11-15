@@ -1,8 +1,74 @@
 use super::*;
+use std::sync::RwLock;
+
+#[derive(Debug, Default, Clone)]
+/// Range filter
+pub struct RangeFilter<K>
+where
+    for<'a> K: Key<'a>,
+{
+    inner: Arc<RwLock<RangeFilterInner<K>>>,
+}
+
+#[async_trait::async_trait]
+impl<K> FilterTrait<K> for RangeFilter<K>
+where
+    for<'a> K: Key<'a>,
+{
+    fn add(&self, key: &K) {
+        self.inner.write().expect("rwlock").add(key);
+    }
+
+    fn contains_fast(&self, key: &K) -> FilterResult {
+        if self.inner.read().expect("rwlock").contains(key) {
+            FilterResult::NeedAdditionalCheck
+        } else {
+            FilterResult::NotContains
+        }
+    }
+
+    fn checked_add_assign(&mut self, other: &Self) -> bool {
+        let mut this = self.inner.write().expect("rwlock");
+        let other = other.inner.read().expect("rwlock");
+        this.add(&other.min);
+        this.add(&other.max);
+        true
+    }
+
+    fn clear_filter(&mut self) {
+        self.inner.write().expect("rwlock").clear()
+    }
+}
+
+impl<K> RangeFilter<K>
+where
+    for<'a> K: Key<'a>,
+{
+    pub(crate) fn new() -> Self {
+        RangeFilter {
+            inner: Arc::new(RwLock::new(RangeFilterInner::new())),
+        }
+    }
+
+    /// Create filter from raw bytes
+    pub fn from_raw(buf: &[u8]) -> Result<Self> {
+        bincode::deserialize(&buf)
+            .map_err(|e| e.into())
+            .map(|f| RangeFilter {
+                inner: Arc::new(RwLock::new(f)),
+            })
+    }
+
+    /// Convert filter to raw bytes
+    pub fn to_raw(&self) -> Result<Vec<u8>> {
+        let data = self.inner.read().expect("rwlock");
+        bincode::serialize(&*data).map_err(|e| e.into())
+    }
+}
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 /// Range filter
-pub struct RangeFilter<K>
+pub struct RangeFilterInner<K>
 where
     for<'a> K: Key<'a>,
 {
@@ -13,35 +79,7 @@ where
     initialized: bool,
 }
 
-#[async_trait::async_trait]
-impl<K> FilterTrait<K> for RangeFilter<K>
-where
-    for<'a> K: Key<'a>,
-{
-    fn add(&mut self, key: &K) {
-        self.add(key);
-    }
-
-    fn contains_fast(&self, key: &K) -> FilterResult {
-        if self.contains(key) {
-            FilterResult::NeedAdditionalCheck
-        } else {
-            FilterResult::NotContains
-        }
-    }
-
-    fn checked_add_assign(&mut self, other: &Self) -> bool {
-        self.add(&other.min);
-        self.add(&other.max);
-        true
-    }
-
-    fn clear_filter(&mut self) {
-        self.clear()
-    }
-}
-
-impl<K> RangeFilter<K>
+impl<K> RangeFilterInner<K>
 where
     for<'a> K: Key<'a>,
 {
@@ -124,9 +162,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{Key, RefKey};
-
-    use super::RangeFilter;
+    use crate::{filter::RangeFilterInner, Key, RefKey};
 
     const LEN: u16 = 8;
 
@@ -216,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_range_index_key_cmp_proper_key() {
-        let mut filter: RangeFilter<ProperKey> = RangeFilter::new();
+        let mut filter: RangeFilterInner<ProperKey> = RangeFilterInner::new();
         for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
             filter.add(&key);
         }
@@ -230,12 +266,13 @@ mod tests {
 
     #[test]
     fn test_range_index_key_cmp_wrong_key() {
-        let mut filter: RangeFilter<ProperKey> = RangeFilter::new();
+        let mut filter: RangeFilterInner<ProperKey> = RangeFilterInner::new();
         for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
             filter.add(&key);
         }
         let buf = bincode::serialize(&filter).unwrap();
-        let wrong_key_filter: RangeFilter<WrongKey> = RangeFilter::from_raw(&buf).unwrap();
+        let wrong_key_filter: RangeFilterInner<WrongKey> =
+            RangeFilterInner::from_raw(&buf).unwrap();
 
         let less_key = to_key(25);
         let in_key = to_key(75);

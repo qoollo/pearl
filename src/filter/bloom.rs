@@ -86,7 +86,7 @@ impl<K> FilterTrait<K> for Bloom
 where
     K: AsRef<[u8]> + Sync + Send + Debug,
 {
-    fn add(&mut self, key: &K) {
+    fn add(&self, key: &K) {
         let _ = self.add(key);
     }
 
