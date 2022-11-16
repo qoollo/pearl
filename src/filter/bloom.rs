@@ -9,7 +9,7 @@ use std::sync::RwLock;
 #[derive(Clone)]
 /// Bloom filter
 pub struct Bloom {
-    inner: Option<Arc<RwLock<BitVec<Lsb0, u64>>>>,
+    inner: Option<Arc<RwLock<BitVec<u64, Lsb0>>>>,
     bits_count: usize,
     hashers: Vec<AHasher>,
     config: Config,
@@ -179,7 +179,7 @@ impl Bloom {
     pub fn new(config: Config) -> Self {
         let bits_count = bits_count_from_formula(&config);
         Self {
-            inner: Some(Arc::new(RwLock::new(bitvec![Lsb0, u64; 0; bits_count]))),
+            inner: Some(Arc::new(RwLock::new(bitvec![u64, Lsb0; 0; bits_count]))),
             hashers: Self::hashers(config.hashers_count),
             config,
             bits_count,
@@ -197,7 +197,7 @@ impl Bloom {
                     return false;
                 }
                 inner
-                    .as_mut_raw_slice()
+                    .as_raw_mut_slice()
                     .iter_mut()
                     .zip(other_inner.as_raw_slice())
                     .for_each(|(a, b)| *a |= *b);
@@ -210,7 +210,7 @@ impl Bloom {
     /// Set in-memory filter buffer to zeroed array
     pub fn clear(&mut self) {
         self.inner = Some(Arc::new(RwLock::new(
-            bitvec![Lsb0, u64; 0; self.bits_count],
+            bitvec![u64, Lsb0; 0; self.bits_count],
         )));
     }
 

@@ -13,7 +13,7 @@ Pearl changelog
 
 
 #### Updated
-
+- Updated tokio, nix, clap, bitvec versions (#202)
 
 
 ## [0.14.0] - 2022-11-14
