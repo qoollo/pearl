@@ -12,12 +12,10 @@ use super::prelude::*;
 ///  - [`key_size`] - const key size in bytes
 ///
 /// # Example
-/// ```no-run
-/// use pearl::{Builder, Storage, Key};
+/// ```no_run
+/// use pearl::{Builder, Storage, ArrayKey};
 ///
-/// struct Id;
-///
-/// let storage: Storage<Id> = Builder::new()
+/// let storage: Storage<ArrayKey<8>> = Builder::new()
 ///         .blob_file_name_prefix("benchmark")
 ///         .max_blob_size(10_000_000)
 ///         .max_data_in_blob(1_000)

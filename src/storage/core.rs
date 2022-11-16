@@ -18,12 +18,12 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 ///
 /// # Examples
 ///
-/// ```no-run
-/// use pearl::{Storage, Builder, Key};
+/// ```no_run
+/// use pearl::{Storage, Builder, Key, ArrayKey};
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     let mut storage: Storage<String> = Builder::new()
+///     let mut storage: Storage<ArrayKey<8>> = Builder::new()
 ///         .work_dir("/tmp/pearl/")
 ///         .max_blob_size(1_000_000)
 ///         .max_data_in_blob(1_000_000_000)
@@ -235,11 +235,13 @@ where
     /// NOTICE! First write into storage without active blob may take more time due to active blob
     /// creation
     /// # Examples
-    /// ```no-run
-    /// async fn write_data() {
-    ///     let key = 42u64.to_be_bytes().to_vec();
+    /// ```no_run
+    /// use pearl::{Builder, Storage, ArrayKey};
+    ///
+    /// async fn write_data(storage: Storage<ArrayKey<8>>) {
+    ///     let key = ArrayKey::<8>::default();
     ///     let data = b"async written to blob".to_vec();
-    ///     storage.write(key, data).await
+    ///     storage.write(key, data).await;
     /// }
     /// ```
     /// # Errors
@@ -252,13 +254,15 @@ where
 
     /// Similar to [`write`] but with metadata
     /// # Examples
-    /// ```no-run
-    /// async fn write_data() {
-    ///     let key = 42u64.to_be_bytes().to_vec();
+    /// ```no_run
+    /// use pearl::{Builder, Meta, Storage, ArrayKey};
+    ///
+    /// async fn write_data(storage: Storage<ArrayKey<8>>) {
+    ///     let key = ArrayKey::<8>::default();
     ///     let data = b"async written to blob".to_vec();
-    ///     let meta = Meta::new();
+    ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
-    ///     storage.write_with(&key, data, meta).await
+    ///     storage.write_with(&key, data, meta).await;
     /// }
     /// ```
     /// # Errors
@@ -361,9 +365,11 @@ where
 
     /// Reads the first found data matching given key.
     /// # Examples
-    /// ```no-run
-    /// async fn read_data() {
-    ///     let key = 42u64.to_be_bytes().to_vec();
+    /// ```no_run
+    /// use pearl::{Builder, Meta, Storage, ArrayKey};
+    ///
+    /// async fn read_data(storage: Storage<ArrayKey<8>>) {
+    ///     let key = ArrayKey::<8>::default();
     ///     let data = storage.read(key).await;
     /// }
     /// ```
@@ -380,12 +386,14 @@ where
     }
     /// Reads data matching given key and metadata
     /// # Examples
-    /// ```no-run
-    /// async fn read_data() {
-    ///     let key = 42u64.to_be_bytes().to_vec();
-    ///     let meta = Meta::new();
+    /// ```no_run
+    /// use pearl::{Builder, Meta, Storage, ArrayKey};
+    ///
+    /// async fn read_data(storage: Storage<ArrayKey<8>>) {
+    ///     let key = ArrayKey::<8>::default();
+    ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
-    ///     let data = storage.read(&key, &meta).await;
+    ///     let data = storage.read_with(&key, &meta).await;
     /// }
     /// ```
     /// # Errors
@@ -521,12 +529,12 @@ where
     /// `blob_count` returns exact number of closed blobs plus one active, if there is some.
     /// It locks on inner structure, so it much slower than `next_blob_id`.
     /// # Examples
-    /// ```no-run
-    /// use pearl::Builder;
+    /// ```no_run
+    /// use pearl::{Builder, Storage, ArrayKey};
     ///
-    /// let mut storage = Builder::new().work_dir("/tmp/pearl/").build::<f64>();
-    /// storage.init().await;
-    /// assert_eq!(storage.blobs_count(), 1);
+    /// async fn check_blobs_count(storage: Storage<ArrayKey<8>>) {
+    ///     assert_eq!(storage.blobs_count().await, 1);
+    /// }
     /// ```
     pub async fn blobs_count(&self) -> usize {
         let safe = self.inner.safe.read().await;
@@ -1129,30 +1137,6 @@ where
         });
     }
 }
-
-/// Trait `Key`
-pub trait Key<'a>:
-    AsRef<[u8]> + From<Vec<u8>> + Debug + Clone + Send + Sync + Ord + Default
-{
-    /// Key must have fixed length
-    const LEN: u16;
-
-    /// Reference type for zero-copy key creation
-    type Ref: RefKey<'a>;
-
-    /// Convert `Self` into `Vec<u8>`
-    fn to_vec(&self) -> Vec<u8> {
-        self.as_ref().to_vec()
-    }
-
-    /// Convert `Self` to `Self::Ref`
-    fn as_ref_key(&'a self) -> Self::Ref {
-        Self::Ref::from(self.as_ref())
-    }
-}
-
-/// Trait for reference key type
-pub trait RefKey<'a>: Ord + From<&'a [u8]> {}
 
 #[async_trait::async_trait]
 impl<K> BloomProvider<K> for Storage<K>
