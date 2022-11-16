@@ -1,4 +1,5 @@
 use super::*;
+use std::sync::RwLock;
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 /// Range filter
@@ -7,9 +8,9 @@ where
     for<'a> K: Key<'a>,
 {
     #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
-    min: K,
+    min: Arc<RwLock<K>>,
     #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
-    max: K,
+    max: Arc<RwLock<K>>,
     initialized: bool,
 }
 
@@ -31,8 +32,8 @@ where
     }
 
     fn checked_add_assign(&mut self, other: &Self) -> bool {
-        self.add(&other.min);
-        self.add(&other.max);
+        self.add(&other.min.read().unwrap());
+        self.add(&other.max.read().unwrap());
         true
     }
 
@@ -56,19 +57,26 @@ where
     /// Add key to filter
     pub fn add(&mut self, key: &K) {
         if !self.initialized {
-            self.min = key.clone();
-            self.max = key.clone();
+            *self.min.write().unwrap() = key.clone();
+            *self.max.write().unwrap() = key.clone();
             self.initialized = true;
-        } else if key < &self.min {
-            self.min = key.clone();
-        } else if key > &self.max {
-            self.max = key.clone()
+        } else if key < &self.min.read().unwrap() {
+            *self.min.write().unwrap() = key.clone();
+        } else if key > &self.max.read().unwrap() {
+            *self.max.write().unwrap() = key.clone()
         }
     }
 
     /// Check if key contains in filter
     pub fn contains(&self, key: &K) -> bool {
-        self.initialized && &self.min <= key && key <= &self.max
+        if self.initialized {
+            let min = self.min.read().unwrap();
+            if &*min <= key {
+                let max = self.max.read().unwrap();
+                return key <= &*max;
+            }
+        }
+        false
     }
 
     /// Clear filter
@@ -87,15 +95,15 @@ where
     }
 }
 
-fn serialize_key<K, S>(key: &K, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_key<K, S>(key: &Arc<RwLock<K>>, serializer: S) -> Result<S::Ok, S::Error>
 where
     for<'a> K: Key<'a>,
     S: serde::Serializer,
 {
-    serializer.serialize_bytes(key.as_ref())
+    serializer.serialize_bytes(key.read().unwrap().as_ref())
 }
 
-fn deserialize_key<'de, K, D>(deserializer: D) -> Result<K, D::Error>
+fn deserialize_key<'de, K, D>(deserializer: D) -> Result<Arc<RwLock<K>>, D::Error>
 where
     for<'a> K: Key<'a>,
     D: serde::Deserializer<'de>,
@@ -119,7 +127,9 @@ where
         }
     }
 
-    deserializer.deserialize_byte_buf(KeyVisitor(PhantomData))
+    deserializer
+        .deserialize_byte_buf(KeyVisitor(PhantomData))
+        .map(|key| Arc::new(RwLock::new(key)))
 }
 
 #[cfg(test)]
