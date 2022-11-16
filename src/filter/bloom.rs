@@ -3,12 +3,13 @@ use ahash::AHasher;
 use bitvec::order::Lsb0;
 use bitvec::prelude::*;
 use std::hash::Hasher;
+use std::sync::RwLock;
 
 // All usizes in structures are serialized as u64 in binary
 #[derive(Clone)]
 /// Bloom filter
 pub struct Bloom {
-    inner: Option<BitVec<Lsb0, u64>>,
+    inner: Option<Arc<RwLock<BitVec<Lsb0, u64>>>>,
     bits_count: usize,
     hashers: Vec<AHasher>,
     config: Config,
@@ -25,10 +26,10 @@ impl Debug for Bloom {
         f.debug_struct("Bloom")
             .field(
                 "inner",
-                &self
-                    .inner
-                    .as_ref()
-                    .map(|x| InnerDebug(x.count_ones(), x.len())),
+                &self.inner.as_ref().map(|x| {
+                    let x = x.read().unwrap();
+                    InnerDebug(x.count_ones(), x.len())
+                }),
             )
             .field("bits_count", &self.bits_count)
             .finish()
@@ -178,7 +179,7 @@ impl Bloom {
     pub fn new(config: Config) -> Self {
         let bits_count = bits_count_from_formula(&config);
         Self {
-            inner: Some(bitvec![Lsb0, u64; 0; bits_count]),
+            inner: Some(Arc::new(RwLock::new(bitvec![Lsb0, u64; 0; bits_count]))),
             hashers: Self::hashers(config.hashers_count),
             config,
             bits_count,
@@ -189,7 +190,12 @@ impl Bloom {
     #[must_use]
     pub fn checked_add_assign(&mut self, other: &Bloom) -> bool {
         match (&mut self.inner, &other.inner) {
-            (Some(inner), Some(other_inner)) if inner.len() == other_inner.len() => {
+            (Some(inner), Some(other_inner)) => {
+                let mut inner = inner.write().unwrap();
+                let other_inner = other_inner.read().unwrap();
+                if inner.len() != other_inner.len() {
+                    return false;
+                }
                 inner
                     .as_mut_raw_slice()
                     .iter_mut()
@@ -203,7 +209,9 @@ impl Bloom {
 
     /// Set in-memory filter buffer to zeroed array
     pub fn clear(&mut self) {
-        self.inner = Some(bitvec![Lsb0, u64; 0; self.bits_count]);
+        self.inner = Some(Arc::new(RwLock::new(
+            bitvec![Lsb0, u64; 0; self.bits_count],
+        )));
     }
 
     /// Check if filter offloaded
@@ -213,7 +221,11 @@ impl Bloom {
 
     /// Clear in-memory filter buffer
     pub fn offload_from_memory(&mut self) -> usize {
-        let freed = self.inner.as_ref().map(|x| x.capacity() / 8).unwrap_or(0);
+        let freed = self
+            .inner
+            .as_ref()
+            .map(|x| x.read().unwrap().capacity() / 8)
+            .unwrap_or(0);
         self.inner = None;
         freed
     }
@@ -227,6 +239,7 @@ impl Bloom {
 
     fn save(&self) -> Option<Save> {
         if let Some(inner) = &self.inner {
+            let inner = inner.read().unwrap();
             Some(Save {
                 config: self.config.clone(),
                 buf: inner.as_raw_slice().to_vec(),
@@ -243,7 +256,7 @@ impl Bloom {
         Self {
             hashers: Self::hashers(save.config.hashers_count),
             config: save.config,
-            inner: Some(inner),
+            inner: Some(Arc::new(RwLock::new(inner))),
             bits_count: save.bits_count,
         }
     }
@@ -264,7 +277,8 @@ impl Bloom {
 
     /// Add value to filter
     pub fn add(&mut self, item: impl AsRef<[u8]>) -> Result<()> {
-        if let Some(inner) = &mut self.inner {
+        if let Some(inner) = &self.inner {
+            let mut inner = inner.write().expect("rwlock");
             let len = inner.len() as u64;
             for h in Self::iter_indices_for_key(&self.hashers, len, item.as_ref()) {
                 *inner
@@ -280,6 +294,7 @@ impl Bloom {
     /// Check filter in-memory (if not offloaded)
     pub fn contains_in_memory(&self, item: impl AsRef<[u8]>) -> Option<FilterResult> {
         if let Some(inner) = &self.inner {
+            let inner = inner.read().unwrap();
             let len = inner.len() as u64;
             // Check because .all on empty iterator returns true
             if len == 0 {
@@ -344,7 +359,9 @@ impl Bloom {
 
     /// Get amount of memory allocated for filter
     pub fn memory_allocated(&self) -> usize {
-        self.inner.as_ref().map_or(0, |buf| buf.capacity() / 8)
+        self.inner
+            .as_ref()
+            .map_or(0, |buf| buf.read().unwrap().capacity() / 8)
     }
 }
 
