@@ -52,7 +52,7 @@ impl<K> FilterTrait<K> for Bloom
 where
     K: AsRef<[u8]> + Sync + Send + Debug,
 {
-    fn add(&mut self, key: &K) {
+    fn add(&self, key: &K) {
         let _ = self.add(key);
     }
 
@@ -276,7 +276,7 @@ impl Bloom {
     }
 
     /// Add value to filter
-    pub fn add(&mut self, item: impl AsRef<[u8]>) -> Result<()> {
+    pub fn add(&self, item: impl AsRef<[u8]>) -> Result<()> {
         if let Some(inner) = &self.inner {
             let mut inner = inner.write().expect("rwlock");
             let len = inner.len() as u64;

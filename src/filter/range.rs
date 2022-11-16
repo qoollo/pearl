@@ -11,7 +11,11 @@ where
     min: Arc<RwLock<K>>,
     #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
     max: Arc<RwLock<K>>,
-    initialized: bool,
+    #[serde(
+        serialize_with = "serialize_initialized",
+        deserialize_with = "deserialize_initialized"
+    )]
+    initialized: Arc<RwLock<bool>>,
 }
 
 #[async_trait::async_trait]
@@ -19,7 +23,7 @@ impl<K> FilterTrait<K> for RangeFilter<K>
 where
     for<'a> K: Key<'a>,
 {
-    fn add(&mut self, key: &K) {
+    fn add(&self, key: &K) {
         self.add(key);
     }
 
@@ -49,18 +53,25 @@ where
     /// Create filter
     pub fn new() -> Self {
         Self {
-            initialized: false,
+            initialized: Arc::new(RwLock::new(false)),
             ..Default::default()
         }
     }
 
     /// Add key to filter
-    pub fn add(&mut self, key: &K) {
-        if !self.initialized {
-            *self.min.write().unwrap() = key.clone();
-            *self.max.write().unwrap() = key.clone();
-            self.initialized = true;
-        } else if key < &self.min.read().unwrap() {
+    pub fn add(&self, key: &K) {
+        {
+            let initialized = { *self.initialized.read().unwrap() };
+            if !initialized {
+                let mut initialized = self.initialized.write().unwrap();
+                if !*initialized {
+                    *self.min.write().unwrap() = key.clone();
+                    *self.max.write().unwrap() = key.clone();
+                    *initialized = true;
+                }
+            }
+        }
+        if key < &self.min.read().unwrap() {
             *self.min.write().unwrap() = key.clone();
         } else if key > &self.max.read().unwrap() {
             *self.max.write().unwrap() = key.clone()
@@ -69,7 +80,7 @@ where
 
     /// Check if key contains in filter
     pub fn contains(&self, key: &K) -> bool {
-        if self.initialized {
+        if *self.initialized.read().unwrap() {
             let min = self.min.read().unwrap();
             if &*min <= key {
                 let max = self.max.read().unwrap();
@@ -81,7 +92,7 @@ where
 
     /// Clear filter
     pub fn clear(&mut self) {
-        self.initialized = false;
+        self.initialized = Arc::new(RwLock::new(false));
     }
 
     /// Create filter from raw bytes
@@ -129,6 +140,38 @@ where
 
     deserializer
         .deserialize_byte_buf(KeyVisitor(PhantomData))
+        .map(|key| Arc::new(RwLock::new(key)))
+}
+
+fn serialize_initialized<S>(b: &Arc<RwLock<bool>>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_bool(*b.read().unwrap())
+}
+
+fn deserialize_initialized<'de, D>(deserializer: D) -> Result<Arc<RwLock<bool>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct KeyVisitor;
+    impl<'de> serde::de::Visitor<'de> for KeyVisitor {
+        type Value = bool;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(formatter, "bool")
+        }
+
+        fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(v)
+        }
+    }
+
+    deserializer
+        .deserialize_bool(KeyVisitor)
         .map(|key| Arc::new(RwLock::new(key)))
 }
 
@@ -226,7 +269,7 @@ mod tests {
 
     #[test]
     fn test_range_index_key_cmp_proper_key() {
-        let mut filter: RangeFilter<ProperKey> = RangeFilter::new();
+        let filter: RangeFilter<ProperKey> = RangeFilter::new();
         for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
             filter.add(&key);
         }
@@ -240,7 +283,7 @@ mod tests {
 
     #[test]
     fn test_range_index_key_cmp_wrong_key() {
-        let mut filter: RangeFilter<ProperKey> = RangeFilter::new();
+        let filter: RangeFilter<ProperKey> = RangeFilter::new();
         for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
             filter.add(&key);
         }
