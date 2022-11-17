@@ -46,8 +46,6 @@ extern crate anyhow;
 
 extern crate ring;
 
-extern crate async_std;
-
 /// Basic info about current build.
 pub mod build_info;
 
@@ -68,7 +66,7 @@ pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
-pub use storage::{Builder, Key, RefKey, Storage, ArrayKey};
+pub use storage::{ArrayKey, Builder, Key, RefKey, Storage};
 
 mod prelude {
     use crc::{Crc, CRC_32_ISCSI};

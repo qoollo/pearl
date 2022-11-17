@@ -903,16 +903,15 @@ where
         let mut blobs = safe.blobs.write().await;
         let count = AtomicU64::new(0);
         blobs
-            .for_each(|b| async {
-                let rwlock = ASRwLock::new(b);
-                let result = Blob::mark_all_as_deleted(&rwlock, key).await;
+            .for_each(|mut b| async {
+                let result = b.mark_all_as_deleted(key).await;
                 match result {
                     Ok(cnt) => {
                         count.fetch_add(cnt.unwrap_or(0), Ordering::Release);
                     }
                     Err(err) => warn!("failed to delete records: {}", err),
                 }
-                rwlock.into_inner()
+                b
             })
             .await;
         let count = count.load(Ordering::Relaxed);
@@ -925,9 +924,8 @@ where
         let mut safe = self.inner.safe.write().await;
         let active_blob = safe.active_blob.as_deref_mut();
         let count = if let Some(active_blob) = active_blob {
-            let count = Blob::mark_all_as_deleted(active_blob, key)
-                .await?
-                .unwrap_or(0);
+            let mut active_blob = active_blob.write().await;
+            let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
             debug!("{} deleted from active blob", count);
             count
         } else {
