@@ -902,6 +902,7 @@ where
         let safe = self.inner.safe.write().await;
         let mut blobs = safe.blobs.write().await;
         let count = AtomicU64::new(0);
+        let errors = AtomicU64::new(0);
         blobs
             .for_each(|mut b| async {
                 let result = b.mark_all_as_deleted(key).await;
@@ -909,7 +910,10 @@ where
                     Ok(cnt) => {
                         count.fetch_add(cnt.unwrap_or(0), Ordering::Release);
                     }
-                    Err(err) => warn!("failed to delete records: {}", err),
+                    Err(err) => {
+                        warn!("failed to delete records: {}", err);
+                        errors.fetch_add(1, Ordering::Release);
+                    }
                 }
                 b
             })
@@ -917,7 +921,12 @@ where
         let count = count.load(Ordering::Relaxed);
         debug!("{} deleted from closed blobs", count);
         self.observer.defer_dump_old_blob_indexes().await;
-        Ok(count)
+        let errors = errors.load(Ordering::Relaxed);
+        if errors > 0 {
+            Err(Error::new(ErrorKind::Other).into())
+        } else {
+            Ok(count)
+        }
     }
 
     async fn mark_all_as_deleted_active(&self, key: &K) -> Result<u64> {
