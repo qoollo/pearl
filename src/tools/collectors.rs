@@ -7,33 +7,60 @@ use super::prelude::*;
 pub struct BlobSummaryCollector {
     header: BlobHeader,
     records: usize,
+    deleted_records: usize,
     keys: BTreeSet<Vec<u8>>,
+    deleted_keys: BTreeSet<Vec<u8>>,
 }
 
 impl BlobSummaryCollector {
     /// Collect data about blob by path
-    pub fn from_path(path: &Path) -> Result<Self> {
-        let mut reader = BlobReader::from_path(&path)?;
+    pub fn from_path(path: &Path, full_load: bool) -> Result<Self> {
+        if full_load {
+            Self::load_full(path)
+        } else {
+            Self::load_short(path)
+        }
+    }
+
+    fn load_full(path: &Path) -> Result<Self> {
+        let mut reader = BlobReader::from_path(path)?;
         let header = reader.read_header()?;
-        let mut collector = Self::empty(header);
+        let mut collector = Self::short(header);
         while !reader.is_eof() {
             let record = reader.read_record(false)?;
-            collector.add_record(record);
+            if record.header().is_deleted() {
+                collector.add_deleted_record(record);
+            } else {
+                collector.add_record(record);
+            }
         }
         Ok(collector)
     }
 
-    fn empty(header: BlobHeader) -> Self {
+    fn load_short(path: &Path) -> Result<Self> {
+        let mut reader = BlobReader::from_path(path)?;
+        let header = reader.read_header()?;
+        Ok(Self::short(header))
+    }
+
+    fn short(header: BlobHeader) -> Self {
         Self {
             header,
             records: Default::default(),
+            deleted_records: Default::default(),
             keys: Default::default(),
+            deleted_keys: Default::default(),
         }
     }
 
     fn add_record(&mut self, record: Record) {
         self.records += 1;
         self.keys.insert(record.header().key().to_vec());
+    }
+
+    fn add_deleted_record(&mut self, record: Record) {
+        self.deleted_records += 1;
+        self.deleted_keys.insert(record.header().key().to_vec());
     }
 
     /// Count of records
@@ -72,9 +99,9 @@ pub struct IndexSummaryCollector {
 
 impl IndexSummaryCollector {
     /// Collect data about blob by path
-    pub fn from_path(path: &Path) -> Result<Self> {
+    pub async fn from_path(path: &Path) -> Result<Self> {
         let header = read_index_header(path)?;
-        let headers = read_index(path)?;
+        let headers = read_index(path).await?;
         let mut collector = Self::empty(header);
         for headers in headers.values() {
             for header in headers {

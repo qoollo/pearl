@@ -14,7 +14,7 @@ where
 {
     use blob::index::HEADER_VERSION;
 
-    static_assertions::const_assert_eq!(HEADER_VERSION, 5);
+    static_assertions::const_assert_eq!(HEADER_VERSION, 6);
     let header = read_index_header(path)?;
     let blob_path = path.with_extension("blob");
     let blob_size = 

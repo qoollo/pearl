@@ -4,7 +4,7 @@ use std::mem::size_of;
 
 pub(crate) type Index<K> = IndexStruct<BPTreeFileIndex<K>, K>;
 
-pub(crate) const HEADER_VERSION: u8 = 5;
+pub(crate) const HEADER_VERSION: u8 = 6;
 pub(crate) const INDEX_HEADER_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
 #[derive(Debug)]

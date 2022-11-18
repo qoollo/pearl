@@ -1,7 +1,7 @@
-use super::generic_key::*;
 use super::prelude::*;
 use crate::blob::index::FileIndexTrait;
 use crate::blob::FileName;
+use crate::ArrayKey;
 use futures::Future;
 
 /// Read index header from file
@@ -121,11 +121,11 @@ where
 }
 
 /// block on function
-pub fn block_on<T, F: Future<Output = T>>(f: F) -> Result<T> {
+pub(super) fn block_on<T, F: Future<Output = T>>(f: F) -> Result<T> {
     Ok(tokio::runtime::Runtime::new()?.block_on(f))
 }
 
-fn index_from_file<K>(
+async fn index_from_file<K>(
     header: &IndexHeader,
     path: &Path,
 ) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>>
@@ -151,15 +151,15 @@ where
 }
 
 /// Read index file
-pub fn read_index(path: &Path) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>> {
+pub async fn read_index(path: &Path) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>> {
     let header = read_index_header(path)?;
     let headers = match header.key_size() {
-        4 => index_from_file::<GenericKey<4>>(&header, path),
-        8 => index_from_file::<GenericKey<8>>(&header, path),
-        16 => index_from_file::<GenericKey<16>>(&header, path),
-        32 => index_from_file::<GenericKey<32>>(&header, path),
-        64 => index_from_file::<GenericKey<64>>(&header, path),
-        128 => index_from_file::<GenericKey<128>>(&header, path),
+        4 => index_from_file::<ArrayKey<4>>(&header, path).await,
+        8 => index_from_file::<ArrayKey<8>>(&header, path).await,
+        16 => index_from_file::<ArrayKey<16>>(&header, path).await,
+        32 => index_from_file::<ArrayKey<32>>(&header, path).await,
+        64 => index_from_file::<ArrayKey<64>>(&header, path).await,
+        128 => index_from_file::<ArrayKey<128>>(&header, path).await,
         size => return Err(Error::unsupported_key_size(size).into()),
     }?;
     for (_, headers) in headers.iter() {
