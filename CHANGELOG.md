@@ -7,6 +7,7 @@ Pearl changelog
 
 
 #### Changed
+- Change locks for filters update (#218)
 
 
 #### Fixed
