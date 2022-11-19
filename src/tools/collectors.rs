@@ -109,9 +109,9 @@ pub struct IndexSummaryCollector {
 
 impl IndexSummaryCollector {
     /// Collect data about blob by path
-    pub async fn from_path(path: &Path) -> Result<Self> {
+    pub fn from_path(path: &Path) -> Result<Self> {
         let header = read_index_header(path)?;
-        let headers = read_index(path).await?;
+        let headers = read_index_sync(path)?;
         let mut collector = Self::empty(header);
         for headers in headers.values() {
             for header in headers {
