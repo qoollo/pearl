@@ -18,7 +18,7 @@ impl BlobSummaryCollector {
         if full_load {
             Self::load_full(path)
         } else {
-            Self::load_short(path)
+            Self::load_header_only(path)
         }
     }
 
@@ -37,7 +37,7 @@ impl BlobSummaryCollector {
         Ok(collector)
     }
 
-    fn load_short(path: &Path) -> Result<Self> {
+    fn load_header_only(path: &Path) -> Result<Self> {
         let mut reader = BlobReader::from_path(path)?;
         let header = reader.read_header()?;
         Ok(Self::short(header))
@@ -68,9 +68,19 @@ impl BlobSummaryCollector {
         self.records
     }
 
+    /// Count of deleted records
+    pub fn deleted_records(&self) -> usize {
+        self.deleted_records
+    }
+
     /// Count of unique keys
     pub fn unique_keys_count(&self) -> usize {
         self.keys.len()
+    }
+
+    /// Count of unique deleted keys
+    pub fn unique_deleted_keys_count(&self) -> usize {
+        self.deleted_keys.len()
     }
 
     /// Blob header magic byte

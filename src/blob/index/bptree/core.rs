@@ -16,8 +16,6 @@ pub(super) const BLOCK_SIZE: usize = 4096;
 
 #[derive(Debug, Clone)]
 pub(crate) struct BPTreeFileIndex<K>
-where
-    for<'a> K: Key<'a>
 {
     file: File,
     header: IndexHeader,
