@@ -7,6 +7,20 @@ Pearl changelog
 
 
 #### Changed
+
+
+#### Fixed
+
+
+#### Updated
+- Updated tokio, nix, clap, bitvec versions (#202)
+
+
+## [0.14.0] - 2022-11-14
+#### Added
+
+
+#### Changed
 - File name added to error messages in Blob struct (#183)
 - Update rust edition (#175)
 - Change file operations to work on full buffers (#190)
