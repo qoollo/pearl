@@ -7,7 +7,7 @@ Pearl changelog
 
 
 #### Changed
-
+- Change file operations to work on full buffers (#190)
 
 #### Fixed
 
@@ -23,7 +23,6 @@ Pearl changelog
 #### Changed
 - File name added to error messages in Blob struct (#183)
 - Update rust edition (#175)
-- Change file operations to work on full buffers (#190)
 
 #### Fixed
 - Fix docs (#177)
