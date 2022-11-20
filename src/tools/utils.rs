@@ -2,6 +2,7 @@ use super::prelude::*;
 use crate::blob::index::FileIndexTrait;
 use crate::blob::FileName;
 use crate::ArrayKey;
+use crate::blob::index::HEADER_VERSION;
 use futures::Future;
 
 /// Read index header from file
@@ -122,7 +123,11 @@ where
 
 /// block on function
 pub(super) fn block_on<T, F: Future<Output = T>>(f: F) -> Result<T> {
-    Ok(tokio::runtime::Handle::current().block_on(f))
+    match tokio::runtime::Handle::try_current() {
+        Ok(runtime) => Ok(runtime.block_on(f)),
+        Err(_) => Ok(tokio::runtime::Runtime::new()?.block_on(f)),
+    }
+    
 }
 
 async fn index_from_file<K>(
@@ -133,7 +138,7 @@ where
     for<'a> K: Key<'a> + 'static
 {
     let headers = match header.version() {
-        6 => {
+        HEADER_VERSION => {
             let index = BPTreeFileIndex::<K>::from_file(
                 FileName::from_path(path)?,
                 None,

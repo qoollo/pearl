@@ -40,17 +40,17 @@ impl IndexHeader {
         record_header_size: usize,
         records_count: usize,
         meta_size: usize,
-        hash: Vec<u8>,
-        blob_size: u64,
         key_size: u16,
+        blob_size: u64,
+        hash: Vec<u8>,
     ) -> Self {
         Self {
             records_count,
             record_header_size,
             meta_size,
-            hash,
-            blob_size,
             key_size,
+            blob_size,
+            hash,
             ..Self::default()
         }
     }
