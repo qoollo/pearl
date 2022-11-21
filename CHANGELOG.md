@@ -9,7 +9,7 @@ Pearl changelog
 
 
 #### Changed
-
+- Excessive key conversion removed (#193)
 
 #### Fixed
 
