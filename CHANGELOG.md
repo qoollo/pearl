@@ -14,6 +14,7 @@ Pearl changelog
 
 #### Updated
 - Updated tokio, nix, clap, bitvec versions (#202)
+- Update locks (#187)
 
 
 ## [0.14.0] - 2022-11-14
@@ -31,7 +32,6 @@ Pearl changelog
 - Returning error when validating blob with corrupted records (#180)
 
 #### Updated
-- Update locks (#187)
 
 
 
