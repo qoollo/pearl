@@ -237,6 +237,7 @@ where
 
     pub(crate) async fn write(blob: &ASRwLock<Self>, record: Record) -> Result<()> {
         debug!("blob write");
+        // Only one upgradable_read lock is allowed at a time
         let blob = blob.upgradable_read().await;
         Self::write_locked(blob, record).await
     }
