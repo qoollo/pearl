@@ -1,11 +1,13 @@
 pub(crate) mod blob_reader;
 pub(crate) mod blob_writer;
+pub(crate) mod collectors;
 /// Error type defenition
 pub mod error;
 pub(crate) mod migration;
 pub(crate) mod utils;
 pub(crate) mod validation;
 
+pub use collectors::*;
 pub use migration::*;
 pub use utils::*;
 pub use validation::*;

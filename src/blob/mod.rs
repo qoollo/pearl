@@ -13,6 +13,9 @@ pub(crate) use super::prelude::*;
 
 mod prelude {
     pub(crate) use super::*;
+    pub(crate) use async_std::sync::{
+        RwLock as ASRwLock, RwLockUpgradableReadGuard as ASRwLockUpgradableReadGuard,
+    };
     pub(crate) use index::Index;
     pub(crate) use std::sync::atomic::AtomicU64;
 }
