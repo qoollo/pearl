@@ -9,6 +9,7 @@ Pearl changelog
 
 
 #### Changed
+- Remove iterators from bloom filter (#194)
 - Excessive key conversion removed (#193)
 
 #### Fixed
