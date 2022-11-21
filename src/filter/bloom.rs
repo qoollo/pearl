@@ -27,7 +27,7 @@ impl Debug for Bloom {
             .field(
                 "inner",
                 &self.inner.as_ref().map(|x| {
-                    let x = x.read().unwrap();
+                    let x = x.read().expect("rwlock");
                     InnerDebug(x.count_ones(), x.len())
                 }),
             )
@@ -191,8 +191,8 @@ impl Bloom {
     pub fn checked_add_assign(&mut self, other: &Bloom) -> bool {
         match (&mut self.inner, &other.inner) {
             (Some(inner), Some(other_inner)) => {
-                let mut inner = inner.write().unwrap();
-                let other_inner = other_inner.read().unwrap();
+                let mut inner = inner.write().expect("rwlock");
+                let other_inner = other_inner.read().expect("rwlock");
                 if inner.len() != other_inner.len() {
                     return false;
                 }
@@ -224,7 +224,7 @@ impl Bloom {
         let freed = self
             .inner
             .as_ref()
-            .map(|x| x.read().unwrap().capacity() / 8)
+            .map(|x| x.read().expect("rwlock").capacity() / 8)
             .unwrap_or(0);
         self.inner = None;
         freed
@@ -239,7 +239,7 @@ impl Bloom {
 
     fn save(&self) -> Option<Save> {
         if let Some(inner) = &self.inner {
-            let inner = inner.read().unwrap();
+            let inner = inner.read().expect("rwlock");
             Some(Save {
                 config: self.config.clone(),
                 buf: inner.as_raw_slice().to_vec(),
@@ -294,7 +294,7 @@ impl Bloom {
     /// Check filter in-memory (if not offloaded)
     pub fn contains_in_memory(&self, item: impl AsRef<[u8]>) -> Option<FilterResult> {
         if let Some(inner) = &self.inner {
-            let inner = inner.read().unwrap();
+            let inner = inner.read().expect("rwlock");
             let len = inner.len() as u64;
             // Check because .all on empty iterator returns true
             if len == 0 {
@@ -361,7 +361,7 @@ impl Bloom {
     pub fn memory_allocated(&self) -> usize {
         self.inner
             .as_ref()
-            .map_or(0, |buf| buf.read().unwrap().capacity() / 8)
+            .map_or(0, |buf| buf.read().expect("rwlock").capacity() / 8)
     }
 }
 

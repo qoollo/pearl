@@ -36,8 +36,8 @@ where
     }
 
     fn checked_add_assign(&mut self, other: &Self) -> bool {
-        self.add(&other.min.read().unwrap());
-        self.add(&other.max.read().unwrap());
+        self.add(&other.min.read().expect("rwlock"));
+        self.add(&other.max.read().expect("rwlock"));
         true
     }
 
@@ -61,29 +61,29 @@ where
     /// Add key to filter
     pub fn add(&self, key: &K) {
         {
-            let initialized = { *self.initialized.read().unwrap() };
+            let initialized = { *self.initialized.read().expect("rwlock") };
             if !initialized {
-                let mut initialized = self.initialized.write().unwrap();
+                let mut initialized = self.initialized.write().expect("rwlock");
                 if !*initialized {
-                    *self.min.write().unwrap() = key.clone();
-                    *self.max.write().unwrap() = key.clone();
+                    *self.min.write().expect("rwlock") = key.clone();
+                    *self.max.write().expect("rwlock") = key.clone();
                     *initialized = true;
                 }
             }
         }
-        if key < &self.min.read().unwrap() {
-            *self.min.write().unwrap() = key.clone();
-        } else if key > &self.max.read().unwrap() {
-            *self.max.write().unwrap() = key.clone()
+        if key < &self.min.read().expect("rwlock") {
+            *self.min.write().expect("rwlock") = key.clone();
+        } else if key > &self.max.read().expect("rwlock") {
+            *self.max.write().expect("rwlock") = key.clone()
         }
     }
 
     /// Check if key contains in filter
     pub fn contains(&self, key: &K) -> bool {
-        if *self.initialized.read().unwrap() {
-            let min = self.min.read().unwrap();
+        if *self.initialized.read().expect("rwlock") {
+            let min = self.min.read().expect("rwlock");
             if &*min <= key {
-                let max = self.max.read().unwrap();
+                let max = self.max.read().expect("rwlock");
                 return key <= &*max;
             }
         }
@@ -111,7 +111,7 @@ where
     for<'a> K: Key<'a>,
     S: serde::Serializer,
 {
-    serializer.serialize_bytes(key.read().unwrap().as_ref())
+    serializer.serialize_bytes(key.read().expect("rwlock").as_ref())
 }
 
 fn deserialize_key<'de, K, D>(deserializer: D) -> Result<Arc<RwLock<K>>, D::Error>
@@ -147,7 +147,7 @@ fn serialize_initialized<S>(b: &Arc<RwLock<bool>>, serializer: S) -> Result<S::O
 where
     S: serde::Serializer,
 {
-    serializer.serialize_bool(*b.read().unwrap())
+    serializer.serialize_bool(*b.read().expect("rwlock"))
 }
 
 fn deserialize_initialized<'de, D>(deserializer: D) -> Result<Arc<RwLock<bool>>, D::Error>
