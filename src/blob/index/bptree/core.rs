@@ -1,4 +1,5 @@
 use crate::error::ValidationErrorKind;
+use super::storage::Key;
 
 /// structure of b+-tree index file from the beginning:
 /// 1. Header
@@ -14,7 +15,8 @@ use super::prelude::*;
 pub(super) const BLOCK_SIZE: usize = 4096;
 
 #[derive(Debug, Clone)]
-pub(crate) struct BPTreeFileIndex<K> {
+pub(crate) struct BPTreeFileIndex<K>
+{
     file: File,
     header: IndexHeader,
     metadata: TreeMeta,
@@ -80,6 +82,10 @@ where
 
     fn records_count(&self) -> usize {
         self.header.records_count
+    }
+
+    fn blob_size(&self) -> u64 {
+        self.header.blob_size()
     }
 
     async fn read_meta(&self) -> Result<Vec<u8>> {
@@ -160,6 +166,14 @@ where
         if self.header.version() != HEADER_VERSION {
             let param = ValidationErrorKind::IndexVersion;
             return Err(Error::validation(param, "Index Header version is not valid").into());
+        }
+        if self.header.key_size() != K::LEN {
+            let param = ValidationErrorKind::IndexKeySize;
+            return Err(Error::validation(
+                param,
+                "Index header key_size is not equal to pearl compile-time key size",
+            )
+            .into());
         }
         if self.header.blob_size() != blob_size {
             let param = ValidationErrorKind::IndexBlobSize;

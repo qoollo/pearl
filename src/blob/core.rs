@@ -1,5 +1,6 @@
 use std::time::SystemTime;
 
+use async_std::sync::RwLockUpgradableReadGuard;
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
@@ -24,7 +25,7 @@ where
     index: Index<K>,
     name: FileName,
     file: File,
-    current_offset: Arc<Mutex<u64>>,
+    current_offset: u64,
     created_at: SystemTime,
 }
 
@@ -46,14 +47,13 @@ where
     ) -> Result<Self> {
         let file = File::create(name.to_path(), ioring.clone()).await?;
         let index = Self::create_index(name.clone(), ioring, index_config);
-        let current_offset = Arc::new(Mutex::new(0));
         let header = Header::new();
         let mut blob = Self {
             header,
             index,
             name,
             file,
-            current_offset,
+            current_offset: 0,
             created_at: SystemTime::now(),
         };
         blob.write_header().await?;
@@ -70,9 +70,8 @@ where
 
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
-        let mut offset = self.current_offset.lock().await;
         let bytes_written = self.file.write_append(&buf).await? as u64;
-        *offset = bytes_written;
+        self.current_offset = bytes_written;
         Ok(())
     }
 
@@ -94,10 +93,12 @@ where
                 .await
                 .with_context(|| format!("blob file dump failed: {:?}", self.name.to_path()))?;
 
-            self.index
-                .dump(self.file_size())
-                .await
-                .with_context(|| format!("index file dump failed, associated blob file: {:?}", self.name.to_path()))
+            self.index.dump(self.file_size()).await.with_context(|| {
+                format!(
+                    "index file dump failed, associated blob file: {:?}",
+                    self.name.to_path()
+                )
+            })
         }
     }
 
@@ -146,7 +147,10 @@ where
                 if let Some(io_error) = error.downcast_ref::<IOError>() {
                     match io_error.kind() {
                         IOErrorKind::PermissionDenied | IOErrorKind::Other => {
-                            warn!("index for file '{:?}' cannot be regenerated due to an error: {}", path, io_error);
+                            warn!(
+                                "index for file '{:?}' cannot be regenerated due to an error: {}",
+                                path, io_error
+                            );
                             return Err(error);
                         }
                         _ => {}
@@ -167,7 +171,7 @@ where
             file,
             name,
             index,
-            current_offset: Arc::new(Mutex::new(size)),
+            current_offset: size,
             created_at,
         };
         trace!("call update index");
@@ -205,10 +209,12 @@ where
             return Ok(());
         }
         debug!("index file missed");
-        let raw_r = self
-            .raw_records()
-            .await
-            .with_context(|| format!("failed to read raw records from blob {:?}", self.name.to_path()))?;
+        let raw_r = self.raw_records().await.with_context(|| {
+            format!(
+                "failed to read raw records from blob {:?}",
+                self.name.to_path()
+            )
+        })?;
         debug!("raw records loaded");
         if let Some(headers) = raw_r.load().await.with_context(|| {
             format!(
@@ -229,11 +235,17 @@ where
         // @TODO implement
     }
 
-    pub(crate) async fn write(&mut self, mut record: Record) -> Result<()> {
+    pub(crate) async fn write(blob: &ASRwLock<Self>, record: Record) -> Result<()> {
         debug!("blob write");
-        let mut offset = self.current_offset.lock().await;
-        debug!("blob write record offset: {}", *offset);
-        record.set_offset(*offset)?;
+        // Only one upgradable_read lock is allowed at a time
+        let blob = blob.upgradable_read().await;
+        Self::write_locked(blob, record).await
+    }
+
+    async fn write_mut(&mut self, mut record: Record) -> Result<()> {
+        debug!("blob write");
+        debug!("blob write record offset: {}", self.current_offset);
+        record.set_offset(self.current_offset)?;
         let buf = record.to_raw()?;
         let bytes_written = self
             .file
@@ -248,7 +260,31 @@ where
                 }
             })? as u64;
         self.index.push(record.header().clone())?;
-        *offset += bytes_written;
+        self.current_offset += bytes_written;
+        Ok(())
+    }
+    async fn write_locked(
+        blob: ASRwLockUpgradableReadGuard<'_, Blob<K>>,
+        mut record: Record,
+    ) -> Result<()> {
+        debug!("blob write record offset: {}", blob.current_offset);
+        record.set_offset(blob.current_offset)?;
+        let buf = record.to_raw()?;
+        let bytes_written = blob
+            .file
+            .write_append(&buf)
+            .await
+            .map_err(|e| -> anyhow::Error {
+                match e.kind() {
+                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
+                        Error::file_unavailable(kind).into()
+                    }
+                    _ => e.into(),
+                }
+            })? as u64;
+        let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
+        blob.index.push(record.header().clone())?;
+        blob.current_offset += bytes_written;
         Ok(())
     }
 
@@ -267,7 +303,14 @@ where
         let buf = entry
             .load()
             .await
-            .with_context(|| format!("failed to read key {:?} with meta {:?} from blob {:?}", key, meta, self.name.to_path()))?
+            .with_context(|| {
+                format!(
+                    "failed to read key {:?} with meta {:?} from blob {:?}",
+                    key,
+                    meta,
+                    self.name.to_path()
+                )
+            })?
             .into_data();
         debug!("blob read any entry loaded bytes: {}", buf.len());
         Ok(buf)
@@ -289,7 +332,7 @@ where
                 self.load_index().await?;
             }
             let record = Record::deleted(key)?;
-            self.write(record).await?;
+            self.write_mut(record).await?;
             let res = self.index.mark_all_as_deleted(key)?;
             Ok(res)
         } else {
@@ -319,12 +362,9 @@ where
             self.get_entry_with_meta(key, meta).await
         } else {
             debug!("blob get any entry bloom true no meta");
-            if let Some(header) = self
-                .index
-                .get_any(key)
-                .await
-                .with_context(|| format!("index get any failed for blob: {:?}", self.name.to_path()))?
-            {
+            if let Some(header) = self.index.get_any(key).await.with_context(|| {
+                format!("index get any failed for blob: {:?}", self.name.to_path())
+            })? {
                 let entry = Entry::new(header, self.file.clone());
                 debug!("blob, get any entry, bloom true no meta, entry found");
                 Ok(Some(entry))
