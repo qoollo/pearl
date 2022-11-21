@@ -4,6 +4,8 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Add functions to get info about blobs and indexes (#151)
+- Add key_size field to index header (#151)
 
 
 #### Changed
