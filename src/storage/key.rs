@@ -4,7 +4,7 @@ use std::convert::TryInto;
 
 /// Trait `Key`
 pub trait Key<'a>:
-    AsRef<[u8]> + From<Vec<u8>> + Debug + Clone + Send + Sync + Ord + Default
+    AsRef<[u8]> + From<Vec<u8>> + From<&'a [u8]> + Debug + Clone + Send + Sync + Ord + Default
 {
     /// Key must have fixed length
     const LEN: u16;
@@ -51,6 +51,12 @@ impl<const N: usize> AsRef<[u8]> for ArrayKey<N> {
 impl<const N: usize> From<Vec<u8>> for ArrayKey<N> {
     fn from(v: Vec<u8>) -> Self {
         Self(v.try_into().expect("size mismatch"))
+    }
+}
+
+impl<const N: usize> From<&[u8]> for ArrayKey<N> {
+    fn from(a: &[u8]) -> Self {
+        Self(a.try_into().expect("size mismatch"))
     }
 }
 
