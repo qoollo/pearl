@@ -16,6 +16,9 @@
 <span id="16">16</span>
 <span id="17">17</span>
 <span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
 </pre><pre class="rust"><code><span class="kw">mod </span>core;
 <span class="kw">mod </span>entry;
 <span class="kw">mod </span>file;
@@ -31,6 +34,9 @@
 
 <span class="kw">mod </span>prelude {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>async_std::sync::{
+        RwLock <span class="kw">as </span>ASRwLock, RwLockUpgradableReadGuard <span class="kw">as </span>ASRwLockUpgradableReadGuard,
+    };
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>index::Index;
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>std::sync::atomic::AtomicU64;
 }

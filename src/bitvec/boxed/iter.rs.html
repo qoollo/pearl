@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/boxed/iter.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>iter.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-1.0.1/src/boxed/iter.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>iter.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -223,7 +223,23 @@
 <span id="223">223</span>
 <span id="224">224</span>
 <span id="225">225</span>
-</pre><pre class="rust"><code><span class="doccomment">//! By-value buffer iteration.
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+</pre><pre class="rust"><code><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../doc/boxed/iter.md&quot;</span>)]
 
 </span><span class="kw">use </span>core::{
 	fmt::{
@@ -232,147 +248,151 @@
 		Formatter,
 	},
 	iter::FusedIterator,
+	ops::Range,
 };
 
 <span class="kw">use </span><span class="kw">super</span>::BitBox;
 <span class="kw">use crate</span>::{
-	order::BitOrder,
-	ptr::{
-		BitPtrRange,
-		Mut,
+	order::{
+		BitOrder,
+		Lsb0,
 	},
 	slice::BitSlice,
 	store::BitStore,
 };
-<span class="doccomment">/// This is not present on `Box&lt;[T]&gt;`, but is needed to fit into the general
-/// operator implementations.
-</span><span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; IntoIterator <span class="kw">for </span>BitBox&lt;O, T&gt;
+
+<span class="doccomment">/// [Original](alloc::vec::IntoIter)
+</span><span class="kw">impl</span>&lt;T, O&gt; IntoIterator <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="kw">type </span>IntoIter = IntoIter&lt;O, T&gt;;
+	<span class="kw">type </span>IntoIter = IntoIter&lt;T, O&gt;;
 	<span class="kw">type </span>Item = bool;
 
-	<span class="attribute">#[inline(always)]
+	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
 		IntoIter::new(<span class="self">self</span>)
 	}
 }
 
-<span class="doccomment">/** An iterator that moves out of a [`BitVec`].
+<span class="doccomment">/** An iterator over a `BitBox`.
 
-This `struct` is created by the [`into_iter`] method on [`BitVec`] (provided by
-the [`IntoIterator`] trait).
-
-# Original
+## Original
 
 [`vec::IntoIter`](alloc::vec::IntoIter)
-
-[`BitVec`]: crate::vec::BitVec
-[`IntoIterator`]: core::iter::IntoIterator
-[`into_iter`]: core::iter::IntoIterator::into_iter
 **/
-</span><span class="kw">pub struct </span>IntoIter&lt;O, T&gt;
+</span><span class="kw">pub struct </span>IntoIter&lt;T = usize, O = Lsb0&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="doccomment">/// The buffer being iterated.
-	</span>_buf: BitBox&lt;O, T&gt;,
-	<span class="doccomment">/// A bit-pointer iterator over the buffer’s contents.
-	</span>iter: BitPtrRange&lt;Mut, O, T&gt;,
+	<span class="doccomment">/// The original `BitBox`, kept so it can correctly drop.
+	</span>_buf: BitBox&lt;T, O&gt;,
+	<span class="doccomment">/// A range of indices yet to be iterated.
+	</span><span class="comment">//  TODO(myrrlyn): Race this against `BitPtrRange&lt;Mut, T, O&gt;`.
+	</span>iter: Range&lt;usize&gt;,
 }
 
-<span class="kw">impl</span>&lt;O, T&gt; IntoIter&lt;O, T&gt;
+<span class="kw">impl</span>&lt;T, O&gt; IntoIter&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="doccomment">/// Constructs an iterator over a [`BitBox`] or [`BitVec`].
-	///
-	/// [`BitBox`]: crate::vec::BitBox
-	/// [`BitVec`]: crate::vec::BitVec
-	</span><span class="kw">fn </span>new(<span class="kw-2">mut </span>this: BitBox&lt;O, T&gt;) -&gt; <span class="self">Self </span>{
-		<span class="kw">let </span>iter = this.as_mut_bitptr_range();
+	<span class="doccomment">/// Wraps a bit-array in an iterator view. This is irreversible.
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">fn </span>new(this: BitBox&lt;T, O&gt;) -&gt; <span class="self">Self </span>{
+		<span class="kw">let </span>iter = <span class="number">0 </span>.. this.len();
 		<span class="self">Self </span>{ _buf: this, iter }
 	}
 
-	<span class="doccomment">/// Returns the remaining bits of this iterator as a [`BitSlice`].
+	<span class="doccomment">/// Views the remaining unyielded bits as a bit-slice.
 	///
-	/// # Original
+	/// ## Original
 	///
-	/// [`vec::IntoIter::as_slice`](alloc::vec::IntoIter::as_slice)
-	///
-	/// # Examples
-	///
-	/// ```rust
-	/// use bitvec::prelude::*;
-	///
-	/// let bv = bitvec![0, 1, 0, 1];
-	/// let mut into_iter = bv.into_iter();
-	///
-	/// assert_eq!(into_iter.as_bitslice(), bits![0, 1, 0, 1]);
-	/// let _ = into_iter.next().unwrap();
-	/// assert_eq!(into_iter.as_bitslice(), bits![1, 0, 1]);
-	/// ```
-	///
-	/// [`BitSlice`]: crate::slice::BitSlice
+	/// [`IntoIter::as_slice`](alloc::vec::IntoIter::as_slice)
 	</span><span class="attribute">#[inline]
-	</span><span class="kw">pub fn </span>as_bitslice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BitSlice&lt;O, T&gt; {
-		<span class="self">self</span>.iter.clone().into_bitspan().to_bitslice_ref()
+	</span><span class="kw">pub fn </span>as_bitslice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BitSlice&lt;T, O&gt; {
+		<span class="comment">//  While the memory is never actually deïnitialized, this is still a
+		//  good habit to do.
+		</span><span class="kw">unsafe </span>{
+			<span class="self">self</span>._buf
+				.as_bitptr()
+				.add(<span class="self">self</span>.iter.start)
+				.span_unchecked(<span class="self">self</span>.iter.len())
+				.into_bitslice_ref()
+		}
 	}
 
-	<span class="attribute">#[doc(hidden)]
-	#[inline(always)]
-	#[cfg(not(tarpalin_include))]
-	#[deprecated = <span class="string">&quot;Use `as_bitslice` to view the underlying slice&quot;</span>]
-	</span><span class="kw">pub fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BitSlice&lt;O, T&gt; {
+	<span class="attribute">#[inline]
+	#[doc(hidden)]
+	#[cfg(not(tarpaulin_include))]
+	#[deprecated = <span class="string">&quot;use `.as_bitslice()` instead&quot;</span>]
+	#[allow(missing_docs, clippy::missing_docs_in_private_items)]
+	</span><span class="kw">pub fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BitSlice&lt;T, O&gt; {
 		<span class="self">self</span>.as_bitslice()
 	}
 
-	<span class="doccomment">/// Returns the remaining bits of this iterator as a mutable [`BitSlice`].
+	<span class="doccomment">/// Views the remaining unyielded bits as a mutable bit-slice.
 	///
-	/// # Original
+	/// ## Original
 	///
-	/// [`vec::IntoIter::as_mut_slice`](alloc::vec::IntoIter::as_mut_slice)
-	///
-	/// # Examples
-	///
-	/// ```rust
-	/// use bitvec::prelude::*;
-	///
-	/// let bv = bitvec![0, 1, 0, 1];
-	/// let mut into_iter = bv.into_iter();
-	///
-	/// assert_eq!(into_iter.as_bitslice(), bits![0, 1, 0, 1]);
-	/// into_iter.as_mut_bitslice().set(2, true);
-	/// assert!(!into_iter.next().unwrap());
-	/// assert!(into_iter.next().unwrap());
-	/// assert!(into_iter.next().unwrap());
-	/// ```
-	///
-	/// [`BitSlice`]: crate::slice::BitSlice
+	/// [`IntoIter::as_mut_slice`](alloc::vec::IntoIter::as_mut_slice)
 	</span><span class="attribute">#[inline]
-	</span><span class="kw">pub fn </span>as_mut_bitslice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>BitSlice&lt;O, T&gt; {
-		<span class="self">self</span>.iter.clone().into_bitspan().to_bitslice_mut()
+	</span><span class="kw">pub fn </span>as_mut_bitslice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>BitSlice&lt;T, O&gt; {
+		<span class="kw">unsafe </span>{
+			<span class="self">self</span>._buf
+				.as_mut_bitptr()
+				.add(<span class="self">self</span>.iter.start)
+				.span_unchecked(<span class="self">self</span>.iter.len())
+				.into_bitslice_mut()
+		}
 	}
 
-	<span class="attribute">#[doc(hidden)]
-	#[inline(always)]
+	<span class="attribute">#[inline]
+	#[doc(hidden)]
 	#[cfg(not(tarpaulin_include))]
-	#[deprecated = <span class="string">&quot;Use `as_mut_bitslice` to view the underlying slice&quot;</span>]
-	</span><span class="kw">pub fn </span>as_mut_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>BitSlice&lt;O, T&gt; {
+	#[deprecated = <span class="string">&quot;use `.as_mut_bitslice()` instead&quot;</span>]
+	#[allow(missing_docs, clippy::missing_docs_in_private_items)]
+	</span><span class="kw">pub fn </span>as_mut_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>BitSlice&lt;T, O&gt; {
 		<span class="self">self</span>.as_mut_bitslice()
 	}
 }
 
-<span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; Debug <span class="kw">for </span>IntoIter&lt;O, T&gt;
+<span class="doccomment">/// [Original](https://doc.rust-lang.org/alloc/vec/struct.IntoIter.html#impl-AsRef%3C%5BT%5D%3E)
+</span><span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;T, O&gt; AsRef&lt;BitSlice&lt;T, O&gt;&gt; <span class="kw">for </span>IntoIter&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
+{
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>as_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BitSlice&lt;T, O&gt; {
+		<span class="self">self</span>.as_bitslice()
+	}
+}
+
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;T, O&gt; Clone <span class="kw">for </span>IntoIter&lt;T, O&gt;
+<span class="kw">where
+	</span>T: BitStore,
+	O: BitOrder,
+{
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+		<span class="self">Self </span>{
+			_buf: <span class="self">self</span>._buf.clone(),
+			iter: <span class="self">self</span>.iter.clone(),
+		}
+	}
+}
+
+<span class="doccomment">/// [Original](https://doc.rust-lang.org/alloc/vec/struct.IntoIter.html#impl-Debug)
+</span><span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;T, O&gt; Debug <span class="kw">for </span>IntoIter&lt;T, O&gt;
+<span class="kw">where
+	</span>T: BitStore,
+	O: BitOrder,
 {
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>Formatter) -&gt; fmt::Result {
@@ -382,70 +402,82 @@ the [`IntoIterator`] trait).
 	}
 }
 
-<span class="kw">impl</span>&lt;O, T&gt; Iterator <span class="kw">for </span>IntoIter&lt;O, T&gt;
+<span class="kw">impl</span>&lt;T, O&gt; Iterator <span class="kw">for </span>IntoIter&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
 	<span class="kw">type </span>Item = bool;
 
+	<span class="macro">easy_iter!</span>();
+
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
-		<span class="self">self</span>.iter.next().map(<span class="kw">crate</span>::ptr::range::read_raw)
-	}
-
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
-		<span class="self">self</span>.iter.size_hint()
-	}
-
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>count(<span class="self">self</span>) -&gt; usize {
-		<span class="self">self</span>.len()
+		<span class="self">self</span>.iter
+			.next()
+			.map(|idx| <span class="kw">unsafe </span>{ <span class="self">self</span>._buf.as_bitptr().add(idx).read() })
 	}
 
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>nth(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
-		<span class="self">self</span>.iter.nth(n).map(<span class="kw">crate</span>::ptr::range::read_raw)
-	}
-
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>last(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
-		<span class="self">self</span>.next_back()
+		<span class="self">self</span>.iter
+			.nth(n)
+			.map(|idx| <span class="kw">unsafe </span>{ <span class="self">self</span>._buf.as_bitptr().add(idx).read() })
 	}
 }
 
-<span class="kw">impl</span>&lt;O, T&gt; DoubleEndedIterator <span class="kw">for </span>IntoIter&lt;O, T&gt;
+<span class="kw">impl</span>&lt;T, O&gt; DoubleEndedIterator <span class="kw">for </span>IntoIter&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>next_back(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
-		<span class="self">self</span>.iter.next_back().map(<span class="kw">crate</span>::ptr::range::read_raw)
+		<span class="self">self</span>.iter
+			.next_back()
+			.map(|idx| <span class="kw">unsafe </span>{ <span class="self">self</span>._buf.as_bitptr().add(idx).read() })
 	}
 
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>nth_back(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
-		<span class="self">self</span>.iter.nth_back(n).map(<span class="kw">crate</span>::ptr::range::read_raw)
+		<span class="self">self</span>.iter
+			.nth_back(n)
+			.map(|idx| <span class="kw">unsafe </span>{ <span class="self">self</span>._buf.as_bitptr().add(idx).read() })
 	}
 }
 
-<span class="kw">impl</span>&lt;O, T&gt; ExactSizeIterator <span class="kw">for </span>IntoIter&lt;O, T&gt;
+<span class="kw">impl</span>&lt;T, O&gt; ExactSizeIterator <span class="kw">for </span>IntoIter&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="attribute">#[inline(always)]
+	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
 		<span class="self">self</span>.iter.len()
 	}
 }
 
-<span class="kw">impl</span>&lt;O, T&gt; FusedIterator <span class="kw">for </span>IntoIter&lt;O, T&gt;
+<span class="kw">impl</span>&lt;T, O&gt; FusedIterator <span class="kw">for </span>IntoIter&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
+{
+}
+
+<span class="doccomment">/// [Original](https://doc.rust-lang.org/alloc/vec/struct.IntoIter.html#impl-Send)
+</span><span class="comment">// #[allow(clippy::non_send_fields_in_send_ty)]
+</span><span class="kw">unsafe impl</span>&lt;T, O&gt; Send <span class="kw">for </span>IntoIter&lt;T, O&gt;
+<span class="kw">where
+	</span>T: BitStore + Sync,
+	O: BitOrder,
+{
+}
+
+<span class="doccomment">/// [Original](https://doc.rust-lang.org/alloc/vec/struct.IntoIter.html#impl-Sync)
+</span><span class="kw">unsafe impl</span>&lt;T, O&gt; Sync <span class="kw">for </span>IntoIter&lt;T, O&gt;
+<span class="kw">where
+	</span>T: BitStore + Sync,
+	O: BitOrder,
 {
 }
 </code></pre></div>

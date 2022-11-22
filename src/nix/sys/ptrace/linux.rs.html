@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/nix-0.23.1/src/sys/ptrace/linux.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>linux.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../nix/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/nix-0.25.0/src/sys/ptrace/linux.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>linux.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../nix/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -477,6 +477,31 @@
 <span id="477">477</span>
 <span id="478">478</span>
 <span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
 </pre><pre class="rust"><code><span class="doccomment">//! For detailed description of the ptrace requests, consult `man ptrace`.
 
 </span><span class="kw">use </span>cfg_if::cfg_if;
@@ -499,7 +524,8 @@
 
 <span class="macro">cfg_if! </span>{
     <span class="kw">if </span><span class="attribute">#[cfg(any(all(target_os = <span class="string">&quot;linux&quot;</span>, target_arch = <span class="string">&quot;s390x&quot;</span>),
-                 all(target_os = <span class="string">&quot;linux&quot;</span>, target_env = <span class="string">&quot;gnu&quot;</span>)))] </span>{
+                 all(target_os = <span class="string">&quot;linux&quot;</span>, target_env = <span class="string">&quot;gnu&quot;</span>),
+                 target_env = <span class="string">&quot;uclibc&quot;</span>))] </span>{
         <span class="attribute">#[doc(hidden)]
         </span><span class="kw">pub type </span>RequestType = ::libc::c_uint;
     } <span class="kw">else </span>{
@@ -509,8 +535,8 @@
 }
 
 <span class="macro">libc_enum!</span>{
-    <span class="attribute">#[cfg_attr(not(any(target_env = <span class="string">&quot;musl&quot;</span>, target_os = <span class="string">&quot;android&quot;</span>)), repr(u32))]
-    #[cfg_attr(any(target_env = <span class="string">&quot;musl&quot;</span>, target_os = <span class="string">&quot;android&quot;</span>), repr(i32))]
+    <span class="attribute">#[cfg_attr(not(any(target_env = <span class="string">&quot;musl&quot;</span>, target_env = <span class="string">&quot;uclibc&quot;</span>, target_os = <span class="string">&quot;android&quot;</span>)), repr(u32))]
+    #[cfg_attr(any(target_env = <span class="string">&quot;musl&quot;</span>, target_env = <span class="string">&quot;uclibc&quot;</span>, target_os = <span class="string">&quot;android&quot;</span>), repr(i32))]
     </span><span class="doccomment">/// Ptrace Request enum defining the action to be taken.
     </span><span class="attribute">#[non_exhaustive]
     </span><span class="kw">pub enum </span>Request {
@@ -578,8 +604,10 @@
                                                target_arch = <span class="string">&quot;mips64&quot;</span>))))]
         </span>PTRACE_SETREGSET,
         <span class="attribute">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>PTRACE_SEIZE,
         <span class="attribute">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>PTRACE_INTERRUPT,
         <span class="attribute">#[cfg(all(target_os = <span class="string">&quot;linux&quot;</span>, not(any(target_arch = <span class="string">&quot;mips&quot;</span>,
                                                target_arch = <span class="string">&quot;mips64&quot;</span>))))]
@@ -650,7 +678,6 @@
         </span>PTRACE_O_TRACESECCOMP;
         <span class="doccomment">/// Send a SIGKILL to the tracee if the tracer exits.  This is useful
         /// for ptrace jailers to prevent tracees from escaping their control.
-        </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
         </span>PTRACE_O_EXITKILL;
     }
 }
@@ -819,6 +846,7 @@
 ///
 /// Attaches to the process specified in pid, making it a tracee of the calling process.
 </span><span class="attribute">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
+#[cfg_attr(docsrs, doc(cfg(all())))]
 </span><span class="kw">pub fn </span>seize(pid: Pid, options: Options) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">unsafe </span>{
         ptrace_other(
@@ -867,6 +895,7 @@
 ///
 /// This request is equivalent to `ptrace(PTRACE_INTERRUPT, ...)`
 </span><span class="attribute">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
+#[cfg_attr(docsrs, doc(cfg(all())))]
 </span><span class="kw">pub fn </span>interrupt(pid: Pid) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">unsafe </span>{
         ptrace_other(Request::PTRACE_INTERRUPT, pid, ptr::null_mut(), ptr::null_mut()).map(drop)
@@ -955,6 +984,27 @@
     data: <span class="kw-2">*mut </span>c_void) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
 {
     ptrace_other(Request::PTRACE_POKEDATA, pid, addr, data).map(drop)
+}
+
+<span class="doccomment">/// Reads a word from a user area at `offset`.
+/// The user struct definition can be found in `/usr/include/sys/user.h`.
+</span><span class="kw">pub fn </span>read_user(pid: Pid, offset: AddressType) -&gt; <span class="prelude-ty">Result</span>&lt;c_long&gt; {
+    ptrace_peek(Request::PTRACE_PEEKUSER, pid, offset, ptr::null_mut())
+}
+
+<span class="doccomment">/// Writes a word to a user area at `offset`.
+/// The user struct definition can be found in `/usr/include/sys/user.h`.
+///
+/// # Safety
+///
+/// The `data` argument is passed directly to `ptrace(2)`.  Read that man page
+/// for guidance.
+</span><span class="kw">pub unsafe fn </span>write_user(
+    pid: Pid,
+    offset: AddressType,
+    data: <span class="kw-2">*mut </span>c_void) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
+{
+    ptrace_other(Request::PTRACE_POKEUSER, pid, offset, data).map(drop)
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="nix" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

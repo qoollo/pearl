@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/nix-0.23.1/src/pty.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>pty.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../nix/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/nix-0.25.0/src/pty.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>pty.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../nix/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -346,6 +346,29 @@
 <span id="346">346</span>
 <span id="347">347</span>
 <span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Create master and slave virtual pseudo-terminals (PTYs)
 
 </span><span class="kw">pub use </span>libc::pid_t <span class="kw">as </span>SessionId;
@@ -357,8 +380,9 @@
 <span class="kw">use </span>std::os::unix::prelude::<span class="kw-2">*</span>;
 
 <span class="kw">use </span><span class="kw">crate</span>::sys::termios::Termios;
-<span class="kw">use </span><span class="kw">crate</span>::unistd::{<span class="self">self</span>, ForkResult, Pid};
-<span class="kw">use crate</span>::{<span class="prelude-ty">Result</span>, fcntl};
+<span class="attribute">#[cfg(feature = <span class="string">&quot;process&quot;</span>)]
+</span><span class="kw">use </span><span class="kw">crate</span>::unistd::{ForkResult, Pid};
+<span class="kw">use crate</span>::{<span class="prelude-ty">Result</span>, fcntl, unistd};
 <span class="kw">use </span><span class="kw">crate</span>::errno::Errno;
 
 <span class="doccomment">/// Representation of a master/slave pty pair
@@ -373,7 +397,9 @@
     </span><span class="kw">pub </span>slave: RawFd,
 }
 
-<span class="doccomment">/// Representation of a master with a forked pty
+<span class="macro">feature! </span>{
+<span class="attribute">#![feature = <span class="string">&quot;process&quot;</span>]
+</span><span class="doccomment">/// Representation of a master with a forked pty
 ///
 /// This is returned by `forkpty`. Note that this type does *not* implement `Drop`, so the user
 /// must manually close the file descriptors.
@@ -383,6 +409,7 @@
     </span><span class="kw">pub </span>master: RawFd,
     <span class="doccomment">/// Metadata about forked process
     </span><span class="kw">pub </span>fork_result: ForkResult,
+}
 }
 
 
@@ -439,6 +466,21 @@
     }
 }
 
+<span class="kw">impl </span>io::Read <span class="kw">for </span><span class="kw-2">&amp;</span>PtyMaster {
+    <span class="kw">fn </span>read(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8]) -&gt; io::Result&lt;usize&gt; {
+        unistd::read(<span class="self">self</span>.<span class="number">0</span>, buf).map_err(io::Error::from)
+    }
+}
+
+<span class="kw">impl </span>io::Write <span class="kw">for </span><span class="kw-2">&amp;</span>PtyMaster {
+    <span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; io::Result&lt;usize&gt; {
+        unistd::write(<span class="self">self</span>.<span class="number">0</span>, buf).map_err(io::Error::from)
+    }
+    <span class="kw">fn </span>flush(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;()&gt; {
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
 <span class="doccomment">/// Grant access to a slave pseudoterminal (see
 /// [`grantpt(3)`](https://pubs.opengroup.org/onlinepubs/9699919799/functions/grantpt.html))
 ///
@@ -456,7 +498,7 @@
 <span class="doccomment">/// Open a pseudoterminal device (see
 /// [`posix_openpt(3)`](https://pubs.opengroup.org/onlinepubs/9699919799/functions/posix_openpt.html))
 ///
-/// `posix_openpt()` returns a file descriptor to an existing unused pseuterminal master device.
+/// `posix_openpt()` returns a file descriptor to an existing unused pseudoterminal master device.
 ///
 /// # Examples
 ///
@@ -536,6 +578,7 @@
 /// This value is useful for opening the slave ptty once the master has already been opened with
 /// `posix_openpt()`.
 </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+#[cfg_attr(docsrs, doc(cfg(all())))]
 #[inline]
 </span><span class="kw">pub fn </span>ptsname_r(fd: <span class="kw-2">&amp;</span>PtyMaster) -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>name_buf = Vec::&lt;libc::c_char&gt;::with_capacity(<span class="number">64</span>);
@@ -557,7 +600,7 @@
 ///
 /// `unlockpt()` unlocks the slave pseudoterminal device corresponding to the master pseudoterminal
 /// referred to by `fd`. This must be called before trying to open the slave side of a
-/// pseuoterminal.
+/// pseudoterminal.
 </span><span class="attribute">#[inline]
 </span><span class="kw">pub fn </span>unlockpt(fd: <span class="kw-2">&amp;</span>PtyMaster) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">if unsafe </span>{ libc::unlockpt(fd.as_raw_fd()) } &lt; <span class="number">0 </span>{
@@ -642,7 +685,9 @@
     }
 }
 
-<span class="doccomment">/// Create a new pseudoterminal, returning the master file descriptor and forked pid.
+<span class="macro">feature! </span>{
+<span class="attribute">#![feature = <span class="string">&quot;process&quot;</span>]
+</span><span class="doccomment">/// Create a new pseudoterminal, returning the master file descriptor and forked pid.
 /// in `ForkptyResult`
 /// (see [`forkpty`](https://man7.org/linux/man-pages/man3/forkpty.3.html)).
 ///
@@ -693,6 +738,7 @@
         master: master.assume_init(),
         fork_result,
     })
+}
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="nix" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

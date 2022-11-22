@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/boxed/api.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>api.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-1.0.1/src/boxed/api.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>api.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -137,96 +137,11 @@
 <span id="137">137</span>
 <span id="138">138</span>
 <span id="139">139</span>
-<span id="140">140</span>
-<span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
-<span id="147">147</span>
-<span id="148">148</span>
-<span id="149">149</span>
-<span id="150">150</span>
-<span id="151">151</span>
-<span id="152">152</span>
-<span id="153">153</span>
-<span id="154">154</span>
-<span id="155">155</span>
-<span id="156">156</span>
-<span id="157">157</span>
-<span id="158">158</span>
-<span id="159">159</span>
-<span id="160">160</span>
-<span id="161">161</span>
-<span id="162">162</span>
-<span id="163">163</span>
-<span id="164">164</span>
-<span id="165">165</span>
-<span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
-<span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
-<span id="178">178</span>
-<span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
-<span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
-<span id="198">198</span>
-<span id="199">199</span>
-<span id="200">200</span>
-<span id="201">201</span>
-<span id="202">202</span>
-<span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
-<span id="206">206</span>
-<span id="207">207</span>
-<span id="208">208</span>
-<span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Port of the `Box&lt;[T]&gt;` inherent API.
 
-</span><span class="kw">use </span>core::{
-	marker::Unpin,
-	mem,
-	pin::Pin,
-};
+</span><span class="kw">use </span>core::mem;
 
-<span class="kw">use </span>tap::pipe::Pipe;
+<span class="kw">use </span>tap::Tap;
 
 <span class="kw">use </span><span class="kw">super</span>::BitBox;
 <span class="kw">use crate</span>::{
@@ -237,204 +152,127 @@
 	vec::BitVec,
 };
 
-<span class="kw">impl</span>&lt;O, T&gt; BitBox&lt;O, T&gt;
+<span class="kw">impl</span>&lt;T, O&gt; BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="doccomment">/// Allocates memory on the heap and then copies `x` into it.
-	///
-	/// This doesn’t actually allocate if `x` is zero-length.
-	///
-	/// # Original
-	///
-	/// [`Box::new`](alloc::boxed::Box::new)
-	///
-	/// # API Differences
-	///
-	/// `Box::&lt;[T]&gt;::new` does not exist, because unsized types cannot be taken
-	/// by value. Instead, this takes a slice reference, and boxes the referent
-	/// slice.
-	///
-	/// # Examples
-	///
-	/// ```rust
-	/// use bitvec::prelude::*;
-	///
-	/// let boxed = BitBox::new(bits![0; 5]);
-	/// ```
-	</span><span class="attribute">#[inline(always)]
-	#[cfg(not(tarpaulin_include))]
-	#[deprecated = <span class="string">&quot;Prefer `from_bitslice`&quot;</span>]
-	</span><span class="kw">pub fn </span>new(x: <span class="kw-2">&amp;</span>BitSlice&lt;O, T&gt;) -&gt; <span class="self">Self </span>{
-		<span class="self">Self</span>::from_bitslice(x)
-	}
-
-	<span class="doccomment">/// Constructs a new `Pin&lt;BitBox&lt;O, T&gt;&gt;`.
-	///
-	/// [`BitSlice`] is always [`Unpin`], so this has no actual effect.
-	///
-	/// # Original
-	///
-	/// [`Box::pin`](alloc::boxed::Box::pin)
-	///
-	/// # API Differences
-	///
-	/// As with [`new`], this only exists on `Box` when `T` is not unsized. This
-	/// takes a slice reference, and pins the referent slice.
-	///
-	/// [`BitSlice`]: crate::slice::BitSlice
-	/// [`Unpin`]: core::marker::Unpin
-	/// [`new`]: Self::new
-	</span><span class="attribute">#[inline]
-	#[cfg(not(tarpaulin_include))]
-	</span><span class="kw">pub fn </span>pin(x: <span class="kw-2">&amp;</span>BitSlice&lt;O, T&gt;) -&gt; Pin&lt;<span class="self">Self</span>&gt;
-	<span class="kw">where
-		</span>O: Unpin,
-		T: Unpin,
-	{
-		x.pipe(<span class="self">Self</span>::from_bitslice).pipe(Pin::new)
-	}
-
 	<span class="doccomment">/// Constructs a bit-box from a raw bit-slice pointer.
 	///
-	/// After calling this function, the raw bit-slice pointer is owned by the
-	/// resulting `BitBox`. Specifically, the `BitBox` destructor will free the
-	/// memory allocation at the bit-slice pointer’s address. For this to be
-	/// safe, the bit-slice pointer can only have been produced by a `BitBox`
-	/// previously destroyed using [`into_raw`].
+	/// This converts a `*mut BitSlice` pointer that had previously been
+	/// produced by either [`::into_raw()`] or [`::leak()`] and restores the
+	/// bit-box containing it.
 	///
-	/// # Original
+	/// ## Original
 	///
 	/// [`Box::from_raw`](alloc::boxed::Box::from_raw)
 	///
-	/// # Safety
+	/// ## Safety
 	///
-	/// This function is unsafe because improper use may lead to memory
-	/// problems. For example, a double-free may occur if the function is called
-	/// twice on the same raw bit-slice pointer.
+	/// You must only call this function on pointers produced by leaking a prior
+	/// `BitBox`; you may not modify the value of a pointer returned by
+	/// [`::into_raw()`], nor may you conjure pointer values of your own. Doing
+	/// so will corrupt the allocator state.
 	///
-	/// # Examples
+	/// You must only call this function on any given leaked pointer at most
+	/// once. Not calling it at all will merely render the allocated memory
+	/// unreachable for the duration of the program runtime, a normal (and safe)
+	/// memory leak. Calling it once restores ordinary functionality, and
+	/// ensures ordinary destruction at or before program termination. However,
+	/// calling it more than once on the same pointer will introduce data races,
+	/// use-after-free, and/or double-free errors.
 	///
-	/// Recreate a `BitBox` which was previously converted to a raw bit-slice
-	/// pointer using [`BitBox::into_raw`]:
+	/// ## Examples
 	///
 	/// ```rust
 	/// use bitvec::prelude::*;
 	///
-	/// let x = bitbox![0; 10];
-	/// let ptr = BitBox::into_raw(x);
-	/// let x = unsafe { BitBox::from_raw(ptr) };
+	/// let bb = bitbox![0; 80];
+	/// let ptr: *mut BitSlice = BitBox::into_raw(bb);
+	/// let bb = unsafe { BitBox::from_raw(ptr) };
+	/// // unsafe { BitBox::from_raw(ptr) }; // UAF crash!
 	/// ```
 	///
-	/// [`BitBox::into_raw`]: Self::into_raw
-	/// [`into_raw`]: Self::into_raw
+	/// [`::into_raw()`]: Self::into_raw
+	/// [`::leak()`]: Self::leak
 	</span><span class="attribute">#[inline]
-	</span><span class="kw">pub unsafe fn </span>from_raw(raw: <span class="kw-2">*mut </span>BitSlice&lt;O, T&gt;) -&gt; <span class="self">Self </span>{
+	</span><span class="kw">pub unsafe fn </span>from_raw(raw: <span class="kw-2">*mut </span>BitSlice&lt;T, O&gt;) -&gt; <span class="self">Self </span>{
 		<span class="self">Self </span>{
 			bitspan: BitSpan::from_bitslice_ptr_mut(raw),
 		}
 	}
 
-	<span class="doccomment">/// Consumes the `BitBox`, returning a raw bit-slice pointer.
+	<span class="doccomment">/// Consumes the bit-box, returning a raw bit-slice pointer.
 	///
-	/// The bit-slice pointer will be properly encoded and non-null.
+	/// Bit-slice pointers are always correctly encoded and non-null. The
+	/// referent region is dereferenceäble *as a `BitSlice` for the remainder of
+	/// the program, or until it is first passed to [`::from_raw()`], whichever
+	/// comes first. Once the pointer is first passed to `::from_raw()`, all
+	/// copies of that pointer become invalid to dereference.
 	///
-	/// After calling this function, the caller is responsible for the memory
-	/// previously managed by the `BitBox`. In particular, the caller should
-	/// properly release the memory by converting the bit-slice pointer back
-	/// into a `BitBox` with the [`from_raw`] function, allowing the `BitBox`
-	/// destructor to perform the cleanup.
-	///
-	/// Note: this is an associated function, which means that you have to call
-	/// it as `BitBox::into_raw(b)` instead of `b.into_raw()`. This is to match
-	/// signatures with the standard library’s [`Box`] API; there will never be
-	/// a name conflict with [`BitSlice`].
-	///
-	/// # Original
+	/// ## Original
 	///
 	/// [`Box::into_raw`](alloc::boxed::Box::into_raw)
 	///
-	/// # Examples
-	///
-	/// Converting the raw bit-slice pointer back into a `BitBox` with
-	/// [`BitBox::from_raw`] for automatic cleanup:
+	/// ## Examples
 	///
 	/// ```rust
 	/// use bitvec::prelude::*;
 	///
-	/// let x = bitbox![0; 50];
-	/// let p = BitBox::into_raw(x);
-	/// let x = unsafe { BitBox::from_raw(p) };
+	/// let bb = bitbox![0; 80];
+	/// let ptr = BitBox::into_raw(bb);
+	/// let bb = unsafe { BitBox::from_raw(ptr) };
 	/// ```
 	///
-	/// You may not deällocate pointers produced by this function through any
-	/// other manner.
+	/// You **may not** deällocate pointers produced by this function through
+	/// any other means.
 	///
-	/// [`BitBox::from_raw`]: Self::from_raw
-	/// [`BitSlice`]: crate::slice::BitSlice
-	/// [`Box`]: alloc::boxed::Box
-	/// [`from_raw`]: Self::from_raw
-	</span><span class="attribute">#[inline(always)]
-	#[cfg(not(tarpaulin_include))]
-	</span><span class="kw">pub fn </span>into_raw(this: <span class="self">Self</span>) -&gt; <span class="kw-2">*mut </span>BitSlice&lt;O, T&gt; {
+	/// [`::from_raw()`]: Self::from_raw
+	</span><span class="attribute">#[inline]
+	</span><span class="kw">pub fn </span>into_raw(this: <span class="self">Self</span>) -&gt; <span class="kw-2">*mut </span>BitSlice&lt;T, O&gt; {
 		<span class="self">Self</span>::leak(this)
 	}
 
-	<span class="doccomment">/// Consumes and leaks the `BitBox`, returning a mutable reference, `&amp;&#39;a mut
-	/// BitSlice&lt;O, T&gt;`. This is eligible to be promoted to the `&#39;static`
-	/// lifetime.
+	<span class="doccomment">/// Deliberately leaks the allocated memory, returning an
+	/// `&amp;&#39;static mut BitSlice` reference.
 	///
-	/// # Original
+	/// This differs from [`::into_raw()`] in that the reference is safe to use
+	/// and can be tracked by the Rust borrow-checking system. Like the
+	/// bit-slice pointer produced by `::into_raw()`, this reference can be
+	/// un-leaked by passing it into [`::from_raw()`] to reclaim the memory.
 	///
-	/// [`Box::leak`](alloc::boxed::Box::leak)
-	///
-	/// This function is mainly useful for data that lives for the remainder
-	/// of the program’s life. Dropping the returned reference will cause a
-	/// memory leak. If this is not acceptable, the reference should first be
-	/// wrapped with the [`BitBox::from_raw`] function producing a `BitBox`.
-	/// This `BitBox` can then be dropped which will properly deällocate the
-	/// memory.
-	///
-	/// Note: this is an associated function, which means that you have to call
-	/// it as `BitBox::leak(b)` instead of `b.leak()`. This is to match
-	/// signatures with the standard library’s [`Box`] API; there will never be
-	/// a name conflict with [`BitSlice`].
-	///
-	/// # Original
+	/// ## Original
 	///
 	/// [`Box::leak`](alloc::boxed::Box::leak)
 	///
-	/// # Examples
-	///
-	/// Simple usage:
+	/// ## Examples
 	///
 	/// ```rust
 	/// use bitvec::prelude::*;
 	///
-	/// let b = bitbox![0; 50];
-	/// let static_ref: &amp;&#39;static mut BitSlice = BitBox::leak(b);
+	/// let bb = bitbox![0; 80];
+	/// let static_ref: &amp;&#39;static mut BitSlice = BitBox::leak(bb);
+	///
 	/// static_ref.set(0, true);
 	/// assert!(static_ref[0]);
-	/// # drop(unsafe { BitBox::from_raw(static_ref) });
+	/// let _ = unsafe {
+	///   BitBox::from_raw(static_ref)
+	/// };
 	/// ```
 	///
-	/// [`BitBox::from_raw`]: Self::from_raw
-	/// [`BitSlice`]: crate::slice::BitSlice
-	/// [`Box`]: alloc::boxed::Box
+	/// [`::from_raw()`]: Self::from_raw
+	/// [`::into_raw()`]: Self::into_raw
 	</span><span class="attribute">#[inline]
-	</span><span class="kw">pub fn </span>leak&lt;<span class="lifetime">&#39;a</span>&gt;(this: <span class="self">Self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>BitSlice&lt;O, T&gt;
+	</span><span class="kw">pub fn </span>leak&lt;<span class="lifetime">&#39;a</span>&gt;(this: <span class="self">Self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>BitSlice&lt;T, O&gt;
 	<span class="kw">where </span>T: <span class="lifetime">&#39;a </span>{
-		<span class="kw">let </span>out = this.bitspan.to_bitslice_mut();
-		mem::forget(this);
-		out
+		<span class="kw">unsafe </span>{ this.bitspan.into_bitslice_mut() }.tap(|<span class="kw">_</span>| mem::forget(this))
 	}
 
-	<span class="attribute">#[doc(hidden)]
-	#[inline(always)]
+	<span class="attribute">#[inline]
+	#[doc(hidden)]
 	#[cfg(not(tarpaulin_include))]
-	#[deprecated = <span class="string">&quot;Prefer `into_bitvec`&quot;</span>]
-	</span><span class="kw">pub fn </span>into_vec(<span class="self">self</span>) -&gt; BitVec&lt;O, T&gt; {
+	#[deprecated = <span class="string">&quot;use `.into_bitvec()` instead&quot;</span>]
+	</span><span class="kw">pub fn </span>into_vec(<span class="self">self</span>) -&gt; BitVec&lt;T, O&gt; {
 		<span class="self">self</span>.into_bitvec()
 	}
 }

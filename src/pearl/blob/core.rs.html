@@ -584,8 +584,47 @@
 <span id="584">584</span>
 <span id="585">585</span>
 <span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::SystemTime;
 
+<span class="kw">use </span>async_std::sync::RwLockUpgradableReadGuard;
 <span class="kw">use </span>tokio::time::Instant;
 
 <span class="kw">use </span><span class="kw">crate</span>::error::ValidationErrorKind;
@@ -610,7 +649,7 @@
     index: Index&lt;K&gt;,
     name: FileName,
     file: File,
-    current_offset: Arc&lt;Mutex&lt;u64&gt;&gt;,
+    current_offset: u64,
     created_at: SystemTime,
 }
 
@@ -632,14 +671,13 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span>file = File::create(name.to_path(), ioring.clone()).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>index = <span class="self">Self</span>::create_index(name.clone(), ioring, index_config);
-        <span class="kw">let </span>current_offset = Arc::new(Mutex::new(<span class="number">0</span>));
         <span class="kw">let </span>header = Header::new();
         <span class="kw">let </span><span class="kw-2">mut </span>blob = <span class="self">Self </span>{
             header,
             index,
             name,
             file,
-            current_offset,
+            current_offset: <span class="number">0</span>,
             created_at: SystemTime::now(),
         };
         blob.write_header().<span class="kw">await</span><span class="question-mark">?</span>;
@@ -656,9 +694,8 @@
 
     <span class="kw">async fn </span>write_header(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>buf = serialize(<span class="kw-2">&amp;</span><span class="self">self</span>.header)<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="self">self</span>.current_offset.lock().<span class="kw">await</span>;
-        <span class="kw">let </span>bytes_written = <span class="self">self</span>.file.write_append(<span class="kw-2">&amp;</span>buf).<span class="kw">await</span><span class="question-mark">? </span><span class="kw">as </span>u64;
-        <span class="kw-2">*</span>offset = bytes_written;
+        <span class="self">self</span>.file.write_append(<span class="kw-2">&amp;</span>buf).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="self">self</span>.current_offset = buf.len() <span class="kw">as </span>u64;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -680,10 +717,12 @@
                 .<span class="kw">await
                 </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;blob file dump failed: {:?}&quot;</span>, <span class="self">self</span>.name.to_path()))<span class="question-mark">?</span>;
 
-            <span class="self">self</span>.index
-                .dump(<span class="self">self</span>.file_size())
-                .<span class="kw">await
-                </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;index file dump failed, associated blob file: {:?}&quot;</span>, <span class="self">self</span>.name.to_path()))
+            <span class="self">self</span>.index.dump(<span class="self">self</span>.file_size()).<span class="kw">await</span>.with_context(|| {
+                <span class="macro">format!</span>(
+                    <span class="string">&quot;index file dump failed, associated blob file: {:?}&quot;</span>,
+                    <span class="self">self</span>.name.to_path()
+                )
+            })
         }
     }
 
@@ -732,7 +771,10 @@
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(io_error) = error.downcast_ref::&lt;IOError&gt;() {
                     <span class="kw">match </span>io_error.kind() {
                         IOErrorKind::PermissionDenied | IOErrorKind::Other =&gt; {
-                            <span class="macro">warn!</span>(<span class="string">&quot;index for file &#39;{:?}&#39; cannot be regenerated due to an error: {}&quot;</span>, path, io_error);
+                            <span class="macro">warn!</span>(
+                                <span class="string">&quot;index for file &#39;{:?}&#39; cannot be regenerated due to an error: {}&quot;</span>,
+                                path, io_error
+                            );
                             <span class="kw">return </span><span class="prelude-val">Err</span>(error);
                         }
                         <span class="kw">_ </span>=&gt; {}
@@ -753,7 +795,7 @@
             file,
             name,
             index,
-            current_offset: Arc::new(Mutex::new(size)),
+            current_offset: size,
             created_at,
         };
         <span class="macro">trace!</span>(<span class="string">&quot;call update index&quot;</span>);
@@ -791,10 +833,12 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
         <span class="macro">debug!</span>(<span class="string">&quot;index file missed&quot;</span>);
-        <span class="kw">let </span>raw_r = <span class="self">self
-            </span>.raw_records()
-            .<span class="kw">await
-            </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;failed to read raw records from blob {:?}&quot;</span>, <span class="self">self</span>.name.to_path()))<span class="question-mark">?</span>;
+        <span class="kw">let </span>raw_r = <span class="self">self</span>.raw_records().<span class="kw">await</span>.with_context(|| {
+            <span class="macro">format!</span>(
+                <span class="string">&quot;failed to read raw records from blob {:?}&quot;</span>,
+                <span class="self">self</span>.name.to_path()
+            )
+        })<span class="question-mark">?</span>;
         <span class="macro">debug!</span>(<span class="string">&quot;raw records loaded&quot;</span>);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = raw_r.load().<span class="kw">await</span>.with_context(|| {
             <span class="macro">format!</span>(
@@ -815,14 +859,19 @@
         <span class="comment">// @TODO implement
     </span>}
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>record: Record) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write(blob: <span class="kw-2">&amp;</span>ASRwLock&lt;<span class="self">Self</span>&gt;, record: Record) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob write&quot;</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="self">self</span>.current_offset.lock().<span class="kw">await</span>;
-        <span class="macro">debug!</span>(<span class="string">&quot;blob write record offset: {}&quot;</span>, <span class="kw-2">*</span>offset);
-        record.set_offset(<span class="kw-2">*</span>offset)<span class="question-mark">?</span>;
+        <span class="comment">// Only one upgradable_read lock is allowed at a time
+        </span><span class="kw">let </span>blob = blob.upgradable_read().<span class="kw">await</span>;
+        <span class="self">Self</span>::write_locked(blob, record).<span class="kw">await
+    </span>}
+
+    <span class="kw">async fn </span>write_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>record: Record) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;blob write&quot;</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;blob write record offset: {}&quot;</span>, <span class="self">self</span>.current_offset);
+        record.set_offset(<span class="self">self</span>.current_offset)<span class="question-mark">?</span>;
         <span class="kw">let </span>buf = record.to_raw()<span class="question-mark">?</span>;
-        <span class="kw">let </span>bytes_written = <span class="self">self
-            </span>.file
+        <span class="self">self</span>.file
             .write_append(<span class="kw-2">&amp;</span>buf)
             .<span class="kw">await
             </span>.map_err(|e| -&gt; anyhow::Error {
@@ -832,9 +881,32 @@
                     }
                     <span class="kw">_ </span>=&gt; e.into(),
                 }
-            })<span class="question-mark">? </span><span class="kw">as </span>u64;
+            })<span class="question-mark">?</span>;
         <span class="self">self</span>.index.push(record.header().clone())<span class="question-mark">?</span>;
-        <span class="kw-2">*</span>offset += bytes_written;
+        <span class="self">self</span>.current_offset += buf.len() <span class="kw">as </span>u64;
+        <span class="prelude-val">Ok</span>(())
+    }
+    <span class="kw">async fn </span>write_locked(
+        blob: ASRwLockUpgradableReadGuard&lt;<span class="lifetime">&#39;_</span>, Blob&lt;K&gt;&gt;,
+        <span class="kw-2">mut </span>record: Record,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;blob write record offset: {}&quot;</span>, blob.current_offset);
+        record.set_offset(blob.current_offset)<span class="question-mark">?</span>;
+        <span class="kw">let </span>buf = record.to_raw()<span class="question-mark">?</span>;
+        blob.file
+            .write_append(<span class="kw-2">&amp;</span>buf)
+            .<span class="kw">await
+            </span>.map_err(|e| -&gt; anyhow::Error {
+                <span class="kw">match </span>e.kind() {
+                    kind <span class="kw">if </span>kind == IOErrorKind::Other || kind == IOErrorKind::NotFound =&gt; {
+                        Error::file_unavailable(kind).into()
+                    }
+                    <span class="kw">_ </span>=&gt; e.into(),
+                }
+            })<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>blob = RwLockUpgradableReadGuard::upgrade(blob).<span class="kw">await</span>;
+        blob.index.push(record.header().clone())<span class="question-mark">?</span>;
+        blob.current_offset += buf.len() <span class="kw">as </span>u64;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -853,7 +925,14 @@
         <span class="kw">let </span>buf = entry
             .load()
             .<span class="kw">await
-            </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;failed to read key {:?} with meta {:?} from blob {:?}&quot;</span>, key, meta, <span class="self">self</span>.name.to_path()))<span class="question-mark">?
+            </span>.with_context(|| {
+                <span class="macro">format!</span>(
+                    <span class="string">&quot;failed to read key {:?} with meta {:?} from blob {:?}&quot;</span>,
+                    key,
+                    meta,
+                    <span class="self">self</span>.name.to_path()
+                )
+            })<span class="question-mark">?
             </span>.into_data();
         <span class="macro">debug!</span>(<span class="string">&quot;blob read any entry loaded bytes: {}&quot;</span>, buf.len());
         <span class="prelude-val">Ok</span>(buf)
@@ -875,7 +954,7 @@
                 <span class="self">self</span>.load_index().<span class="kw">await</span><span class="question-mark">?</span>;
             }
             <span class="kw">let </span>record = Record::deleted(key)<span class="question-mark">?</span>;
-            <span class="self">self</span>.write(record).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="self">self</span>.write_mut(record).<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="kw">let </span>res = <span class="self">self</span>.index.mark_all_as_deleted(key)<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(res)
         } <span class="kw">else </span>{
@@ -905,12 +984,9 @@
             <span class="self">self</span>.get_entry_with_meta(key, meta).<span class="kw">await
         </span>} <span class="kw">else </span>{
             <span class="macro">debug!</span>(<span class="string">&quot;blob get any entry bloom true no meta&quot;</span>);
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(header) = <span class="self">self
-                </span>.index
-                .get_any(key)
-                .<span class="kw">await
-                </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;index get any failed for blob: {:?}&quot;</span>, <span class="self">self</span>.name.to_path()))<span class="question-mark">?
-            </span>{
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(header) = <span class="self">self</span>.index.get_any(key).<span class="kw">await</span>.with_context(|| {
+                <span class="macro">format!</span>(<span class="string">&quot;index get any failed for blob: {:?}&quot;</span>, <span class="self">self</span>.name.to_path())
+            })<span class="question-mark">? </span>{
                 <span class="kw">let </span>entry = Entry::new(header, <span class="self">self</span>.file.clone());
                 <span class="macro">debug!</span>(<span class="string">&quot;blob, get any entry, bloom true no meta, entry found&quot;</span>);
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(entry))

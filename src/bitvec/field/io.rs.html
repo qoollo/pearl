@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/field/io.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>io.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-1.0.1/src/field/io.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>io.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -104,106 +104,8 @@
 <span id="104">104</span>
 <span id="105">105</span>
 <span id="106">106</span>
-<span id="107">107</span>
-<span id="108">108</span>
-<span id="109">109</span>
-<span id="110">110</span>
-<span id="111">111</span>
-<span id="112">112</span>
-<span id="113">113</span>
-<span id="114">114</span>
-<span id="115">115</span>
-<span id="116">116</span>
-<span id="117">117</span>
-<span id="118">118</span>
-<span id="119">119</span>
-<span id="120">120</span>
-<span id="121">121</span>
-<span id="122">122</span>
-<span id="123">123</span>
-<span id="124">124</span>
-<span id="125">125</span>
-<span id="126">126</span>
-<span id="127">127</span>
-<span id="128">128</span>
-<span id="129">129</span>
-<span id="130">130</span>
-<span id="131">131</span>
-<span id="132">132</span>
-<span id="133">133</span>
-<span id="134">134</span>
-<span id="135">135</span>
-<span id="136">136</span>
-<span id="137">137</span>
-<span id="138">138</span>
-<span id="139">139</span>
-<span id="140">140</span>
-<span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
-<span id="147">147</span>
-<span id="148">148</span>
-<span id="149">149</span>
-<span id="150">150</span>
-<span id="151">151</span>
-<span id="152">152</span>
-<span id="153">153</span>
-<span id="154">154</span>
-<span id="155">155</span>
-<span id="156">156</span>
-<span id="157">157</span>
-<span id="158">158</span>
-<span id="159">159</span>
-<span id="160">160</span>
-<span id="161">161</span>
-<span id="162">162</span>
-<span id="163">163</span>
-<span id="164">164</span>
-<span id="165">165</span>
-<span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
-<span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
-<span id="178">178</span>
-<span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
-</pre><pre class="rust"><code><span class="doccomment">/*! I/O trait implementations.
-
-The standard library defines byte-based I/O protocols that form the basis of
-exchanging memory buffers with I/O controllers. As [`BitSlice`] is designed to be
-used with I/O buffers, it makes sense for it to implement these protocols.
-
-This module is a subset of the `field` module because it relies on the
-[`BitField`] trait’s ability to map [`BitSlice`] to a value-storage region. The
-I/O protocols [`Read`] and [`Write`] are strictly byte-based, and cannot be
-altered to be bit-based. As such, they are only implemented on types with a
-`BitField` implementation.
-
-Calling [`BitField`] methods in a loop imposes a non-trivial, and irremovable,
-per-loop overhead cost. Use of [`bitvec`] data structures directly, rather than
-their underlying buffers, will have a performance penalty relative to the
-underlying buffer, but much less than a bit-by-bit traversal.
-
-[`BitField`]: crate::field::BitField
-[`BitSlice`]: crate::slice::BitSlice
-[`Read`]: std::io::Read
-[`Write`]: std::io::Write
-[`bitvec`]: crate
-!*/
-
-</span><span class="attribute">#![cfg(feature = <span class="string">&quot;std&quot;</span>)]
+</pre><pre class="rust"><code><span class="attribute">#![cfg(feature = <span class="string">&quot;std&quot;</span>)]
+#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../doc/field/io.md&quot;</span>)]
 
 </span><span class="kw">use </span>core::mem;
 <span class="kw">use </span>std::io::{
@@ -214,150 +116,98 @@ underlying buffer, but much less than a bit-by-bit traversal.
 
 <span class="kw">use </span><span class="kw">super</span>::BitField;
 <span class="kw">use crate</span>::{
+	mem::bits_of,
 	order::BitOrder,
 	slice::BitSlice,
 	store::BitStore,
 	vec::BitVec,
 };
 
-<span class="doccomment">/** Mirrors the implementation on `[u8]` (found [here]).
-
-The implementation loads bytes out of the `&amp;BitSlice` reference until exhaustion
-of either the source [`BitSlice`] or destination `[u8]`. When `read` returns,
-`self` will have been updated to no longer include the leading segment copied
-out as bytes of `buf`.
-
-The implementation uses [`BitField::load_be`].
-
-[here]: https://doc.rust-lang.org/stable/std/primitive.slice.html#impl-Read
-[`BitField::load_be`]: crate::field::BitField::load_be
-[`BitSlice`]: crate::slice::BitSlice
-**/
-</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O, T&gt; Read <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BitSlice&lt;O, T&gt;
+<span class="attribute">#[doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../doc/field/io/Read_BitSlice.md&quot;</span>)]
+</span><span class="kw">impl</span>&lt;T, O&gt; Read <span class="kw">for </span><span class="kw-2">&amp;</span>BitSlice&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
-	BitSlice&lt;O, T&gt;: BitField,
+	</span>T: BitStore,
+	O: BitOrder,
+	BitSlice&lt;T, O&gt;: BitField,
 {
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>read(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8]) -&gt; io::Result&lt;usize&gt; {
-		<span class="kw">let </span><span class="kw-2">mut </span>idx = <span class="number">0</span>;
-		<span class="kw">for </span>(byte, slot) <span class="kw">in </span><span class="self">self</span>.chunks_exact(<span class="number">8</span>).zip(buf.iter_mut()) {
-			<span class="kw-2">*</span>slot = byte.load_be();
-			idx += <span class="number">1</span>;
-		}
-		<span class="kw-2">*</span><span class="self">self </span>= <span class="kw">unsafe </span>{ <span class="self">self</span>.get_unchecked(idx * <span class="number">8 </span>..) };
-		<span class="prelude-val">Ok</span>(idx)
+		<span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
+		<span class="self">self</span>.chunks_exact(bits_of::&lt;u8&gt;())
+			.zip(buf.iter_mut())
+			.for_each(|(byte, slot)| {
+				<span class="kw-2">*</span>slot = byte.load_be();
+				count += <span class="number">1</span>;
+			});
+		<span class="kw-2">*</span><span class="self">self </span>= <span class="kw">unsafe </span>{ <span class="self">self</span>.get_unchecked(count * bits_of::&lt;u8&gt;() ..) };
+		<span class="prelude-val">Ok</span>(count)
 	}
 }
 
-<span class="doccomment">/** Mirrors the implementation on `[u8]` (found [here]).
-
-The implementation copies bytes into the `&amp;mut BitSlice` reference until
-exhaustion of either the source `[u8]` or destination [`BitSlice`]. When `write`
-returns, `self` will have been updated to no longer include the leading segment
-containing bytes copied in from `buf`.
-
-The implementation uses [`BitField::store_be`].
-
-[here]: https://doc.rust-lang.org/stable/std/primitive.slice.html#impl-Write
-[`BitField::store_be`]: crate::field::BitField::store_be
-[`BitSlice`]: crate::slice::BitSlice
-**/
-</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O, T&gt; Write <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>BitSlice&lt;O, T&gt;
+<span class="attribute">#[doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../doc/field/io/Write_BitSlice.md&quot;</span>)]
+</span><span class="kw">impl</span>&lt;T, O&gt; Write <span class="kw">for </span><span class="kw-2">&amp;mut </span>BitSlice&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
-	BitSlice&lt;O, T&gt;: BitField,
+	</span>T: BitStore,
+	O: BitOrder,
+	BitSlice&lt;T, O&gt;: BitField,
 {
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; io::Result&lt;usize&gt; {
-		<span class="kw">let </span><span class="kw-2">mut </span>idx = <span class="number">0</span>;
-		<span class="kw">for </span>(slot, byte) <span class="kw">in unsafe </span>{ <span class="self">self</span>.chunks_exact_mut(<span class="number">8</span>).remove_alias() }
+		<span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
+		<span class="kw">unsafe </span>{ <span class="self">self</span>.chunks_exact_mut(bits_of::&lt;u8&gt;()).remove_alias() }
 			.zip(buf.iter().copied())
-		{
-			slot.store_be(byte);
-			idx += <span class="number">1</span>;
-		}
-		<span class="kw-2">*</span><span class="self">self </span>= <span class="kw">unsafe </span>{ mem::take(<span class="self">self</span>).get_unchecked_mut(idx * <span class="number">8 </span>..) };
-		<span class="prelude-val">Ok</span>(idx)
+			.for_each(|(slot, byte)| {
+				slot.store_be(byte);
+				count += <span class="number">1</span>;
+			});
+		<span class="kw-2">*</span><span class="self">self </span>= <span class="kw">unsafe </span>{
+			mem::take(<span class="self">self</span>).get_unchecked_mut(count * bits_of::&lt;u8&gt;() ..)
+		};
+		<span class="prelude-val">Ok</span>(count)
 	}
 
-	<span class="attribute">#[inline(always)]
+	<span class="attribute">#[inline]
 	#[cfg(not(tarpaulin_include))]
 	</span><span class="kw">fn </span>flush(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;()&gt; {
 		<span class="prelude-val">Ok</span>(())
 	}
 }
 
-<span class="doccomment">/** Mirrors the implementation on `Vec&lt;u8&gt;` (found [here]).
+<span class="attribute">#[doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../doc/field/io/Read_BitVec.md&quot;</span>)]
+</span><span class="kw">impl</span>&lt;T, O&gt; Read <span class="kw">for </span>BitVec&lt;T, O&gt;
+<span class="kw">where
+	</span>T: BitStore,
+	O: BitOrder,
+	BitSlice&lt;T, O&gt;: BitField,
+{
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>read(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8]) -&gt; io::Result&lt;usize&gt; {
+		<span class="kw">let </span>bytes_read = <span class="self">self</span>.as_bitslice().read(buf)<span class="question-mark">?</span>;
+		<span class="kw">let </span>bits = bytes_read * bits_of::&lt;u8&gt;();
+		<span class="self">self</span>.shift_left(bits);
+		<span class="self">self</span>.truncate(<span class="self">self</span>.len() - bits);
+		<span class="prelude-val">Ok</span>(bytes_read)
+	}
+}
 
-The implementation copies bytes from `buf` into the tail end of `self`. The
-performance characteristics of this operation are dependent on the type
-parameters of the [`BitVec`], and the position of its tail.
-
-[here]: https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#impl-Write
-[`BitVec`]: crate::vec::BitVec
-**/
-</span><span class="kw">impl</span>&lt;O, T&gt; Write <span class="kw">for </span>BitVec&lt;O, T&gt;
+<span class="attribute">#[doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../doc/field/io/Write_BitVec.md&quot;</span>)]
+</span><span class="kw">impl</span>&lt;T, O&gt; Write <span class="kw">for </span>BitVec&lt;T, O&gt;
 <span class="kw">where
 	</span>O: BitOrder,
 	T: BitStore,
-	BitSlice&lt;O, T&gt;: BitField,
+	BitSlice&lt;T, O&gt;: BitField,
 {
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; io::Result&lt;usize&gt; {
 		<span class="kw">let </span>len = <span class="self">self</span>.len();
-		<span class="self">self</span>.resize(len + buf.len() * <span class="number">8</span>, <span class="bool-val">false</span>);
+		<span class="self">self</span>.resize(len + buf.len() * bits_of::&lt;u8&gt;(), <span class="bool-val">false</span>);
 		<span class="kw">unsafe </span>{ <span class="self">self</span>.get_unchecked_mut(len ..) }.write(buf)
 	}
 
-	<span class="attribute">#[inline(always)]
+	<span class="attribute">#[inline]
 	#[cfg(not(tarpaulin_include))]
 	</span><span class="kw">fn </span>flush(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;()&gt; {
 		<span class="prelude-val">Ok</span>(())
-	}
-}
-
-<span class="attribute">#[cfg(test)]
-</span><span class="kw">mod </span>tests {
-	<span class="kw">use super</span>::<span class="kw-2">*</span>;
-	<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
-
-	<span class="attribute">#[test]
-	</span><span class="kw">fn </span>read_bits() {
-		<span class="kw">let </span>data = [<span class="number">0x136Cu16</span>, <span class="number">0x8C63</span>];
-		<span class="kw">let </span><span class="kw-2">mut </span>bits = <span class="kw-2">&amp;</span>data.view_bits::&lt;Msb0&gt;()[<span class="number">4 </span>..];
-		<span class="macro">assert_eq!</span>(bits.len(), <span class="number">28</span>);
-
-		<span class="kw">let </span><span class="kw-2">mut </span>transfer = [<span class="number">0u8</span>; <span class="number">4</span>];
-		<span class="kw">let </span>last_ptr = <span class="kw-2">&amp;mut </span>transfer[<span class="number">3</span>] <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>;
-		<span class="kw">let </span><span class="kw-2">mut </span>transfer_handle = <span class="kw-2">&amp;mut </span>transfer[..];
-
-		<span class="macro">assert_eq!</span>(io::copy(<span class="kw-2">&amp;mut </span>bits, <span class="kw-2">&amp;mut </span>transfer_handle).unwrap(), <span class="number">3</span>);
-
-		<span class="comment">//  Once a bitslice cannot produce a byte, it stops `Read`ing
-		</span><span class="macro">assert_eq!</span>(bits, data.view_bits::&lt;Msb0&gt;()[<span class="number">28 </span>..]);
-		<span class="comment">//  So the destination slice does not fill up.
-		</span><span class="macro">assert_eq!</span>(transfer_handle.as_mut_ptr() <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>, last_ptr);
-
-		<span class="macro">assert_eq!</span>(transfer[.. <span class="number">3</span>], [<span class="number">0x36</span>, <span class="number">0xC8</span>, <span class="number">0xC6</span>][..]);
-	}
-
-	<span class="attribute">#[test]
-	</span><span class="kw">fn </span>write_bits() {
-		<span class="kw">let </span><span class="kw-2">mut </span>bv = <span class="macro">bitvec!</span>[Msb0, usize; <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>];
-		<span class="macro">assert_eq!</span>(
-			<span class="number">3</span>,
-			io::copy(<span class="kw-2">&amp;mut &amp;</span>[<span class="number">0xC3u8</span>, <span class="number">0xF0</span>, <span class="number">0x69</span>][..], <span class="kw-2">&amp;mut </span>bv).unwrap()
-		);
-
-		<span class="macro">assert_eq!</span>(bv, <span class="macro">bits!</span>[
-			<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="comment">// byte 0
-			</span><span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="comment">// byte 1
-			</span><span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="comment">// byte 2
-			</span><span class="number">0</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>,
-		]);
 	}
 }
 </code></pre></div>

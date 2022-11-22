@@ -114,6 +114,16 @@
 <span id="114">114</span>
 <span id="115">115</span>
 <span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ValidationErrorKind;
 
 <span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
@@ -130,6 +140,7 @@
     <span class="comment">// this field also contains `written` bit (the first one)
     // to get the version, you should proceed `version &gt;&gt; 1`
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) version: u8,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) key_size: u16,
     <span class="kw">pub</span>(<span class="kw">crate</span>) blob_size: u64,
 }
 
@@ -138,12 +149,14 @@
         record_header_size: usize,
         records_count: usize,
         meta_size: usize,
+        key_size: u16,
         blob_size: u64,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             records_count,
             record_header_size,
             meta_size,
+            key_size,
             blob_size,
             ..<span class="self">Self</span>::default()
         }
@@ -153,15 +166,17 @@
         record_header_size: usize,
         records_count: usize,
         meta_size: usize,
-        hash: Vec&lt;u8&gt;,
+        key_size: u16,
         blob_size: u64,
+        hash: Vec&lt;u8&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             records_count,
             record_header_size,
             meta_size,
-            hash,
+            key_size,
             blob_size,
+            hash,
             ..<span class="self">Self</span>::default()
         }
     }
@@ -178,6 +193,10 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u8 {
         <span class="self">self</span>.version &gt;&gt; <span class="number">1
     </span>}
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>key_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u16 {
+        <span class="self">self</span>.key_size
+    }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>magic_byte(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
         <span class="self">self</span>.magic_byte
@@ -226,6 +245,7 @@
             blob_size: <span class="number">0</span>,
             hash: <span class="macro">vec!</span>[<span class="number">0</span>; ring::digest::SHA256.output_len],
             version: HEADER_VERSION &lt;&lt; <span class="number">1</span>,
+            key_size: <span class="number">0</span>,
             magic_byte: INDEX_HEADER_MAGIC_BYTE,
         }
     }

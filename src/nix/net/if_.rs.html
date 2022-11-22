@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/nix-0.23.1/src/net/if_.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>if_.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../nix/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/nix-0.25.0/src/net/if_.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>if_.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../nix/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -409,6 +409,63 @@
 <span id="409">409</span>
 <span id="410">410</span>
 <span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Network interface name resolution.
 //!
 //! Uses Linux and/or POSIX functions to resolve interface names like &quot;eth0&quot;
@@ -439,6 +496,7 @@
         </span>IFF_BROADCAST;
         <span class="doccomment">/// Internal debugging flag. (see
         /// [`netdevice(7)`](https://man7.org/linux/man-pages/man7/netdevice.7.html))
+        </span><span class="attribute">#[cfg(not(target_os = <span class="string">&quot;haiku&quot;</span>))]
         </span>IFF_DEBUG;
         <span class="doccomment">/// Interface is a loopback interface. (see
         /// [`netdevice(7)`](https://man7.org/linux/man-pages/man7/netdevice.7.html))
@@ -456,9 +514,11 @@
                   target_os = <span class="string">&quot;netbsd&quot;</span>,
                   target_os = <span class="string">&quot;illumos&quot;</span>,
                   target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_NOTRAILERS;
         <span class="doccomment">/// Interface manages own routes.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_SMART;
         <span class="doccomment">/// Resources allocated. (see
         /// [`netdevice(7)`](https://man7.org/linux/man-pages/man7/netdevice.7.html))
@@ -473,6 +533,7 @@
                   target_os = <span class="string">&quot;netbsd&quot;</span>,
                   target_os = <span class="string">&quot;openbsd&quot;</span>,
                   target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_RUNNING;
         <span class="doccomment">/// No arp protocol, L2 destination address not set. (see
         /// [`netdevice(7)`](https://man7.org/linux/man-pages/man7/netdevice.7.html))
@@ -486,6 +547,7 @@
         <span class="doccomment">/// Master of a load balancing bundle. (see
         /// [`netdevice(7)`](https://man7.org/linux/man-pages/man7/netdevice.7.html))
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_MASTER;
         <span class="doccomment">/// transmission in progress, tx hardware queue is full
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;freebsd&quot;</span>,
@@ -493,21 +555,24 @@
                   target_os = <span class="string">&quot;netbsd&quot;</span>,
                   target_os = <span class="string">&quot;openbsd&quot;</span>,
                   target_os = <span class="string">&quot;ios&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_OACTIVE;
         <span class="doccomment">/// Protocol code on board.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_INTELLIGENT;
         <span class="doccomment">/// Slave of a load balancing bundle. (see
         /// [`netdevice(7)`](https://man7.org/linux/man-pages/man7/netdevice.7.html))
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_SLAVE;
         <span class="doccomment">/// Can&#39;t hear own transmissions.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>,
                   target_os = <span class="string">&quot;freebsd&quot;</span>,
                   target_os = <span class="string">&quot;macos&quot;</span>,
                   target_os = <span class="string">&quot;netbsd&quot;</span>,
-                  target_os = <span class="string">&quot;openbsd&quot;</span>,
-                  target_os = <span class="string">&quot;osx&quot;</span>))]
+                  target_os = <span class="string">&quot;openbsd&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_SIMPLEX;
         <span class="doccomment">/// Supports multicast. (see
         /// [`netdevice(7)`](https://man7.org/linux/man-pages/man7/netdevice.7.html))
@@ -519,13 +584,16 @@
                   target_os = <span class="string">&quot;netbsd&quot;</span>,
                   target_os = <span class="string">&quot;openbsd&quot;</span>,
                   target_os = <span class="string">&quot;ios&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_LINK0;
         <span class="doccomment">/// Multicast using broadcast.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_MULTI_BCAST;
         <span class="doccomment">/// Is able to select media type via ifmap. (see
         /// [`netdevice(7)`](https://man7.org/linux/man-pages/man7/netdevice.7.html))
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_PORTSEL;
         <span class="doccomment">/// Per link layer defined bit.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>,
@@ -534,13 +602,16 @@
                   target_os = <span class="string">&quot;netbsd&quot;</span>,
                   target_os = <span class="string">&quot;openbsd&quot;</span>,
                   target_os = <span class="string">&quot;ios&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_LINK1;
         <span class="doccomment">/// Non-unique address.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_UNNUMBERED;
         <span class="doccomment">/// Auto media selection active. (see
         /// [`netdevice(7)`](https://man7.org/linux/man-pages/man7/netdevice.7.html))
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_AUTOMEDIA;
         <span class="doccomment">/// Per link layer defined bit.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>,
@@ -549,132 +620,174 @@
                   target_os = <span class="string">&quot;netbsd&quot;</span>,
                   target_os = <span class="string">&quot;openbsd&quot;</span>,
                   target_os = <span class="string">&quot;ios&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_LINK2;
         <span class="doccomment">/// Use alternate physical connection.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>,
                   target_os = <span class="string">&quot;freebsd&quot;</span>,
                   target_os = <span class="string">&quot;macos&quot;</span>,
                   target_os = <span class="string">&quot;ios&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_ALTPHYS;
         <span class="doccomment">/// DHCP controls interface.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;solaris&quot;</span>, target_os = <span class="string">&quot;illumos&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_DHCPRUNNING;
         <span class="doccomment">/// The addresses are lost when the interface goes down. (see
         /// [`netdevice(7)`](https://man7.org/linux/man-pages/man7/netdevice.7.html))
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_DYNAMIC;
         <span class="doccomment">/// Do not advertise.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_PRIVATE;
         <span class="doccomment">/// Driver signals L1 up. Volatile.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_LOWER_UP;
         <span class="doccomment">/// Interface is in polling mode.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_POLLING_COMPAT;
         <span class="doccomment">/// Unconfigurable using ioctl(2).
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;freebsd&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_CANTCONFIG;
         <span class="doccomment">/// Do not transmit packets.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_NOXMIT;
         <span class="doccomment">/// Driver signals dormant. Volatile.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_DORMANT;
         <span class="doccomment">/// User-requested promisc mode.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>, target_os = <span class="string">&quot;freebsd&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_PPROMISC;
         <span class="doccomment">/// Just on-link subnet.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_NOLOCAL;
         <span class="doccomment">/// Echo sent packets. Volatile.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_ECHO;
         <span class="doccomment">/// User-requested monitor mode.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>, target_os = <span class="string">&quot;freebsd&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_MONITOR;
         <span class="doccomment">/// Address is deprecated.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_DEPRECATED;
         <span class="doccomment">/// Static ARP.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>, target_os = <span class="string">&quot;freebsd&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_STATICARP;
         <span class="doccomment">/// Address from stateless addrconf.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_ADDRCONF;
         <span class="doccomment">/// Interface is in polling mode.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_NPOLLING;
         <span class="doccomment">/// Router on interface.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_ROUTER;
         <span class="doccomment">/// Interface is in polling mode.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_IDIRECT;
         <span class="doccomment">/// Interface is winding down
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;freebsd&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_DYING;
         <span class="doccomment">/// No NUD on interface.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_NONUD;
         <span class="doccomment">/// Interface is being renamed
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;freebsd&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_RENAMING;
         <span class="doccomment">/// Anycast address.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_ANYCAST;
         <span class="doccomment">/// Don&#39;t exchange routing info.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_NORTEXCH;
         <span class="doccomment">/// Do not provide packet information
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_NO_PI <span class="kw">as </span>libc::c_int;
         <span class="doccomment">/// TUN device (no Ethernet headers)
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_TUN <span class="kw">as </span>libc::c_int;
         <span class="doccomment">/// TAP device
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_TAP <span class="kw">as </span>libc::c_int;
         <span class="doccomment">/// IPv4 interface.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_IPV4;
         <span class="doccomment">/// IPv6 interface.
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_IPV6;
         <span class="doccomment">/// in.mpathd test address
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_NOFAILOVER;
         <span class="doccomment">/// Interface has failed
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_FAILED;
         <span class="doccomment">/// Interface is a hot-spare
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_STANDBY;
         <span class="doccomment">/// Functioning but not used
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_INACTIVE;
         <span class="doccomment">/// Interface is offline
         </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;illumos&quot;</span>, target_os = <span class="string">&quot;solaris&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_OFFLINE;
         <span class="attribute">#[cfg(target_os = <span class="string">&quot;solaris&quot;</span>)]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_COS_ENABLED;
         <span class="doccomment">/// Prefer as source addr.
         </span><span class="attribute">#[cfg(target_os = <span class="string">&quot;solaris&quot;</span>)]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_PREFERRED;
         <span class="doccomment">/// RFC3041
         </span><span class="attribute">#[cfg(target_os = <span class="string">&quot;solaris&quot;</span>)]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_TEMPORARY;
         <span class="doccomment">/// MTU set with SIOCSLIFMTU
         </span><span class="attribute">#[cfg(target_os = <span class="string">&quot;solaris&quot;</span>)]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_FIXEDMTU;
         <span class="doccomment">/// Cannot send / receive packets
         </span><span class="attribute">#[cfg(target_os = <span class="string">&quot;solaris&quot;</span>)]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_VIRTUAL;
         <span class="doccomment">/// Local address in use
         </span><span class="attribute">#[cfg(target_os = <span class="string">&quot;solaris&quot;</span>)]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_DUPLICATE;
         <span class="doccomment">/// IPMP IP interface
         </span><span class="attribute">#[cfg(target_os = <span class="string">&quot;solaris&quot;</span>)]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>IFF_IPMP;
     }
 );
@@ -689,6 +802,7 @@
     target_os = <span class="string">&quot;netbsd&quot;</span>,
     target_os = <span class="string">&quot;openbsd&quot;</span>,
 ))]
+#[cfg_attr(docsrs, doc(cfg(all())))]
 </span><span class="kw">mod </span>if_nameindex {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 

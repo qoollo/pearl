@@ -1204,6 +1204,14 @@
 <span id="1204">1204</span>
 <span id="1205">1205</span>
 <span id="1206">1206</span>
+<span id="1207">1207</span>
+<span id="1208">1208</span>
+<span id="1209">1209</span>
+<span id="1210">1210</span>
+<span id="1211">1211</span>
+<span id="1212">1212</span>
+<span id="1213">1213</span>
+<span id="1214">1214</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     error::ValidationErrorKind,
     filter::{CombinedFilter, FilterTrait},
@@ -1266,7 +1274,7 @@
 <span class="kw">where
     for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
 {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) active_blob: <span class="prelude-ty">Option</span>&lt;Box&lt;Blob&lt;K&gt;&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) active_blob: <span class="prelude-ty">Option</span>&lt;Box&lt;ASRwLock&lt;Blob&lt;K&gt;&gt;&gt;&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) blobs: Arc&lt;RwLock&lt;HierarchicalFilters&lt;K, CombinedFilter&lt;K&gt;, Blob&lt;K&gt;&gt;&gt;&gt;,
 }
 
@@ -1520,12 +1528,12 @@
         }
         <span class="kw">let </span>record = Record::create(key, value, meta.unwrap_or_default())
             .with_context(|| <span class="string">&quot;storage write with record creation failed&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>safe = <span class="self">self</span>.inner.safe.write().<span class="kw">await</span>;
+        <span class="kw">let </span>safe = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
         <span class="kw">let </span>blob = safe
             .active_blob
-            .as_mut()
+            .as_ref()
             .ok_or_else(Error::active_blob_not_set)<span class="question-mark">?</span>;
-        <span class="kw">let </span>result = blob.write(record).<span class="kw">await</span>.or_else(|err| {
+        <span class="kw">let </span>result = Blob::write(blob, record).<span class="kw">await</span>.or_else(|err| {
             <span class="kw">let </span>e = err.downcast::&lt;Error&gt;()<span class="question-mark">?</span>;
             <span class="kw">if let </span>ErrorKind::FileUnavailable(kind) = e.kind() {
                 <span class="kw">let </span>work_dir = <span class="self">self
@@ -1542,7 +1550,7 @@
         result
     }
 
-    <span class="kw">async fn </span>try_update_active_blob(<span class="kw-2">&amp;</span><span class="self">self</span>, active_blob: <span class="kw-2">&amp;</span>Box&lt;Blob&lt;K&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">async fn </span>try_update_active_blob(<span class="kw-2">&amp;</span><span class="self">self</span>, active_blob: <span class="kw-2">&amp;</span>Box&lt;ASRwLock&lt;Blob&lt;K&gt;&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>config_max_size = <span class="self">self
             </span>.inner
             .config
@@ -1553,6 +1561,7 @@
             .config
             .max_data_in_blob()
             .ok_or_else(|| Error::from(ErrorKind::Uninitialized))<span class="question-mark">?</span>;
+        <span class="kw">let </span>active_blob = active_blob.read().<span class="kw">await</span>;
         <span class="kw">if </span>active_blob.file_size() &gt;= config_max_size
             || active_blob.records_count() <span class="kw">as </span>u64 &gt;= config_max_count
         {
@@ -1626,7 +1635,7 @@
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)<span class="question-mark">?</span>;
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(entries) = active_blob.read_all_entries(key).<span class="kw">await</span><span class="question-mark">? </span>{
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(entries) = active_blob.read().<span class="kw">await</span>.read_all_entries(key).<span class="kw">await</span><span class="question-mark">? </span>{
             <span class="macro">debug!</span>(
                 <span class="string">&quot;storage core read all active blob entries {}&quot;</span>,
                 entries.len()
@@ -1654,7 +1663,7 @@
         <span class="macro">debug!</span>(<span class="string">&quot;storage read with optional meta {:?}, {:?}&quot;</span>, key, meta);
         <span class="kw">let </span>safe = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
         <span class="kw">if let </span><span class="prelude-val">Some</span>(ablob) = safe.active_blob.as_ref() {
-            <span class="kw">match </span>ablob.read_any(key, meta, <span class="bool-val">true</span>).<span class="kw">await </span>{
+            <span class="kw">match </span>ablob.read().<span class="kw">await</span>.read_any(key, meta, <span class="bool-val">true</span>).<span class="kw">await </span>{
                 <span class="prelude-val">Ok</span>(data) =&gt; {
                     <span class="macro">debug!</span>(<span class="string">&quot;storage read with optional meta active blob returned data&quot;</span>);
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(data);
@@ -1721,7 +1730,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>safe = <span class="self">self</span>.inner.safe.write().<span class="kw">await</span>;
         <span class="kw">let </span>active_blob = safe.active_blob.take();
         <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="prelude-val">Ok</span>(());
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>blob) = active_blob {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(blob) = active_blob {
+            <span class="kw">let </span><span class="kw-2">mut </span>blob = blob.write().<span class="kw">await</span>;
             res = res.and(
                 blob.dump()
                     .<span class="kw">await
@@ -1756,7 +1766,7 @@
     </span><span class="kw">pub async fn </span>active_index_memory(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">let </span>safe = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
         <span class="kw">if let </span><span class="prelude-val">Some</span>(ablob) = safe.active_blob.as_ref() {
-            ablob.index_memory()
+            ablob.read().<span class="kw">await</span>.index_memory()
         } <span class="kw">else </span>{
             <span class="number">0
         </span>}
@@ -1766,11 +1776,10 @@
     </span><span class="kw">pub async fn </span>disk_used(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
         <span class="kw">let </span>safe = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
         <span class="kw">let </span>lock = safe.blobs.read().<span class="kw">await</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>result = safe
-            .active_blob
-            .as_ref()
-            .map(|b| b.disk_used())
-            .unwrap_or_default();
+        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="number">0</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ablob) = safe.active_blob.as_ref() {
+            result += ablob.read().<span class="kw">await</span>.disk_used();
+        }
         <span class="kw">for </span>blob <span class="kw">in </span>lock.iter() {
             result += blob.disk_used();
         }
@@ -1811,10 +1820,9 @@
     <span class="kw">async fn </span>init_new(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>next = <span class="self">self</span>.inner.next_blob_name()<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>safe = <span class="self">self</span>.inner.safe.write().<span class="kw">await</span>;
-        <span class="kw">let </span>blob = Blob::open_new(next, <span class="self">self</span>.inner.ioring.clone(), <span class="self">self</span>.inner.config.index())
-            .<span class="kw">await</span><span class="question-mark">?
-            </span>.boxed();
-        safe.active_blob = <span class="prelude-val">Some</span>(blob);
+        <span class="kw">let </span>blob =
+            Blob::open_new(next, <span class="self">self</span>.inner.ioring.clone(), <span class="self">self</span>.inner.config.index()).<span class="kw">await</span><span class="question-mark">?</span>;
+        safe.active_blob = <span class="prelude-val">Some</span>(Box::new(ASRwLock::new(blob)));
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1834,7 +1842,9 @@
         blobs.sort_by_key(Blob::id);
 
         <span class="kw">let </span>active_blob = <span class="kw">if </span>with_active {
-            <span class="prelude-val">Some</span>(<span class="self">Self</span>::pop_active(<span class="kw-2">&amp;mut </span>blobs, <span class="kw-2">&amp;</span><span class="self">self</span>.inner.config).<span class="kw">await</span><span class="question-mark">?</span>)
+            <span class="prelude-val">Some</span>(Box::new(ASRwLock::new(
+                <span class="kw-2">*</span><span class="self">Self</span>::pop_active(<span class="kw-2">&amp;mut </span>blobs, <span class="kw-2">&amp;</span><span class="self">self</span>.inner.config).<span class="kw">await</span><span class="question-mark">?</span>,
+            )))
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>};
@@ -1994,7 +2004,7 @@
     <span class="kw">async fn </span>contains_with(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K, meta: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Meta&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
         <span class="kw">let </span>inner = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
         <span class="kw">if let </span><span class="prelude-val">Some</span>(active_blob) = <span class="kw-2">&amp;</span>inner.active_blob {
-            <span class="kw">if </span>active_blob.contains(key, meta).<span class="kw">await</span><span class="question-mark">? </span>{
+            <span class="kw">if </span>active_blob.read().<span class="kw">await</span>.contains(key, meta).<span class="kw">await</span><span class="question-mark">? </span>{
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
             }
         }
@@ -2018,7 +2028,7 @@
         <span class="macro">trace!</span>(<span class="string">&quot;[{:?}] check in blobs bloom filter&quot;</span>, key);
         <span class="kw">let </span>inner = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
         <span class="kw">let </span>in_active = <span class="kw">if let </span><span class="prelude-val">Some</span>(active_blob) = inner.active_blob.as_ref() {
-            active_blob.check_filter(key).<span class="kw">await
+            active_blob.read().<span class="kw">await</span>.check_filter(key).<span class="kw">await
         </span>} <span class="kw">else </span>{
             FilterResult::NotContains
         };
@@ -2126,6 +2136,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>safe = <span class="self">self</span>.inner.safe.write().<span class="kw">await</span>;
         <span class="kw">let </span>active_blob = safe.active_blob.as_deref_mut();
         <span class="kw">let </span>count = <span class="kw">if let </span><span class="prelude-val">Some</span>(active_blob) = active_blob {
+            <span class="kw">let </span><span class="kw-2">mut </span>active_blob = active_blob.write().<span class="kw">await</span>;
             <span class="kw">let </span>count = active_blob.mark_all_as_deleted(key).<span class="kw">await</span><span class="question-mark">?</span>.unwrap_or(<span class="number">0</span>);
             <span class="macro">debug!</span>(<span class="string">&quot;{} deleted from active blob&quot;</span>, count);
             count
@@ -2157,7 +2168,7 @@
         <span class="kw">if let </span><span class="prelude-val">None </span>= safe.active_blob {
             <span class="kw">let </span>blob_opt = safe.blobs.write().<span class="kw">await</span>.pop().map(|b| b.boxed());
             <span class="kw">if let </span><span class="prelude-val">Some</span>(blob) = blob_opt {
-                safe.active_blob = <span class="prelude-val">Some</span>(blob);
+                safe.active_blob = <span class="prelude-val">Some</span>(Box::new(ASRwLock::new(<span class="kw-2">*</span>blob)));
                 <span class="prelude-val">Ok</span>(())
             } <span class="kw">else </span>{
                 <span class="prelude-val">Err</span>(Error::uninitialized().into())
@@ -2175,10 +2186,8 @@
         <span class="kw">if let </span><span class="prelude-val">None </span>= safe.active_blob {
             <span class="kw">let </span>next = <span class="self">self</span>.next_blob_name()<span class="question-mark">?</span>;
             <span class="kw">let </span>config = <span class="self">self</span>.config.index();
-            <span class="kw">let </span>blob = Blob::open_new(next, <span class="self">self</span>.ioring.clone(), config)
-                .<span class="kw">await</span><span class="question-mark">?
-                </span>.boxed();
-            safe.active_blob = <span class="prelude-val">Some</span>(blob);
+            <span class="kw">let </span>blob = Blob::open_new(next, <span class="self">self</span>.ioring.clone(), config).<span class="kw">await</span><span class="question-mark">?</span>;
+            safe.active_blob = <span class="prelude-val">Some</span>(Box::new(ASRwLock::new(blob)));
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(())
@@ -2195,8 +2204,9 @@
         } <span class="kw">else </span>{
             <span class="comment">// always true
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ablob) = safe.active_blob.take() {
+                <span class="kw">let </span>ablob = (<span class="kw-2">*</span>ablob).into_inner();
                 ablob.fsyncdata().<span class="kw">await</span><span class="question-mark">?</span>;
-                safe.blobs.write().<span class="kw">await</span>.push(<span class="kw-2">*</span>ablob).<span class="kw">await</span>;
+                safe.blobs.write().<span class="kw">await</span>.push(ablob).<span class="kw">await</span>;
             }
             <span class="prelude-val">Ok</span>(())
         }
@@ -2212,6 +2222,7 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>active_blob_stat(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;ActiveBlobStat&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(ablob) = <span class="self">self</span>.safe.read().<span class="kw">await</span>.active_blob.as_ref() {
+            <span class="kw">let </span>ablob = ablob.read().<span class="kw">await</span>;
             <span class="kw">let </span>records_count = ablob.records_count();
             <span class="kw">let </span>index_memory = ablob.index_memory();
             <span class="kw">let </span>file_size = ablob.file_size() <span class="kw">as </span>usize;
@@ -2259,7 +2270,11 @@
 
     <span class="kw">async fn </span>records_count_in_active_blob(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
         <span class="kw">let </span>inner = <span class="self">self</span>.safe.read().<span class="kw">await</span>;
-        inner.active_blob.as_ref().map(|b| b.records_count())
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ablob) = inner.active_blob.as_ref() {
+            <span class="prelude-val">Some</span>(ablob.read().<span class="kw">await</span>.records_count())
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 
     <span class="kw">async fn </span>fsyncdata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; IOResult&lt;()&gt; {
@@ -2283,9 +2298,12 @@
     }
 
     <span class="kw">async fn </span>max_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
-        <span class="kw">let </span>active_blob_id = <span class="self">self</span>.active_blob.as_ref().map(|blob| blob.id());
+        <span class="kw">let </span><span class="kw-2">mut </span>id = <span class="prelude-val">None</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ablob) = <span class="self">self</span>.active_blob.as_ref() {
+            id = <span class="prelude-val">Some</span>(ablob.read().<span class="kw">await</span>.id());
+        }
         <span class="kw">let </span>blobs_max_id = <span class="self">self</span>.blobs.read().<span class="kw">await</span>.last().map(|x| x.id());
-        active_blob_id.max(blobs_max_id)
+        id.max(blobs_max_id)
     }
 
     <span class="kw">async fn </span>records_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
@@ -2303,7 +2321,7 @@
             results.push(value);
         }
         <span class="kw">if let </span><span class="prelude-val">Some</span>(blob) = <span class="self">self</span>.active_blob.as_ref() {
-            <span class="kw">let </span>value = (blobs.len(), blob.records_count());
+            <span class="kw">let </span>value = (blobs.len(), blob.read().<span class="kw">await</span>.records_count());
             <span class="macro">debug!</span>(<span class="string">&quot;push: {:?}&quot;</span>, value);
             results.push(value);
         }
@@ -2312,15 +2330,15 @@
 
     <span class="kw">async fn </span>fsyncdata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; IOResult&lt;()&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>blob) = <span class="self">self</span>.active_blob {
-            blob.fsyncdata().<span class="kw">await</span><span class="question-mark">?</span>;
+            blob.read().<span class="kw">await</span>.fsyncdata().<span class="kw">await</span><span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>replace_active_blob(<span class="kw-2">&amp;mut </span><span class="self">self</span>, blob: Box&lt;Blob&lt;K&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>replace_active_blob(<span class="kw-2">&amp;mut </span><span class="self">self</span>, blob: Box&lt;ASRwLock&lt;Blob&lt;K&gt;&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>old_active = <span class="self">self</span>.active_blob.replace(blob);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(blob) = old_active {
-            <span class="self">self</span>.blobs.write().<span class="kw">await</span>.push(<span class="kw-2">*</span>blob).<span class="kw">await</span>;
+            <span class="self">self</span>.blobs.write().<span class="kw">await</span>.push(blob.into_inner()).<span class="kw">await</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -2352,11 +2370,11 @@
     <span class="kw">type </span>Filter = &lt;Blob&lt;K&gt; <span class="kw">as </span>BloomProvider&lt;K&gt;&gt;::Filter;
     <span class="kw">async fn </span>check_filter(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span>K) -&gt; FilterResult {
         <span class="kw">let </span>inner = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
-        <span class="kw">let </span>active = inner
-            .active_blob
-            .as_ref()
-            .map(|b| b.check_filter_fast(item))
-            .unwrap_or_default();
+        <span class="kw">let </span>active = <span class="kw">if let </span><span class="prelude-val">Some</span>(ablob) = inner.active_blob.as_ref() {
+            ablob.read().<span class="kw">await</span>.check_filter_fast(item)
+        } <span class="kw">else </span>{
+            FilterResult::default()
+        };
         <span class="kw">let </span>ret = inner.blobs.read().<span class="kw">await</span>.check_filter(item).<span class="kw">await</span>;
         ret + active
     }
@@ -2380,14 +2398,12 @@
         <span class="kw">let </span>inner = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>ret = inner.blobs.read().<span class="kw">await</span>.get_filter_fast().cloned();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = <span class="kw-2">&amp;mut </span>ret {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(active_filter) = inner
-                .active_blob
-                .as_ref()
-                .map(|b| b.get_filter_fast())
-                .flatten()
-            {
-                <span class="kw">if </span>!filter.checked_add_assign(active_filter) {
-                    <span class="kw">return </span><span class="prelude-val">None</span>;
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(ablob) = inner.active_blob.as_ref() {
+                <span class="kw">let </span>ablob = ablob.read().<span class="kw">await</span>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(active_filter) = ablob.get_filter_fast() {
+                    <span class="kw">if </span>!filter.checked_add_assign(active_filter) {
+                        <span class="kw">return </span><span class="prelude-val">None</span>;
+                    }
                 }
             }
         }
@@ -2401,7 +2417,7 @@
     <span class="kw">async fn </span>filter_memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">let </span>safe = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
         <span class="kw">let </span>active = <span class="kw">if let </span><span class="prelude-val">Some</span>(blob) = safe.active_blob.as_ref() {
-            blob.filter_memory_allocated().<span class="kw">await
+            blob.read().<span class="kw">await</span>.filter_memory_allocated().<span class="kw">await
         </span>} <span class="kw">else </span>{
             <span class="number">0
         </span>};

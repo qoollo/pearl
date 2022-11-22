@@ -228,6 +228,14 @@
 <span id="228">228</span>
 <span id="229">229</span>
 <span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
@@ -396,6 +404,7 @@
             <span class="kw">let </span>read = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
             <span class="kw">let </span>active_blob = read.active_blob.as_ref();
             <span class="kw">if let </span><span class="prelude-val">Some</span>(active_blob) = active_blob {
+                <span class="kw">let </span>active_blob = active_blob.read().<span class="kw">await</span>;
                 <span class="kw">if </span>active_blob.file_size() &lt; config_max_size
                     &amp;&amp; (active_blob.records_count() <span class="kw">as </span>u64) &lt; config_max_count
                 {
@@ -405,15 +414,22 @@
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>write = <span class="self">self</span>.inner.safe.write().<span class="kw">await</span>;
-        <span class="kw">let </span>active_blob = write.active_blob.as_ref();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(active_blob) = active_blob {
-            <span class="kw">if </span>active_blob.file_size() &gt;= config_max_size
-                || active_blob.records_count() <span class="kw">as </span>u64 &gt;= config_max_count
-            {
-                <span class="kw">let </span>new_active = get_new_active_blob(<span class="kw-2">&amp;</span><span class="self">self</span>.inner).<span class="kw">await</span><span class="question-mark">?</span>;
-                write.replace_active_blob(new_active).<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>replace = <span class="bool-val">false</span>;
+        {
+            <span class="kw">let </span>active_blob = write.active_blob.as_ref();
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(active_blob) = active_blob {
+                <span class="kw">let </span>active_blob = active_blob.read().<span class="kw">await</span>;
+                <span class="kw">if </span>active_blob.file_size() &gt;= config_max_size
+                    || active_blob.records_count() <span class="kw">as </span>u64 &gt;= config_max_count
+                {
+                    replace = <span class="bool-val">true</span>;
+                }
             }
+        }
+        <span class="kw">if </span>replace {
+            <span class="kw">let </span>new_active = get_new_active_blob(<span class="kw-2">&amp;</span><span class="self">self</span>.inner).<span class="kw">await</span><span class="question-mark">?</span>;
+            write.replace_active_blob(Box::new(ASRwLock::new(<span class="kw-2">*</span>new_active))).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
         }
         <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
     }
@@ -428,7 +444,7 @@
         .safe
         .write()
         .<span class="kw">await
-        </span>.replace_active_blob(new_active)
+        </span>.replace_active_blob(Box::new(ASRwLock::new(<span class="kw-2">*</span>new_active)))
         .<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(())
 }

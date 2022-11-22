@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/devel.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>devel.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../bitvec/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-1.0.1/src/devel.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>devel.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../bitvec/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -113,145 +113,89 @@
 <span id="113">113</span>
 <span id="114">114</span>
 <span id="115">115</span>
-<span id="116">116</span>
-<span id="117">117</span>
-<span id="118">118</span>
-<span id="119">119</span>
-<span id="120">120</span>
-<span id="121">121</span>
-<span id="122">122</span>
-<span id="123">123</span>
-<span id="124">124</span>
-<span id="125">125</span>
-<span id="126">126</span>
-<span id="127">127</span>
-<span id="128">128</span>
-<span id="129">129</span>
-<span id="130">130</span>
-<span id="131">131</span>
-<span id="132">132</span>
-<span id="133">133</span>
-<span id="134">134</span>
-<span id="135">135</span>
-<span id="136">136</span>
-<span id="137">137</span>
-<span id="138">138</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Internal support utilities.
+</pre><pre class="rust"><code><span class="doccomment">//! Support utilities for crate development.
 
-</span><span class="kw">use </span>core::{
-	any::TypeId,
-	ops::{
-		Bound,
-		Range,
-		RangeBounds,
-	},
-};
+</span><span class="kw">use </span>core::any::TypeId;
 
 <span class="kw">use crate</span>::{
 	order::BitOrder,
 	store::BitStore,
 };
 
-<span class="doccomment">/** Normalizes any range into a basic `Range`.
-
-This unpacks any range type into an ordinary `Range`, returning the start and
-exclusive end markers. If the start marker is not provided, it is assumed to be
-zero; if the end marker is not provided, then it is assumed to be `end`.
-
-The end marker, if provided, may be greater than `end`. This is not checked in
-the function, and must be inspected by the caller.
-
-# Type Parameters
-
-- `R`: A range of some kind
-
-# Parameters
-
-- `bounds`: A range of some kind
-- `end`: The value to use as the exclusive end, if the range does not have an
-  end.
-
-# Returns
-
-`bounds` normalized to an ordinary `Range`, optionally clamped to `end`.
-**/
-</span><span class="attribute">#[inline]
-</span><span class="kw">pub fn </span>normalize_range&lt;R&gt;(bounds: R, end: usize) -&gt; Range&lt;usize&gt;
-<span class="kw">where </span>R: RangeBounds&lt;usize&gt; {
-	<span class="kw">let </span>min = <span class="kw">match </span>bounds.start_bound() {
-		Bound::Included(<span class="kw-2">&amp;</span>n) =&gt; n,
-		Bound::Excluded(<span class="kw-2">&amp;</span>n) =&gt; n + <span class="number">1</span>,
-		Bound::Unbounded =&gt; <span class="number">0</span>,
-	};
-	<span class="kw">let </span>max = <span class="kw">match </span>bounds.end_bound() {
-		Bound::Included(<span class="kw-2">&amp;</span>n) =&gt; n + <span class="number">1</span>,
-		Bound::Excluded(<span class="kw-2">&amp;</span>n) =&gt; n,
-		Bound::Unbounded =&gt; end,
-	};
-	min .. max
-}
-
-<span class="doccomment">/** Asserts that a range satisfies bounds constraints.
-
-This requires that the range start be not greater than the range end, and the
-range end be not greater than the ending marker (if provided).
-
-# Parameters
-
-- `range`: The range to validate
-- `end`: An optional maximal value that the range cannot exceed
-
-# Panics
-
-This panics if the range fails a requirement.
-**/
-</span><span class="attribute">#[inline]
-</span><span class="kw">pub fn </span>assert_range(range: Range&lt;usize&gt;, end: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;usize&gt;&gt;) {
-	<span class="kw">if </span>range.start &gt; range.end {
-		<span class="macro">panic!</span>(
-			<span class="string">&quot;Malformed range: `{} .. {}` must run from lower to higher&quot;</span>,
-			range.start, range.end
-		);
-	}
-	<span class="kw">if let </span><span class="prelude-val">Some</span>(end) = end.into() {
-		<span class="kw">if </span>range.end &gt; end {
-			<span class="macro">panic!</span>(
-				<span class="string">&quot;Range out of bounds: `{} .. {}` must not exceed `{}`&quot;</span>,
-				range.start, range.end, end
-			);
+<span class="doccomment">/// Constructs formatting-trait implementations by delegating.
+</span><span class="macro">macro_rules! </span>easy_fmt {
+	($(<span class="kw">impl </span><span class="macro-nonterminal">$fmt</span>:ident)+ <span class="kw">for </span>BitArray) =&gt; { $(
+		<span class="kw">impl</span>&lt;A, O&gt; core::fmt::<span class="macro-nonterminal">$fmt </span><span class="kw">for </span><span class="macro-nonterminal">$crate::array::BitArray</span>&lt;A, O&gt;
+		<span class="kw">where
+			</span>O: <span class="macro-nonterminal">$crate::order::BitOrder</span>,
+			A: <span class="macro-nonterminal">$crate::view::BitViewSized</span>,
+		{
+			<span class="attribute">#[inline]
+			#[cfg(not(tarpaulin_include))]
+			</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>core::fmt::Formatter) -&gt; core::fmt::Result {
+				core::fmt::<span class="macro-nonterminal">$fmt::fmt</span>(<span class="self">self</span>.as_bitslice(), fmt)
+			}
 		}
-	}
+	)+ };
+	($(<span class="kw">impl </span><span class="macro-nonterminal">$fmt</span>:ident)+ <span class="kw">for </span><span class="macro-nonterminal">$this</span>:ident) =&gt; { $(
+		<span class="kw">impl</span>&lt;T, O&gt; core::fmt::<span class="macro-nonterminal">$fmt </span><span class="kw">for </span><span class="macro-nonterminal">$this</span>&lt;T, O&gt;
+		<span class="kw">where
+			</span>O: <span class="macro-nonterminal">$crate::order::BitOrder</span>,
+			T: <span class="macro-nonterminal">$crate::store::BitStore</span>,
+		{
+			<span class="attribute">#[inline]
+			#[cfg(not(tarpaulin_include))]
+			</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>core::fmt::Formatter) -&gt; core::fmt::Result {
+				core::fmt::<span class="macro-nonterminal">$fmt::fmt</span>(<span class="self">self</span>.as_bitslice(), fmt)
+			}
+		}
+	)+ };
 }
 
-<span class="doccomment">/// Tests if two `BitOrder` type parameters match each other.
-///
-/// This evaluates to a compile-time constant, and is removed during codegen.
-</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
-</span><span class="kw">pub fn </span>match_order&lt;O1, O2&gt;() -&gt; bool
+<span class="doccomment">/// Implements some `Iterator` functions that have boilerplate behavior.
+</span><span class="macro">macro_rules! </span>easy_iter {
+	() =&gt; {
+		<span class="attribute">#[inline]
+		</span><span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+			<span class="kw">let </span>len = <span class="self">self</span>.len();
+			(len, <span class="prelude-val">Some</span>(len))
+		}
+
+		<span class="attribute">#[inline]
+		</span><span class="kw">fn </span>count(<span class="self">self</span>) -&gt; usize {
+			<span class="self">self</span>.len()
+		}
+
+		<span class="attribute">#[inline]
+		</span><span class="kw">fn </span>last(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+			<span class="self">self</span>.next_back()
+		}
+	};
+}
+
+<span class="doccomment">/// Tests if two `BitOrder` implementors are the same.
+</span><span class="attribute">#[inline]
+</span><span class="kw">pub fn </span>match_order&lt;O, P&gt;() -&gt; bool
 <span class="kw">where
-	</span>O1: BitOrder,
-	O2: BitOrder,
+	</span>O: BitOrder,
+	P: BitOrder,
 {
-	TypeId::of::&lt;O1&gt;() == TypeId::of::&lt;O2&gt;()
+	eq_types::&lt;O, P&gt;()
 }
 
-<span class="doccomment">/// Tests if two `BitStore` type parameters match each other.
-///
-/// This evaluates to a compile-time constant, and is removed during codegen.
-</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
-</span><span class="kw">pub fn </span>match_store&lt;T1, T2&gt;() -&gt; bool
+<span class="doccomment">/// Tests if two `BitStore` implementors are the same.
+</span><span class="attribute">#[inline]
+</span><span class="kw">pub fn </span>match_store&lt;T, U&gt;() -&gt; bool
 <span class="kw">where
-	</span>T1: BitStore,
-	T2: BitStore,
+	</span>T: BitStore,
+	U: BitStore,
 {
-	TypeId::of::&lt;T1&gt;() == TypeId::of::&lt;T2&gt;()
+	eq_types::&lt;T, U&gt;()
 }
 
-<span class="doccomment">/// Tests if two `&lt;O, T&gt;` type parameter pairs match each other.
-///
-/// This evaluates to a compile-time constant, and is removed during codegen.
-</span><span class="attribute">#[cfg_attr(not(tarpaulin_include), inline(always))]
-</span><span class="kw">pub fn </span>match_types&lt;O1, T1, O2, T2&gt;() -&gt; bool
+<span class="doccomment">/// Tests if two `BitSlice` type parameter pairs match each other.
+</span><span class="attribute">#[inline]
+</span><span class="kw">pub fn </span>match_types&lt;T1, O1, T2, O2&gt;() -&gt; bool
 <span class="kw">where
 	</span>O1: BitOrder,
 	T1: BitStore,
@@ -261,18 +205,28 @@ This panics if the range fails a requirement.
 	match_order::&lt;O1, O2&gt;() &amp;&amp; match_store::&lt;T1, T2&gt;()
 }
 
-<span class="attribute">#[cfg(all(test, feature = <span class="string">&quot;std&quot;</span>))]
-</span><span class="kw">mod </span>tests {
-	<span class="kw">use </span>std::panic::catch_unwind;
+<span class="doccomment">/// Tests if a type is known to be an unsigned integer.
+///
+/// Returns `true` for `u{8,16,32,64,128,size}` and `false` for all others.
+</span><span class="attribute">#[inline]
+</span><span class="kw">pub fn </span>is_unsigned&lt;T&gt;() -&gt; bool
+<span class="kw">where </span>T: <span class="lifetime">&#39;static </span>{
+	eq_types::&lt;T, u8&gt;()
+		|| eq_types::&lt;T, u16&gt;()
+		|| eq_types::&lt;T, u32&gt;()
+		|| eq_types::&lt;T, u64&gt;()
+		|| eq_types::&lt;T, u128&gt;()
+		|| eq_types::&lt;T, usize&gt;()
+}
 
-	<span class="kw">use super</span>::<span class="kw-2">*</span>;
-
-	<span class="attribute">#[test]
-	#[allow(clippy::reversed_empty_ranges)] </span><span class="comment">// I know.
-	</span><span class="kw">fn </span>check_range_asserts() {
-		<span class="macro">assert!</span>(catch_unwind(|| assert_range(<span class="number">7 </span>.. <span class="number">2</span>, <span class="prelude-val">None</span>)).is_err());
-		<span class="macro">assert!</span>(catch_unwind(|| assert_range(<span class="number">0 </span>.. <span class="number">8</span>, <span class="number">4</span>)).is_err());
-	}
+<span class="doccomment">/// Tests if two types are identical, even through different names.
+</span><span class="attribute">#[inline]
+</span><span class="kw">fn </span>eq_types&lt;T, U&gt;() -&gt; bool
+<span class="kw">where
+	</span>T: <span class="lifetime">&#39;static</span>,
+	U: <span class="lifetime">&#39;static</span>,
+{
+	TypeId::of::&lt;T&gt;() == TypeId::of::&lt;U&gt;()
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="bitvec" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

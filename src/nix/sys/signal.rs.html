@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/nix-0.23.1/src/sys/signal.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>signal.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../nix/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/nix-0.25.0/src/sys/signal.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>signal.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../nix/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../nix/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1232,25 +1232,140 @@
 <span id="1232">1232</span>
 <span id="1233">1233</span>
 <span id="1234">1234</span>
+<span id="1235">1235</span>
+<span id="1236">1236</span>
+<span id="1237">1237</span>
+<span id="1238">1238</span>
+<span id="1239">1239</span>
+<span id="1240">1240</span>
+<span id="1241">1241</span>
+<span id="1242">1242</span>
+<span id="1243">1243</span>
+<span id="1244">1244</span>
+<span id="1245">1245</span>
+<span id="1246">1246</span>
+<span id="1247">1247</span>
+<span id="1248">1248</span>
+<span id="1249">1249</span>
+<span id="1250">1250</span>
+<span id="1251">1251</span>
+<span id="1252">1252</span>
+<span id="1253">1253</span>
+<span id="1254">1254</span>
+<span id="1255">1255</span>
+<span id="1256">1256</span>
+<span id="1257">1257</span>
+<span id="1258">1258</span>
+<span id="1259">1259</span>
+<span id="1260">1260</span>
+<span id="1261">1261</span>
+<span id="1262">1262</span>
+<span id="1263">1263</span>
+<span id="1264">1264</span>
+<span id="1265">1265</span>
+<span id="1266">1266</span>
+<span id="1267">1267</span>
+<span id="1268">1268</span>
+<span id="1269">1269</span>
+<span id="1270">1270</span>
+<span id="1271">1271</span>
+<span id="1272">1272</span>
+<span id="1273">1273</span>
+<span id="1274">1274</span>
+<span id="1275">1275</span>
+<span id="1276">1276</span>
+<span id="1277">1277</span>
+<span id="1278">1278</span>
+<span id="1279">1279</span>
+<span id="1280">1280</span>
+<span id="1281">1281</span>
+<span id="1282">1282</span>
+<span id="1283">1283</span>
+<span id="1284">1284</span>
+<span id="1285">1285</span>
+<span id="1286">1286</span>
+<span id="1287">1287</span>
+<span id="1288">1288</span>
+<span id="1289">1289</span>
+<span id="1290">1290</span>
+<span id="1291">1291</span>
+<span id="1292">1292</span>
+<span id="1293">1293</span>
+<span id="1294">1294</span>
+<span id="1295">1295</span>
+<span id="1296">1296</span>
+<span id="1297">1297</span>
+<span id="1298">1298</span>
+<span id="1299">1299</span>
+<span id="1300">1300</span>
+<span id="1301">1301</span>
+<span id="1302">1302</span>
+<span id="1303">1303</span>
+<span id="1304">1304</span>
+<span id="1305">1305</span>
+<span id="1306">1306</span>
+<span id="1307">1307</span>
+<span id="1308">1308</span>
+<span id="1309">1309</span>
+<span id="1310">1310</span>
+<span id="1311">1311</span>
+<span id="1312">1312</span>
+<span id="1313">1313</span>
+<span id="1314">1314</span>
+<span id="1315">1315</span>
+<span id="1316">1316</span>
+<span id="1317">1317</span>
+<span id="1318">1318</span>
+<span id="1319">1319</span>
+<span id="1320">1320</span>
+<span id="1321">1321</span>
+<span id="1322">1322</span>
+<span id="1323">1323</span>
+<span id="1324">1324</span>
+<span id="1325">1325</span>
+<span id="1326">1326</span>
+<span id="1327">1327</span>
+<span id="1328">1328</span>
+<span id="1329">1329</span>
+<span id="1330">1330</span>
+<span id="1331">1331</span>
+<span id="1332">1332</span>
+<span id="1333">1333</span>
+<span id="1334">1334</span>
+<span id="1335">1335</span>
+<span id="1336">1336</span>
+<span id="1337">1337</span>
+<span id="1338">1338</span>
+<span id="1339">1339</span>
+<span id="1340">1340</span>
+<span id="1341">1341</span>
+<span id="1342">1342</span>
+<span id="1343">1343</span>
+<span id="1344">1344</span>
+<span id="1345">1345</span>
+<span id="1346">1346</span>
+<span id="1347">1347</span>
 </pre><pre class="rust"><code><span class="comment">// Portions of this file are Copyright 2014 The Rust Project Developers.
 // See https://www.rust-lang.org/policies/licenses.
 
 </span><span class="doccomment">//! Operating system signals.
 
-</span><span class="kw">use crate</span>::{Error, <span class="prelude-ty">Result</span>};
-<span class="kw">use </span><span class="kw">crate</span>::errno::Errno;
-<span class="kw">use </span><span class="kw">crate</span>::unistd::Pid;
-<span class="kw">use </span>std::mem;
+</span><span class="kw">use </span><span class="kw">crate</span>::errno::Errno;
+<span class="kw">use crate</span>::{Error, <span class="prelude-ty">Result</span>};
+<span class="kw">use </span>cfg_if::cfg_if;
 <span class="kw">use </span>std::fmt;
-<span class="kw">use </span>std::str::FromStr;
+<span class="kw">use </span>std::mem;
 <span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>, target_os = <span class="string">&quot;freebsd&quot;</span>))]
 </span><span class="kw">use </span>std::os::unix::io::RawFd;
 <span class="kw">use </span>std::ptr;
+<span class="kw">use </span>std::str::FromStr;
 
 <span class="attribute">#[cfg(not(any(target_os = <span class="string">&quot;openbsd&quot;</span>, target_os = <span class="string">&quot;redox&quot;</span>)))]
+#[cfg(any(feature = <span class="string">&quot;aio&quot;</span>, feature = <span class="string">&quot;signal&quot;</span>))]
 </span><span class="kw">pub use </span><span class="self">self</span>::sigevent::<span class="kw-2">*</span>;
 
-<span class="macro">libc_enum!</span>{
+<span class="attribute">#[cfg(any(feature = <span class="string">&quot;aio&quot;</span>, feature = <span class="string">&quot;process&quot;</span>, feature = <span class="string">&quot;signal&quot;</span>))]
+</span><span class="macro">libc_enum! </span>{
     <span class="doccomment">/// Types of operating system signals
     </span><span class="comment">// Currently there is only one definition of c_int in libc, as well as only one
     // type for signal constants.
@@ -1258,6 +1373,7 @@
     // this is not (yet) possible.
     </span><span class="attribute">#[repr(i32)]
     #[non_exhaustive]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = <span class="string">&quot;aio&quot;</span>, feature = <span class="string">&quot;signal&quot;</span>))))]
     </span><span class="kw">pub enum </span>Signal {
         <span class="doccomment">/// Hangup
         </span>SIGHUP,
@@ -1320,28 +1436,34 @@
         <span class="doccomment">/// Window size changes
         </span>SIGWINCH,
         <span class="doccomment">/// Input/output possible signal
+        </span><span class="attribute">#[cfg(not(target_os = <span class="string">&quot;haiku&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span>SIGIO,
         <span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;emscripten&quot;</span>,
                   target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span><span class="doccomment">/// Power failure imminent.
         </span>SIGPWR,
         <span class="doccomment">/// Bad system call
         </span>SIGSYS,
         <span class="attribute">#[cfg(not(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;emscripten&quot;</span>,
                       target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>,
-                      target_os = <span class="string">&quot;redox&quot;</span>)))]
+                      target_os = <span class="string">&quot;redox&quot;</span>, target_os = <span class="string">&quot;haiku&quot;</span>)))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span><span class="doccomment">/// Emulator trap
         </span>SIGEMT,
         <span class="attribute">#[cfg(not(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;emscripten&quot;</span>,
                       target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>,
-                      target_os = <span class="string">&quot;redox&quot;</span>)))]
+                      target_os = <span class="string">&quot;redox&quot;</span>, target_os = <span class="string">&quot;haiku&quot;</span>)))]
+        #[cfg_attr(docsrs, doc(cfg(all())))]
         </span><span class="doccomment">/// Information request
         </span>SIGINFO,
     }
     <span class="kw">impl </span>TryFrom&lt;i32&gt;
 }
 
-<span class="kw">impl </span>FromStr <span class="kw">for </span>Signal {
+<span class="attribute">#[cfg(feature = <span class="string">&quot;signal&quot;</span>)]
+</span><span class="kw">impl </span>FromStr <span class="kw">for </span>Signal {
     <span class="kw">type </span><span class="prelude-val">Err </span>= Error;
     <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Signal&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>s {
@@ -1360,10 +1482,19 @@
             <span class="string">&quot;SIGPIPE&quot; </span>=&gt; Signal::SIGPIPE,
             <span class="string">&quot;SIGALRM&quot; </span>=&gt; Signal::SIGALRM,
             <span class="string">&quot;SIGTERM&quot; </span>=&gt; Signal::SIGTERM,
-            <span class="attribute">#[cfg(all(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;emscripten&quot;</span>,
-                          target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>),
-                      not(any(target_arch = <span class="string">&quot;mips&quot;</span>, target_arch = <span class="string">&quot;mips64&quot;</span>,
-                              target_arch = <span class="string">&quot;sparc64&quot;</span>))))]
+            <span class="attribute">#[cfg(all(
+                any(
+                    target_os = <span class="string">&quot;android&quot;</span>,
+                    target_os = <span class="string">&quot;emscripten&quot;</span>,
+                    target_os = <span class="string">&quot;fuchsia&quot;</span>,
+                    target_os = <span class="string">&quot;linux&quot;
+                </span>),
+                not(any(
+                    target_arch = <span class="string">&quot;mips&quot;</span>,
+                    target_arch = <span class="string">&quot;mips64&quot;</span>,
+                    target_arch = <span class="string">&quot;sparc64&quot;
+                </span>))
+            ))]
             </span><span class="string">&quot;SIGSTKFLT&quot; </span>=&gt; Signal::SIGSTKFLT,
             <span class="string">&quot;SIGCHLD&quot; </span>=&gt; Signal::SIGCHLD,
             <span class="string">&quot;SIGCONT&quot; </span>=&gt; Signal::SIGCONT,
@@ -1377,25 +1508,41 @@
             <span class="string">&quot;SIGVTALRM&quot; </span>=&gt; Signal::SIGVTALRM,
             <span class="string">&quot;SIGPROF&quot; </span>=&gt; Signal::SIGPROF,
             <span class="string">&quot;SIGWINCH&quot; </span>=&gt; Signal::SIGWINCH,
-            <span class="string">&quot;SIGIO&quot; </span>=&gt; Signal::SIGIO,
-            <span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;emscripten&quot;</span>,
-                      target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+            <span class="attribute">#[cfg(not(target_os = <span class="string">&quot;haiku&quot;</span>))]
+            </span><span class="string">&quot;SIGIO&quot; </span>=&gt; Signal::SIGIO,
+            <span class="attribute">#[cfg(any(
+                target_os = <span class="string">&quot;android&quot;</span>,
+                target_os = <span class="string">&quot;emscripten&quot;</span>,
+                target_os = <span class="string">&quot;fuchsia&quot;</span>,
+                target_os = <span class="string">&quot;linux&quot;
+            </span>))]
             </span><span class="string">&quot;SIGPWR&quot; </span>=&gt; Signal::SIGPWR,
             <span class="string">&quot;SIGSYS&quot; </span>=&gt; Signal::SIGSYS,
-            <span class="attribute">#[cfg(not(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;emscripten&quot;</span>,
-                          target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>,
-                          target_os = <span class="string">&quot;redox&quot;</span>)))]
+            <span class="attribute">#[cfg(not(any(
+                target_os = <span class="string">&quot;android&quot;</span>,
+                target_os = <span class="string">&quot;emscripten&quot;</span>,
+                target_os = <span class="string">&quot;fuchsia&quot;</span>,
+                target_os = <span class="string">&quot;linux&quot;</span>,
+                target_os = <span class="string">&quot;redox&quot;</span>,
+                target_os = <span class="string">&quot;haiku&quot;
+            </span>)))]
             </span><span class="string">&quot;SIGEMT&quot; </span>=&gt; Signal::SIGEMT,
-            <span class="attribute">#[cfg(not(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;emscripten&quot;</span>,
-                          target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>,
-                          target_os = <span class="string">&quot;redox&quot;</span>)))]
+            <span class="attribute">#[cfg(not(any(
+                target_os = <span class="string">&quot;android&quot;</span>,
+                target_os = <span class="string">&quot;emscripten&quot;</span>,
+                target_os = <span class="string">&quot;fuchsia&quot;</span>,
+                target_os = <span class="string">&quot;linux&quot;</span>,
+                target_os = <span class="string">&quot;redox&quot;</span>,
+                target_os = <span class="string">&quot;haiku&quot;
+            </span>)))]
             </span><span class="string">&quot;SIGINFO&quot; </span>=&gt; Signal::SIGINFO,
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Errno::EINVAL),
         })
     }
 }
 
-<span class="kw">impl </span>Signal {
+<span class="attribute">#[cfg(feature = <span class="string">&quot;signal&quot;</span>)]
+</span><span class="kw">impl </span>Signal {
     <span class="doccomment">/// Returns name of signal.
     ///
     /// This function is equivalent to `&lt;Signal as AsRef&lt;str&gt;&gt;::as_ref()`,
@@ -1418,9 +1565,19 @@
             Signal::SIGPIPE =&gt; <span class="string">&quot;SIGPIPE&quot;</span>,
             Signal::SIGALRM =&gt; <span class="string">&quot;SIGALRM&quot;</span>,
             Signal::SIGTERM =&gt; <span class="string">&quot;SIGTERM&quot;</span>,
-            <span class="attribute">#[cfg(all(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;emscripten&quot;</span>,
-                          target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>),
-                      not(any(target_arch = <span class="string">&quot;mips&quot;</span>, target_arch = <span class="string">&quot;mips64&quot;</span>, target_arch = <span class="string">&quot;sparc64&quot;</span>))))]
+            <span class="attribute">#[cfg(all(
+                any(
+                    target_os = <span class="string">&quot;android&quot;</span>,
+                    target_os = <span class="string">&quot;emscripten&quot;</span>,
+                    target_os = <span class="string">&quot;fuchsia&quot;</span>,
+                    target_os = <span class="string">&quot;linux&quot;
+                </span>),
+                not(any(
+                    target_arch = <span class="string">&quot;mips&quot;</span>,
+                    target_arch = <span class="string">&quot;mips64&quot;</span>,
+                    target_arch = <span class="string">&quot;sparc64&quot;
+                </span>))
+            ))]
             </span>Signal::SIGSTKFLT =&gt; <span class="string">&quot;SIGSTKFLT&quot;</span>,
             Signal::SIGCHLD =&gt; <span class="string">&quot;SIGCHLD&quot;</span>,
             Signal::SIGCONT =&gt; <span class="string">&quot;SIGCONT&quot;</span>,
@@ -1434,176 +1591,127 @@
             Signal::SIGVTALRM =&gt; <span class="string">&quot;SIGVTALRM&quot;</span>,
             Signal::SIGPROF =&gt; <span class="string">&quot;SIGPROF&quot;</span>,
             Signal::SIGWINCH =&gt; <span class="string">&quot;SIGWINCH&quot;</span>,
-            Signal::SIGIO =&gt; <span class="string">&quot;SIGIO&quot;</span>,
-            <span class="attribute">#[cfg(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;emscripten&quot;</span>,
-                      target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+            <span class="attribute">#[cfg(not(target_os = <span class="string">&quot;haiku&quot;</span>))]
+            </span>Signal::SIGIO =&gt; <span class="string">&quot;SIGIO&quot;</span>,
+            <span class="attribute">#[cfg(any(
+                target_os = <span class="string">&quot;android&quot;</span>,
+                target_os = <span class="string">&quot;emscripten&quot;</span>,
+                target_os = <span class="string">&quot;fuchsia&quot;</span>,
+                target_os = <span class="string">&quot;linux&quot;
+            </span>))]
             </span>Signal::SIGPWR =&gt; <span class="string">&quot;SIGPWR&quot;</span>,
             Signal::SIGSYS =&gt; <span class="string">&quot;SIGSYS&quot;</span>,
-            <span class="attribute">#[cfg(not(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;emscripten&quot;</span>,
-                          target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>,
-                          target_os = <span class="string">&quot;redox&quot;</span>)))]
+            <span class="attribute">#[cfg(not(any(
+                target_os = <span class="string">&quot;android&quot;</span>,
+                target_os = <span class="string">&quot;emscripten&quot;</span>,
+                target_os = <span class="string">&quot;fuchsia&quot;</span>,
+                target_os = <span class="string">&quot;linux&quot;</span>,
+                target_os = <span class="string">&quot;redox&quot;</span>,
+                target_os = <span class="string">&quot;haiku&quot;
+            </span>)))]
             </span>Signal::SIGEMT =&gt; <span class="string">&quot;SIGEMT&quot;</span>,
-            <span class="attribute">#[cfg(not(any(target_os = <span class="string">&quot;android&quot;</span>, target_os = <span class="string">&quot;emscripten&quot;</span>,
-                          target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>,
-                          target_os = <span class="string">&quot;redox&quot;</span>)))]
+            <span class="attribute">#[cfg(not(any(
+                target_os = <span class="string">&quot;android&quot;</span>,
+                target_os = <span class="string">&quot;emscripten&quot;</span>,
+                target_os = <span class="string">&quot;fuchsia&quot;</span>,
+                target_os = <span class="string">&quot;linux&quot;</span>,
+                target_os = <span class="string">&quot;redox&quot;</span>,
+                target_os = <span class="string">&quot;haiku&quot;
+            </span>)))]
             </span>Signal::SIGINFO =&gt; <span class="string">&quot;SIGINFO&quot;</span>,
         }
     }
 }
 
-<span class="kw">impl </span>AsRef&lt;str&gt; <span class="kw">for </span>Signal {
+<span class="attribute">#[cfg(feature = <span class="string">&quot;signal&quot;</span>)]
+</span><span class="kw">impl </span>AsRef&lt;str&gt; <span class="kw">for </span>Signal {
     <span class="kw">fn </span>as_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
         <span class="self">self</span>.as_str()
     }
 }
 
-<span class="kw">impl </span>fmt::Display <span class="kw">for </span>Signal {
+<span class="attribute">#[cfg(feature = <span class="string">&quot;signal&quot;</span>)]
+</span><span class="kw">impl </span>fmt::Display <span class="kw">for </span>Signal {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         f.write_str(<span class="self">self</span>.as_ref())
     }
 }
 
-<span class="kw">pub use </span><span class="self">self</span>::Signal::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;signal&quot;</span>)]
+</span><span class="kw">pub use </span><span class="self">self</span>::Signal::<span class="kw-2">*</span>;
 
 <span class="attribute">#[cfg(target_os = <span class="string">&quot;redox&quot;</span>)]
+#[cfg(feature = <span class="string">&quot;signal&quot;</span>)]
 </span><span class="kw">const </span>SIGNALS: [Signal; <span class="number">29</span>] = [
-    SIGHUP,
-    SIGINT,
-    SIGQUIT,
-    SIGILL,
-    SIGTRAP,
-    SIGABRT,
-    SIGBUS,
-    SIGFPE,
-    SIGKILL,
-    SIGUSR1,
-    SIGSEGV,
-    SIGUSR2,
-    SIGPIPE,
-    SIGALRM,
-    SIGTERM,
-    SIGCHLD,
-    SIGCONT,
-    SIGSTOP,
-    SIGTSTP,
-    SIGTTIN,
-    SIGTTOU,
-    SIGURG,
-    SIGXCPU,
-    SIGXFSZ,
-    SIGVTALRM,
-    SIGPROF,
-    SIGWINCH,
-    SIGIO,
-    SIGSYS];
-<span class="attribute">#[cfg(all(any(target_os = <span class="string">&quot;linux&quot;</span>, target_os = <span class="string">&quot;android&quot;</span>,
-              target_os = <span class="string">&quot;emscripten&quot;</span>, target_os = <span class="string">&quot;fuchsia&quot;</span>),
-          not(any(target_arch = <span class="string">&quot;mips&quot;</span>, target_arch = <span class="string">&quot;mips64&quot;</span>,
-                  target_arch = <span class="string">&quot;sparc64&quot;</span>))))]
+    SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGTRAP, SIGABRT, SIGBUS, SIGFPE, SIGKILL,
+    SIGUSR1, SIGSEGV, SIGUSR2, SIGPIPE, SIGALRM, SIGTERM, SIGCHLD, SIGCONT,
+    SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU, SIGURG, SIGXCPU, SIGXFSZ, SIGVTALRM,
+    SIGPROF, SIGWINCH, SIGIO, SIGSYS,
+];
+<span class="attribute">#[cfg(target_os = <span class="string">&quot;haiku&quot;</span>)]
+#[cfg(feature = <span class="string">&quot;signal&quot;</span>)]
+</span><span class="kw">const </span>SIGNALS: [Signal; <span class="number">28</span>] = [
+    SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGTRAP, SIGABRT, SIGBUS, SIGFPE, SIGKILL,
+    SIGUSR1, SIGSEGV, SIGUSR2, SIGPIPE, SIGALRM, SIGTERM, SIGCHLD, SIGCONT,
+    SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU, SIGURG, SIGXCPU, SIGXFSZ, SIGVTALRM,
+    SIGPROF, SIGWINCH, SIGSYS,
+];
+<span class="attribute">#[cfg(all(
+    any(
+        target_os = <span class="string">&quot;linux&quot;</span>,
+        target_os = <span class="string">&quot;android&quot;</span>,
+        target_os = <span class="string">&quot;emscripten&quot;</span>,
+        target_os = <span class="string">&quot;fuchsia&quot;
+    </span>),
+    not(any(
+        target_arch = <span class="string">&quot;mips&quot;</span>,
+        target_arch = <span class="string">&quot;mips64&quot;</span>,
+        target_arch = <span class="string">&quot;sparc64&quot;
+    </span>))
+))]
+#[cfg(feature = <span class="string">&quot;signal&quot;</span>)]
 </span><span class="kw">const </span>SIGNALS: [Signal; <span class="number">31</span>] = [
-    SIGHUP,
-    SIGINT,
-    SIGQUIT,
-    SIGILL,
-    SIGTRAP,
-    SIGABRT,
-    SIGBUS,
-    SIGFPE,
-    SIGKILL,
-    SIGUSR1,
-    SIGSEGV,
-    SIGUSR2,
-    SIGPIPE,
-    SIGALRM,
-    SIGTERM,
-    SIGSTKFLT,
-    SIGCHLD,
-    SIGCONT,
-    SIGSTOP,
-    SIGTSTP,
-    SIGTTIN,
-    SIGTTOU,
-    SIGURG,
-    SIGXCPU,
-    SIGXFSZ,
-    SIGVTALRM,
-    SIGPROF,
-    SIGWINCH,
-    SIGIO,
-    SIGPWR,
-    SIGSYS];
-<span class="attribute">#[cfg(all(any(target_os = <span class="string">&quot;linux&quot;</span>, target_os = <span class="string">&quot;android&quot;</span>,
-              target_os = <span class="string">&quot;emscripten&quot;</span>, target_os = <span class="string">&quot;fuchsia&quot;</span>),
-          any(target_arch = <span class="string">&quot;mips&quot;</span>, target_arch = <span class="string">&quot;mips64&quot;</span>,
-              target_arch = <span class="string">&quot;sparc64&quot;</span>)))]
+    SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGTRAP, SIGABRT, SIGBUS, SIGFPE, SIGKILL,
+    SIGUSR1, SIGSEGV, SIGUSR2, SIGPIPE, SIGALRM, SIGTERM, SIGSTKFLT, SIGCHLD,
+    SIGCONT, SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU, SIGURG, SIGXCPU, SIGXFSZ,
+    SIGVTALRM, SIGPROF, SIGWINCH, SIGIO, SIGPWR, SIGSYS,
+];
+<span class="attribute">#[cfg(all(
+    any(
+        target_os = <span class="string">&quot;linux&quot;</span>,
+        target_os = <span class="string">&quot;android&quot;</span>,
+        target_os = <span class="string">&quot;emscripten&quot;</span>,
+        target_os = <span class="string">&quot;fuchsia&quot;
+    </span>),
+    any(target_arch = <span class="string">&quot;mips&quot;</span>, target_arch = <span class="string">&quot;mips64&quot;</span>, target_arch = <span class="string">&quot;sparc64&quot;</span>)
+))]
+#[cfg(feature = <span class="string">&quot;signal&quot;</span>)]
 </span><span class="kw">const </span>SIGNALS: [Signal; <span class="number">30</span>] = [
-    SIGHUP,
-    SIGINT,
-    SIGQUIT,
-    SIGILL,
-    SIGTRAP,
-    SIGABRT,
-    SIGBUS,
-    SIGFPE,
-    SIGKILL,
-    SIGUSR1,
-    SIGSEGV,
-    SIGUSR2,
-    SIGPIPE,
-    SIGALRM,
-    SIGTERM,
-    SIGCHLD,
-    SIGCONT,
-    SIGSTOP,
-    SIGTSTP,
-    SIGTTIN,
-    SIGTTOU,
-    SIGURG,
-    SIGXCPU,
-    SIGXFSZ,
-    SIGVTALRM,
-    SIGPROF,
-    SIGWINCH,
-    SIGIO,
-    SIGPWR,
-    SIGSYS];
-<span class="attribute">#[cfg(not(any(target_os = <span class="string">&quot;linux&quot;</span>, target_os = <span class="string">&quot;android&quot;</span>,
-              target_os = <span class="string">&quot;fuchsia&quot;</span>, target_os = <span class="string">&quot;emscripten&quot;</span>,
-              target_os = <span class="string">&quot;redox&quot;</span>)))]
+    SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGTRAP, SIGABRT, SIGBUS, SIGFPE, SIGKILL,
+    SIGUSR1, SIGSEGV, SIGUSR2, SIGPIPE, SIGALRM, SIGTERM, SIGCHLD, SIGCONT,
+    SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU, SIGURG, SIGXCPU, SIGXFSZ, SIGVTALRM,
+    SIGPROF, SIGWINCH, SIGIO, SIGPWR, SIGSYS,
+];
+<span class="attribute">#[cfg(not(any(
+    target_os = <span class="string">&quot;linux&quot;</span>,
+    target_os = <span class="string">&quot;android&quot;</span>,
+    target_os = <span class="string">&quot;fuchsia&quot;</span>,
+    target_os = <span class="string">&quot;emscripten&quot;</span>,
+    target_os = <span class="string">&quot;redox&quot;</span>,
+    target_os = <span class="string">&quot;haiku&quot;
+</span>)))]
+#[cfg(feature = <span class="string">&quot;signal&quot;</span>)]
 </span><span class="kw">const </span>SIGNALS: [Signal; <span class="number">31</span>] = [
-    SIGHUP,
-    SIGINT,
-    SIGQUIT,
-    SIGILL,
-    SIGTRAP,
-    SIGABRT,
-    SIGBUS,
-    SIGFPE,
-    SIGKILL,
-    SIGUSR1,
-    SIGSEGV,
-    SIGUSR2,
-    SIGPIPE,
-    SIGALRM,
-    SIGTERM,
-    SIGCHLD,
-    SIGCONT,
-    SIGSTOP,
-    SIGTSTP,
-    SIGTTIN,
-    SIGTTOU,
-    SIGURG,
-    SIGXCPU,
-    SIGXFSZ,
-    SIGVTALRM,
-    SIGPROF,
-    SIGWINCH,
-    SIGIO,
-    SIGSYS,
-    SIGEMT,
-    SIGINFO];
+    SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGTRAP, SIGABRT, SIGBUS, SIGFPE, SIGKILL,
+    SIGUSR1, SIGSEGV, SIGUSR2, SIGPIPE, SIGALRM, SIGTERM, SIGCHLD, SIGCONT,
+    SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU, SIGURG, SIGXCPU, SIGXFSZ, SIGVTALRM,
+    SIGPROF, SIGWINCH, SIGIO, SIGSYS, SIGEMT, SIGINFO,
+];
 
-<span class="attribute">#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+<span class="macro">feature! </span>{
+<span class="attribute">#![feature = <span class="string">&quot;signal&quot;</span>]
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 </span><span class="doccomment">/// Iterate through all signals defined by this operating system
 </span><span class="kw">pub struct </span>SignalIterator {
     next: usize,
@@ -1633,17 +1741,26 @@
 <span class="doccomment">/// Alias for [`SIGABRT`]
 </span><span class="kw">pub const </span>SIGIOT : Signal = SIGABRT;
 <span class="doccomment">/// Alias for [`SIGIO`]
+</span><span class="attribute">#[cfg(not(target_os = <span class="string">&quot;haiku&quot;</span>))]
 </span><span class="kw">pub const </span>SIGPOLL : Signal = SIGIO;
 <span class="doccomment">/// Alias for [`SIGSYS`]
 </span><span class="kw">pub const </span>SIGUNUSED : Signal = SIGSYS;
 
-<span class="attribute">#[cfg(not(target_os = <span class="string">&quot;redox&quot;</span>))]
-</span><span class="kw">type </span>SaFlags_t = libc::c_int;
-<span class="attribute">#[cfg(target_os = <span class="string">&quot;redox&quot;</span>)]
-</span><span class="kw">type </span>SaFlags_t = libc::c_ulong;
+<span class="macro">cfg_if! </span>{
+    <span class="kw">if </span><span class="attribute">#[cfg(target_os = <span class="string">&quot;redox&quot;</span>)] </span>{
+        <span class="kw">type </span>SaFlags_t = libc::c_ulong;
+    } <span class="kw">else if </span><span class="attribute">#[cfg(target_env = <span class="string">&quot;uclibc&quot;</span>)] </span>{
+        <span class="kw">type </span>SaFlags_t = libc::c_ulong;
+    } <span class="kw">else </span>{
+        <span class="kw">type </span>SaFlags_t = libc::c_int;
+    }
+}
+}
 
-<span class="macro">libc_bitflags!</span>{
+<span class="attribute">#[cfg(feature = <span class="string">&quot;signal&quot;</span>)]
+</span><span class="macro">libc_bitflags! </span>{
     <span class="doccomment">/// Controls the behavior of a [`SigAction`]
+    </span><span class="attribute">#[cfg_attr(docsrs, doc(cfg(feature = <span class="string">&quot;signal&quot;</span>)))]
     </span><span class="kw">pub struct </span>SaFlags: SaFlags_t {
         <span class="doccomment">/// When catching a [`Signal::SIGCHLD`] signal, the signal will be
         /// generated only when a child process exits, not when a child process
@@ -1669,10 +1786,12 @@
     }
 }
 
-<span class="macro">libc_enum! </span>{
+<span class="attribute">#[cfg(feature = <span class="string">&quot;signal&quot;</span>)]
+</span><span class="macro">libc_enum! </span>{
     <span class="doccomment">/// Specifies how certain functions should manipulate a signal mask
     </span><span class="attribute">#[repr(i32)]
     #[non_exhaustive]
+    #[cfg_attr(docsrs, doc(cfg(feature = <span class="string">&quot;signal&quot;</span>)))]
     </span><span class="kw">pub enum </span>SigmaskHow {
         <span class="doccomment">/// The new mask is the union of the current mask and the specified set.
         </span>SIG_BLOCK,
@@ -1684,15 +1803,26 @@
     }
 }
 
+<span class="macro">feature! </span>{
+<span class="attribute">#![feature = <span class="string">&quot;signal&quot;</span>]
+
+</span><span class="kw">use </span><span class="kw">crate</span>::unistd::Pid;
+<span class="kw">use </span>std::iter::Extend;
+<span class="kw">use </span>std::iter::FromIterator;
+<span class="kw">use </span>std::iter::IntoIterator;
+
 <span class="doccomment">/// Specifies a set of [`Signal`]s that may be blocked, waited for, etc.
-</span><span class="attribute">#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+</span><span class="comment">// We are using `transparent` here to be super sure that `SigSet`
+// is represented exactly like the `sigset_t` struct from C.
+</span><span class="attribute">#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 </span><span class="kw">pub struct </span>SigSet {
     sigset: libc::sigset_t
 }
 
-
 <span class="kw">impl </span>SigSet {
     <span class="doccomment">/// Initialize to include all signals.
+    </span><span class="attribute">#[cfg_attr(has_doc_alias, doc(alias(<span class="string">&quot;sigfillset&quot;</span>)))]
     </span><span class="kw">pub fn </span>all() -&gt; SigSet {
         <span class="kw">let </span><span class="kw-2">mut </span>sigset = mem::MaybeUninit::uninit();
         <span class="kw">let _ </span>= <span class="kw">unsafe </span>{ libc::sigfillset(sigset.as_mut_ptr()) };
@@ -1701,6 +1831,7 @@
     }
 
     <span class="doccomment">/// Initialize to include nothing.
+    </span><span class="attribute">#[cfg_attr(has_doc_alias, doc(alias(<span class="string">&quot;sigemptyset&quot;</span>)))]
     </span><span class="kw">pub fn </span>empty() -&gt; SigSet {
         <span class="kw">let </span><span class="kw-2">mut </span>sigset = mem::MaybeUninit::uninit();
         <span class="kw">let _ </span>= <span class="kw">unsafe </span>{ libc::sigemptyset(sigset.as_mut_ptr()) };
@@ -1709,21 +1840,25 @@
     }
 
     <span class="doccomment">/// Add the specified signal to the set.
+    </span><span class="attribute">#[cfg_attr(has_doc_alias, doc(alias(<span class="string">&quot;sigaddset&quot;</span>)))]
     </span><span class="kw">pub fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, signal: Signal) {
         <span class="kw">unsafe </span>{ libc::sigaddset(<span class="kw-2">&amp;mut </span><span class="self">self</span>.sigset <span class="kw">as </span><span class="kw-2">*mut </span>libc::sigset_t, signal <span class="kw">as </span>libc::c_int) };
     }
 
     <span class="doccomment">/// Remove all signals from this set.
+    </span><span class="attribute">#[cfg_attr(has_doc_alias, doc(alias(<span class="string">&quot;sigemptyset&quot;</span>)))]
     </span><span class="kw">pub fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">unsafe </span>{ libc::sigemptyset(<span class="kw-2">&amp;mut </span><span class="self">self</span>.sigset <span class="kw">as </span><span class="kw-2">*mut </span>libc::sigset_t) };
     }
 
     <span class="doccomment">/// Remove the specified signal from this set.
+    </span><span class="attribute">#[cfg_attr(has_doc_alias, doc(alias(<span class="string">&quot;sigdelset&quot;</span>)))]
     </span><span class="kw">pub fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, signal: Signal) {
         <span class="kw">unsafe </span>{ libc::sigdelset(<span class="kw-2">&amp;mut </span><span class="self">self</span>.sigset <span class="kw">as </span><span class="kw-2">*mut </span>libc::sigset_t, signal <span class="kw">as </span>libc::c_int) };
     }
 
     <span class="doccomment">/// Return whether this set includes the specified signal.
+    </span><span class="attribute">#[cfg_attr(has_doc_alias, doc(alias(<span class="string">&quot;sigismember&quot;</span>)))]
     </span><span class="kw">pub fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, signal: Signal) -&gt; bool {
         <span class="kw">let </span>res = <span class="kw">unsafe </span>{ libc::sigismember(<span class="kw-2">&amp;</span><span class="self">self</span>.sigset <span class="kw">as </span><span class="kw-2">*const </span>libc::sigset_t, signal <span class="kw">as </span>libc::c_int) };
 
@@ -1734,14 +1869,9 @@
         }
     }
 
-    <span class="doccomment">/// Merge all of `other`&#39;s signals into this set.
-    </span><span class="comment">// TODO: use libc::sigorset on supported operating systems.
-    </span><span class="kw">pub fn </span>extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>SigSet) {
-        <span class="kw">for </span>signal <span class="kw">in </span>Signal::iterator() {
-            <span class="kw">if </span>other.contains(signal) {
-                <span class="self">self</span>.add(signal);
-            }
-        }
+    <span class="doccomment">/// Returns an iterator that yields the signals contained in this set.
+    </span><span class="kw">pub fn </span>iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SigSetIter&lt;<span class="lifetime">&#39;_</span>&gt; {
+        <span class="self">self</span>.into_iter()
     }
 
     <span class="doccomment">/// Gets the currently blocked (masked) set of signals for the calling thread.
@@ -1776,6 +1906,7 @@
     <span class="doccomment">/// Suspends execution of the calling thread until one of the signals in the
     /// signal mask becomes pending, and returns the accepted signal.
     </span><span class="attribute">#[cfg(not(target_os = <span class="string">&quot;redox&quot;</span>))] </span><span class="comment">// RedoxFS does not yet support sigwait
+    </span><span class="attribute">#[cfg_attr(docsrs, doc(cfg(all())))]
     </span><span class="kw">pub fn </span>wait(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Signal&gt; {
         <span class="kw">use </span>std::convert::TryFrom;
 
@@ -1786,11 +1917,73 @@
             Signal::try_from(signum.assume_init()).unwrap()
         })
     }
+
+    <span class="doccomment">/// Converts a `libc::sigset_t` object to a [`SigSet`] without checking  whether the
+    /// `libc::sigset_t` is already initialized.
+    ///
+    /// # Safety
+    ///
+    /// The `sigset` passed in must be a valid an initialized `libc::sigset_t` by calling either
+    /// [`sigemptyset(3)`](https://man7.org/linux/man-pages/man3/sigemptyset.3p.html) or
+    /// [`sigfillset(3)`](https://man7.org/linux/man-pages/man3/sigfillset.3p.html).
+    /// Otherwise, the results are undefined.
+    </span><span class="kw">pub unsafe fn </span>from_sigset_t_unchecked(sigset: libc::sigset_t) -&gt; SigSet {
+        SigSet { sigset }
+    }
 }
 
 <span class="kw">impl </span>AsRef&lt;libc::sigset_t&gt; <span class="kw">for </span>SigSet {
     <span class="kw">fn </span>as_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>libc::sigset_t {
         <span class="kw-2">&amp;</span><span class="self">self</span>.sigset
+    }
+}
+
+<span class="comment">// TODO: Consider specialization for the case where T is &amp;SigSet and libc::sigorset is available.
+</span><span class="kw">impl </span>Extend&lt;Signal&gt; <span class="kw">for </span>SigSet {
+    <span class="kw">fn </span>extend&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, iter: T)
+    <span class="kw">where </span>T: IntoIterator&lt;Item = Signal&gt; {
+        <span class="kw">for </span>signal <span class="kw">in </span>iter {
+            <span class="self">self</span>.add(signal);
+        }
+    }
+}
+
+<span class="kw">impl </span>FromIterator&lt;Signal&gt; <span class="kw">for </span>SigSet {
+    <span class="kw">fn </span>from_iter&lt;T&gt;(iter: T) -&gt; <span class="self">Self
+    </span><span class="kw">where </span>T: IntoIterator&lt;Item = Signal&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>sigset = SigSet::empty();
+        sigset.extend(iter);
+        sigset
+    }
+}
+
+<span class="doccomment">/// Iterator for a [`SigSet`].
+///
+/// Call [`SigSet::iter`] to create an iterator.
+</span><span class="attribute">#[derive(Clone, Debug)]
+</span><span class="kw">pub struct </span>SigSetIter&lt;<span class="lifetime">&#39;a</span>&gt; {
+    sigset: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>SigSet,
+    inner: SignalIterator,
+}
+
+<span class="kw">impl </span>Iterator <span class="kw">for </span>SigSetIter&lt;<span class="lifetime">&#39;_</span>&gt; {
+    <span class="kw">type </span>Item = Signal;
+    <span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Signal&gt; {
+        <span class="kw">loop </span>{
+            <span class="kw">match </span><span class="self">self</span>.inner.next() {
+                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+                <span class="prelude-val">Some</span>(signal) <span class="kw">if </span><span class="self">self</span>.sigset.contains(signal) =&gt; <span class="kw">return </span><span class="prelude-val">Some</span>(signal),
+                <span class="prelude-val">Some</span>(_signal) =&gt; <span class="kw">continue</span>,
+            }
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IntoIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>SigSet {
+    <span class="kw">type </span>Item = Signal;
+    <span class="kw">type </span>IntoIter = SigSetIter&lt;<span class="lifetime">&#39;a</span>&gt;;
+    <span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
+        SigSetIter { sigset: <span class="self">self</span>, inner: Signal::iterator() }
     }
 }
 
@@ -1807,6 +2000,7 @@
     <span class="doccomment">/// Use the given signal-catching function, which takes in the signal, information about how
     /// the signal was generated, and a pointer to the threads `ucontext_t`.
     </span><span class="attribute">#[cfg(not(target_os = <span class="string">&quot;redox&quot;</span>))]
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     </span>SigAction(<span class="kw">extern fn</span>(libc::c_int, <span class="kw-2">*mut </span>libc::siginfo_t, <span class="kw-2">*mut </span>libc::c_void))
 }
 
@@ -1823,22 +2017,13 @@
     /// is the `SigAction` variant). `mask` specifies other signals to block during execution of
     /// the signal-catching function.
     </span><span class="kw">pub fn </span>new(handler: SigHandler, flags: SaFlags, mask: SigSet) -&gt; SigAction {
-        <span class="attribute">#[cfg(target_os = <span class="string">&quot;redox&quot;</span>)]
-        </span><span class="kw">unsafe fn </span>install_sig(p: <span class="kw-2">*mut </span>libc::sigaction, handler: SigHandler) {
-            (<span class="kw-2">*</span>p).sa_handler = <span class="kw">match </span>handler {
-                SigHandler::SigDfl =&gt; libc::SIG_DFL,
-                SigHandler::SigIgn =&gt; libc::SIG_IGN,
-                SigHandler::Handler(f) =&gt; f <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">extern fn</span>(libc::c_int) <span class="kw">as </span>usize,
-            };
-        }
-
-        <span class="attribute">#[cfg(not(target_os = <span class="string">&quot;redox&quot;</span>))]
-        </span><span class="kw">unsafe fn </span>install_sig(p: <span class="kw-2">*mut </span>libc::sigaction, handler: SigHandler) {
+        <span class="kw">unsafe fn </span>install_sig(p: <span class="kw-2">*mut </span>libc::sigaction, handler: SigHandler) {
             (<span class="kw-2">*</span>p).sa_sigaction = <span class="kw">match </span>handler {
                 SigHandler::SigDfl =&gt; libc::SIG_DFL,
                 SigHandler::SigIgn =&gt; libc::SIG_IGN,
                 SigHandler::Handler(f) =&gt; f <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">extern fn</span>(libc::c_int) <span class="kw">as </span>usize,
-                SigHandler::SigAction(f) =&gt; f <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">extern fn</span>(libc::c_int, <span class="kw-2">*mut </span>libc::siginfo_t, <span class="kw-2">*mut </span>libc::c_void) <span class="kw">as </span>usize,
+                <span class="attribute">#[cfg(not(target_os = <span class="string">&quot;redox&quot;</span>))]
+                </span>SigHandler::SigAction(f) =&gt; f <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">extern fn</span>(libc::c_int, <span class="kw-2">*mut </span>libc::siginfo_t, <span class="kw-2">*mut </span>libc::c_void) <span class="kw">as </span>usize,
             };
         }
 
@@ -1869,12 +2054,12 @@
     }
 
     <span class="doccomment">/// Returns the action&#39;s handler.
-    </span><span class="attribute">#[cfg(not(target_os = <span class="string">&quot;redox&quot;</span>))]
     </span><span class="kw">pub fn </span>handler(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SigHandler {
         <span class="kw">match </span><span class="self">self</span>.sigaction.sa_sigaction {
             libc::SIG_DFL =&gt; SigHandler::SigDfl,
             libc::SIG_IGN =&gt; SigHandler::SigIgn,
-            p <span class="kw">if </span><span class="self">self</span>.flags().contains(SaFlags::SA_SIGINFO) =&gt;
+            <span class="attribute">#[cfg(not(target_os = <span class="string">&quot;redox&quot;</span>))]
+            </span>p <span class="kw">if </span><span class="self">self</span>.flags().contains(SaFlags::SA_SIGINFO) =&gt;
                 SigHandler::SigAction(
                 <span class="comment">// Safe for one of two reasons:
                 // * The SigHandler was created by SigHandler::new, in which
@@ -1887,27 +2072,6 @@
                          <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">extern fn</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>))
                 }
                 <span class="kw">as extern fn</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)),
-            p =&gt; SigHandler::Handler(
-                <span class="comment">// Safe for one of two reasons:
-                // * The SigHandler was created by SigHandler::new, in which
-                //   case the pointer is correct, or
-                // * The SigHandler was created by signal or sigaction, which
-                //   are unsafe functions, so the caller should&#39;ve somehow
-                //   ensured that it is correctly initialized.
-                </span><span class="kw">unsafe</span>{
-                    <span class="kw-2">*</span>(<span class="kw-2">&amp;</span>p <span class="kw">as </span><span class="kw-2">*const </span>usize
-                         <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">extern fn</span>(libc::c_int))
-                }
-                <span class="kw">as extern fn</span>(libc::c_int)),
-        }
-    }
-
-    <span class="doccomment">/// Returns the action&#39;s handler.
-    </span><span class="attribute">#[cfg(target_os = <span class="string">&quot;redox&quot;</span>)]
-    </span><span class="kw">pub fn </span>handler(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SigHandler {
-        <span class="kw">match </span><span class="self">self</span>.sigaction.sa_handler {
-            libc::SIG_DFL =&gt; SigHandler::SigDfl,
-            libc::SIG_IGN =&gt; SigHandler::SigIgn,
             p =&gt; SigHandler::Handler(
                 <span class="comment">// Safe for one of two reasons:
                 // * The SigHandler was created by SigHandler::new, in which
@@ -2070,7 +2234,7 @@
 
 <span class="doccomment">/// Examine and change blocked signals.
 ///
-/// For more informations see the [`sigprocmask` man
+/// For more information see the [`sigprocmask` man
 /// pages](https://pubs.opengroup.org/onlinepubs/9699919799/functions/sigprocmask.html).
 </span><span class="kw">pub fn </span>sigprocmask(how: SigmaskHow, set: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SigSet&gt;, oldset: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>SigSet&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">if </span>set.is_none() &amp;&amp; oldset.is_none() {
@@ -2146,9 +2310,12 @@
 
     Errno::result(res).map(drop)
 }
+}
 
+<span class="macro">feature! </span>{
+<span class="attribute">#![any(feature = <span class="string">&quot;aio&quot;</span>, feature = <span class="string">&quot;signal&quot;</span>)]
 
-<span class="doccomment">/// Identifies a thread for [`SigevNotify::SigevThreadId`]
+</span><span class="doccomment">/// Identifies a thread for [`SigevNotify::SigevThreadId`]
 </span><span class="attribute">#[cfg(target_os = <span class="string">&quot;freebsd&quot;</span>)]
 </span><span class="kw">pub type </span>type_of_thread_id = libc::lwpid_t;
 <span class="doccomment">/// Identifies a thread for [`SigevNotify::SigevThreadId`]
@@ -2176,6 +2343,7 @@
     // expose a way to set the union members needed by SIGEV_THREAD.
     </span><span class="doccomment">/// Notify by delivering an event to a kqueue.
     </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;dragonfly&quot;</span>, target_os = <span class="string">&quot;freebsd&quot;</span>))]
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     </span>SigevKevent {
         <span class="doccomment">/// File descriptor of the kqueue to notify.
         </span>kq: RawFd,
@@ -2184,6 +2352,7 @@
     },
     <span class="doccomment">/// Notify by delivering a signal to a thread.
     </span><span class="attribute">#[cfg(any(target_os = <span class="string">&quot;freebsd&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     </span>SigevThreadId {
         <span class="doccomment">/// Signal to send
         </span>signal: Signal,
@@ -2194,10 +2363,15 @@
         </span>si_value: libc::intptr_t
     },
 }
+}
 
 <span class="attribute">#[cfg(not(any(target_os = <span class="string">&quot;openbsd&quot;</span>, target_os = <span class="string">&quot;redox&quot;</span>)))]
+#[cfg_attr(docsrs, doc(cfg(all())))]
 </span><span class="kw">mod </span>sigevent {
-    <span class="kw">use </span>std::mem;
+    <span class="macro">feature! </span>{
+    <span class="attribute">#![any(feature = <span class="string">&quot;aio&quot;</span>, feature = <span class="string">&quot;signal&quot;</span>)]
+
+    </span><span class="kw">use </span>std::mem;
     <span class="kw">use </span>std::ptr;
     <span class="kw">use </span><span class="kw">super</span>::SigevNotify;
     <span class="attribute">#[cfg(any(target_os = <span class="string">&quot;freebsd&quot;</span>, target_os = <span class="string">&quot;linux&quot;</span>))]
@@ -2239,6 +2413,8 @@
                 </span>SigevNotify::SigevThreadId{..} =&gt; libc::SIGEV_THREAD_ID,
                 <span class="attribute">#[cfg(all(target_os = <span class="string">&quot;linux&quot;</span>, target_env = <span class="string">&quot;gnu&quot;</span>, not(target_arch = <span class="string">&quot;mips&quot;</span>)))]
                 </span>SigevNotify::SigevThreadId{..} =&gt; libc::SIGEV_THREAD_ID,
+                <span class="attribute">#[cfg(all(target_os = <span class="string">&quot;linux&quot;</span>, target_env = <span class="string">&quot;uclibc&quot;</span>))]
+                </span>SigevNotify::SigevThreadId{..} =&gt; libc::SIGEV_THREAD_ID,
                 <span class="attribute">#[cfg(any(all(target_os = <span class="string">&quot;linux&quot;</span>, target_env = <span class="string">&quot;musl&quot;</span>), target_arch = <span class="string">&quot;mips&quot;</span>))]
                 </span>SigevNotify::SigevThreadId{..} =&gt; <span class="number">4  </span><span class="comment">// No SIGEV_THREAD_ID defined
             </span>};
@@ -2278,6 +2454,11 @@
         </span><span class="kw">pub fn </span>sigevent(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; libc::sigevent {
             <span class="self">self</span>.sigevent
         }
+
+        <span class="doccomment">/// Returns a mutable pointer to the `sigevent` wrapped by `self`
+        </span><span class="kw">pub fn </span>as_mut_ptr(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">*mut </span>libc::sigevent {
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>.sigevent
+        }
     }
 
     <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>libc::sigevent&gt; <span class="kw">for </span>SigEvent {
@@ -2285,13 +2466,14 @@
             SigEvent{ sigevent: <span class="kw-2">*</span>sigevent }
         }
     }
+    }
 }
 
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="attribute">#[cfg(not(target_os = <span class="string">&quot;redox&quot;</span>))]
     </span><span class="kw">use </span>std::thread;
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_contains() {
@@ -2354,15 +2536,19 @@
             <span class="kw">let </span><span class="kw-2">mut </span>test_mask = prev_mask;
             test_mask.add(SIGUSR1);
 
-            <span class="macro">assert!</span>(test_mask.thread_set_mask().is_ok());
-            <span class="kw">let </span>new_mask = SigSet::thread_get_mask()
-                .expect(<span class="string">&quot;Failed to get new mask!&quot;</span>);
+            test_mask.thread_set_mask().expect(<span class="string">&quot;assertion failed&quot;</span>);
+            <span class="kw">let </span>new_mask =
+                SigSet::thread_get_mask().expect(<span class="string">&quot;Failed to get new mask!&quot;</span>);
 
             <span class="macro">assert!</span>(new_mask.contains(SIGUSR1));
             <span class="macro">assert!</span>(!new_mask.contains(SIGUSR2));
 
-            prev_mask.thread_set_mask().expect(<span class="string">&quot;Failed to revert signal mask!&quot;</span>);
-        }).join().unwrap();
+            prev_mask
+                .thread_set_mask()
+                .expect(<span class="string">&quot;Failed to revert signal mask!&quot;</span>);
+        })
+        .join()
+        .unwrap();
     }
 
     <span class="attribute">#[test]
@@ -2372,10 +2558,12 @@
             <span class="kw">let </span><span class="kw-2">mut </span>mask = SigSet::empty();
             mask.add(SIGUSR1);
 
-            <span class="macro">assert!</span>(mask.thread_block().is_ok());
+            mask.thread_block().expect(<span class="string">&quot;assertion failed&quot;</span>);
 
             <span class="macro">assert!</span>(SigSet::thread_get_mask().unwrap().contains(SIGUSR1));
-        }).join().unwrap();
+        })
+        .join()
+        .unwrap();
     }
 
     <span class="attribute">#[test]
@@ -2385,10 +2573,12 @@
             <span class="kw">let </span><span class="kw-2">mut </span>mask = SigSet::empty();
             mask.add(SIGUSR1);
 
-            <span class="macro">assert!</span>(mask.thread_unblock().is_ok());
+            mask.thread_unblock().expect(<span class="string">&quot;assertion failed&quot;</span>);
 
             <span class="macro">assert!</span>(!SigSet::thread_get_mask().unwrap().contains(SIGUSR1));
-        }).join().unwrap();
+        })
+        .join()
+        .unwrap();
     }
 
     <span class="attribute">#[test]
@@ -2404,36 +2594,51 @@
             <span class="kw">let </span><span class="kw-2">mut </span>mask2 = SigSet::empty();
             mask2.add(SIGUSR2);
 
-            <span class="kw">let </span>oldmask = mask2.thread_swap_mask(SigmaskHow::SIG_SETMASK)
-                .unwrap();
+            <span class="kw">let </span>oldmask =
+                mask2.thread_swap_mask(SigmaskHow::SIG_SETMASK).unwrap();
 
             <span class="macro">assert!</span>(oldmask.contains(SIGUSR1));
             <span class="macro">assert!</span>(!oldmask.contains(SIGUSR2));
 
             <span class="macro">assert!</span>(SigSet::thread_get_mask().unwrap().contains(SIGUSR2));
-        }).join().unwrap();
+        })
+        .join()
+        .unwrap();
+    }
+
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_from_and_into_iterator() {
+        <span class="kw">let </span>sigset = SigSet::from_iter(<span class="macro">vec!</span>[Signal::SIGUSR1, Signal::SIGUSR2]);
+        <span class="kw">let </span>signals = sigset.into_iter().collect::&lt;Vec&lt;Signal&gt;&gt;();
+        <span class="macro">assert_eq!</span>(signals, [Signal::SIGUSR1, Signal::SIGUSR2]);
     }
 
     <span class="attribute">#[test]
     #[cfg(not(target_os = <span class="string">&quot;redox&quot;</span>))]
     </span><span class="kw">fn </span>test_sigaction() {
         thread::spawn(|| {
-            <span class="kw">extern fn </span>test_sigaction_handler(<span class="kw">_</span>: libc::c_int) {}
-            <span class="kw">extern fn </span>test_sigaction_action(<span class="kw">_</span>: libc::c_int,
-                <span class="kw">_</span>: <span class="kw-2">*mut </span>libc::siginfo_t, <span class="kw">_</span>: <span class="kw-2">*mut </span>libc::c_void) {}
+            <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>test_sigaction_handler(<span class="kw">_</span>: libc::c_int) {}
+            <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>test_sigaction_action(
+                <span class="kw">_</span>: libc::c_int,
+                <span class="kw">_</span>: <span class="kw-2">*mut </span>libc::siginfo_t,
+                <span class="kw">_</span>: <span class="kw-2">*mut </span>libc::c_void,
+            ) {
+            }
 
             <span class="kw">let </span>handler_sig = SigHandler::Handler(test_sigaction_handler);
 
-            <span class="kw">let </span>flags = SaFlags::SA_ONSTACK | SaFlags::SA_RESTART |
-                        SaFlags::SA_SIGINFO;
+            <span class="kw">let </span>flags =
+                SaFlags::SA_ONSTACK | SaFlags::SA_RESTART | SaFlags::SA_SIGINFO;
 
             <span class="kw">let </span><span class="kw-2">mut </span>mask = SigSet::empty();
             mask.add(SIGUSR1);
 
             <span class="kw">let </span>action_sig = SigAction::new(handler_sig, flags, mask);
 
-            <span class="macro">assert_eq!</span>(action_sig.flags(),
-                       SaFlags::SA_ONSTACK | SaFlags::SA_RESTART);
+            <span class="macro">assert_eq!</span>(
+                action_sig.flags(),
+                SaFlags::SA_ONSTACK | SaFlags::SA_RESTART
+            );
             <span class="macro">assert_eq!</span>(action_sig.handler(), handler_sig);
 
             mask = action_sig.mask();
@@ -2449,7 +2654,9 @@
 
             <span class="kw">let </span>action_ign = SigAction::new(SigHandler::SigIgn, flags, mask);
             <span class="macro">assert_eq!</span>(action_ign.handler(), SigHandler::SigIgn);
-        }).join().unwrap();
+        })
+        .join()
+        .unwrap();
     }
 
     <span class="attribute">#[test]
@@ -2463,7 +2670,26 @@
 
             raise(SIGUSR1).unwrap();
             <span class="macro">assert_eq!</span>(mask.wait().unwrap(), SIGUSR1);
-        }).join().unwrap();
+        })
+        .join()
+        .unwrap();
+    }
+
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_from_sigset_t_unchecked() {
+        <span class="kw">let </span>src_set = SigSet::empty();
+        <span class="kw">let </span>set = <span class="kw">unsafe </span>{ SigSet::from_sigset_t_unchecked(src_set.sigset) };
+
+        <span class="kw">for </span>signal <span class="kw">in </span>Signal::iterator() {
+            <span class="macro">assert!</span>(!set.contains(signal));
+        }
+
+        <span class="kw">let </span>src_set = SigSet::all();
+        <span class="kw">let </span>set = <span class="kw">unsafe </span>{ SigSet::from_sigset_t_unchecked(src_set.sigset) };
+
+        <span class="kw">for </span>signal <span class="kw">in </span>Signal::iterator() {
+            <span class="macro">assert!</span>(set.contains(signal));
+        }
     }
 }
 </code></pre></div>

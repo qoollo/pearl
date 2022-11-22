@@ -52,6 +52,13 @@
 <span id="52">52</span>
 <span id="53">53</span>
 <span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>thiserror::Error;
 
@@ -79,6 +86,9 @@
     <span class="doccomment">/// Can&#39;t migrate blob
     </span><span class="attribute">#[error(<span class="string">&quot;unsupported migration from {0} to {1}&quot;</span>)]
     </span>UnsupportedMigration(u32, u32),
+    <span class="doccomment">/// Key size is not supported
+    </span><span class="attribute">#[error(<span class="string">&quot;key size is not supported by this build&quot;</span>)]
+    </span>UnsupportedKeySize(u16),
 }
 
 <span class="kw">impl </span>Error {
@@ -104,6 +114,10 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>unsupported_migration(from: u32, to: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::UnsupportedMigration(from, to)
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>unsupported_key_size(size: u16) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::UnsupportedKeySize(size)
     }
 }
 </code></pre></div>

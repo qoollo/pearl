@@ -401,7 +401,7 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>Index&lt;K&gt; = IndexStruct&lt;BPTreeFileIndex&lt;K&gt;, K&gt;;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HEADER_VERSION: u8 = <span class="number">5</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HEADER_VERSION: u8 = <span class="number">6</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>INDEX_HEADER_MAGIC_BYTE: u64 = <span class="number">0xacdc_bcde</span>;
 
 <span class="attribute">#[derive(Debug)]
@@ -662,14 +662,13 @@
         <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.inner {
             State::InMemory(headers) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;blob index simple push bloom filter add&quot;</span>);
-                <span class="kw">let </span>key = h.key().to_vec().into();
+                <span class="kw">let </span>key = h.key().into();
                 <span class="self">self</span>.filter.add(<span class="kw-2">&amp;</span>key);
                 <span class="macro">debug!</span>(<span class="string">&quot;blob index simple push key: {:?}&quot;</span>, h.key());
                 <span class="kw">let </span>mem = <span class="self">self
                     </span>.mem
                     .as_mut()
                     .expect(<span class="string">&quot;No memory info in `InMemory` State&quot;</span>);
-                <span class="kw">let </span>key = h.key().to_vec().into();
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = headers.get_mut(<span class="kw-2">&amp;</span>key) {
                     <span class="kw">let </span>old_capacity = v.capacity();
                     v.push(h);
@@ -767,6 +766,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt;;
     <span class="kw">fn </span>file_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64;
     <span class="kw">fn </span>records_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
+    <span class="kw">fn </span>blob_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64;
     <span class="kw">async fn </span>read_meta(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt;;
     <span class="kw">async fn </span>read_meta_at(<span class="kw-2">&amp;</span><span class="self">self</span>, i: u64) -&gt; <span class="prelude-ty">Result</span>&lt;u8&gt;;
     <span class="kw">async fn </span>find_by_key(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;RecordHeader&gt;&gt;&gt;;

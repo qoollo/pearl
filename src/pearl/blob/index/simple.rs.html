@@ -362,6 +362,19 @@
 <span id="362">362</span>
 <span id="363">363</span>
 <span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ValidationErrorKind;
 
 <span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
@@ -393,6 +406,10 @@
 
     <span class="kw">fn </span>records_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.header.records_count
+    }
+
+    <span class="kw">fn </span>blob_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.header.blob_size()
     }
 
     <span class="kw">async fn </span>read_meta(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
@@ -486,6 +503,14 @@
         <span class="kw">if </span><span class="self">self</span>.header.version() != HEADER_VERSION {
             <span class="kw">let </span>param = ValidationErrorKind::IndexVersion;
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::validation(param, <span class="string">&quot;Index Header version is not valid&quot;</span>).into());
+        }
+        <span class="kw">if </span><span class="self">self</span>.header.key_size() != K::LEN {
+            <span class="kw">let </span>param = ValidationErrorKind::IndexKeySize;
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::validation(
+                param,
+                <span class="string">&quot;Index header key_size is not equal to pearl compile-time key size&quot;</span>,
+            )
+            .into());
         }
         <span class="kw">if </span><span class="self">self</span>.header.blob_size() != blob_size {
             <span class="kw">let </span>param = ValidationErrorKind::IndexBlobSize;
@@ -669,7 +694,7 @@
             <span class="kw">let </span>record_header_size = record_header.serialized_size().try_into()<span class="question-mark">?</span>;
             <span class="macro">trace!</span>(<span class="string">&quot;record header serialized size: {}&quot;</span>, record_header_size);
             <span class="kw">let </span>headers = headers.iter().flat_map(|r| r.<span class="number">1</span>).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(); <span class="comment">// produce sorted
-            </span><span class="kw">let </span>header = IndexHeader::new(record_header_size, headers.len(), meta.len(), blob_size);
+            </span><span class="kw">let </span>header = IndexHeader::new(record_header_size, headers.len(), meta.len(), K::LEN, blob_size);
             <span class="kw">let </span>hs: usize = header.serialized_size()<span class="question-mark">?</span>.try_into().expect(<span class="string">&quot;u64 to usize&quot;</span>);
             <span class="macro">trace!</span>(<span class="string">&quot;index header size: {}b&quot;</span>, hs);
             <span class="kw">let </span>fsize = header.meta_size;
@@ -698,8 +723,9 @@
                 record_header_size,
                 headers.len(),
                 meta.len(),
-                hash,
+                header.key_size(),
                 blob_size,
+                hash,
             );
             serialize_into(buf.as_mut_slice(), <span class="kw-2">&amp;</span>header)<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((header, buf)))

@@ -115,7 +115,76 @@
 <span id="115">115</span>
 <span id="116">116</span>
 <span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::blob::index::FileIndexTrait;
+<span class="kw">use </span><span class="kw">crate</span>::blob::FileName;
+<span class="kw">use </span><span class="kw">crate</span>::ArrayKey;
+<span class="kw">use </span><span class="kw">crate</span>::blob::index::HEADER_VERSION;
+<span class="kw">use </span>futures::Future;
 
 <span class="doccomment">/// Read index header from file
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>read_index_header(path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;IndexHeader&gt; {
@@ -232,5 +301,63 @@
     );
     <span class="prelude-val">Ok</span>(())
 }
-</code></pre></div>
+
+<span class="doccomment">/// block on function
+</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>block_on&lt;T, F: Future&lt;Output = T&gt;&gt;(f: F) -&gt; <span class="prelude-ty">Result</span>&lt;T&gt; {
+    <span class="kw">match </span>tokio::runtime::Handle::try_current() {
+        <span class="prelude-val">Ok</span>(runtime) =&gt; <span class="prelude-val">Ok</span>(runtime.block_on(f)),
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(tokio::runtime::Runtime::new()<span class="question-mark">?</span>.block_on(f)),
+    }
+    
+}
+
+<span class="kw">async fn </span>index_from_file&lt;K&gt;(
+    header: <span class="kw-2">&amp;</span>IndexHeader,
+    path: <span class="kw-2">&amp;</span>Path,
+) -&gt; AnyResult&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;record::Header&gt;&gt;&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static
+</span>{
+    <span class="kw">let </span>headers = <span class="kw">match </span>header.version() {
+        HEADER_VERSION =&gt; {
+            <span class="kw">let </span>index = BPTreeFileIndex::&lt;K&gt;::from_file(
+                FileName::from_path(path)<span class="question-mark">?</span>,
+                <span class="prelude-val">None</span>,
+            ).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>res = index.get_records_headers(index.blob_size()).<span class="kw">await</span><span class="question-mark">?</span>;
+            AnyResult::&lt;<span class="kw">_</span>&gt;::Ok(res.<span class="number">0</span>)
+        },
+        <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::index_header_validation_error(<span class="string">&quot;unsupported header version&quot;</span>).into()),
+    }<span class="question-mark">?</span>;
+    <span class="kw">let </span>headers = headers
+        .into_iter()
+        .map(|(key, value)| (key.to_vec(), value))
+        .collect();
+    <span class="prelude-val">Ok</span>(headers)
+}
+
+<span class="doccomment">/// Read index file, async
+</span><span class="kw">pub async fn </span>read_index(path: <span class="kw-2">&amp;</span>Path) -&gt; AnyResult&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;record::Header&gt;&gt;&gt; {
+    <span class="kw">let </span>header = read_index_header(path)<span class="question-mark">?</span>;
+    <span class="kw">let </span>headers = <span class="kw">match </span>header.key_size() {
+        <span class="number">4 </span>=&gt; index_from_file::&lt;ArrayKey&lt;<span class="number">4</span>&gt;&gt;(<span class="kw-2">&amp;</span>header, path).<span class="kw">await</span>,
+        <span class="number">8 </span>=&gt; index_from_file::&lt;ArrayKey&lt;<span class="number">8</span>&gt;&gt;(<span class="kw-2">&amp;</span>header, path).<span class="kw">await</span>,
+        <span class="number">16 </span>=&gt; index_from_file::&lt;ArrayKey&lt;<span class="number">16</span>&gt;&gt;(<span class="kw-2">&amp;</span>header, path).<span class="kw">await</span>,
+        <span class="number">32 </span>=&gt; index_from_file::&lt;ArrayKey&lt;<span class="number">32</span>&gt;&gt;(<span class="kw-2">&amp;</span>header, path).<span class="kw">await</span>,
+        <span class="number">64 </span>=&gt; index_from_file::&lt;ArrayKey&lt;<span class="number">64</span>&gt;&gt;(<span class="kw-2">&amp;</span>header, path).<span class="kw">await</span>,
+        <span class="number">128 </span>=&gt; index_from_file::&lt;ArrayKey&lt;<span class="number">128</span>&gt;&gt;(<span class="kw-2">&amp;</span>header, path).<span class="kw">await</span>,
+        size =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::unsupported_key_size(size).into()),
+    }<span class="question-mark">?</span>;
+    <span class="kw">for </span>(<span class="kw">_</span>, headers) <span class="kw">in </span>headers.iter() {
+        <span class="kw">for </span>header <span class="kw">in </span>headers {
+            header.validate()<span class="question-mark">?</span>;
+        }
+    }
+    <span class="prelude-val">Ok</span>(headers)
+}
+
+<span class="doccomment">/// Read index file, sync
+</span><span class="kw">pub fn </span>read_index_sync(path: <span class="kw-2">&amp;</span>Path) -&gt; AnyResult&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;record::Header&gt;&gt;&gt; {
+    block_on(read_index(path))<span class="question-mark">?
+</span>}</code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

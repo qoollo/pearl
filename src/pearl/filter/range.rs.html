@@ -245,6 +245,20 @@
 <span id="245">245</span>
 <span id="246">246</span>
 <span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
 </pre><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="attribute">#[derive(Debug, Default, Serialize, Deserialize, Clone)]
@@ -402,6 +416,13 @@
         }
     }
 
+    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; <span class="kw">for </span>ProperKey {
+        <span class="kw">fn </span>from(a: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="self">Self </span>{
+            <span class="kw">let </span>data = a.try_into().expect(<span class="string">&quot;key size mismatch&quot;</span>);
+            <span class="self">Self</span>(data)
+        }
+    }
+
     <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; RefKey&lt;<span class="lifetime">&#39;a</span>&gt; <span class="kw">for </span>RefProperKey&lt;<span class="lifetime">&#39;a</span>&gt; {}
 
     <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Key&lt;<span class="lifetime">&#39;a</span>&gt; <span class="kw">for </span>ProperKey {
@@ -419,6 +440,13 @@
     <span class="kw">impl </span>AsRef&lt;[u8]&gt; <span class="kw">for </span>WrongKey {
         <span class="kw">fn </span>as_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
             <span class="self">self</span>.<span class="number">0</span>.as_ref()
+        }
+    }
+
+    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; <span class="kw">for </span>WrongKey {
+        <span class="kw">fn </span>from(a: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="self">Self </span>{
+            <span class="kw">let </span>data = a.try_into().expect(<span class="string">&quot;key size mismatch&quot;</span>);
+            <span class="self">Self</span>(data)
         }
     }
 

@@ -421,7 +421,12 @@
 <span id="421">421</span>
 <span id="422">422</span>
 <span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ValidationErrorKind;
+<span class="kw">use </span><span class="kw">super</span>::storage::Key;
 
 <span class="doccomment">/// structure of b+-tree index file from the beginning:
 /// 1. Header
@@ -437,7 +442,8 @@
 <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">const </span>BLOCK_SIZE: usize = <span class="number">4096</span>;
 
 <span class="attribute">#[derive(Debug, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>BPTreeFileIndex&lt;K&gt; {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>BPTreeFileIndex&lt;K&gt;
+{
     file: File,
     header: IndexHeader,
     metadata: TreeMeta,
@@ -503,6 +509,10 @@
 
     <span class="kw">fn </span>records_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.header.records_count
+    }
+
+    <span class="kw">fn </span>blob_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.header.blob_size()
     }
 
     <span class="kw">async fn </span>read_meta(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
@@ -584,6 +594,14 @@
             <span class="kw">let </span>param = ValidationErrorKind::IndexVersion;
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::validation(param, <span class="string">&quot;Index Header version is not valid&quot;</span>).into());
         }
+        <span class="kw">if </span><span class="self">self</span>.header.key_size() != K::LEN {
+            <span class="kw">let </span>param = ValidationErrorKind::IndexKeySize;
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::validation(
+                param,
+                <span class="string">&quot;Index header key_size is not equal to pearl compile-time key size&quot;</span>,
+            )
+            .into());
+        }
         <span class="kw">if </span><span class="self">self</span>.header.blob_size() != blob_size {
             <span class="kw">let </span>param = ValidationErrorKind::IndexBlobSize;
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::validation(
@@ -627,24 +645,20 @@
         buf: <span class="kw-2">&amp;mut </span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;RecordHeader&gt;&gt; {
         <span class="kw">let </span>buf_size = <span class="self">self</span>.leaf_node_buf_size(leaf_offset);
-        <span class="kw">let </span>read_buf_size = <span class="self">self</span>.file.read_at(<span class="kw-2">&amp;mut </span>buf[..buf_size], leaf_offset).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">if </span>read_buf_size != buf_size {
-            <span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;Can&#39;t read entire leaf node&quot;</span>))
+        <span class="self">self</span>.file.read_at(<span class="kw-2">&amp;mut </span>buf[..buf_size], leaf_offset).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((record_header, offset)) =
+            <span class="self">self</span>.read_header_buf(<span class="kw-2">&amp;</span>buf[..buf_size], key, <span class="self">self</span>.header.record_header_size)<span class="question-mark">?
+        </span>{
+            <span class="kw">let </span>leftmost_header = <span class="self">self</span>.get_leftmost(
+                <span class="kw-2">&amp;</span>buf[..buf_size],
+                key,
+                offset <span class="kw">as </span>usize,
+                record_header,
+                <span class="self">self</span>.header.record_header_size,
+            )<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(leftmost_header))
         } <span class="kw">else </span>{
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((record_header, offset)) =
-                <span class="self">self</span>.read_header_buf(<span class="kw-2">&amp;</span>buf[..buf_size], key, <span class="self">self</span>.header.record_header_size)<span class="question-mark">?
-            </span>{
-                <span class="kw">let </span>leftmost_header = <span class="self">self</span>.get_leftmost(
-                    <span class="kw-2">&amp;</span>buf[..buf_size],
-                    key,
-                    offset <span class="kw">as </span>usize,
-                    record_header,
-                    <span class="self">self</span>.header.record_header_size,
-                )<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(leftmost_header))
-            } <span class="kw">else </span>{
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
-            }
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
         }
     }
 
@@ -703,11 +717,8 @@
         buf: <span class="kw-2">&amp;mut </span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;RecordHeader&gt;&gt;&gt; {
         <span class="kw">let </span>buf_size = <span class="self">self</span>.leaf_node_buf_size(leaf_offset);
-        <span class="kw">let </span>read_buf_size = <span class="self">self</span>.file.read_at(<span class="kw-2">&amp;mut </span>buf[..buf_size], leaf_offset).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="self">self</span>.file.read_at(<span class="kw-2">&amp;mut </span>buf[..buf_size], leaf_offset).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>rh_size = <span class="self">self</span>.header.record_header_size;
-        <span class="kw">if </span>read_buf_size != buf_size {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;Can&#39;t read entire leaf node&quot;</span>));
-        }
         <span class="kw">if let </span><span class="prelude-val">Some</span>((header, offset)) = <span class="self">self</span>.read_header_buf(<span class="kw-2">&amp;</span>buf[..buf_size], key, rh_size)<span class="question-mark">? </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>headers = <span class="macro">vec!</span>[header];
             <span class="self">self</span>.go_left(<span class="kw-2">&amp;mut </span>headers, <span class="kw-2">&amp;</span>buf[..buf_size], offset).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -753,10 +764,7 @@
         <span class="kw">let </span>leaves_end = <span class="self">self</span>.metadata.leaves_offset + records_size <span class="kw">as </span>u64;
         <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; record_header_size <span class="kw">as </span>usize];
         <span class="kw">while </span>offset + record_header_size &lt;= leaves_end {
-            <span class="kw">let </span>read_buf_size = <span class="self">self</span>.file.read_at(<span class="kw-2">&amp;mut </span>buf, offset).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">if </span>read_buf_size != buf.len() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;Can&#39;t read header from file&quot;</span>));
-            }
+            <span class="self">self</span>.file.read_at(<span class="kw-2">&amp;mut </span>buf, offset).<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="kw">let </span>header: RecordHeader = deserialize(<span class="kw-2">&amp;</span>buf)<span class="question-mark">?</span>;
             <span class="kw">if </span>header.key() == headers[<span class="number">0</span>].key() {
                 headers.push(header);

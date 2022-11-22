@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-0.22.3/src/boxed/traits.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>traits.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/bitvec-1.0.1/src/boxed/traits.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>traits.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../bitvec/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../bitvec/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -389,30 +389,12 @@
 <span id="389">389</span>
 <span id="390">390</span>
 <span id="391">391</span>
-<span id="392">392</span>
-<span id="393">393</span>
-<span id="394">394</span>
-<span id="395">395</span>
-<span id="396">396</span>
-<span id="397">397</span>
-<span id="398">398</span>
-<span id="399">399</span>
-<span id="400">400</span>
-<span id="401">401</span>
-<span id="402">402</span>
-<span id="403">403</span>
-<span id="404">404</span>
-<span id="405">405</span>
-<span id="406">406</span>
-<span id="407">407</span>
-<span id="408">408</span>
-<span id="409">409</span>
-<span id="410">410</span>
-<span id="411">411</span>
-<span id="412">412</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Non-operator trait implementations.
+</pre><pre class="rust"><code><span class="doccomment">//! General trait implementations for boxed bit-slices.
 
-</span><span class="kw">use </span>alloc::boxed::Box;
+</span><span class="kw">use </span>alloc::{
+	borrow::Cow,
+	boxed::Box,
+};
 <span class="kw">use </span>core::{
 	borrow::{
 		Borrow,
@@ -422,64 +404,58 @@
 	convert::TryFrom,
 	fmt::{
 		<span class="self">self</span>,
-		Binary,
 		Debug,
 		Display,
 		Formatter,
-		LowerHex,
-		Octal,
-		Pointer,
-		UpperHex,
 	},
 	hash::{
 		Hash,
 		Hasher,
 	},
+	iter::FromIterator,
 };
 
-<span class="kw">use </span>tap::pipe::Pipe;
+<span class="kw">use </span>tap::Pipe;
 
 <span class="kw">use </span><span class="kw">super</span>::BitBox;
 <span class="kw">use crate</span>::{
+	array::BitArray,
 	order::BitOrder,
-	ptr::{
-		BitSpan,
-		Mut,
-	},
 	slice::BitSlice,
 	store::BitStore,
 	vec::BitVec,
+	view::BitViewSized,
 };
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; Borrow&lt;BitSlice&lt;O, T&gt;&gt; <span class="kw">for </span>BitBox&lt;O, T&gt;
+</span><span class="kw">impl</span>&lt;T, O&gt; Borrow&lt;BitSlice&lt;T, O&gt;&gt; <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>borrow(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BitSlice&lt;O, T&gt; {
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>borrow(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BitSlice&lt;T, O&gt; {
 		<span class="self">self</span>.as_bitslice()
 	}
 }
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; BorrowMut&lt;BitSlice&lt;O, T&gt;&gt; <span class="kw">for </span>BitBox&lt;O, T&gt;
+</span><span class="kw">impl</span>&lt;T, O&gt; BorrowMut&lt;BitSlice&lt;T, O&gt;&gt; <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>borrow_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>BitSlice&lt;O, T&gt; {
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>borrow_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>BitSlice&lt;T, O&gt; {
 		<span class="self">self</span>.as_mut_bitslice()
 	}
 }
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; Clone <span class="kw">for </span>BitBox&lt;O, T&gt;
+</span><span class="kw">impl</span>&lt;T, O&gt; Clone <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
@@ -487,18 +463,19 @@
 	}
 }
 
-<span class="kw">impl</span>&lt;O, T&gt; Eq <span class="kw">for </span>BitBox&lt;O, T&gt;
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;T, O&gt; Eq <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
 }
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; Ord <span class="kw">for </span>BitBox&lt;O, T&gt;
+</span><span class="kw">impl</span>&lt;T, O&gt; Ord <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; cmp::Ordering {
@@ -507,7 +484,7 @@
 }
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O1, O2, T1, T2&gt; PartialEq&lt;BitBox&lt;O2, T2&gt;&gt; <span class="kw">for </span>BitSlice&lt;O1, T1&gt;
+</span><span class="kw">impl</span>&lt;O1, O2, T1, T2&gt; PartialEq&lt;BitBox&lt;T2, O2&gt;&gt; <span class="kw">for </span>BitSlice&lt;T1, O1&gt;
 <span class="kw">where
 	</span>O1: BitOrder,
 	O2: BitOrder,
@@ -515,13 +492,13 @@
 	T2: BitStore,
 {
 	<span class="attribute">#[inline]
-	</span><span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitBox&lt;O2, T2&gt;) -&gt; bool {
+	</span><span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitBox&lt;T2, O2&gt;) -&gt; bool {
 		<span class="self">self </span>== other.as_bitslice()
 	}
 }
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O1, O2, T1, T2&gt; PartialEq&lt;BitBox&lt;O2, T2&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span>BitSlice&lt;O1, T1&gt;
+</span><span class="kw">impl</span>&lt;O1, O2, T1, T2&gt; PartialEq&lt;BitBox&lt;T2, O2&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span>BitSlice&lt;T1, O1&gt;
 <span class="kw">where
 	</span>O1: BitOrder,
 	O2: BitOrder,
@@ -529,13 +506,13 @@
 	T2: BitStore,
 {
 	<span class="attribute">#[inline]
-	</span><span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitBox&lt;O2, T2&gt;) -&gt; bool {
+	</span><span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitBox&lt;T2, O2&gt;) -&gt; bool {
 		<span class="kw-2">*</span><span class="self">self </span>== other.as_bitslice()
 	}
 }
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O1, O2, T1, T2&gt; PartialEq&lt;BitBox&lt;O2, T2&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;mut </span>BitSlice&lt;O1, T1&gt;
+</span><span class="kw">impl</span>&lt;O1, O2, T1, T2&gt; PartialEq&lt;BitBox&lt;T2, O2&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;mut </span>BitSlice&lt;T1, O1&gt;
 <span class="kw">where
 	</span>O1: BitOrder,
 	O2: BitOrder,
@@ -543,17 +520,17 @@
 	T2: BitStore,
 {
 	<span class="attribute">#[inline]
-	</span><span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitBox&lt;O2, T2&gt;) -&gt; bool {
+	</span><span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitBox&lt;T2, O2&gt;) -&gt; bool {
 		<span class="kw-2">**</span><span class="self">self </span>== other.as_bitslice()
 	}
 }
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T, Rhs&gt; PartialEq&lt;Rhs&gt; <span class="kw">for </span>BitBox&lt;O, T&gt;
+</span><span class="kw">impl</span>&lt;T, O, Rhs&gt; PartialEq&lt;Rhs&gt; <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
-	Rhs: <span class="question-mark">?</span>Sized + PartialEq&lt;BitSlice&lt;O, T&gt;&gt;,
+	</span>T: BitStore,
+	O: BitOrder,
+	Rhs: <span class="question-mark">?</span>Sized + PartialEq&lt;BitSlice&lt;T, O&gt;&gt;,
 {
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>Rhs) -&gt; bool {
@@ -562,7 +539,7 @@
 }
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O1, O2, T1, T2&gt; PartialOrd&lt;BitBox&lt;O2, T2&gt;&gt; <span class="kw">for </span>BitSlice&lt;O1, T1&gt;
+</span><span class="kw">impl</span>&lt;O1, O2, T1, T2&gt; PartialOrd&lt;BitBox&lt;T2, O2&gt;&gt; <span class="kw">for </span>BitSlice&lt;T1, O1&gt;
 <span class="kw">where
 	</span>O1: BitOrder,
 	O2: BitOrder,
@@ -570,17 +547,17 @@
 	T2: BitStore,
 {
 	<span class="attribute">#[inline]
-	</span><span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitBox&lt;O2, T2&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;cmp::Ordering&gt; {
+	</span><span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitBox&lt;T2, O2&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;cmp::Ordering&gt; {
 		<span class="self">self</span>.partial_cmp(other.as_bitslice())
 	}
 }
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T, Rhs&gt; PartialOrd&lt;Rhs&gt; <span class="kw">for </span>BitBox&lt;O, T&gt;
+</span><span class="kw">impl</span>&lt;T, O, Rhs&gt; PartialOrd&lt;Rhs&gt; <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
-	Rhs: <span class="question-mark">?</span>Sized + PartialOrd&lt;BitSlice&lt;O, T&gt;&gt;,
+	</span>T: BitStore,
+	O: BitOrder,
+	Rhs: <span class="question-mark">?</span>Sized + PartialOrd&lt;BitSlice&lt;T, O&gt;&gt;,
 {
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>Rhs) -&gt; <span class="prelude-ty">Option</span>&lt;cmp::Ordering&gt; {
@@ -589,7 +566,7 @@
 }
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O1, O2, T1, T2&gt; PartialOrd&lt;BitBox&lt;O2, T2&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BitSlice&lt;O1, T1&gt;
+</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O1, O2, T1, T2&gt; PartialOrd&lt;BitBox&lt;T2, O2&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BitSlice&lt;T1, O1&gt;
 <span class="kw">where
 	</span>O1: BitOrder,
 	O2: BitOrder,
@@ -597,13 +574,13 @@
 	T2: BitStore,
 {
 	<span class="attribute">#[inline]
-	</span><span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitBox&lt;O2, T2&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;cmp::Ordering&gt; {
+	</span><span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitBox&lt;T2, O2&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;cmp::Ordering&gt; {
 		<span class="self">self</span>.partial_cmp(other.as_bitslice())
 	}
 }
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O1, O2, T1, T2&gt; PartialOrd&lt;BitBox&lt;O2, T2&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>BitSlice&lt;O1, T1&gt;
+</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O1, O2, T1, T2&gt; PartialOrd&lt;BitBox&lt;T2, O2&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>BitSlice&lt;T1, O1&gt;
 <span class="kw">where
 	</span>O1: BitOrder,
 	O2: BitOrder,
@@ -611,215 +588,196 @@
 	T2: BitStore,
 {
 	<span class="attribute">#[inline]
-	</span><span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitBox&lt;O2, T2&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;cmp::Ordering&gt; {
+	</span><span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>BitBox&lt;T2, O2&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;cmp::Ordering&gt; {
 		<span class="self">self</span>.partial_cmp(other.as_bitslice())
 	}
 }
 
-<span class="attribute">#[cfg(not(tarpauln_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; AsRef&lt;BitSlice&lt;O, T&gt;&gt; <span class="kw">for </span>BitBox&lt;O, T&gt;
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;T, O&gt; AsRef&lt;BitSlice&lt;T, O&gt;&gt; <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>as_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BitSlice&lt;O, T&gt; {
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>as_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BitSlice&lt;T, O&gt; {
 		<span class="self">self</span>.as_bitslice()
 	}
 }
 
-<span class="attribute">#[cfg(not(tarpauln_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; AsMut&lt;BitSlice&lt;O, T&gt;&gt; <span class="kw">for </span>BitBox&lt;O, T&gt;
+<span class="attribute">#[cfg(not(tarpaulin_include))]
+</span><span class="kw">impl</span>&lt;T, O&gt; AsMut&lt;BitSlice&lt;T, O&gt;&gt; <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>as_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>BitSlice&lt;O, T&gt; {
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>as_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>BitSlice&lt;T, O&gt; {
 		<span class="self">self</span>.as_mut_bitslice()
 	}
 }
 
-<span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, O, T&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BitSlice&lt;O, T&gt;&gt; <span class="kw">for </span>BitBox&lt;O, T&gt;
+<span class="kw">impl</span>&lt;T, O&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;_ </span>BitSlice&lt;T, O&gt;&gt; <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>from(slice: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BitSlice&lt;O, T&gt;) -&gt; <span class="self">Self </span>{
-		<span class="self">Self</span>::from_bitslice(slice)
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from(slice: <span class="kw-2">&amp;</span>BitSlice&lt;T, O&gt;) -&gt; <span class="self">Self </span>{
+		slice.pipe(<span class="self">Self</span>::from_bitslice)
 	}
 }
 
-<span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; From&lt;BitVec&lt;O, T&gt;&gt; <span class="kw">for </span>BitBox&lt;O, T&gt;
+<span class="kw">impl</span>&lt;A, O&gt; From&lt;BitArray&lt;A, O&gt;&gt; <span class="kw">for </span>BitBox&lt;A::Store, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>A: BitViewSized,
+	O: BitOrder,
 {
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>from(bv: BitVec&lt;O, T&gt;) -&gt; <span class="self">Self </span>{
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from(array: BitArray&lt;A, O&gt;) -&gt; <span class="self">Self </span>{
+		array.as_bitslice().pipe(<span class="self">Self</span>::from_bitslice)
+	}
+}
+
+<span class="kw">impl</span>&lt;T, O&gt; From&lt;Box&lt;T&gt;&gt; <span class="kw">for </span>BitBox&lt;T, O&gt;
+<span class="kw">where
+	</span>T: BitStore,
+	O: BitOrder,
+{
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from(elem: Box&lt;T&gt;) -&gt; <span class="self">Self </span>{
+		<span class="kw">unsafe </span>{
+			Box::from_raw(Box::into_raw(elem).cast::&lt;[T; <span class="number">1</span>]&gt;() <span class="kw">as </span><span class="kw-2">*mut </span>[T])
+		}
+		.pipe(<span class="self">Self</span>::from_boxed_slice)
+	}
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, T, O&gt; From&lt;Cow&lt;<span class="lifetime">&#39;a</span>, BitSlice&lt;T, O&gt;&gt;&gt; <span class="kw">for </span>BitBox&lt;T, O&gt;
+<span class="kw">where
+	</span>T: BitStore,
+	O: BitOrder,
+{
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from(cow: Cow&lt;<span class="lifetime">&#39;a</span>, BitSlice&lt;T, O&gt;&gt;) -&gt; <span class="self">Self </span>{
+		cow.into_owned().into_boxed_bitslice()
+	}
+}
+
+<span class="kw">impl</span>&lt;T, O&gt; From&lt;BitVec&lt;T, O&gt;&gt; <span class="kw">for </span>BitBox&lt;T, O&gt;
+<span class="kw">where
+	</span>T: BitStore,
+	O: BitOrder,
+{
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from(bv: BitVec&lt;T, O&gt;) -&gt; <span class="self">Self </span>{
 		bv.into_boxed_bitslice()
 	}
 }
 
-<span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; From&lt;BitBox&lt;O, T&gt;&gt; <span class="kw">for </span>Box&lt;[T]&gt;
+<span class="kw">impl</span>&lt;T, O&gt; From&lt;BitBox&lt;T, O&gt;&gt; <span class="kw">for </span>Box&lt;[T]&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>from(bb: BitBox&lt;O, T&gt;) -&gt; <span class="self">Self </span>{
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from(bb: BitBox&lt;T, O&gt;) -&gt; <span class="self">Self </span>{
 		bb.into_boxed_slice()
 	}
 }
 
-<span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; TryFrom&lt;Box&lt;[T]&gt;&gt; <span class="kw">for </span>BitBox&lt;O, T&gt;
+<span class="kw">impl</span>&lt;T, O&gt; TryFrom&lt;Box&lt;[T]&gt;&gt; <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
 	<span class="kw">type </span>Error = Box&lt;[T]&gt;;
 
-	<span class="attribute">#[inline(always)]
+	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>try_from(boxed: Box&lt;[T]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
 		<span class="self">Self</span>::try_from_boxed_slice(boxed)
 	}
 }
 
-<span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; Default <span class="kw">for </span>BitBox&lt;O, T&gt;
+<span class="kw">impl</span>&lt;T, O&gt; Default <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="attribute">#[inline(always)]
+	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-		<span class="self">Self </span>{
-			bitspan: BitSpan::&lt;Mut, O, T&gt;::EMPTY,
-		}
+		<span class="self">Self</span>::from_bitslice(BitSlice::&lt;T, O&gt;::empty())
 	}
 }
 
-<span class="kw">impl</span>&lt;O, T&gt; Debug <span class="kw">for </span>BitBox&lt;O, T&gt;
+<span class="kw">impl</span>&lt;T, O&gt; Debug <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
 	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>Formatter) -&gt; fmt::Result {
-		Pointer::fmt(<span class="self">self</span>, fmt)<span class="question-mark">?</span>;
+		<span class="self">self</span>.bitspan.render(fmt, <span class="string">&quot;Box&quot;</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 		fmt.write_str(<span class="string">&quot; &quot;</span>)<span class="question-mark">?</span>;
 		Display::fmt(<span class="self">self</span>, fmt)
 	}
 }
 
+<span class="macro">easy_fmt! </span>{
+	<span class="kw">impl </span>Binary
+	<span class="kw">impl </span>Display
+	<span class="kw">impl </span>LowerHex
+	<span class="kw">impl </span>Octal
+	<span class="kw">impl </span>Pointer
+	<span class="kw">impl </span>UpperHex
+	<span class="kw">for </span>BitBox
+}
+
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; Display <span class="kw">for </span>BitBox&lt;O, T&gt;
+</span><span class="kw">impl</span>&lt;T, O, I&gt; FromIterator&lt;I&gt; <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
+	BitVec&lt;T, O&gt;: FromIterator&lt;I&gt;,
 {
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>Formatter) -&gt; fmt::Result {
-		Display::fmt(<span class="self">self</span>.as_bitslice(), fmt)
+	<span class="attribute">#[inline]
+	</span><span class="kw">fn </span>from_iter&lt;II&gt;(iter: II) -&gt; <span class="self">Self
+	</span><span class="kw">where </span>II: IntoIterator&lt;Item = I&gt; {
+		BitVec::from_iter(iter).into_boxed_bitslice()
 	}
 }
 
 <span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; Binary <span class="kw">for </span>BitBox&lt;O, T&gt;
+</span><span class="kw">impl</span>&lt;T, O&gt; Hash <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>Formatter) -&gt; fmt::Result {
-		Binary::fmt(<span class="self">self</span>.as_bitslice(), fmt)
-	}
-}
-
-<span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; LowerHex <span class="kw">for </span>BitBox&lt;O, T&gt;
-<span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
-{
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>Formatter) -&gt; fmt::Result {
-		LowerHex::fmt(<span class="self">self</span>.as_bitslice(), fmt)
-	}
-}
-
-<span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; Octal <span class="kw">for </span>BitBox&lt;O, T&gt;
-<span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
-{
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>Formatter) -&gt; fmt::Result {
-		Octal::fmt(<span class="self">self</span>.as_bitslice(), fmt)
-	}
-}
-
-<span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; Pointer <span class="kw">for </span>BitBox&lt;O, T&gt;
-<span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
-{
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>Formatter) -&gt; fmt::Result {
-		<span class="self">self</span>.as_bitspan().render(fmt, <span class="string">&quot;Box&quot;</span>, <span class="prelude-val">None</span>)
-	}
-}
-
-<span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; UpperHex <span class="kw">for </span>BitBox&lt;O, T&gt;
-<span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
-{
-	<span class="attribute">#[inline(always)]
-	</span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>Formatter) -&gt; fmt::Result {
-		UpperHex::fmt(<span class="self">self</span>.as_bitslice(), fmt)
-	}
-}
-
-<span class="attribute">#[cfg(not(tarpaulin_include))]
-</span><span class="kw">impl</span>&lt;O, T&gt; Hash <span class="kw">for </span>BitBox&lt;O, T&gt;
-<span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
-{
-	<span class="attribute">#[inline(always)]
+	<span class="attribute">#[inline]
 	</span><span class="kw">fn </span>hash&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H)
 	<span class="kw">where </span>H: Hasher {
 		<span class="self">self</span>.as_bitslice().hash(state)
 	}
 }
 
-<span class="kw">unsafe impl</span>&lt;O, T&gt; Send <span class="kw">for </span>BitBox&lt;O, T&gt;
+<span class="kw">unsafe impl</span>&lt;T, O&gt; Send <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
 }
 
-<span class="kw">unsafe impl</span>&lt;O, T&gt; Sync <span class="kw">for </span>BitBox&lt;O, T&gt;
+<span class="kw">unsafe impl</span>&lt;T, O&gt; Sync <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
 }
 
-<span class="kw">impl</span>&lt;O, T&gt; Unpin <span class="kw">for </span>BitBox&lt;O, T&gt;
+<span class="kw">impl</span>&lt;T, O&gt; Unpin <span class="kw">for </span>BitBox&lt;T, O&gt;
 <span class="kw">where
-	</span>O: BitOrder,
-	T: BitStore,
+	</span>T: BitStore,
+	O: BitOrder,
 {
 }
 </code></pre></div>

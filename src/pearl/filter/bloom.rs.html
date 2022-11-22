@@ -388,13 +388,6 @@
 <span id="388">388</span>
 <span id="389">389</span>
 <span id="390">390</span>
-<span id="391">391</span>
-<span id="392">392</span>
-<span id="393">393</span>
-<span id="394">394</span>
-<span id="395">395</span>
-<span id="396">396</span>
-<span id="397">397</span>
 </pre><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span>ahash::AHasher;
 <span class="kw">use </span>bitvec::order::Lsb0;
@@ -405,7 +398,7 @@
 </span><span class="attribute">#[derive(Clone)]
 </span><span class="doccomment">/// Bloom filter
 </span><span class="kw">pub struct </span>Bloom {
-    inner: <span class="prelude-ty">Option</span>&lt;BitVec&lt;Lsb0, u64&gt;&gt;,
+    inner: <span class="prelude-ty">Option</span>&lt;BitVec&lt;u64, Lsb0&gt;&gt;,
     bits_count: usize,
     hashers: Vec&lt;AHasher&gt;,
     config: Config,
@@ -575,7 +568,7 @@
     </span><span class="kw">pub fn </span>new(config: Config) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>bits_count = bits_count_from_formula(<span class="kw-2">&amp;</span>config);
         <span class="self">Self </span>{
-            inner: <span class="prelude-val">Some</span>(<span class="macro">bitvec!</span>[Lsb0, u64; <span class="number">0</span>; bits_count]),
+            inner: <span class="prelude-val">Some</span>(<span class="macro">bitvec!</span>[u64, Lsb0; <span class="number">0</span>; bits_count]),
             hashers: <span class="self">Self</span>::hashers(config.hashers_count),
             config,
             bits_count,
@@ -588,7 +581,7 @@
         <span class="kw">match </span>(<span class="kw-2">&amp;mut </span><span class="self">self</span>.inner, <span class="kw-2">&amp;</span>other.inner) {
             (<span class="prelude-val">Some</span>(inner), <span class="prelude-val">Some</span>(other_inner)) <span class="kw">if </span>inner.len() == other_inner.len() =&gt; {
                 inner
-                    .as_mut_raw_slice()
+                    .as_raw_mut_slice()
                     .iter_mut()
                     .zip(other_inner.as_raw_slice())
                     .for_each(|(a, b)| <span class="kw-2">*</span>a |= <span class="kw-2">*</span>b);
@@ -600,7 +593,7 @@
 
     <span class="doccomment">/// Set in-memory filter buffer to zeroed array
     </span><span class="kw">pub fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.inner = <span class="prelude-val">Some</span>(<span class="macro">bitvec!</span>[Lsb0, u64; <span class="number">0</span>; <span class="self">self</span>.bits_count]);
+        <span class="self">self</span>.inner = <span class="prelude-val">Some</span>(<span class="macro">bitvec!</span>[u64, Lsb0; <span class="number">0</span>; <span class="self">self</span>.bits_count]);
     }
 
     <span class="doccomment">/// Check if filter offloaded
@@ -663,10 +656,13 @@
     </span><span class="kw">pub fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, item: <span class="kw">impl </span>AsRef&lt;[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(inner) = <span class="kw-2">&amp;mut </span><span class="self">self</span>.inner {
             <span class="kw">let </span>len = inner.len() <span class="kw">as </span>u64;
-            <span class="kw">for </span>h <span class="kw">in </span><span class="self">Self</span>::iter_indices_for_key(<span class="kw-2">&amp;</span><span class="self">self</span>.hashers, len, item.as_ref()) {
-                <span class="kw-2">*</span>inner
-                    .get_mut(h <span class="kw">as </span>usize)
-                    .expect(<span class="string">&quot;impossible due to mod by len&quot;</span>) = <span class="bool-val">true</span>;
+            <span class="kw">for </span><span class="kw-2">mut </span>hasher <span class="kw">in </span><span class="self">self</span>.hashers.iter().cloned() {
+                hasher.write(item.as_ref());
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(i) = hasher.finish().checked_rem(len) {
+                    <span class="kw-2">*</span>inner
+                        .get_mut(i <span class="kw">as </span>usize)
+                        .expect(<span class="string">&quot;impossible due to mod by len&quot;</span>) = <span class="bool-val">true</span>;
+                }
             }
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{
@@ -678,32 +674,22 @@
     </span><span class="kw">pub fn </span>contains_in_memory(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw">impl </span>AsRef&lt;[u8]&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;FilterResult&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(inner) = <span class="kw-2">&amp;</span><span class="self">self</span>.inner {
             <span class="kw">let </span>len = inner.len() <span class="kw">as </span>u64;
-            <span class="comment">// Check because .all on empty iterator returns true
+            <span class="comment">// Check because NeedAdditionalCheck will be returned is self.hashers is empty
             </span><span class="kw">if </span>len == <span class="number">0 </span>{
                 <span class="kw">return </span><span class="prelude-val">None</span>;
             }
-            <span class="kw">if </span><span class="self">Self</span>::iter_indices_for_key(<span class="kw-2">&amp;</span><span class="self">self</span>.hashers, len, item.as_ref())
-                .all(|i| <span class="kw-2">*</span>inner.get(i <span class="kw">as </span>usize).expect(<span class="string">&quot;unreachable&quot;</span>))
-            {
-                <span class="prelude-val">Some</span>(FilterResult::NeedAdditionalCheck)
-            } <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>(FilterResult::NotContains)
+            <span class="kw">for </span><span class="kw-2">mut </span>hasher <span class="kw">in </span><span class="self">self</span>.hashers.iter().cloned() {
+                hasher.write(item.as_ref());
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(i) = hasher.finish().checked_rem(len) {
+                    <span class="kw">if </span>!<span class="kw-2">*</span>inner.get(i <span class="kw">as </span>usize).expect(<span class="string">&quot;unreachable&quot;</span>) {
+                        <span class="kw">return </span><span class="prelude-val">Some</span>(FilterResult::NotContains);
+                    }
+                }
             }
+            <span class="prelude-val">Some</span>(FilterResult::NeedAdditionalCheck)
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>}
-    }
-
-    <span class="comment">// Returns empty iterator on len == 0
-    </span><span class="kw">fn </span>iter_indices_for_key&lt;<span class="lifetime">&#39;a</span>&gt;(
-        hashers: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Vec&lt;AHasher&gt;,
-        len: u64,
-        item: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = u64&gt; + <span class="lifetime">&#39;a </span>{
-        hashers.iter().cloned().filter_map(<span class="kw">move </span>|<span class="kw-2">mut </span>hasher| {
-            hasher.write(item.as_ref());
-            hasher.finish().checked_rem(len)
-        })
     }
 
     <span class="doccomment">/// Check filter by reading bits from file

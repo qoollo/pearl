@@ -217,8 +217,6 @@
 <span id="217">217</span>
 <span id="218">218</span>
 <span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     os::unix::prelude::{AsRawFd, FileExt},
     time::SystemTime,
@@ -271,7 +269,7 @@
         <span class="self">self</span>.size.load(ORD)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_append(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;usize&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_append(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;()&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>ioring) = <span class="self">self</span>.ioring {
             <span class="self">self</span>.write_append_aio(buf, ioring).<span class="kw">await
         </span>} <span class="kw">else </span>{
@@ -279,17 +277,17 @@
         </span>}
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_append_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;usize&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_append_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;()&gt; {
         <span class="kw">let </span>offset = <span class="self">self</span>.size.fetch_add(buf.len() <span class="kw">as </span>u64, Ordering::SeqCst);
         <span class="self">self</span>.write_at_sync(offset, buf).<span class="kw">await
     </span>}
 
-    <span class="kw">async fn </span>write_append_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8], ioring: <span class="kw-2">&amp;</span>Rio) -&gt; IOResult&lt;usize&gt; {
+    <span class="kw">async fn </span>write_append_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8], ioring: <span class="kw-2">&amp;</span>Rio) -&gt; IOResult&lt;()&gt; {
         <span class="kw">let </span>offset = <span class="self">self</span>.size.fetch_add(buf.len() <span class="kw">as </span>u64, Ordering::SeqCst);
         <span class="self">self</span>.write_at_aio(offset, buf, ioring).<span class="kw">await
     </span>}
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_at(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;usize&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_at(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;()&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>ioring) = <span class="self">self</span>.ioring {
             <span class="self">self</span>.write_at_aio(offset, buf, ioring).<span class="kw">await
         </span>} <span class="kw">else </span>{
@@ -297,7 +295,7 @@
         </span>}
     }
 
-    <span class="kw">async fn </span>write_at_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: <span class="kw-2">&amp;</span>[u8], ioring: <span class="kw-2">&amp;</span>Rio) -&gt; IOResult&lt;usize&gt; {
+    <span class="kw">async fn </span>write_at_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: <span class="kw-2">&amp;</span>[u8], ioring: <span class="kw-2">&amp;</span>Rio) -&gt; IOResult&lt;()&gt; {
         <span class="kw">let </span>compl = ioring.write_at(<span class="kw-2">&amp;*</span><span class="self">self</span>.no_lock_fd, <span class="kw-2">&amp;</span>buf, offset);
         <span class="kw">let </span>count = compl.<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="comment">// on blob level this error will be treated as unavailable file (rio doesn&#39;t return error
@@ -308,13 +306,13 @@
         </span><span class="kw">if </span>count &lt; buf.len() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(IOError::from_raw_os_error(<span class="number">5</span>));
         }
-        <span class="prelude-val">Ok</span>(count)
+        <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async fn </span>write_at_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;usize&gt; {
+    <span class="kw">async fn </span>write_at_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;()&gt; {
         <span class="kw">let </span>buf = buf.to_vec();
         <span class="kw">let </span>file = <span class="self">self</span>.no_lock_fd.clone();
-        <span class="self">Self</span>::blocking_call(<span class="kw">move </span>|| file.write_at(<span class="kw-2">&amp;</span>buf, offset)).<span class="kw">await
+        <span class="self">Self</span>::blocking_call(<span class="kw">move </span>|| file.write_all_at(<span class="kw-2">&amp;</span>buf, offset)).<span class="kw">await
     </span>}
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
@@ -323,7 +321,7 @@
         </span><span class="prelude-val">Ok</span>(buf)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_at(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8], offset: u64) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_at(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8], offset: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>ioring) = <span class="self">self</span>.ioring {
             <span class="self">self</span>.read_at_aio(buf, offset, ioring).<span class="kw">await
         </span>} <span class="kw">else </span>{
@@ -331,20 +329,18 @@
         </span>}
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_at_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8], offset: u64) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_at_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8], offset: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>file = <span class="self">self</span>.no_lock_fd.clone();
         <span class="kw">let </span><span class="kw-2">mut </span>new_buf = buf.to_vec();
 
-        <span class="kw">let </span>(count, new_buf) = <span class="self">Self</span>::blocking_call(<span class="kw">move </span>|| {
-            file.read_at(<span class="kw-2">&amp;mut </span>new_buf, offset)
-                .map(|count| (count, new_buf))
-        })
-        .<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>new_buf =
+            <span class="self">Self</span>::blocking_call(<span class="kw">move </span>|| file.read_exact_at(<span class="kw-2">&amp;mut </span>new_buf, offset).map(|<span class="kw">_</span>| new_buf))
+                .<span class="kw">await</span><span class="question-mark">?</span>;
         buf.clone_from_slice(new_buf.as_slice());
-        <span class="prelude-val">Ok</span>(count)
+        <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async fn </span>read_at_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8], offset: u64, ioring: <span class="kw-2">&amp;</span>Rio) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
+    <span class="kw">async fn </span>read_at_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8], offset: u64, ioring: <span class="kw-2">&amp;</span>Rio) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob file read at&quot;</span>);
         <span class="kw">if </span>buf.is_empty() {
             <span class="macro">warn!</span>(<span class="string">&quot;file read_at empty buf&quot;</span>);
@@ -379,7 +375,7 @@
             <span class="macro">debug!</span>(<span class="string">&quot;blob file read at proggress {}/{}&quot;</span>, size, buf.len());
         }
         <span class="macro">debug!</span>(<span class="string">&quot;blob file read at complited: {}&quot;</span>, size);
-        <span class="prelude-val">Ok</span>(size)
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">async fn </span>from_tokio_file(file: TokioFile, ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;) -&gt; IOResult&lt;<span class="self">Self</span>&gt; {

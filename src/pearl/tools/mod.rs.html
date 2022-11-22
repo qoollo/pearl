@@ -25,14 +25,18 @@
 <span id="25">25</span>
 <span id="26">26</span>
 <span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
 </pre><pre class="rust"><code><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>blob_reader;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>blob_writer;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>collectors;
 <span class="doccomment">/// Error type defenition
 </span><span class="kw">pub mod </span>error;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>migration;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>utils;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>validation;
 
+<span class="kw">pub use </span>collectors::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>migration::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>utils::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>validation::<span class="kw-2">*</span>;
