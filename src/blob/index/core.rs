@@ -257,7 +257,7 @@ where
     for<'a> K: Key<'a>,
 {
     async fn contains_key(&self, key: &K) -> Result<bool> {
-        self.get_any(key).await.map(|h| h.is_some())
+        self.get_last(key).await.map(|h| h.is_some())
     }
 
     fn push(&mut self, h: RecordHeader) -> Result<()> {
@@ -302,7 +302,7 @@ where
         }
     }
 
-    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
+    async fn get_last(&self, key: &K) -> Result<Option<RecordHeader>> {
         debug!("index get any");
         match &self.inner {
             State::InMemory(headers) => {

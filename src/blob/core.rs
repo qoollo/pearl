@@ -296,7 +296,7 @@ where
         Ok(())
     }
 
-    pub(crate) async fn read_any(
+    pub(crate) async fn read_last(
         &self,
         key: &K,
         meta: Option<&Meta>,
@@ -334,7 +334,7 @@ where
     }
 
     pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
-        if self.index.get_any(key).await?.is_some() {
+        if self.index.get_last(key).await?.is_some() {
             let on_disk = self.index.on_disk();
             if on_disk {
                 self.load_index().await?;
@@ -370,7 +370,7 @@ where
             self.get_entry_with_meta(key, meta).await
         } else {
             debug!("blob get any entry bloom true no meta");
-            if let Some(header) = self.index.get_any(key).await.with_context(|| {
+            if let Some(header) = self.index.get_last(key).await.with_context(|| {
                 format!("index get any failed for blob: {:?}", self.name.to_path())
             })? {
                 let entry = Entry::new(header, self.file.clone());

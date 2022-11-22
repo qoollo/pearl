@@ -449,7 +449,7 @@ where
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
-            match ablob.read().await.read_any(key, meta, true).await {
+            match ablob.read().await.read_last(key, meta, true).await {
                 Ok(data) => {
                     debug!("storage read with optional meta active blob returned data");
                     return Ok(data);
@@ -483,7 +483,7 @@ where
         let stream: FuturesOrdered<_> = possible_blobs
             .into_iter()
             .filter_map(|id| blobs.get_child(id))
-            .map(|blob| blob.data.read_any(key, meta, false))
+            .map(|blob| blob.data.read_last(key, meta, false))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
@@ -495,7 +495,7 @@ where
         let blobs = safe.blobs.read().await;
         let stream: FuturesUnordered<_> = blobs
             .iter_possible_childs_rev(key)
-            .map(|blob| blob.1.data.read_any(key, meta, true))
+            .map(|blob| blob.1.data.read_last(key, meta, true))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
