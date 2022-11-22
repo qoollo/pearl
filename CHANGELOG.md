@@ -4,9 +4,22 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+
+
+#### Changed
+
+
+#### Fixed
+
+
+#### Updated
+
+
+
+## [0.15.0] - 2022-11-22
+#### Added
 - Add functions to get info about blobs and indexes (#151)
 - Add key_size field to index header (#151)
-
 
 #### Changed
 - Change file operations to work on full buffers (#190)
