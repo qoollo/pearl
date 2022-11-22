@@ -80,6 +80,52 @@ impl Meta {
     }
 }
 
+pub(crate) struct PartiallySerializedRecord {
+    buf: Vec<u8>,
+    offset_pos: usize,
+    header_checksum_pos: usize,
+    header_start: usize,
+    header_len: usize,
+}
+
+impl PartiallySerializedRecord {
+    fn new(
+        buf: Vec<u8>,
+        offset_pos: usize,
+        header_checksum_pos: usize,
+        header_start: usize,
+        header_len: usize,
+    ) -> Self {
+        Self {
+            buf,
+            offset_pos,
+            header_checksum_pos,
+            header_start,
+            header_len,
+        }
+    }
+
+    pub(crate) fn into_serialized_with_header_checksum(
+        self,
+        blob_offset: u64,
+    ) -> Result<(Vec<u8>, u32)> {
+        let Self {
+            mut buf,
+            offset_pos,
+            header_checksum_pos,
+            header_start,
+            header_len,
+        } = self;
+        let offset_slice = &mut buf[offset_pos..];
+        bincode::serialize_into(offset_slice, &blob_offset)?;
+        let header_slice = &buf[header_start..(header_start + header_len)];
+        let checksum = CRC32C.checksum(header_slice);
+        let checksum_slice = &mut buf[header_checksum_pos..];
+        bincode::serialize_into(checksum_slice, &checksum)?;
+        Ok((buf, checksum))
+    }
+}
+
 impl Record {
     pub(crate) fn new(header: Header, meta: Meta, data: Vec<u8>) -> Self {
         Self { header, meta, data }
@@ -106,15 +152,19 @@ impl Record {
         &self.header
     }
 
-    /// # Description
-    /// Serialize record to bytes
-    pub fn to_raw(&self) -> bincode::Result<Vec<u8>> {
+    pub(crate) fn to_partially_serialized(&self) -> Result<PartiallySerializedRecord> {
         let mut buf = self.header.to_raw()?;
-        trace!("raw header: len: {}", buf.len());
+        let header_len = buf.len();
         let raw_meta = self.meta.to_raw()?;
         buf.extend(&raw_meta);
         buf.extend(&self.data);
-        Ok(buf)
+        Ok(PartiallySerializedRecord::new(
+            buf,
+            header_len - 24,
+            header_len - 4,
+            0,
+            header_len,
+        ))
     }
 
     pub(crate) fn deleted<K>(key: &K) -> bincode::Result<Self>
@@ -124,11 +174,6 @@ impl Record {
         let mut record = Record::create(key, vec![], Meta::default())?;
         record.header.mark_as_deleted()?;
         Ok(record)
-    }
-
-    pub(crate) fn set_offset(&mut self, offset: u64) -> bincode::Result<()> {
-        self.header.blob_offset = offset;
-        self.header.update_checksum()
     }
 
     pub(crate) fn validate(self) -> Result<Self> {
@@ -155,6 +200,10 @@ impl Record {
 
     pub fn meta(&self) -> &Meta {
         &self.meta
+    }
+
+    pub fn into_header(self) -> Header {
+        self.header
     }
 }
 
@@ -228,6 +277,11 @@ impl Header {
     #[inline]
     pub(crate) fn serialized_size(&self) -> u64 {
         bincode::serialized_size(&self).expect("calc record serialized size")
+    }
+
+    pub(crate) fn set_offset_checksum(&mut self, blob_offset: u64, header_checksum: u32) {
+        self.blob_offset = blob_offset;
+        self.header_checksum = header_checksum;
     }
 
     fn update_checksum(&mut self) -> bincode::Result<()> {

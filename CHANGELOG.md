@@ -11,6 +11,8 @@ Pearl changelog
 #### Changed
 - Remove iterators from bloom filter (#194)
 - Excessive key conversion removed (#193)
+- Removed serialization from critical section (#188)
+- Removed multiple header checksum calculations (#206)
 
 #### Fixed
 
