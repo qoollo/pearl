@@ -9,6 +9,7 @@ Pearl changelog
 
 
 #### Changed
+- Change file operations to work on full buffers (#190)
 - Remove iterators from bloom filter (#194)
 - Excessive key conversion removed (#193)
 

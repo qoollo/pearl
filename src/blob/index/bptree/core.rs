@@ -218,24 +218,20 @@ where
         buf: &mut [u8],
     ) -> Result<Option<RecordHeader>> {
         let buf_size = self.leaf_node_buf_size(leaf_offset);
-        let read_buf_size = self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
-        if read_buf_size != buf_size {
-            Err(anyhow!("Can't read entire leaf node"))
+        self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
+        if let Some((record_header, offset)) =
+            self.read_header_buf(&buf[..buf_size], key, self.header.record_header_size)?
+        {
+            let leftmost_header = self.get_leftmost(
+                &buf[..buf_size],
+                key,
+                offset as usize,
+                record_header,
+                self.header.record_header_size,
+            )?;
+            Ok(Some(leftmost_header))
         } else {
-            if let Some((record_header, offset)) =
-                self.read_header_buf(&buf[..buf_size], key, self.header.record_header_size)?
-            {
-                let leftmost_header = self.get_leftmost(
-                    &buf[..buf_size],
-                    key,
-                    offset as usize,
-                    record_header,
-                    self.header.record_header_size,
-                )?;
-                Ok(Some(leftmost_header))
-            } else {
-                Ok(None)
-            }
+            Ok(None)
         }
     }
 
@@ -294,11 +290,8 @@ where
         buf: &mut [u8],
     ) -> Result<Option<Vec<RecordHeader>>> {
         let buf_size = self.leaf_node_buf_size(leaf_offset);
-        let read_buf_size = self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
+        self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
         let rh_size = self.header.record_header_size;
-        if read_buf_size != buf_size {
-            return Err(anyhow!("Can't read entire leaf node"));
-        }
         if let Some((header, offset)) = self.read_header_buf(&buf[..buf_size], key, rh_size)? {
             let mut headers = vec![header];
             self.go_left(&mut headers, &buf[..buf_size], offset).await?;
@@ -344,10 +337,7 @@ where
         let leaves_end = self.metadata.leaves_offset + records_size as u64;
         let mut buf = vec![0; record_header_size as usize];
         while offset + record_header_size <= leaves_end {
-            let read_buf_size = self.file.read_at(&mut buf, offset).await?;
-            if read_buf_size != buf.len() {
-                return Err(anyhow!("Can't read header from file"));
-            }
+            self.file.read_at(&mut buf, offset).await?;
             let header: RecordHeader = deserialize(&buf)?;
             if header.key() == headers[0].key() {
                 headers.push(header);

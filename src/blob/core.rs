@@ -70,8 +70,8 @@ where
 
     async fn write_header(&mut self) -> Result<()> {
         let buf = serialize(&self.header)?;
-        let bytes_written = self.file.write_append(&buf).await? as u64;
-        self.current_offset = bytes_written;
+        self.file.write_append(&buf).await?;
+        self.current_offset = buf.len() as u64;
         Ok(())
     }
 
@@ -247,8 +247,7 @@ where
         debug!("blob write record offset: {}", self.current_offset);
         record.set_offset(self.current_offset)?;
         let buf = record.to_raw()?;
-        let bytes_written = self
-            .file
+        self.file
             .write_append(&buf)
             .await
             .map_err(|e| -> anyhow::Error {
@@ -258,9 +257,9 @@ where
                     }
                     _ => e.into(),
                 }
-            })? as u64;
+            })?;
         self.index.push(record.header().clone())?;
-        self.current_offset += bytes_written;
+        self.current_offset += buf.len() as u64;
         Ok(())
     }
     async fn write_locked(
@@ -270,8 +269,7 @@ where
         debug!("blob write record offset: {}", blob.current_offset);
         record.set_offset(blob.current_offset)?;
         let buf = record.to_raw()?;
-        let bytes_written = blob
-            .file
+        blob.file
             .write_append(&buf)
             .await
             .map_err(|e| -> anyhow::Error {
@@ -281,10 +279,10 @@ where
                     }
                     _ => e.into(),
                 }
-            })? as u64;
+            })?;
         let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
         blob.index.push(record.header().clone())?;
-        blob.current_offset += bytes_written;
+        blob.current_offset += buf.len() as u64;
         Ok(())
     }
 
