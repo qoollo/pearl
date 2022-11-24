@@ -166,6 +166,7 @@ where
             let read = self.inner.safe.read().await;
             let active_blob = read.active_blob.as_ref();
             if let Some(active_blob) = active_blob {
+                let active_blob = active_blob.read().await;
                 if active_blob.file_size() < config_max_size
                     && (active_blob.records_count() as u64) < config_max_count
                 {
@@ -175,15 +176,22 @@ where
         }
 
         let mut write = self.inner.safe.write().await;
-        let active_blob = write.active_blob.as_ref();
-        if let Some(active_blob) = active_blob {
-            if active_blob.file_size() >= config_max_size
-                || active_blob.records_count() as u64 >= config_max_count
-            {
-                let new_active = get_new_active_blob(&self.inner).await?;
-                write.replace_active_blob(new_active).await?;
-                return Ok(true);
+        let mut replace = false;
+        {
+            let active_blob = write.active_blob.as_ref();
+            if let Some(active_blob) = active_blob {
+                let active_blob = active_blob.read().await;
+                if active_blob.file_size() >= config_max_size
+                    || active_blob.records_count() as u64 >= config_max_count
+                {
+                    replace = true;
+                }
             }
+        }
+        if replace {
+            let new_active = get_new_active_blob(&self.inner).await?;
+            write.replace_active_blob(Box::new(ASRwLock::new(*new_active))).await?;
+            return Ok(true);
         }
         Ok(false)
     }
@@ -198,7 +206,7 @@ where
         .safe
         .write()
         .await
-        .replace_active_blob(new_active)
+        .replace_active_blob(Box::new(ASRwLock::new(*new_active)))
         .await?;
     Ok(())
 }

@@ -208,6 +208,13 @@ mod tests {
         }
     }
 
+    impl<'a> From<&'a [u8]> for ProperKey {
+        fn from(a: &[u8]) -> Self {
+            let data = a.try_into().expect("key size mismatch");
+            Self(data)
+        }
+    }
+
     impl<'a> RefKey<'a> for RefProperKey<'a> {}
 
     impl<'a> Key<'a> for ProperKey {
@@ -225,6 +232,13 @@ mod tests {
     impl AsRef<[u8]> for WrongKey {
         fn as_ref(&self) -> &[u8] {
             self.0.as_ref()
+        }
+    }
+
+    impl<'a> From<&'a [u8]> for WrongKey {
+        fn from(a: &[u8]) -> Self {
+            let data = a.try_into().expect("key size mismatch");
+            Self(data)
         }
     }
 

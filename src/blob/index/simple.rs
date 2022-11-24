@@ -31,6 +31,10 @@ where
         self.header.records_count
     }
 
+    fn blob_size(&self) -> u64 {
+        self.header.blob_size()
+    }
+
     async fn read_meta(&self) -> Result<Vec<u8>> {
         trace!("load meta");
         let mut buf = vec![0; self.header.meta_size];
@@ -122,6 +126,14 @@ where
         if self.header.version() != HEADER_VERSION {
             let param = ValidationErrorKind::IndexVersion;
             return Err(Error::validation(param, "Index Header version is not valid").into());
+        }
+        if self.header.key_size() != K::LEN {
+            let param = ValidationErrorKind::IndexKeySize;
+            return Err(Error::validation(
+                param,
+                "Index header key_size is not equal to pearl compile-time key size",
+            )
+            .into());
         }
         if self.header.blob_size() != blob_size {
             let param = ValidationErrorKind::IndexBlobSize;
@@ -305,7 +317,7 @@ impl SimpleFileIndex {
             let record_header_size = record_header.serialized_size().try_into()?;
             trace!("record header serialized size: {}", record_header_size);
             let headers = headers.iter().flat_map(|r| r.1).collect::<Vec<_>>(); // produce sorted
-            let header = IndexHeader::new(record_header_size, headers.len(), meta.len(), blob_size);
+            let header = IndexHeader::new(record_header_size, headers.len(), meta.len(), K::LEN, blob_size);
             let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
             trace!("index header size: {}b", hs);
             let fsize = header.meta_size;
@@ -334,8 +346,9 @@ impl SimpleFileIndex {
                 record_header_size,
                 headers.len(),
                 meta.len(),
-                hash,
+                header.key_size(),
                 blob_size,
+                hash,
             );
             serialize_into(buf.as_mut_slice(), &header)?;
             Ok(Some((header, buf)))

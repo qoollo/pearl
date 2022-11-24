@@ -30,6 +30,13 @@ impl From<Vec<u8>> for KeyType {
     }
 }
 
+impl<'a> From<&'a [u8]> for KeyType {
+    fn from(a: &[u8]) -> Self {
+        let data = a.try_into().expect("key size mismatch");
+        Self(data)
+    }
+}
+
 impl AsRef<[u8]> for KeyType {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()

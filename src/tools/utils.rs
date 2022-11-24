@@ -1,4 +1,9 @@
 use super::prelude::*;
+use crate::blob::index::FileIndexTrait;
+use crate::blob::FileName;
+use crate::ArrayKey;
+use crate::blob::index::HEADER_VERSION;
+use futures::Future;
 
 /// Read index header from file
 pub(crate) fn read_index_header(path: &Path) -> Result<IndexHeader> {
@@ -114,4 +119,63 @@ where
         writer.written()
     );
     Ok(())
+}
+
+/// block on function
+pub(super) fn block_on<T, F: Future<Output = T>>(f: F) -> Result<T> {
+    match tokio::runtime::Handle::try_current() {
+        Ok(runtime) => Ok(runtime.block_on(f)),
+        Err(_) => Ok(tokio::runtime::Runtime::new()?.block_on(f)),
+    }
+    
+}
+
+async fn index_from_file<K>(
+    header: &IndexHeader,
+    path: &Path,
+) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>>
+where
+    for<'a> K: Key<'a> + 'static
+{
+    let headers = match header.version() {
+        HEADER_VERSION => {
+            let index = BPTreeFileIndex::<K>::from_file(
+                FileName::from_path(path)?,
+                None,
+            ).await?;
+            let res = index.get_records_headers(index.blob_size()).await?;
+            AnyResult::<_>::Ok(res.0)
+        },
+        _ => return Err(Error::index_header_validation_error("unsupported header version").into()),
+    }?;
+    let headers = headers
+        .into_iter()
+        .map(|(key, value)| (key.to_vec(), value))
+        .collect();
+    Ok(headers)
+}
+
+/// Read index file, async
+pub async fn read_index(path: &Path) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>> {
+    let header = read_index_header(path)?;
+    let headers = match header.key_size() {
+        4 => index_from_file::<ArrayKey<4>>(&header, path).await,
+        8 => index_from_file::<ArrayKey<8>>(&header, path).await,
+        16 => index_from_file::<ArrayKey<16>>(&header, path).await,
+        32 => index_from_file::<ArrayKey<32>>(&header, path).await,
+        64 => index_from_file::<ArrayKey<64>>(&header, path).await,
+        128 => index_from_file::<ArrayKey<128>>(&header, path).await,
+        size => return Err(Error::unsupported_key_size(size).into()),
+    }?;
+    for (_, headers) in headers.iter() {
+        for header in headers {
+            header.validate()?;
+        }
+    }
+    Ok(headers)
+}
+
+/// Read index file, sync
+pub fn read_index_sync(path: &Path) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>> {
+    block_on(read_index(path))?
 }
