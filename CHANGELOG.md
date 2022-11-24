@@ -10,6 +10,7 @@ Pearl changelog
 #### Fixed
 
 #### Updated
+- Update bitvec version (#222)
 
 
 ## [0.9.3] - 2022-04-18
