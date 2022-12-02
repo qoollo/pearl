@@ -66,7 +66,7 @@ pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
-pub use storage::{Builder, Key, RefKey, Storage, ArrayKey, ReadResult};
+pub use storage::{ArrayKey, Builder, Key, ReadResult, RefKey, Storage};
 
 mod prelude {
     use crc::{Crc, CRC_32_ISCSI};
