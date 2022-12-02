@@ -241,7 +241,7 @@ where
         Self::write_locked(blob, record).await
     }
 
-    async fn write_mut(&mut self, mut record: Record) -> Result<()> {
+    async fn write_mut(&mut self, mut record: Record) -> Result<RecordHeader> {
         debug!("blob write");
         debug!("blob write record offset: {}", self.current_offset);
         record.set_offset(self.current_offset)?;
@@ -259,7 +259,7 @@ where
             })?;
         self.index.push(record.header().clone())?;
         self.current_offset += buf.len() as u64;
-        Ok(())
+        Ok(record.header().clone())
     }
     async fn write_locked(
         blob: ASRwLockUpgradableReadGuard<'_, Blob<K>>,
@@ -322,14 +322,21 @@ where
         }))
     }
 
-    pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<u64> {
+    pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
+        if self.index.get_any(key).await?.is_some() {
+            Ok(Some(self.push_deletion_record(key).await?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn push_deletion_record(&mut self, key: &K) -> Result<u64> {
         let on_disk = self.index.on_disk();
         if on_disk {
             self.load_index().await?;
         }
         let record = Record::deleted(key)?;
-        let header = record.header.clone();
-        self.write_mut(record).await?;
+        let header = self.write_mut(record).await?;
         let res = self.index.mark_all_as_deleted(key, header)?;
         Ok(res)
     }

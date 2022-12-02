@@ -911,7 +911,7 @@ where
                     None
                 }
             })
-            .fold(0, |a, b| a + b)
+            .fold(0, |a, b| a + b.unwrap_or(0))
             .await;
         debug!("{} deleted from closed blobs", total);
         self.observer.defer_dump_old_blob_indexes().await;
@@ -923,7 +923,7 @@ where
         let active_blob = safe.active_blob.as_deref_mut();
         let count = if let Some(active_blob) = active_blob {
             let mut active_blob = active_blob.write().await;
-            let count = active_blob.mark_all_as_deleted(key).await?;
+            let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
             debug!("{} deleted from active blob", count);
             count
         } else {

@@ -244,21 +244,28 @@ where
         }
     }
 
-    fn mark_all_as_deleted_in_memory(
+    fn push_deletion_header_in_memory(
+        mem: &mut MemoryAttrs,
         headers: &mut InMemoryIndex<K>,
         key: &K,
-        default_header: RecordHeader,
+        header: RecordHeader,
     ) -> Result<u64> {
+        mem.records_count += 1;
         debug!("headers: {}", headers.len());
         if let Some(v) = headers.get_mut(key) {
-            for h in v.iter_mut() {
-                h.mark_as_deleted()?
-            }
-            Ok(v.len() as u64)
+            let old_capacity = v.capacity();
+            v.push(header);
+            trace!("capacity growth: {}", v.capacity() - old_capacity);
+            mem.records_allocated += v.capacity() - old_capacity;
         } else {
-            headers.insert(key.clone(), vec![default_header]);
-            Ok(1)
+            if mem.records_count == 0 {
+                set_key_related_fields::<K>(mem);
+            }
+            let v = vec![header];
+            mem.records_allocated += v.capacity(); // capacity == 1
+            headers.insert(key.clone(), v);
         }
+        Ok(1)
     }
 }
 
@@ -308,10 +315,24 @@ where
     }
 
     async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
-        match &self.inner {
+        let res = match &self.inner {
             State::InMemory(headers) => Ok(headers.get(key).cloned()),
             State::OnDisk(findex) => findex.find_by_key(key).await,
-        }
+        };
+        res.map(|r| {
+            r.and_then(|mut hs| {
+                hs.sort_by_key(|h| h.created());
+                hs.iter().fold(None, |s, n| {
+                    if n.is_deleted() {
+                        None
+                    } else {
+                        let mut v = s.unwrap_or(vec![]);
+                        v.push(n.clone());
+                        Some(v)
+                    }
+                })
+            })
+        })
     }
 
     async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
@@ -356,12 +377,17 @@ where
         }
     }
 
-    fn mark_all_as_deleted(&mut self, key: &K, default_header: RecordHeader) -> Result<u64> {
+    fn mark_all_as_deleted(&mut self, key: &K, header: RecordHeader) -> Result<u64> {
         debug!("mark all as deleted by {:?} key", key);
         match &mut self.inner {
-            State::InMemory(headers) => {
-                Self::mark_all_as_deleted_in_memory(headers, key, default_header)
-            }
+            State::InMemory(headers) => Self::push_deletion_header_in_memory(
+                self.mem
+                    .as_mut()
+                    .expect("No memory info in `InMemory` State"),
+                headers,
+                key,
+                header,
+            ),
             State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
                 "Index is closed, delete is unavalaible".to_string(),
             ))
