@@ -4,7 +4,7 @@ use std::mem::size_of;
 
 pub(crate) type Index<K> = IndexStruct<BPTreeFileIndex<K>, K>;
 
-pub(crate) const HEADER_VERSION: u8 = 5;
+pub(crate) const HEADER_VERSION: u8 = 6;
 pub(crate) const INDEX_HEADER_MAGIC_BYTE: u64 = 0xacdc_bcde;
 
 #[derive(Debug)]
@@ -277,14 +277,13 @@ where
         match &mut self.inner {
             State::InMemory(headers) => {
                 debug!("blob index simple push bloom filter add");
-                let key = h.key().to_vec().into();
+                let key = h.key().into();
                 self.filter.add(&key);
                 debug!("blob index simple push key: {:?}", h.key());
                 let mem = self
                     .mem
                     .as_mut()
                     .expect("No memory info in `InMemory` State");
-                let key = h.key().to_vec().into();
                 if let Some(v) = headers.get_mut(&key) {
                     let old_capacity = v.capacity();
                     v.push(h);
@@ -384,6 +383,7 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
     ) -> Result<Self>;
     fn file_size(&self) -> u64;
     fn records_count(&self) -> usize;
+    fn blob_size(&self) -> u64;
     async fn read_meta(&self) -> Result<Vec<u8>>;
     async fn read_meta_at(&self, i: u64) -> Result<u8>;
     async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
