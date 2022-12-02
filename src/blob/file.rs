@@ -52,23 +52,24 @@ impl File {
 
     pub(crate) async fn write_append(&self, buf: &[u8]) -> IOResult<usize> {
         if let Some(ref ioring) = self.ioring {
-            self.write_append_aio(buf, ioring).await
+            self.write_append_aio(buf, ioring).await?;
         } else {
-            self.write_append_sync(buf).await
+            self.write_append_sync(buf).await?;
         }
+        Ok(buf.len())
     }
 
-    pub(crate) async fn write_append_sync(&self, buf: &[u8]) -> IOResult<usize> {
+    pub(crate) async fn write_append_sync(&self, buf: &[u8]) -> IOResult<()> {
         let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
         self.write_at_sync(offset, buf).await
     }
 
-    async fn write_append_aio(&self, buf: &[u8], ioring: &Rio) -> IOResult<usize> {
+    async fn write_append_aio(&self, buf: &[u8], ioring: &Rio) -> IOResult<()> {
         let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
         self.write_at_aio(offset, buf, ioring).await
     }
 
-    pub(crate) async fn write_at(&self, offset: u64, buf: &[u8]) -> IOResult<usize> {
+    pub(crate) async fn write_at(&self, offset: u64, buf: &[u8]) -> IOResult<()> {
         if let Some(ref ioring) = self.ioring {
             self.write_at_aio(offset, buf, ioring).await
         } else {
@@ -76,7 +77,7 @@ impl File {
         }
     }
 
-    async fn write_at_aio(&self, offset: u64, buf: &[u8], ioring: &Rio) -> IOResult<usize> {
+    async fn write_at_aio(&self, offset: u64, buf: &[u8], ioring: &Rio) -> IOResult<()> {
         let compl = ioring.write_at(&*self.no_lock_fd, &buf, offset);
         let count = compl.await?;
         // on blob level this error will be treated as unavailable file (rio doesn't return error
@@ -87,13 +88,13 @@ impl File {
         if count < buf.len() {
             return Err(IOError::from_raw_os_error(5));
         }
-        Ok(count)
+        Ok(())
     }
 
-    async fn write_at_sync(&self, offset: u64, buf: &[u8]) -> IOResult<usize> {
+    async fn write_at_sync(&self, offset: u64, buf: &[u8]) -> IOResult<()> {
         let buf = buf.to_vec();
         let file = self.no_lock_fd.clone();
-        Self::blocking_call(move || file.write_at(&buf, offset)).await
+        Self::blocking_call(move || file.write_all_at(&buf, offset)).await
     }
 
     pub(crate) async fn read_all(&self) -> Result<Vec<u8>> {
@@ -102,7 +103,7 @@ impl File {
         Ok(buf)
     }
 
-    pub(crate) async fn read_at(&self, buf: &mut [u8], offset: u64) -> Result<usize> {
+    pub(crate) async fn read_at(&self, buf: &mut [u8], offset: u64) -> Result<()> {
         if let Some(ref ioring) = self.ioring {
             self.read_at_aio(buf, offset, ioring).await
         } else {
@@ -110,20 +111,18 @@ impl File {
         }
     }
 
-    pub(crate) async fn read_at_sync(&self, buf: &mut [u8], offset: u64) -> Result<usize> {
+    pub(crate) async fn read_at_sync(&self, buf: &mut [u8], offset: u64) -> Result<()> {
         let file = self.no_lock_fd.clone();
         let mut new_buf = buf.to_vec();
 
-        let (count, new_buf) = Self::blocking_call(move || {
-            file.read_at(&mut new_buf, offset)
-                .map(|count| (count, new_buf))
-        })
-        .await?;
+        let new_buf =
+            Self::blocking_call(move || file.read_exact_at(&mut new_buf, offset).map(|_| new_buf))
+                .await?;
         buf.clone_from_slice(new_buf.as_slice());
-        Ok(count)
+        Ok(())
     }
 
-    async fn read_at_aio(&self, buf: &mut [u8], offset: u64, ioring: &Rio) -> Result<usize> {
+    async fn read_at_aio(&self, buf: &mut [u8], offset: u64, ioring: &Rio) -> Result<()> {
         debug!("blob file read at");
         if buf.is_empty() {
             warn!("file read_at empty buf");
@@ -158,7 +157,7 @@ impl File {
             debug!("blob file read at proggress {}/{}", size, buf.len());
         }
         debug!("blob file read at complited: {}", size);
-        Ok(size)
+        Ok(())
     }
 
     async fn from_tokio_file(file: TokioFile, ioring: Option<Rio>) -> IOResult<Self> {

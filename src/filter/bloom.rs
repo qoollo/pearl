@@ -8,7 +8,7 @@ use std::hash::Hasher;
 #[derive(Clone)]
 /// Bloom filter
 pub struct Bloom {
-    inner: Option<BitVec<Lsb0, u64>>,
+    inner: Option<BitVec<u64, Lsb0>>,
     bits_count: usize,
     hashers: Vec<AHasher>,
     config: Config,
@@ -178,7 +178,7 @@ impl Bloom {
     pub fn new(config: Config) -> Self {
         let bits_count = bits_count_from_formula(&config);
         Self {
-            inner: Some(bitvec![Lsb0, u64; 0; bits_count]),
+            inner: Some(bitvec![u64, Lsb0; 0; bits_count]),
             hashers: Self::hashers(config.hashers_count),
             config,
             bits_count,
@@ -191,7 +191,7 @@ impl Bloom {
         match (&mut self.inner, &other.inner) {
             (Some(inner), Some(other_inner)) if inner.len() == other_inner.len() => {
                 inner
-                    .as_mut_raw_slice()
+                    .as_raw_mut_slice()
                     .iter_mut()
                     .zip(other_inner.as_raw_slice())
                     .for_each(|(a, b)| *a |= *b);
@@ -203,7 +203,7 @@ impl Bloom {
 
     /// Set in-memory filter buffer to zeroed array
     pub fn clear(&mut self) {
-        self.inner = Some(bitvec![Lsb0, u64; 0; self.bits_count]);
+        self.inner = Some(bitvec![u64, Lsb0; 0; self.bits_count]);
     }
 
     /// Check if filter offloaded
@@ -266,10 +266,13 @@ impl Bloom {
     pub fn add(&mut self, item: impl AsRef<[u8]>) -> Result<()> {
         if let Some(inner) = &mut self.inner {
             let len = inner.len() as u64;
-            for h in Self::iter_indices_for_key(&self.hashers, len, item.as_ref()) {
-                *inner
-                    .get_mut(h as usize)
-                    .expect("impossible due to mod by len") = true;
+            for mut hasher in self.hashers.iter().cloned() {
+                hasher.write(item.as_ref());
+                if let Some(i) = hasher.finish().checked_rem(len) {
+                    *inner
+                        .get_mut(i as usize)
+                        .expect("impossible due to mod by len") = true;
+                }
             }
             Ok(())
         } else {
@@ -281,32 +284,22 @@ impl Bloom {
     pub fn contains_in_memory(&self, item: impl AsRef<[u8]>) -> Option<FilterResult> {
         if let Some(inner) = &self.inner {
             let len = inner.len() as u64;
-            // Check because .all on empty iterator returns true
+            // Check because NeedAdditionalCheck will be returned is self.hashers is empty
             if len == 0 {
                 return None;
             }
-            if Self::iter_indices_for_key(&self.hashers, len, item.as_ref())
-                .all(|i| *inner.get(i as usize).expect("unreachable"))
-            {
-                Some(FilterResult::NeedAdditionalCheck)
-            } else {
-                Some(FilterResult::NotContains)
+            for mut hasher in self.hashers.iter().cloned() {
+                hasher.write(item.as_ref());
+                if let Some(i) = hasher.finish().checked_rem(len) {
+                    if !*inner.get(i as usize).expect("unreachable") {
+                        return Some(FilterResult::NotContains);
+                    }
+                }
             }
+            Some(FilterResult::NeedAdditionalCheck)
         } else {
             None
         }
-    }
-
-    // Returns empty iterator on len == 0
-    fn iter_indices_for_key<'a>(
-        hashers: &'a Vec<AHasher>,
-        len: u64,
-        item: &'a [u8],
-    ) -> impl Iterator<Item = u64> + 'a {
-        hashers.iter().cloned().filter_map(move |mut hasher| {
-            hasher.write(item.as_ref());
-            hasher.finish().checked_rem(len)
-        })
     }
 
     /// Check filter by reading bits from file
