@@ -538,8 +538,11 @@ impl RawRecords {
         debug!("blob raw records load");
         let mut headers = Vec::new();
         while self.current_offset < self.file.size() {
-            let header = self.read_current_record_header().await.with_context(|| {
-                format!("read record header failed, at {}", self.current_offset)
+            let (header, data) = self.read_current_record_header_and_data().await.with_context(|| {
+                format!("read record header or data failed, at {}", self.current_offset)
+            })?;
+            Record::data_checksum_audit(&header, &data).with_context(|| {
+                format!("bad data checksum, at {}", self.current_offset)
             })?;
             headers.push(header);
         }
@@ -550,7 +553,7 @@ impl RawRecords {
         }
     }
 
-    async fn read_current_record_header(&mut self) -> Result<RecordHeader> {
+    async fn read_current_record_header_and_data(&mut self) -> Result<(RecordHeader, Vec<u8>)> {
         let mut buf = vec![0; self.record_header_size as usize];
         self.file
             .read_at(&mut buf, self.current_offset)
@@ -572,11 +575,9 @@ impl RawRecords {
             .read_at(&mut buf, self.current_offset)
             .await
             .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
-        Record::data_checksum_audit(&header, &buf)
-            .with_context(|| format!("record has bad checksum at {}", self.current_offset))?;
         
         self.current_offset += header.data_size();
-        Ok(header)
+        Ok((header, buf))
     }
 }
 
