@@ -4,7 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Index regeneration checks record data checksum (#215)
 
 #### Changed
 
