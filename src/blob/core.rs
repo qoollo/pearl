@@ -566,6 +566,15 @@ impl RawRecords {
             })?;
         self.current_offset += self.record_header_size;
         self.current_offset += header.meta_size();
+
+        buf.resize(header.data_size() as usize, 0);
+        self.file
+            .read_at(&mut buf, self.current_offset)
+            .await
+            .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
+        Record::data_checksum_audit(&header, &buf)
+            .with_context(|| format!("record has bad checksum at {}", self.current_offset))?;
+        
         self.current_offset += header.data_size();
         Ok(header)
     }
