@@ -7,6 +7,7 @@ Pearl changelog
 
 
 #### Changed
+- Save delete records in index (#207)
 
 
 #### Fixed
@@ -41,7 +42,6 @@ Pearl changelog
 #### Changed
 - File name added to error messages in Blob struct (#183)
 - Update rust edition (#175)
-- Save delete records in index (#207)
 
 #### Fixed
 - Fix docs (#177)
