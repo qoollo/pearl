@@ -223,7 +223,8 @@ where
             )
         })? {
             for header in headers {
-                self.index.push(header).context("index push failed")?;
+                let key = header.key().into();
+                self.index.push(&key, header).context("index push failed")?;
             }
         }
         debug!("index successfully generated: {}", self.index.name());
@@ -234,14 +235,14 @@ where
         // @TODO implement
     }
 
-    pub(crate) async fn write(blob: &ASRwLock<Self>, record: Record) -> Result<()> {
+    pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<()> {
         debug!("blob write");
         // Only one upgradable_read lock is allowed at a time
         let blob = blob.upgradable_read().await;
-        Self::write_locked(blob, record).await
+        Self::write_locked(blob, key, record).await
     }
 
-    async fn write_mut(&mut self, mut record: Record) -> Result<RecordHeader> {
+    async fn write_mut(&mut self, key: &K, mut record: Record) -> Result<RecordHeader> {
         debug!("blob write");
         debug!("blob write record offset: {}", self.current_offset);
         record.set_offset(self.current_offset)?;
@@ -257,12 +258,13 @@ where
                     _ => e.into(),
                 }
             })?;
-        self.index.push(record.header().clone())?;
+        self.index.push(key, record.header().clone())?;
         self.current_offset += buf.len() as u64;
         Ok(record.header().clone())
     }
     async fn write_locked(
         blob: ASRwLockUpgradableReadGuard<'_, Blob<K>>,
+        key: &K,
         mut record: Record,
     ) -> Result<()> {
         debug!("blob write record offset: {}", blob.current_offset);
@@ -280,7 +282,7 @@ where
                 }
             })?;
         let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
-        blob.index.push(record.header().clone())?;
+        blob.index.push(key, record.header().clone())?;
         blob.current_offset += buf.len() as u64;
         Ok(())
     }
@@ -322,7 +324,7 @@ where
         }))
     }
 
-    pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
+    pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<()>> {
         if self.index.get_any(key).await?.is_some() {
             Ok(Some(self.push_deletion_record(key).await?))
         } else {
@@ -330,15 +332,14 @@ where
         }
     }
 
-    async fn push_deletion_record(&mut self, key: &K) -> Result<u64> {
+    async fn push_deletion_record(&mut self, key: &K) -> Result<()> {
         let on_disk = self.index.on_disk();
         if on_disk {
             self.load_index().await?;
         }
         let record = Record::deleted(key)?;
-        let header = self.write_mut(record).await?;
-        let res = self.index.mark_all_as_deleted(key, header)?;
-        Ok(res)
+        let header = self.write_mut(key, record).await?;
+        self.index.mark_all_as_deleted(key, header)
     }
 
     fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {

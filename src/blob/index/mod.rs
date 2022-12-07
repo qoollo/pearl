@@ -28,10 +28,10 @@ mod prelude {
 pub(crate) trait IndexTrait<K>: Send + Sync {
     async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>>;
-    fn push(&mut self, h: RecordHeader) -> Result<()>;
+    fn push(&mut self, key: &K, h: RecordHeader) -> Result<()>;
     async fn contains_key(&self, key: &K) -> Result<bool>;
     fn count(&self) -> usize;
     async fn dump(&mut self, blob_size: u64) -> Result<usize>;
     async fn load(&mut self, blob_size: u64) -> Result<()>;
-    fn mark_all_as_deleted(&mut self, key: &K, default_header: RecordHeader) -> Result<u64>;
+    fn mark_all_as_deleted(&mut self, key: &K, default_header: RecordHeader) -> Result<()>;
 }

@@ -243,30 +243,6 @@ where
             0
         }
     }
-
-    fn push_deletion_header_in_memory(
-        mem: &mut MemoryAttrs,
-        headers: &mut InMemoryIndex<K>,
-        key: &K,
-        header: RecordHeader,
-    ) -> Result<u64> {
-        mem.records_count += 1;
-        debug!("headers: {}", headers.len());
-        if let Some(v) = headers.get_mut(key) {
-            let old_capacity = v.capacity();
-            v.push(header);
-            trace!("capacity growth: {}", v.capacity() - old_capacity);
-            mem.records_allocated += v.capacity() - old_capacity;
-        } else {
-            if mem.records_count == 0 {
-                set_key_related_fields::<K>(mem);
-            }
-            let v = vec![header];
-            mem.records_allocated += v.capacity(); // capacity == 1
-            headers.insert(key.clone(), v);
-        }
-        Ok(1)
-    }
 }
 
 #[async_trait::async_trait]
@@ -279,19 +255,18 @@ where
         self.get_any(key).await.map(|h| h.is_some())
     }
 
-    fn push(&mut self, h: RecordHeader) -> Result<()> {
+    fn push(&mut self, key: &K, h: RecordHeader) -> Result<()> {
         debug!("blob index simple push");
         match &mut self.inner {
             State::InMemory(headers) => {
                 debug!("blob index simple push bloom filter add");
-                let key = h.key().into();
-                self.filter.add(&key);
+                self.filter.add(key);
                 debug!("blob index simple push key: {:?}", h.key());
                 let mem = self
                     .mem
                     .as_mut()
                     .expect("No memory info in `InMemory` State");
-                if let Some(v) = headers.get_mut(&key) {
+                if let Some(v) = headers.get_mut(key) {
                     let old_capacity = v.capacity();
                     v.push(h);
                     trace!("capacity growth: {}", v.capacity() - old_capacity);
@@ -302,7 +277,7 @@ where
                     }
                     let v = vec![h];
                     mem.records_allocated += v.capacity(); // capacity == 1
-                    headers.insert(key, v);
+                    headers.insert(key.clone(), v);
                 }
                 mem.records_count += 1;
                 Ok(())
@@ -322,15 +297,16 @@ where
         res.map(|r| {
             r.and_then(|mut hs| {
                 hs.sort_by_key(|h| h.created());
-                hs.iter().fold(None, |s, n| {
-                    if n.is_deleted() {
-                        None
-                    } else {
-                        let mut v = s.unwrap_or(vec![]);
-                        v.push(n.clone());
-                        Some(v)
-                    }
-                })
+                let last_del = (hs.len() - hs.iter().rev().take_while(|h| !h.is_deleted()).count())
+                    .saturating_sub(1);
+                if last_del > 0 {
+                    hs.drain(0..=last_del);
+                }
+                if hs.len() > 0 {
+                    Some(hs)
+                } else {
+                    None
+                }
             })
         })
     }
@@ -377,22 +353,11 @@ where
         }
     }
 
-    fn mark_all_as_deleted(&mut self, key: &K, header: RecordHeader) -> Result<u64> {
+    fn mark_all_as_deleted(&mut self, key: &K, header: RecordHeader) -> Result<()> {
         debug!("mark all as deleted by {:?} key", key);
-        match &mut self.inner {
-            State::InMemory(headers) => Self::push_deletion_header_in_memory(
-                self.mem
-                    .as_mut()
-                    .expect("No memory info in `InMemory` State"),
-                headers,
-                key,
-                header,
-            ),
-            State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
-                "Index is closed, delete is unavalaible".to_string(),
-            ))
-            .into()),
-        }
+        assert!(header.is_deleted());
+        assert!(header.data_size() == 0);
+        self.push(key, header)
     }
 }
 

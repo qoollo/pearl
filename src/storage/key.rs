@@ -1,6 +1,6 @@
-use std::fmt::Debug;
 use std::cmp::Ordering;
 use std::convert::TryInto;
+use std::fmt::Debug;
 
 /// Trait `Key`
 pub trait Key<'a>:

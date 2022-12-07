@@ -319,7 +319,7 @@ where
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
-        let result = Blob::write(blob, record).await.or_else(|err| {
+        let result = Blob::write(blob, key, record).await.or_else(|err| {
             let e = err.downcast::<Error>()?;
             if let ErrorKind::FileUnavailable(kind) = e.kind() {
                 let work_dir = self
@@ -905,13 +905,13 @@ where
             .collect::<FuturesUnordered<_>>();
         let total = entries_closed_blobs
             .filter_map(|result| match result {
-                Ok(count) => Some(count),
+                Ok(count) => count,
                 Err(error) => {
                     warn!("failed to delete records: {}", error);
                     None
                 }
             })
-            .fold(0, |a, b| a + b.unwrap_or(0))
+            .fold(0, |a, _| a + 1)
             .await;
         debug!("{} deleted from closed blobs", total);
         self.observer.defer_dump_old_blob_indexes().await;
@@ -923,9 +923,9 @@ where
         let active_blob = safe.active_blob.as_deref_mut();
         let count = if let Some(active_blob) = active_blob {
             let mut active_blob = active_blob.write().await;
-            let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
-            debug!("{} deleted from active blob", count);
-            count
+            active_blob.mark_all_as_deleted(key).await?;
+            debug!("1 deleted from active blob");
+            1
         } else {
             0
         };
