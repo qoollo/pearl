@@ -296,7 +296,6 @@ where
         };
         res.map(|r| {
             r.and_then(|mut hs| {
-                hs.sort_by_key(|h| h.created());
                 let last_del = (hs.len() - hs.iter().rev().take_while(|h| !h.is_deleted()).count())
                     .saturating_sub(1);
                 if last_del > 0 {
