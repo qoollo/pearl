@@ -1,7 +1,5 @@
 use std::io::Cursor;
 
-use futures::TryFutureExt;
-
 use crate::{blob::File, error::ValidationErrorKind, prelude::*};
 
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
@@ -119,8 +117,10 @@ impl Record {
         }
     }
 
-    fn create_header_meta_buffer(&self) -> Result<Vec<u8>> {
-        let size = self.header.serialized_size() + self.meta.serialized_size();
+    fn create_header_meta_buffer(&self, data_size: Option<u64>) -> Result<Vec<u8>> {
+        let size = self.header.serialized_size()
+            + self.meta.serialized_size()
+            + data_size.unwrap_or_default();
         let mut c = Cursor::new(Vec::with_capacity(size as usize));
         self.header.to_raw_into(&mut c)?;
         self.meta.to_raw_into(&mut c)?;
@@ -128,18 +128,16 @@ impl Record {
     }
 
     async fn write_single_pass(&self, file: &File) -> Result<u64> {
-        let mut buf = self.create_header_meta_buffer()?;
+        let mut buf = self.create_header_meta_buffer(Some(self.data.len() as u64))?;
         buf.extend(&self.data);
         Self::process_file_result(file.write_append(&buf).await)
     }
 
     async fn write_double_pass(&self, file: &File) -> Result<u64> {
-        let buf = self.create_header_meta_buffer()?;
-        Self::process_file_result(
-            file.write_append(&buf)
-                .and_then(|x| async move { file.write_append(&self.data).await.map(|y| x + y) })
-                .await,
-        )
+        let buf = self.create_header_meta_buffer(None)?;
+        let data = &self.data;
+
+        Self::process_file_result(file.write_append_buffers(vec![&buf, data]).await)
     }
 
     fn process_file_result(result: std::result::Result<usize, std::io::Error>) -> Result<u64> {

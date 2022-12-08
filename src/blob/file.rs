@@ -69,6 +69,44 @@ impl File {
         self.write_at_aio(offset, buf, ioring).await
     }
 
+    pub(crate) async fn write_append_buffers(&self, buffers: Vec<&[u8]>) -> IOResult<usize> {
+        let len = buffers.iter().fold(0, |s, n| s + n.len());
+        if let Some(ref ioring) = self.ioring {
+            self.write_append_buffers_aio(buffers, ioring, len).await?;
+        } else {
+            self.write_append_buffers_sync(buffers, len).await?;
+        }
+        Ok(len)
+    }
+
+    async fn write_append_buffers_aio(
+        &self,
+        buffers: Vec<&[u8]>,
+        ioring: &Rio,
+        len: usize,
+    ) -> IOResult<()> {
+        let mut offset = self.size.fetch_add(len as u64, Ordering::SeqCst);
+        for buf in buffers {
+            self.write_at_aio(offset, buf, ioring).await?;
+            offset = offset + buf.len() as u64;
+        }
+        Ok(())
+    }
+
+    async fn write_append_buffers_sync(&self, buffers: Vec<&[u8]>, len: usize) -> IOResult<()> {
+        let mut offset = self.size.fetch_add(len as u64, Ordering::SeqCst);
+        let file = self.no_lock_fd.clone();
+        let buffers: Vec<_> = buffers.into_iter().map(|v| v.to_vec()).collect();
+        Self::blocking_call(move || {
+            for buf in buffers {
+                file.write_all_at(&buf, offset)?;
+                offset = offset + buf.len() as u64;
+            }
+            Ok(())
+        })
+        .await
+    }
+
     pub(crate) async fn write_at(&self, offset: u64, buf: &[u8]) -> IOResult<()> {
         if let Some(ref ioring) = self.ioring {
             self.write_at_aio(offset, buf, ioring).await
