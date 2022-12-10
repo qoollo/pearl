@@ -551,7 +551,7 @@ where
 
     /// `blob_count` returns exact number of corrupted blobs.
     pub async fn corrupted_blobs_count(&self) -> usize {
-        self.inner.corrupted_blobs.load(Ordering::Relaxed)
+        self.inner.corrupted_blobs.load(Ordering::Acquire)
     }
 
     /// `active_index_memory` returns the amount of memory used by blob to store active indices
@@ -630,7 +630,7 @@ where
         .await
         .context("failed to read blobs")?;
 
-        self.inner.corrupted_blobs.store(corrupted_count, Ordering::Relaxed);
+        self.inner.corrupted_blobs.store(corrupted_count, Ordering::Release);
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
@@ -735,8 +735,10 @@ where
 
     async fn count_old_corrupted_blobs(files: &[DirEntry], config: &Config) -> usize {
         let dir_content = files.iter().map(DirEntry::path);
-        let dirs = dir_content.filter(|path| 
-            path.is_dir() && path.ends_with(config.corrupted_dir_name()));
+        let dirs = dir_content.filter(|path| {
+            path.is_dir() &&
+            path.file_name().filter(|fname| fname.eq(&config.corrupted_dir_name())).is_some()
+        });
         
         let mut corrupted = 0;
         for dir in dirs {
