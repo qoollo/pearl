@@ -153,6 +153,8 @@ pub enum ValidationErrorKind {
     IndexChecksum,
     /// Index version.
     IndexVersion,
+    /// Index key size.
+    IndexKeySize,
     /// Index magic byte
     IndexMagicByte,
     /// Record data checksum.

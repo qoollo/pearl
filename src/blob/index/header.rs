@@ -14,6 +14,7 @@ pub(crate) struct IndexHeader {
     // this field also contains `written` bit (the first one)
     // to get the version, you should proceed `version >> 1`
     pub(crate) version: u8,
+    pub(crate) key_size: u16,
     pub(crate) blob_size: u64,
 }
 
@@ -22,12 +23,14 @@ impl IndexHeader {
         record_header_size: usize,
         records_count: usize,
         meta_size: usize,
+        key_size: u16,
         blob_size: u64,
     ) -> Self {
         Self {
             records_count,
             record_header_size,
             meta_size,
+            key_size,
             blob_size,
             ..Self::default()
         }
@@ -37,15 +40,17 @@ impl IndexHeader {
         record_header_size: usize,
         records_count: usize,
         meta_size: usize,
-        hash: Vec<u8>,
+        key_size: u16,
         blob_size: u64,
+        hash: Vec<u8>,
     ) -> Self {
         Self {
             records_count,
             record_header_size,
             meta_size,
-            hash,
+            key_size,
             blob_size,
+            hash,
             ..Self::default()
         }
     }
@@ -61,6 +66,10 @@ impl IndexHeader {
 
     pub(crate) fn version(&self) -> u8 {
         self.version >> 1
+    }
+
+    pub(crate) fn key_size(&self) -> u16 {
+        self.key_size
     }
 
     pub(crate) fn magic_byte(&self) -> u64 {
@@ -110,6 +119,7 @@ impl Default for IndexHeader {
             blob_size: 0,
             hash: vec![0; ring::digest::SHA256.output_len],
             version: HEADER_VERSION << 1,
+            key_size: 0,
             magic_byte: INDEX_HEADER_MAGIC_BYTE,
         }
     }

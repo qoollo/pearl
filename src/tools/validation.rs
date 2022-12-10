@@ -5,11 +5,7 @@ pub(crate) use crate::blob::index::{header::IndexHeader, BPTreeFileIndex};
 use crate::blob::FileName;
 pub(crate) use crate::record::{Header, Record};
 pub use crate::BloomConfig;
-use futures::Future;
-
-fn block_on<T, F: Future<Output = T>>(f: F) -> Result<T> {
-    Ok(tokio::runtime::Runtime::new()?.block_on(f))
-}
+use super::utils::block_on;
 
 /// Validate index file
 pub fn validate_index<K>(path: &Path) -> AnyResult<()>
@@ -18,7 +14,7 @@ where
 {
     use blob::index::HEADER_VERSION;
 
-    static_assertions::const_assert_eq!(HEADER_VERSION, 5);
+    static_assertions::const_assert_eq!(HEADER_VERSION, 6);
     let header = read_index_header(path)?;
     let blob_path = path.with_extension("blob");
     let blob_size = 

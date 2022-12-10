@@ -61,7 +61,7 @@ pub(crate) struct Safe<K>
 where
     for<'a> K: Key<'a>,
 {
-    pub(crate) active_blob: Option<Box<Blob<K>>>,
+    pub(crate) active_blob: Option<Box<ASRwLock<Blob<K>>>>,
     pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
 }
 
@@ -315,12 +315,12 @@ where
         }
         let record = Record::create(key, value, meta.unwrap_or_default())
             .with_context(|| "storage write with record creation failed")?;
-        let mut safe = self.inner.safe.write().await;
+        let safe = self.inner.safe.read().await;
         let blob = safe
             .active_blob
-            .as_mut()
+            .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
-        let result = blob.write(record).await.or_else(|err| {
+        let result = Blob::write(blob, record).await.or_else(|err| {
             let e = err.downcast::<Error>()?;
             if let ErrorKind::FileUnavailable(kind) = e.kind() {
                 let work_dir = self
@@ -337,7 +337,7 @@ where
         result
     }
 
-    async fn try_update_active_blob(&self, active_blob: &Box<Blob<K>>) -> Result<()> {
+    async fn try_update_active_blob(&self, active_blob: &Box<ASRwLock<Blob<K>>>) -> Result<()> {
         let config_max_size = self
             .inner
             .config
@@ -348,6 +348,7 @@ where
             .config
             .max_data_in_blob()
             .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
+        let active_blob = active_blob.read().await;
         if active_blob.file_size() >= config_max_size
             || active_blob.records_count() as u64 >= config_max_count
         {
@@ -421,7 +422,7 @@ where
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
-        if let Some(entries) = active_blob.read_all_entries(key).await? {
+        if let Some(entries) = active_blob.read().await.read_all_entries(key).await? {
             debug!(
                 "storage core read all active blob entries {}",
                 entries.len()
@@ -449,7 +450,7 @@ where
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
-            match ablob.read_any(key, meta, true).await {
+            match ablob.read().await.read_any(key, meta, true).await {
                 Ok(data) => {
                     debug!("storage read with optional meta active blob returned data");
                     return Ok(data);
@@ -516,7 +517,8 @@ where
         let mut safe = self.inner.safe.write().await;
         let active_blob = safe.active_blob.take();
         let mut res = Ok(());
-        if let Some(mut blob) = active_blob {
+        if let Some(blob) = active_blob {
+            let mut blob = blob.write().await;
             res = res.and(
                 blob.dump()
                     .await
@@ -556,7 +558,7 @@ where
     pub async fn active_index_memory(&self) -> usize {
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
-            ablob.index_memory()
+            ablob.read().await.index_memory()
         } else {
             0
         }
@@ -566,11 +568,10 @@ where
     pub async fn disk_used(&self) -> u64 {
         let safe = self.inner.safe.read().await;
         let lock = safe.blobs.read().await;
-        let mut result = safe
-            .active_blob
-            .as_ref()
-            .map(|b| b.disk_used())
-            .unwrap_or_default();
+        let mut result = 0;
+        if let Some(ablob) = safe.active_blob.as_ref() {
+            result += ablob.read().await.disk_used();
+        }
         for blob in lock.iter() {
             result += blob.disk_used();
         }
@@ -611,10 +612,9 @@ where
     async fn init_new(&mut self) -> Result<()> {
         let next = self.inner.next_blob_name()?;
         let mut safe = self.inner.safe.write().await;
-        let blob = Blob::open_new(next, self.inner.ioring.clone(), self.inner.config.index())
-            .await?
-            .boxed();
-        safe.active_blob = Some(blob);
+        let blob =
+            Blob::open_new(next, self.inner.ioring.clone(), self.inner.config.index()).await?;
+        safe.active_blob = Some(Box::new(ASRwLock::new(blob)));
         Ok(())
     }
 
@@ -636,7 +636,9 @@ where
         blobs.sort_by_key(Blob::id);
 
         let active_blob = if with_active {
-            Some(Self::pop_active(&mut blobs, &self.inner.config).await?)
+            Some(Box::new(ASRwLock::new(
+                *Self::pop_active(&mut blobs, &self.inner.config).await?,
+            )))
         } else {
             None
         };
@@ -823,7 +825,7 @@ where
     async fn contains_with(&self, key: &K, meta: Option<&Meta>) -> Result<bool> {
         let inner = self.inner.safe.read().await;
         if let Some(active_blob) = &inner.active_blob {
-            if active_blob.contains(key, meta).await? {
+            if active_blob.read().await.contains(key, meta).await? {
                 return Ok(true);
             }
         }
@@ -847,7 +849,7 @@ where
         trace!("[{:?}] check in blobs bloom filter", key);
         let inner = self.inner.safe.read().await;
         let in_active = if let Some(active_blob) = inner.active_blob.as_ref() {
-            active_blob.check_filter(key).await
+            active_blob.read().await.check_filter(key).await
         } else {
             FilterResult::NotContains
         };
@@ -955,6 +957,7 @@ where
         let mut safe = self.inner.safe.write().await;
         let active_blob = safe.active_blob.as_deref_mut();
         let count = if let Some(active_blob) = active_blob {
+            let mut active_blob = active_blob.write().await;
             let count = active_blob.mark_all_as_deleted(key).await?.unwrap_or(0);
             debug!("{} deleted from active blob", count);
             count
@@ -987,7 +990,7 @@ where
         if let None = safe.active_blob {
             let blob_opt = safe.blobs.write().await.pop().map(|b| b.boxed());
             if let Some(blob) = blob_opt {
-                safe.active_blob = Some(blob);
+                safe.active_blob = Some(Box::new(ASRwLock::new(*blob)));
                 Ok(())
             } else {
                 Err(Error::uninitialized().into())
@@ -1005,10 +1008,8 @@ where
         if let None = safe.active_blob {
             let next = self.next_blob_name()?;
             let config = self.config.index();
-            let blob = Blob::open_new(next, self.ioring.clone(), config)
-                .await?
-                .boxed();
-            safe.active_blob = Some(blob);
+            let blob = Blob::open_new(next, self.ioring.clone(), config).await?;
+            safe.active_blob = Some(Box::new(ASRwLock::new(blob)));
             Ok(())
         } else {
             Ok(())
@@ -1025,8 +1026,9 @@ where
         } else {
             // always true
             if let Some(ablob) = safe.active_blob.take() {
+                let ablob = (*ablob).into_inner();
                 ablob.fsyncdata().await?;
-                safe.blobs.write().await.push(*ablob).await;
+                safe.blobs.write().await.push(ablob).await;
             }
             Ok(())
         }
@@ -1042,6 +1044,7 @@ where
 
     pub(crate) async fn active_blob_stat(&self) -> Option<ActiveBlobStat> {
         if let Some(ablob) = self.safe.read().await.active_blob.as_ref() {
+            let ablob = ablob.read().await;
             let records_count = ablob.records_count();
             let index_memory = ablob.index_memory();
             let file_size = ablob.file_size() as usize;
@@ -1089,7 +1092,11 @@ where
 
     async fn records_count_in_active_blob(&self) -> Option<usize> {
         let inner = self.safe.read().await;
-        inner.active_blob.as_ref().map(|b| b.records_count())
+        if let Some(ablob) = inner.active_blob.as_ref() {
+            Some(ablob.read().await.records_count())
+        } else {
+            None
+        }
     }
 
     async fn fsyncdata(&self) -> IOResult<()> {
@@ -1113,9 +1120,12 @@ where
     }
 
     async fn max_id(&self) -> Option<usize> {
-        let active_blob_id = self.active_blob.as_ref().map(|blob| blob.id());
+        let mut id = None;
+        if let Some(ablob) = self.active_blob.as_ref() {
+            id = Some(ablob.read().await.id());
+        }
         let blobs_max_id = self.blobs.read().await.last().map(|x| x.id());
-        active_blob_id.max(blobs_max_id)
+        id.max(blobs_max_id)
     }
 
     async fn records_count(&self) -> usize {
@@ -1133,7 +1143,7 @@ where
             results.push(value);
         }
         if let Some(blob) = self.active_blob.as_ref() {
-            let value = (blobs.len(), blob.records_count());
+            let value = (blobs.len(), blob.read().await.records_count());
             debug!("push: {:?}", value);
             results.push(value);
         }
@@ -1142,15 +1152,15 @@ where
 
     async fn fsyncdata(&self) -> IOResult<()> {
         if let Some(ref blob) = self.active_blob {
-            blob.fsyncdata().await?;
+            blob.read().await.fsyncdata().await?;
         }
         Ok(())
     }
 
-    pub(crate) async fn replace_active_blob(&mut self, blob: Box<Blob<K>>) -> Result<()> {
+    pub(crate) async fn replace_active_blob(&mut self, blob: Box<ASRwLock<Blob<K>>>) -> Result<()> {
         let old_active = self.active_blob.replace(blob);
         if let Some(blob) = old_active {
-            self.blobs.write().await.push(*blob).await;
+            self.blobs.write().await.push(blob.into_inner()).await;
         }
         Ok(())
     }
@@ -1182,11 +1192,11 @@ where
     type Filter = <Blob<K> as BloomProvider<K>>::Filter;
     async fn check_filter(&self, item: &K) -> FilterResult {
         let inner = self.inner.safe.read().await;
-        let active = inner
-            .active_blob
-            .as_ref()
-            .map(|b| b.check_filter_fast(item))
-            .unwrap_or_default();
+        let active = if let Some(ablob) = inner.active_blob.as_ref() {
+            ablob.read().await.check_filter_fast(item)
+        } else {
+            FilterResult::default()
+        };
         let ret = inner.blobs.read().await.check_filter(item).await;
         ret + active
     }
@@ -1210,14 +1220,12 @@ where
         let inner = self.inner.safe.read().await;
         let mut ret = inner.blobs.read().await.get_filter_fast().cloned();
         if let Some(filter) = &mut ret {
-            if let Some(active_filter) = inner
-                .active_blob
-                .as_ref()
-                .map(|b| b.get_filter_fast())
-                .flatten()
-            {
-                if !filter.checked_add_assign(active_filter) {
-                    return None;
+            if let Some(ablob) = inner.active_blob.as_ref() {
+                let ablob = ablob.read().await;
+                if let Some(active_filter) = ablob.get_filter_fast() {
+                    if !filter.checked_add_assign(active_filter) {
+                        return None;
+                    }
                 }
             }
         }
@@ -1231,7 +1239,7 @@ where
     async fn filter_memory_allocated(&self) -> usize {
         let safe = self.inner.safe.read().await;
         let active = if let Some(blob) = safe.active_blob.as_ref() {
-            blob.filter_memory_allocated().await
+            blob.read().await.filter_memory_allocated().await
         } else {
             0
         };
