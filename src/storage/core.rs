@@ -65,7 +65,7 @@ where
     pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
 }
 
-async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
+async fn work_dir_content(wd: &Path) -> Result<(Vec<DirEntry>, bool)> {
     let mut files = Vec::new();
     let mut dir = read_dir(wd).await?;
     while let Some(file) = dir.next_entry().await.transpose() {
@@ -80,10 +80,10 @@ async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
         .any(|name| name.ends_with(BLOB_FILE_EXTENSION))
     {
         debug!("working dir contains files, try init existing");
-        Some(files)
+        (files, true)
     } else {
         debug!("working dir is uninitialized, starting empty storage");
-        None
+        (files, false)
     };
     Ok(content)
 }
@@ -140,13 +140,16 @@ where
             .await
             .with_context(|| format!("failed to read work dir content: {}", wd.display()));
         trace!("work dir content loaded");
-        if let Some(files) = cont_res? {
-            trace!("storage init from existing files");
-            self.init_from_existing(files, with_active)
-                .await
-                .context("failed to init from existing blobs")?
-        } else {
-            self.init_new().await?
+        match cont_res? {
+            (files, true) => {
+                trace!("storage init from existing files");
+                self.init_from_existing(files, with_active)
+                    .await
+                    .context("failed to init from existing blobs")?
+            },
+            (files, false) => {
+                self.init_new(files).await?
+            }
         };
         trace!("new storage initialized");
         self.launch_observer();
@@ -609,7 +612,10 @@ where
         Ok(())
     }
 
-    async fn init_new(&mut self) -> Result<()> {
+    async fn init_new(&mut self, files: Vec<DirEntry>) -> Result<()> {
+        let corrupted = Self::count_old_corrupted_blobs(&files, &self.inner.config).await;
+        self.inner.corrupted_blobs.store(corrupted, Ordering::Release);
+
         let next = self.inner.next_blob_name()?;
         let mut safe = self.inner.safe.write().await;
         let blob =
