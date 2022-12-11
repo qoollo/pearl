@@ -7,6 +7,7 @@ Pearl changelog
 
 
 #### Changed
+- Use bytes for arguments (#191)
 
 
 #### Fixed
