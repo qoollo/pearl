@@ -65,7 +65,7 @@ where
     pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
 }
 
-async fn work_dir_content(wd: &Path) -> Result<(Vec<DirEntry>, bool)> {
+async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     let mut files = Vec::new();
     let mut dir = read_dir(wd).await?;
     while let Some(file) = dir.next_entry().await.transpose() {
@@ -80,10 +80,10 @@ async fn work_dir_content(wd: &Path) -> Result<(Vec<DirEntry>, bool)> {
         .any(|name| name.ends_with(BLOB_FILE_EXTENSION))
     {
         debug!("working dir contains files, try init existing");
-        (files, true)
+        Some(files)
     } else {
         debug!("working dir is uninitialized, starting empty storage");
-        (files, false)
+        None
     };
     Ok(content)
 }
@@ -140,16 +140,13 @@ where
             .await
             .with_context(|| format!("failed to read work dir content: {}", wd.display()));
         trace!("work dir content loaded");
-        match cont_res? {
-            (files, true) => {
-                trace!("storage init from existing files");
-                self.init_from_existing(files, with_active)
-                    .await
-                    .context("failed to init from existing blobs")?
-            },
-            (files, false) => {
-                self.init_new(files).await?
-            }
+        if let Some(files) = cont_res? {
+            trace!("storage init from existing files");
+            self.init_from_existing(files, with_active)
+                .await
+                .context("failed to init from existing blobs")?
+        } else {
+            self.init_new().await?
         };
         trace!("new storage initialized");
         self.launch_observer();
@@ -553,7 +550,7 @@ where
     }
 
     /// `blob_count` returns exact number of corrupted blobs.
-    pub async fn corrupted_blobs_count(&self) -> usize {
+    pub fn corrupted_blobs_count(&self) -> usize {
         self.inner.corrupted_blobs.load(Ordering::Acquire)
     }
 
@@ -612,8 +609,8 @@ where
         Ok(())
     }
 
-    async fn init_new(&mut self, files: Vec<DirEntry>) -> Result<()> {
-        let corrupted = Self::count_old_corrupted_blobs(&files, &self.inner.config).await;
+    async fn init_new(&mut self) -> Result<()> {
+        let corrupted = Self::count_old_corrupted_blobs(&self.inner.config).await;
         self.inner.corrupted_blobs.store(corrupted, Ordering::Release);
 
         let next = self.inner.next_blob_name()?;
@@ -684,7 +681,7 @@ where
         disk_access_sem: Arc<Semaphore>,
         config: &Config,
     ) -> Result<(Vec<Blob<K>>, usize)> {
-        let mut corrupted = Self::count_old_corrupted_blobs(files, config).await;
+        let mut corrupted = Self::count_old_corrupted_blobs(config).await;
 
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
@@ -739,28 +736,32 @@ where
         Ok((blobs, corrupted))
     }
 
-    async fn count_old_corrupted_blobs(files: &[DirEntry], config: &Config) -> usize {
-        let dir_content = files.iter().map(DirEntry::path);
-        let dirs = dir_content.filter(|path| {
-            path.is_dir() &&
-            path.file_name().filter(|fname| fname.eq(&config.corrupted_dir_name())).is_some()
-        });
-        
+    async fn count_old_corrupted_blobs(config: &Config) -> usize {
         let mut corrupted = 0;
-        for dir in dirs {
-            let contents = read_dir(dir).await;
-            if let Ok(mut contents) = contents {
-                while let Ok(Some(file)) = contents.next_entry().await {
+
+        if let Some(work_dir_path) = config.work_dir() {
+            let mut corrupted_dir_path = work_dir_path.to_path_buf();
+            corrupted_dir_path.push(config.corrupted_dir_name());
+            if corrupted_dir_path.exists() {
+                let dir = read_dir(&corrupted_dir_path).await;
+                if dir.is_err() {
+                    warn!("can't read corrupted blobl dir: {}", corrupted_dir_path.display());
+                    return corrupted;
+                }
+                let mut dir = dir.unwrap();
+
+                while let Ok(Some(file)) = dir.next_entry().await {
                     let path = file.path();
-                    let extension = path.extension();
-                    if let Some(ext) = extension.and_then(|ext| ext.to_str()) {
-                        if path.is_file() && ext == BLOB_FILE_EXTENSION {
+                    if path.is_file() {
+                        let extension = path.extension();
+                        if let Some(BLOB_FILE_EXTENSION) = extension.and_then(|ext| ext.to_str()) {
                             corrupted += 1;
-                        }   
+                        }
                     }
                 }
             }
         }
+        
         corrupted
     }
 
