@@ -296,8 +296,4 @@ impl Header {
     pub(crate) fn is_deleted(&self) -> bool {
         self.flags & DELETE_FLAG == DELETE_FLAG
     }
-
-    pub(crate) fn created(&self) -> u64 {
-        self.created
-    }
 }
