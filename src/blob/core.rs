@@ -371,15 +371,15 @@ where
         meta: Option<&Meta>,
         check_filters: bool,
     ) -> Result<ReadResult<Entry>> {
-        println!("blob get any entry {:?}, {:?}", key, meta);
+        debug!("blob get any entry {:?}, {:?}", key, meta);
         if check_filters && self.check_filter(key).await == FilterResult::NotContains {
-            println!("Key was filtered out by filters");
+            debug!("Key was filtered out by filters");
             Ok(ReadResult::NotFound)
         } else if let Some(meta) = meta {
-            println!("blob get any entry meta: {:?}", meta);
+            debug!("blob get any entry meta: {:?}", meta);
             self.get_entry_with_meta(key, meta).await
         } else {
-            println!("blob get any entry bloom true no meta");
+            debug!("blob get any entry bloom true no meta");
             Ok(self
                 .index
                 .get_any(key)
