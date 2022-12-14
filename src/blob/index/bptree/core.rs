@@ -292,7 +292,7 @@ where
         self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
         let rh_size = self.header.record_header_size;
         if let Some((header, offset)) = self.read_header_buf(&buf[..buf_size], key, rh_size)? {
-            let mut headers = vec![];
+            let mut headers = Vec::with_capacity(1);
             self.go_left(header.key(), &mut headers, &buf[..buf_size], offset)
                 .await?;
             headers.reverse();

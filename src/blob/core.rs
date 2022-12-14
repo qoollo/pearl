@@ -260,8 +260,9 @@ where
             })?;
         self.index.push(key, record.header().clone())?;
         self.current_offset += buf.len() as u64;
-        Ok(record.header().clone())
+        Ok(record.into_header())
     }
+
     async fn write_locked(
         blob: ASRwLockUpgradableReadGuard<'_, Blob<K>>,
         key: &K,

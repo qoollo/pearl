@@ -106,6 +106,10 @@ impl Record {
         &self.header
     }
 
+    pub(crate) fn into_header(self) -> Header {
+        self.header
+    }
+
     /// # Description
     /// Serialize record to bytes
     pub fn to_raw(&self) -> bincode::Result<Vec<u8>> {
