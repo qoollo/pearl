@@ -447,6 +447,7 @@ async fn test_read_all_load_all() {
         .read_all(&KeyTest::new(key))
         .and_then(|entry| {
             entry
+                .unwrap()
                 .into_iter()
                 .map(|e| e.load())
                 .collect::<FuturesUnordered<_>>()
@@ -501,6 +502,7 @@ async fn test_read_all_find_one_key() {
         .read_all(&KeyTest::new(key))
         .and_then(|entry| {
             entry
+                .unwrap()
                 .into_iter()
                 .map(|e| e.load())
                 .collect::<FuturesUnordered<_>>()
@@ -904,13 +906,10 @@ async fn test_mark_as_deleted_single() {
         write_one(&storage, *key, data, None).await.unwrap();
         sleep(Duration::from_millis(64)).await;
     }
-    storage
-        .mark_all_as_deleted(&delete_key, false)
-        .await
-        .unwrap();
-    assert!(!matches!(
+    storage.delete(&delete_key, false).await.unwrap();
+    assert!(matches!(
         storage.contains(delete_key).await.unwrap(),
-        ReadResult::Found(_)
+        ReadResult::Deleted(_)
     ));
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -931,10 +930,7 @@ async fn test_mark_as_deleted_deferred_dump() {
 
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let update_time = std::fs::metadata(&path.join("test.0.index")).expect("metadata");
-    storage
-        .mark_all_as_deleted(&delete_key, false)
-        .await
-        .unwrap();
+    storage.delete(&delete_key, false).await.unwrap();
 
     sleep(MIN_DEFER_TIME / 2).await;
     let new_update_time = std::fs::metadata(&path.join("test.0.index")).expect("metadata");
@@ -1055,6 +1051,7 @@ async fn test_in_memory_and_disk_records_retrieval() -> Result<()> {
             .read_all(&KeyTest::new(key))
             .and_then(|entries| {
                 entries
+                    .unwrap()
                     .into_iter()
                     .map(|e| e.load())
                     .collect::<FuturesOrdered<_>>()

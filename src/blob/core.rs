@@ -13,6 +13,15 @@ use super::{header::Header, index::IndexTrait};
 
 pub(crate) const BLOB_INDEX_FILE_EXTENSION: &str = "index";
 
+#[derive(Debug, Clone, Copy)]
+pub struct BlobRecordTimestamp(u64);
+
+impl BlobRecordTimestamp {
+    pub(crate) fn new(t: u64) -> Self {
+        BlobRecordTimestamp(t)
+    }
+}
+
 /// A [`Blob`] struct representing file with records,
 /// provides methods for read/write access by key
 ///
@@ -319,20 +328,23 @@ where
     }
 
     #[inline]
-    pub(crate) async fn read_all_entries(&self, key: &K) -> Result<Option<Vec<Entry>>> {
+    pub(crate) async fn read_all_entries(&self, key: &K) -> Result<ReadResult<Vec<Entry>>> {
         let headers = self.index.get_all(key).await?;
-        Ok(headers.map(|h| {
-            debug!("blob core read all {} headers", h.len());
-            Self::headers_to_entries(h, &self.file)
+        Ok(headers.map(|hs| {
+            debug_assert!(hs
+                .iter()
+                .zip(hs.iter().skip(1))
+                .all(|(x, y)| x.created() <= y.created()));
+            Self::headers_to_entries(hs, &self.file)
         }))
     }
 
     pub(crate) async fn mark_all_as_deleted(
         &mut self,
         key: &K,
-        force_write: bool,
+        only_if_presented: bool,
     ) -> Result<Option<u64>> {
-        if force_write || self.index.get_any(key).await?.is_meaningful() {
+        if !only_if_presented || self.index.get_any(key).await?.is_presented() {
             let on_disk = self.index.on_disk();
             if on_disk {
                 self.load_index().await?;
@@ -359,15 +371,15 @@ where
         meta: Option<&Meta>,
         check_filters: bool,
     ) -> Result<ReadResult<Entry>> {
-        debug!("blob get any entry {:?}, {:?}", key, meta);
+        println!("blob get any entry {:?}, {:?}", key, meta);
         if check_filters && self.check_filter(key).await == FilterResult::NotContains {
-            debug!("Key was filtered out by filters");
+            println!("Key was filtered out by filters");
             Ok(ReadResult::NotFound)
         } else if let Some(meta) = meta {
-            debug!("blob get any entry meta: {:?}", meta);
+            println!("blob get any entry meta: {:?}", meta);
             self.get_entry_with_meta(key, meta).await
         } else {
-            debug!("blob get any entry bloom true no meta");
+            println!("blob get any entry bloom true no meta");
             Ok(self
                 .index
                 .get_any(key)
@@ -385,33 +397,34 @@ where
 
     async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<ReadResult<Entry>> {
         let headers = self.index.get_all(key).await?;
-        if let Some(headers) = headers {
-            let entries = Self::headers_to_entries(headers, &self.file);
-            self.filter_entries(entries, meta).await
-        } else {
-            Ok(ReadResult::NotFound)
-        }
+        headers
+            .try_map_async(|headers| async move {
+                let entries = Self::headers_to_entries(headers, &self.file);
+                self.filter_entries(entries, meta).await
+            })
+            .await
     }
 
-    async fn filter_entries(&self, entries: Vec<Entry>, meta: &Meta) -> Result<ReadResult<Entry>> {
+    async fn filter_entries(&self, mut entries: Vec<Entry>, meta: &Meta) -> Result<Entry> {
+        entries.reverse();
         for mut entry in entries {
             if Some(meta) == entry.load_meta().await? {
-                return Ok(if entry.header().is_deleted() {
-                    ReadResult::Deleted(entry.header().created())
-                } else {
-                    ReadResult::Found(entry)
-                });
+                return Ok(entry);
             }
         }
-        Ok(ReadResult::NotFound)
+        Err(Error::new(ErrorKind::Other).into())
     }
 
-    pub(crate) async fn contains(&self, key: &K, meta: Option<&Meta>) -> Result<ReadResult<u64>> {
+    pub(crate) async fn contains(
+        &self,
+        key: &K,
+        meta: Option<&Meta>,
+    ) -> Result<ReadResult<BlobRecordTimestamp>> {
         debug!("blob contains");
         let contains = self
             .get_entry(key, meta, true)
             .await?
-            .map(|e| e.header().created());
+            .map(|e| BlobRecordTimestamp(e.header().created()));
         debug!("blob contains any: {:?}", contains);
         Ok(contains)
     }

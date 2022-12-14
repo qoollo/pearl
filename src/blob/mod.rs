@@ -4,6 +4,7 @@ mod file;
 pub(crate) mod header;
 pub(crate) mod index;
 
+pub use self::core::BlobRecordTimestamp;
 pub(crate) use self::core::BLOB_INDEX_FILE_EXTENSION;
 pub(crate) use self::core::{Blob, FileName};
 pub use self::entry::Entry;

@@ -1,4 +1,5 @@
 use super::prelude::*;
+use crate::blob::BlobRecordTimestamp;
 use crate::filter::{BloomDataProvider, CombinedFilter, FilterTrait};
 use std::mem::size_of;
 
@@ -256,8 +257,10 @@ where
     FileIndex: FileIndexTrait<K> + Clone,
     for<'a> K: Key<'a>,
 {
-    async fn contains_key(&self, key: &K) -> Result<bool> {
-        self.get_any(key).await.map(|h| h.is_meaningful())
+    async fn contains_key(&self, key: &K) -> Result<ReadResult<BlobRecordTimestamp>> {
+        self.get_any(key)
+            .await
+            .map(|h| h.map(|h| BlobRecordTimestamp::new(h.created())))
     }
 
     fn push(&mut self, h: RecordHeader) -> Result<()> {
@@ -295,11 +298,25 @@ where
         }
     }
 
-    async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
-        match &self.inner {
+    async fn get_all(&self, key: &K) -> Result<ReadResult<Vec<RecordHeader>>> {
+        let headers = match &self.inner {
             State::InMemory(headers) => Ok(headers.get(key).cloned()),
             State::OnDisk(findex) => findex.find_by_key(key).await,
-        }
+        }?;
+
+        Ok(if let Some(headers) = headers {
+            if let Some(header) = headers.last() {
+                if header.is_deleted() {
+                    ReadResult::Deleted(header.created())
+                } else {
+                    ReadResult::Found(headers)
+                }
+            } else {
+                ReadResult::NotFound
+            }
+        } else {
+            ReadResult::NotFound
+        })
     }
 
     async fn get_any(&self, key: &K) -> Result<ReadResult<RecordHeader>> {

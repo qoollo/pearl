@@ -1,4 +1,5 @@
 use crate::{
+    blob::BlobRecordTimestamp,
     error::ValidationErrorKind,
     filter::{CombinedFilter, FilterTrait},
 };
@@ -305,10 +306,7 @@ where
             info!("Active blob was set during write operation");
         }
         if !self.inner.config.allow_duplicates()
-            && matches!(
-                self.contains_with(key, meta.as_ref()).await?,
-                ReadResult::Found(_)
-            )
+            && self.contains_with(key, meta.as_ref()).await?.is_found()
         {
             warn!(
                 "record with key {:?} and meta {:?} exists",
@@ -418,37 +416,41 @@ where
     /// Returns entries with matching key
     /// # Errors
     /// Fails after any disk IO errors.
-    pub async fn read_all(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
+    pub async fn read_all(&self, key: impl AsRef<K>) -> Result<ReadResult<Vec<Entry>>> {
         let key = key.as_ref();
         let mut all_entries = Vec::new();
         let safe = self.inner.safe.read().await;
-        let active_blob = safe
-            .active_blob
-            .as_ref()
-            .ok_or_else(Error::active_blob_not_set)?;
-        if let Some(entries) = active_blob.read().await.read_all_entries(key).await? {
-            debug!(
-                "storage core read all active blob entries {}",
-                entries.len()
-            );
-            all_entries.extend(entries);
-        }
         let blobs = safe.blobs.read().await;
         let entries_closed_blobs = blobs
-            .iter_possible_childs(key)
+            .iter_possible_childs_rev(key)
             .map(|b| b.1.data.read_all_entries(key))
             .collect::<FuturesUnordered<_>>();
         entries_closed_blobs
-            .try_filter_map(future::ok)
+            .try_filter_map(|r| async move { Ok(r.into_option()) })
             .try_for_each(|v| {
                 debug!("storage core read all closed blob {} entries", v.len());
                 all_entries.extend(v);
                 future::ok(())
             })
             .await?;
-        let all_entries = filter_deleted(all_entries);
-        debug!("storage core read all total {} entries", all_entries.len());
-        Ok(all_entries)
+        debug!(
+            "storage core read from non-active total {} entries",
+            all_entries.len()
+        );
+        let active_blob = safe
+            .active_blob
+            .as_ref()
+            .ok_or_else(Error::active_blob_not_set)?;
+        let read = active_blob.read().await.read_all_entries(key).await?;
+        if read.is_presented() {
+            let entries = read.unwrap();
+            debug!(
+                "storage core read all active blob entries {}",
+                entries.len()
+            );
+            all_entries.extend(entries);
+        }
+        Ok(filter_deleted(all_entries))
     }
 
     async fn read_with_optional_meta(
@@ -461,7 +463,7 @@ where
         if let Some(ablob) = safe.active_blob.as_ref() {
             match ablob.read().await.read_any(key, meta, true).await {
                 Ok(data) => {
-                    if data.is_meaningful() {
+                    if data.is_presented() {
                         debug!("storage read with optional meta active blob returned data");
                         return Ok(data);
                     }
@@ -504,7 +506,7 @@ where
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(|r| {
             if let Ok(h) = r {
-                !h.is_meaningful()
+                !h.is_presented()
             } else {
                 true
             }
@@ -526,7 +528,7 @@ where
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(|r| {
             if let Ok(h) = r {
-                !h.is_meaningful()
+                !h.is_presented()
             } else {
                 true
             }
@@ -817,22 +819,26 @@ where
     /// Also returns creation timestamp
     /// # Errors
     /// Fails because of any IO errors
-    pub async fn contains(&self, key: impl AsRef<K>) -> Result<ReadResult<u64>> {
+    pub async fn contains(&self, key: impl AsRef<K>) -> Result<ReadResult<BlobRecordTimestamp>> {
         self.contains_with(key.as_ref(), None).await
     }
 
-    async fn contains_with(&self, key: &K, meta: Option<&Meta>) -> Result<ReadResult<u64>> {
+    async fn contains_with(
+        &self,
+        key: &K,
+        meta: Option<&Meta>,
+    ) -> Result<ReadResult<BlobRecordTimestamp>> {
         let inner = self.inner.safe.read().await;
         if let Some(active_blob) = &inner.active_blob {
             let res = active_blob.read().await.contains(key, meta).await?;
-            if res.is_meaningful() {
+            if res.is_presented() {
                 return Ok(res);
             }
         }
         let blobs = inner.blobs.read().await;
-        for blob in blobs.iter_possible_childs(key) {
+        for blob in blobs.iter_possible_childs_rev(key) {
             let res = blob.1.data.contains(key, meta).await?;
-            if res.is_meaningful() {
+            if res.is_presented() {
                 return Ok(res);
             }
         }
@@ -921,13 +927,13 @@ where
         self.observer.run();
     }
 
-    /// Mark as deleted entries with matching key
+    /// Delete entries with matching key
     /// # Errors
     /// Fails after any disk IO errors.
-    pub async fn mark_all_as_deleted(&self, key: impl AsRef<K>, force_write: bool) -> Result<u64> {
+    pub async fn delete(&self, key: impl AsRef<K>, only_if_presented: bool) -> Result<u64> {
         let mut total = 0;
         total += self
-            .mark_all_as_deleted_active(key.as_ref(), force_write)
+            .mark_all_as_deleted_active(key.as_ref(), only_if_presented)
             .await?;
         total += self.mark_all_as_deleted_closed(key.as_ref()).await?;
         debug!("{} deleted total", total);
@@ -956,8 +962,8 @@ where
         Ok(total)
     }
 
-    async fn mark_all_as_deleted_active(&self, key: &K, force_write: bool) -> Result<u64> {
-        if force_write {
+    async fn mark_all_as_deleted_active(&self, key: &K, only_if_presented: bool) -> Result<u64> {
+        if !only_if_presented {
             if self.try_create_active_blob().await.is_ok() {
                 debug!("created active blob during delete");
             }
@@ -968,7 +974,7 @@ where
             let count = active_blob
                 .write()
                 .await
-                .mark_all_as_deleted(key, force_write)
+                .mark_all_as_deleted(key, only_if_presented)
                 .await?
                 .unwrap_or(0);
             debug!("{} deleted from active blob", count);
@@ -980,42 +986,37 @@ where
     }
 }
 
-fn filter_deleted(all_entries: Vec<Entry>) -> Vec<Entry> {
-    let mut last_removal_by_key = HashMap::new();
-    let mut last_created_by_key = HashMap::new();
+fn filter_deleted(mut all_entries: Vec<Entry>) -> ReadResult<Vec<Entry>> {
+    let mut last_removed = None;
+    let mut last_created = None;
     for entry in all_entries.iter() {
-        let key = entry.header().key();
         let created = entry.header().created();
         if entry.header().is_deleted() {
-            last_removal_by_key
-                .entry(key)
-                .and_modify(|r| *r = std::cmp::max(*r, created))
-                .or_insert(created);
+            last_removed = Some(last_removed.unwrap_or(created).max(created));
         } else {
-            last_created_by_key
-                .entry(key)
-                .and_modify(|r| *r = std::cmp::max(*r, created))
-                .or_insert(created);
+            last_created = Some(last_created.unwrap_or(created).max(created));
         }
     }
-    let flags: Vec<bool> = all_entries
-        .iter()
-        .map(|e| {
-            let key = e.header().key();
-            let last_removed = last_removal_by_key.get(key);
-            let last_created = last_created_by_key.get(key);
-            let is_deleted = last_removed.is_some()
-                && (last_created.is_none() || last_created.unwrap() < last_removed.unwrap());
-            !is_deleted
-        })
-        .collect();
-    let all_entries: Vec<_> = all_entries
-        .into_iter()
-        .zip(flags)
-        .filter(|(_, f)| *f)
-        .map(|(e, _)| e)
-        .collect();
-    all_entries
+    if let Some(last_removed) = last_removed {
+        let is_deleted = last_created.unwrap_or(0) < last_removed;
+        if is_deleted {
+            return ReadResult::Deleted(last_removed);
+        } else {
+            all_entries = all_entries
+                .into_iter()
+                .skip_while(|e| e.header().created() <= last_removed)
+                .collect();
+        }
+    }
+    if all_entries.is_empty() {
+        ReadResult::NotFound
+    } else {
+        debug_assert!(all_entries
+            .iter()
+            .zip(all_entries.iter().skip(1))
+            .all(|(x, y)| x.header().created() <= y.header().created()));
+        ReadResult::Found(all_entries)
+    }
 }
 
 impl<K> Inner<K>
@@ -1310,8 +1311,32 @@ pub enum ReadResult<T> {
 }
 
 impl<T> ReadResult<T> {
-    pub(crate) fn is_meaningful(&self) -> bool {
+    pub(crate) fn is_presented(&self) -> bool {
         !matches!(self, ReadResult::NotFound)
+    }
+
+    /// Is this found result
+    pub fn is_found(&self) -> bool {
+        matches!(self, ReadResult::Found(_))
+    }
+
+    /// Is this deleted result
+    pub fn is_deleted(&self) -> bool {
+        matches!(self, ReadResult::Deleted(_))
+    }
+
+    /// Is this not found result
+    pub fn is_not_found(&self) -> bool {
+        matches!(self, ReadResult::NotFound)
+    }
+
+    /// Convert to option if data exists
+    pub fn into_option(self) -> Option<T> {
+        if let ReadResult::Found(d) = self {
+            Some(d)
+        } else {
+            None
+        }
     }
 
     /// Map data if it exists
@@ -1321,6 +1346,30 @@ impl<T> ReadResult<T> {
             ReadResult::Deleted(ts) => ReadResult::Deleted(ts),
             ReadResult::NotFound => ReadResult::NotFound,
         }
+    }
+
+    /// Map data if it exists
+    pub async fn map_async<Y, F>(self, f: impl FnOnce(T) -> F) -> ReadResult<Y>
+    where
+        F: futures::Future<Output = Y>,
+    {
+        match self {
+            ReadResult::Found(d) => ReadResult::Found(f(d).await),
+            ReadResult::Deleted(ts) => ReadResult::Deleted(ts),
+            ReadResult::NotFound => ReadResult::NotFound,
+        }
+    }
+
+    /// Map data if it exists and return result
+    pub async fn try_map_async<Y, F, E>(self, f: impl FnOnce(T) -> F) -> Result<ReadResult<Y>, E>
+    where
+        F: futures::Future<Output = Result<Y, E>>,
+    {
+        Ok(match self {
+            ReadResult::Found(d) => ReadResult::Found(f(d).await?),
+            ReadResult::Deleted(ts) => ReadResult::Deleted(ts),
+            ReadResult::NotFound => ReadResult::NotFound,
+        })
     }
 
     /// Unwrap into data, panics if no data is set
