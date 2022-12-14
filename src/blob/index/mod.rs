@@ -33,5 +33,5 @@ pub(crate) trait IndexTrait<K>: Send + Sync {
     fn count(&self) -> usize;
     async fn dump(&mut self, blob_size: u64) -> Result<usize>;
     async fn load(&mut self, blob_size: u64) -> Result<()>;
-    fn mark_all_as_deleted(&mut self, key: &K, default_header: RecordHeader) -> Result<()>;
+    fn push_deletion(&mut self, key: &K, header: RecordHeader) -> Result<()>;
 }

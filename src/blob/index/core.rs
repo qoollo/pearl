@@ -291,23 +291,23 @@ where
 
     async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
         let res = match &self.inner {
-            State::InMemory(headers) => Ok(headers.get(key).cloned()),
+            State::InMemory(headers) => Ok(headers.get(key).cloned().map(|mut v| {
+                if v.len() > 1 {
+                    v.reverse();
+                }
+                v
+            })),
             State::OnDisk(findex) => findex.find_by_key(key).await,
         };
-        res.map(|r| {
-            r.and_then(|mut hs| {
-                let last_del = (hs.len() - hs.iter().rev().take_while(|h| !h.is_deleted()).count())
-                    .saturating_sub(1);
-                if last_del > 0 {
-                    hs.drain(0..=last_del);
-                }
-                if hs.len() > 0 {
-                    Some(hs)
-                } else {
-                    None
-                }
-            })
-        })
+        if let Ok(Some(mut hs)) = res {
+            let first_del = hs.iter().position(|h| h.is_deleted());
+            if let Some(first_del) = first_del {
+                hs.truncate(first_del);
+            }
+            Ok(if hs.len() > 0 { Some(hs) } else { None })
+        } else {
+            res
+        }
     }
 
     async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
@@ -352,7 +352,7 @@ where
         }
     }
 
-    fn mark_all_as_deleted(&mut self, key: &K, header: RecordHeader) -> Result<()> {
+    fn push_deletion(&mut self, key: &K, header: RecordHeader) -> Result<()> {
         debug!("mark all as deleted by {:?} key", key);
         assert!(header.is_deleted());
         assert!(header.data_size() == 0);

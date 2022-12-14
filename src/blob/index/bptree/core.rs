@@ -295,7 +295,9 @@ where
             let mut headers = Vec::with_capacity(1);
             self.go_left(header.key(), &mut headers, &buf[..buf_size], offset)
                 .await?;
-            headers.reverse();
+            if headers.len() > 1 {
+                headers.reverse();
+            }
             headers.push(header);
             self.go_right(&mut headers, &buf[..buf_size], offset, leaf_offset)
                 .await?;

@@ -340,7 +340,7 @@ where
         }
         let record = Record::deleted(key)?;
         let header = self.write_mut(key, record).await?;
-        self.index.mark_all_as_deleted(key, header)
+        self.index.push_deletion(key, header)
     }
 
     fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
