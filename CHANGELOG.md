@@ -7,6 +7,7 @@ Pearl changelog
 - Corrupted blobs count calculation (#464)
 
 #### Changed
+- Use bytes for arguments (#191)
 
 
 #### Fixed

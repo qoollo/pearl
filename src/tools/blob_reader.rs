@@ -76,7 +76,8 @@ impl BlobReader {
 
         let data = self
             .read_bytes(header.data_size() as usize)
-            .with_context(|| "read record data")?;
+            .with_context(|| "read record data")?
+            .into();
 
         let record = Record { header, meta, data };
         let record = record

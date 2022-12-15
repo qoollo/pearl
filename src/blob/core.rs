@@ -1,6 +1,7 @@
 use std::time::SystemTime;
 
 use async_std::sync::RwLockUpgradableReadGuard;
+use bytes::Bytes;
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
@@ -291,7 +292,7 @@ where
         key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<Bytes> {
         debug!("blob read any");
         let entry = self
             .get_entry(key, meta, check_filters)
