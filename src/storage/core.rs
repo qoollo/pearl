@@ -744,8 +744,8 @@ where
             corrupted_dir_path.push(config.corrupted_dir_name());
             if corrupted_dir_path.exists() {
                 let dir = read_dir(&corrupted_dir_path).await;
-                if dir.is_err() {
-                    warn!("can't read corrupted blobl dir: {}", corrupted_dir_path.display());
+                if let Err(e) = dir {
+                    warn!("can't read corrupted blob dir {}: {}", corrupted_dir_path.display(), e);
                     return corrupted;
                 }
                 let mut dir = dir.unwrap();
