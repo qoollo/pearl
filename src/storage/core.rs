@@ -903,16 +903,21 @@ where
             .iter_mut()
             .map(|b| b.mark_all_as_deleted(key))
             .collect::<FuturesUnordered<_>>();
-        let total =
-            futures::stream::StreamExt::count(entries_closed_blobs.filter_map(
-                |result| match result {
-                    Ok(count) => count,
-                    Err(error) => {
-                        warn!("failed to delete records: {}", error);
-                        None
+        let total = entries_closed_blobs
+            .map(|result| match result {
+                Ok(flag) => {
+                    if flag {
+                        1
+                    } else {
+                        0
                     }
-                },
-            ))
+                }
+                Err(error) => {
+                    warn!("failed to delete records: {}", error);
+                    0
+                }
+            })
+            .fold(0, |s, n| s + n)
             .await;
         debug!("{} deleted from closed blobs", total);
         self.observer.defer_dump_old_blob_indexes().await;
@@ -924,11 +929,8 @@ where
         let active_blob = safe.active_blob.as_deref_mut();
         let count = if let Some(active_blob) = active_blob {
             let mut active_blob = active_blob.write().await;
-            let count = active_blob
-                .mark_all_as_deleted(key)
-                .await?
-                .map(|_| 1)
-                .unwrap_or(0);
+            let is_deleted = active_blob.mark_all_as_deleted(key).await?;
+            let count = if is_deleted { 1 } else { 0 };
             debug!("{} deleted from active blob", count);
             count
         } else {

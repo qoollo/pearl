@@ -325,11 +325,12 @@ where
         }))
     }
 
-    pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<()>> {
+    pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<bool> {
         if self.index.get_any(key).await?.is_some() {
-            Ok(Some(self.push_deletion_record(key).await?))
+            self.push_deletion_record(key).await?;
+            Ok(true)
         } else {
-            Ok(None)
+            Ok(false)
         }
     }
 
