@@ -7,6 +7,7 @@ Pearl changelog
 
 
 #### Changed
+- Save delete records in index (#207)
 - Use bytes for arguments (#191)
 
 
