@@ -421,36 +421,47 @@ where
         let mut all_entries = Vec::new();
         let safe = self.inner.safe.read().await;
         let blobs = safe.blobs.read().await;
-        let entries_closed_blobs = blobs
-            .iter_possible_childs_rev(key)
-            .map(|b| b.1.data.read_all_entries(key))
-            .collect::<FuturesUnordered<_>>();
-        entries_closed_blobs
-            .try_filter_map(|r| async move { Ok(r.into_option()) })
-            .try_for_each(|v| {
-                debug!("storage core read all closed blob {} entries", v.len());
-                all_entries.extend(v);
-                future::ok(())
-            })
-            .await?;
-        debug!(
-            "storage core read from non-active total {} entries",
-            all_entries.len()
-        );
         let active_blob = safe
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
         let read = active_blob.read().await.read_all_entries(key).await?;
-        if read.is_presented() {
+        if read.is_found() {
             let entries = read.unwrap();
             debug!(
                 "storage core read all active blob entries {}",
                 entries.len()
             );
             all_entries.extend(entries);
+        } else if read.is_deleted() {
+            return Ok(read);
         }
-        Ok(filter_deleted(all_entries))
+
+        let mut futures = blobs
+            .iter_possible_childs_rev(key)
+            .map(|b| b.1.data.read_all_entries(key))
+            .collect::<FuturesOrdered<_>>();
+        while let Some(data) = futures.next().await {
+            let data = data?;
+            if data.is_found() {
+                all_entries.extend(data.unwrap());
+            } else if data.is_deleted() {
+                if all_entries.is_empty() {
+                    return Ok(data);
+                } else {
+                    return Ok(ReadResult::Found(all_entries));
+                }
+            }
+        }
+        debug!(
+            "storage core read from non-active total {} entries",
+            all_entries.len()
+        );
+        debug_assert!(all_entries
+            .iter()
+            .zip(all_entries.iter().skip(1))
+            .all(|(x, y)| x.header().created() >= y.header().created()));
+        Ok(ReadResult::Found(all_entries))
     }
 
     async fn read_with_optional_meta(
@@ -992,7 +1003,7 @@ fn filter_deleted(mut all_entries: Vec<Entry>) -> ReadResult<Vec<Entry>> {
         debug_assert!(all_entries
             .iter()
             .zip(all_entries.iter().skip(1))
-            .all(|(x, y)| x.header().created() <= y.header().created()));
+            .all(|(x, y)| x.header().created() >= y.header().created()));
         ReadResult::Found(all_entries)
     }
 }

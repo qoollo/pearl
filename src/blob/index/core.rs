@@ -300,23 +300,31 @@ where
 
     async fn get_all(&self, key: &K) -> Result<ReadResult<Vec<RecordHeader>>> {
         let headers = match &self.inner {
-            State::InMemory(headers) => Ok(headers.get(key).cloned()),
+            State::InMemory(headers) => Ok(headers.get(key).cloned().map(|mut hs| {
+                if hs.len() > 1 {
+                    hs.reverse();
+                }
+                hs
+            })),
             State::OnDisk(findex) => findex.find_by_key(key).await,
         }?;
-
-        Ok(if let Some(headers) = headers {
-            if let Some(header) = headers.last() {
-                if header.is_deleted() {
-                    ReadResult::Deleted(header.created())
+        if let Some(mut hs) = headers {
+            let first_del = hs.iter().position(|h| h.is_deleted());
+            if let Some(first_del) = first_del {
+                if first_del == 0 {
+                    return Ok(ReadResult::Deleted(hs[first_del].created()));
                 } else {
-                    ReadResult::Found(headers)
+                    hs.truncate(first_del);
                 }
+            }
+            Ok(if hs.len() > 0 {
+                ReadResult::Found(hs)
             } else {
                 ReadResult::NotFound
-            }
+            })
         } else {
-            ReadResult::NotFound
-        })
+            Ok(ReadResult::NotFound)
+        }
     }
 
     async fn get_any(&self, key: &K) -> Result<ReadResult<RecordHeader>> {

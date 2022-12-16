@@ -1,5 +1,5 @@
-use crate::error::ValidationErrorKind;
 use super::storage::Key;
+use crate::error::ValidationErrorKind;
 
 /// structure of b+-tree index file from the beginning:
 /// 1. Header
@@ -15,8 +15,7 @@ use super::prelude::*;
 pub(super) const BLOCK_SIZE: usize = 4096;
 
 #[derive(Debug, Clone)]
-pub(crate) struct BPTreeFileIndex<K>
-{
+pub(crate) struct BPTreeFileIndex<K> {
     file: File,
     header: IndexHeader,
     metadata: TreeMeta,
