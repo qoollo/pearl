@@ -4,6 +4,7 @@ use crate::{
 };
 
 use super::prelude::*;
+use bytes::Bytes;
 use futures::stream::FuturesOrdered;
 use tokio::fs::{create_dir, create_dir_all};
 
@@ -240,7 +241,7 @@ where
     ///
     /// async fn write_data(storage: Storage<ArrayKey<8>>) {
     ///     let key = ArrayKey::<8>::default();
-    ///     let data = b"async written to blob".to_vec();
+    ///     let data = b"async written to blob".to_vec().into();
     ///     storage.write(key, data).await;
     /// }
     /// ```
@@ -248,7 +249,7 @@ where
     /// Fails with the same errors as [`write_with`]
     ///
     /// [`write_with`]: Storage::write_with
-    pub async fn write(&self, key: impl AsRef<K>, value: Vec<u8>) -> Result<()> {
+    pub async fn write(&self, key: impl AsRef<K>, value: Bytes) -> Result<()> {
         self.write_with_optional_meta(key, value, None).await
     }
 
@@ -259,7 +260,7 @@ where
     ///
     /// async fn write_data(storage: Storage<ArrayKey<8>>) {
     ///     let key = ArrayKey::<8>::default();
-    ///     let data = b"async written to blob".to_vec();
+    ///     let data = b"async written to blob".to_vec().into();
     ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
     ///     storage.write_with(&key, data, meta).await;
@@ -267,7 +268,7 @@ where
     /// ```
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
-    pub async fn write_with(&self, key: impl AsRef<K>, value: Vec<u8>, meta: Meta) -> Result<()> {
+    pub async fn write_with(&self, key: impl AsRef<K>, value: Bytes, meta: Meta) -> Result<()> {
         self.write_with_optional_meta(key, value, Some(meta)).await
     }
 
@@ -295,7 +296,7 @@ where
     async fn write_with_optional_meta(
         &self,
         key: impl AsRef<K>,
-        value: Vec<u8>,
+        value: Bytes,
         meta: Option<Meta>,
     ) -> Result<()> {
         let key = key.as_ref();
@@ -380,7 +381,7 @@ where
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     /// [`read_with`]: Storage::read_with
     #[inline]
-    pub async fn read(&self, key: impl AsRef<K>) -> Result<Vec<u8>> {
+    pub async fn read(&self, key: impl AsRef<K>) -> Result<Bytes> {
         let key = key.as_ref();
         debug!("storage read {:?}", key);
         self.read_with_optional_meta(key, None).await
@@ -402,7 +403,7 @@ where
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
-    pub async fn read_with(&self, key: impl AsRef<K>, meta: &Meta) -> Result<Vec<u8>> {
+    pub async fn read_with(&self, key: impl AsRef<K>, meta: &Meta) -> Result<Bytes> {
         let key = key.as_ref();
         debug!("storage read with {:?}", key);
         self.read_with_optional_meta(key, Some(meta))
@@ -445,7 +446,7 @@ where
         Ok(all_entries)
     }
 
-    async fn read_with_optional_meta(&self, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn read_with_optional_meta(&self, key: &K, meta: Option<&Meta>) -> Result<Bytes> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
@@ -460,7 +461,7 @@ where
         Self::get_any_data(&safe, key, meta).await
     }
 
-    async fn get_data_last(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_last(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Bytes> {
         let blobs = safe.blobs.read().await;
         let possible_blobs = blobs
             .iter_possible_childs_rev(key)
@@ -491,7 +492,7 @@ where
     }
 
     #[allow(dead_code)]
-    async fn get_data_any(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_data_any(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Bytes> {
         let blobs = safe.blobs.read().await;
         let stream: FuturesUnordered<_> = blobs
             .iter_possible_childs_rev(key)
@@ -505,7 +506,7 @@ where
             .with_context(|| "no results in closed blobs")
     }
 
-    async fn get_any_data(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Vec<u8>> {
+    async fn get_any_data(safe: &Safe<K>, key: &K, meta: Option<&Meta>) -> Result<Bytes> {
         Self::get_data_last(safe, key, meta).await
     }
 
