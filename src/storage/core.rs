@@ -514,28 +514,6 @@ where
         task.next().await.unwrap_or(Ok(ReadResult::NotFound))
     }
 
-    #[allow(dead_code)]
-    async fn get_data_any(
-        safe: &Safe<K>,
-        key: &K,
-        meta: Option<&Meta>,
-    ) -> Result<ReadResult<Vec<u8>>> {
-        let blobs = safe.blobs.read().await;
-        let stream: FuturesUnordered<_> = blobs
-            .iter_possible_childs_rev(key)
-            .map(|blob| blob.1.data.read_any(key, meta, true))
-            .collect();
-        debug!("read with optional meta {} closed blobs", stream.len());
-        let mut task = stream.skip_while(|r| {
-            if let Ok(h) = r {
-                !h.is_presented()
-            } else {
-                true
-            }
-        });
-        task.next().await.unwrap_or(Ok(ReadResult::NotFound))
-    }
-
     async fn get_any_data(
         safe: &Safe<K>,
         key: &K,

@@ -405,8 +405,7 @@ where
             .await
     }
 
-    async fn filter_entries(&self, mut entries: Vec<Entry>, meta: &Meta) -> Result<Entry> {
-        entries.reverse();
+    async fn filter_entries(&self, entries: Vec<Entry>, meta: &Meta) -> Result<Entry> {
         for mut entry in entries {
             if Some(meta) == entry.load_meta().await? {
                 return Ok(entry);
