@@ -141,6 +141,10 @@ impl Record {
         &self.header
     }
 
+    pub(crate) fn into_header(self) -> Header {
+        self.header
+    }
+
     /// # Description
     /// Serialize record to bytes
     pub fn to_raw(&self) -> bincode::Result<Vec<u8>> {
@@ -326,9 +330,5 @@ impl Header {
 
     pub(crate) fn is_deleted(&self) -> bool {
         self.flags & DELETE_FLAG == DELETE_FLAG
-    }
-
-    pub(crate) fn created(&self) -> u64 {
-        self.created
     }
 }

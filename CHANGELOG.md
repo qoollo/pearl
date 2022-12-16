@@ -7,6 +7,7 @@ Pearl changelog
 - Corrupted blobs count calculation (#464)
 
 #### Changed
+- Save delete records in index (#207)
 - Use bytes for arguments (#191)
 
 
