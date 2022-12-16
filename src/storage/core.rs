@@ -975,39 +975,6 @@ where
     }
 }
 
-fn filter_deleted(mut all_entries: Vec<Entry>) -> ReadResult<Vec<Entry>> {
-    let mut last_removed = None;
-    let mut last_created = None;
-    for entry in all_entries.iter() {
-        let created = entry.header().created();
-        if entry.header().is_deleted() {
-            last_removed = Some(last_removed.unwrap_or(created).max(created));
-        } else {
-            last_created = Some(last_created.unwrap_or(created).max(created));
-        }
-    }
-    if let Some(last_removed) = last_removed {
-        let is_deleted = last_created.unwrap_or(0) < last_removed;
-        if is_deleted {
-            return ReadResult::Deleted(last_removed);
-        } else {
-            all_entries = all_entries
-                .into_iter()
-                .skip_while(|e| e.header().created() <= last_removed)
-                .collect();
-        }
-    }
-    if all_entries.is_empty() {
-        ReadResult::NotFound
-    } else {
-        debug_assert!(all_entries
-            .iter()
-            .zip(all_entries.iter().skip(1))
-            .all(|(x, y)| x.header().created() >= y.header().created()));
-        ReadResult::Found(all_entries)
-    }
-}
-
 impl<K> Inner<K>
 where
     for<'a> K: Key<'a> + 'static,
