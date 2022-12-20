@@ -4,10 +4,12 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Corrupted blobs count calculation (#464)
 
 #### Changed
 - Return delete or not found as distinct results (#208)
+- Save delete records in index (#207)
+- Use bytes for arguments (#191)
 
 
 #### Fixed

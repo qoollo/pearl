@@ -1,6 +1,7 @@
 use std::time::SystemTime;
 
 use async_std::sync::RwLockUpgradableReadGuard;
+use bytes::Bytes;
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
@@ -232,9 +233,9 @@ where
                 self.name.to_path()
             )
         })? {
-            let headers = filter_deleted_headers(headers);
             for header in headers {
-                self.index.push(header).context("index push failed")?;
+                let key = header.key().into();
+                self.index.push(&key, header).context("index push failed")?;
             }
         }
         debug!("index successfully generated: {}", self.index.name());
@@ -245,14 +246,14 @@ where
         // @TODO implement
     }
 
-    pub(crate) async fn write(blob: &ASRwLock<Self>, record: Record) -> Result<()> {
+    pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<()> {
         debug!("blob write");
         // Only one upgradable_read lock is allowed at a time
         let blob = blob.upgradable_read().await;
-        Self::write_locked(blob, record).await
+        Self::write_locked(blob, key, record).await
     }
 
-    async fn write_mut(&mut self, mut record: Record) -> Result<()> {
+    async fn write_mut(&mut self, key: &K, mut record: Record) -> Result<RecordHeader> {
         debug!("blob write");
         debug!("blob write record offset: {}", self.current_offset);
         record.set_offset(self.current_offset)?;
@@ -268,12 +269,14 @@ where
                     _ => e.into(),
                 }
             })?;
-        self.index.push(record.header().clone())?;
+        self.index.push(key, record.header().clone())?;
         self.current_offset += buf.len() as u64;
-        Ok(())
+        Ok(record.into_header())
     }
+
     async fn write_locked(
         blob: ASRwLockUpgradableReadGuard<'_, Blob<K>>,
+        key: &K,
         mut record: Record,
     ) -> Result<()> {
         debug!("blob write record offset: {}", blob.current_offset);
@@ -291,7 +294,7 @@ where
                 }
             })?;
         let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
-        blob.index.push(record.header().clone())?;
+        blob.index.push(key, record.header().clone())?;
         blob.current_offset += buf.len() as u64;
         Ok(())
     }
@@ -301,7 +304,7 @@ where
         key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
-    ) -> Result<ReadResult<Vec<u8>>> {
+    ) -> Result<ReadResult<Bytes>> {
         debug!("blob read any");
         let entry = self.get_entry(key, meta, check_filters).await?;
         match entry {
@@ -334,7 +337,7 @@ where
             debug_assert!(hs
                 .iter()
                 .zip(hs.iter().skip(1))
-                .all(|(x, y)| x.created() <= y.created()));
+                .all(|(x, y)| x.created() >= y.created()));
             Self::headers_to_entries(hs, &self.file)
         }))
     }
@@ -343,19 +346,23 @@ where
         &mut self,
         key: &K,
         only_if_presented: bool,
-    ) -> Result<Option<u64>> {
-        if !only_if_presented || self.index.get_any(key).await?.is_presented() {
-            let on_disk = self.index.on_disk();
-            if on_disk {
-                self.load_index().await?;
-            }
-            let record = Record::deleted(key)?;
-            self.write_mut(record).await?;
-            let res = self.index.mark_all_as_deleted(key)?;
-            Ok(res)
+    ) -> Result<bool> {
+        if !only_if_presented || !self.index.get_any(key).await?.is_found() {
+            self.push_deletion_record(key).await?;
+            Ok(true)
         } else {
-            Ok(None)
+            Ok(false)
         }
+    }
+
+    async fn push_deletion_record(&mut self, key: &K) -> Result<()> {
+        let on_disk = self.index.on_disk();
+        if on_disk {
+            self.load_index().await?;
+        }
+        let record = Record::deleted(key)?;
+        let header = self.write_mut(key, record).await?;
+        self.index.push_deletion(key, header)
     }
 
     fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
@@ -599,27 +606,6 @@ impl RawRecords {
         self.current_offset += header.data_size();
         Ok(header)
     }
-}
-
-pub(crate) fn filter_deleted_headers(headers: Vec<RecordHeader>) -> Vec<RecordHeader> {
-    let deleted = headers.iter().fold(BTreeMap::new(), |mut map, h| {
-        if h.is_deleted() {
-            let entry = map.entry(h.key().to_vec()).or_insert(h.created());
-            *entry = h.created().max(*entry);
-        }
-        map
-    });
-    if deleted.is_empty() {
-        return headers;
-    }
-
-    let mut new_headers = vec![];
-    for header in headers {
-        if deleted.get(header.key()).cloned().unwrap_or_default() < header.created() {
-            new_headers.push(header);
-        }
-    }
-    new_headers
 }
 
 #[async_trait::async_trait]

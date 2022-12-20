@@ -5,6 +5,7 @@ use crate::{
 };
 
 use super::prelude::*;
+use bytes::Bytes;
 use futures::stream::FuturesOrdered;
 use tokio::fs::{create_dir, create_dir_all};
 
@@ -54,6 +55,7 @@ where
     pub(crate) safe: Arc<RwLock<Safe<K>>>,
     next_blob_id: Arc<AtomicUsize>,
     pub(crate) ioring: Option<Rio>,
+    pub(crate) corrupted_blobs: Arc<AtomicUsize>,
 }
 
 #[derive(Debug)]
@@ -241,7 +243,7 @@ where
     ///
     /// async fn write_data(storage: Storage<ArrayKey<8>>) {
     ///     let key = ArrayKey::<8>::default();
-    ///     let data = b"async written to blob".to_vec();
+    ///     let data = b"async written to blob".to_vec().into();
     ///     storage.write(key, data).await;
     /// }
     /// ```
@@ -249,7 +251,7 @@ where
     /// Fails with the same errors as [`write_with`]
     ///
     /// [`write_with`]: Storage::write_with
-    pub async fn write(&self, key: impl AsRef<K>, value: Vec<u8>) -> Result<()> {
+    pub async fn write(&self, key: impl AsRef<K>, value: Bytes) -> Result<()> {
         self.write_with_optional_meta(key, value, None).await
     }
 
@@ -260,7 +262,7 @@ where
     ///
     /// async fn write_data(storage: Storage<ArrayKey<8>>) {
     ///     let key = ArrayKey::<8>::default();
-    ///     let data = b"async written to blob".to_vec();
+    ///     let data = b"async written to blob".to_vec().into();
     ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
     ///     storage.write_with(&key, data, meta).await;
@@ -268,7 +270,7 @@ where
     /// ```
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
-    pub async fn write_with(&self, key: impl AsRef<K>, value: Vec<u8>, meta: Meta) -> Result<()> {
+    pub async fn write_with(&self, key: impl AsRef<K>, value: Bytes, meta: Meta) -> Result<()> {
         self.write_with_optional_meta(key, value, Some(meta)).await
     }
 
@@ -296,7 +298,7 @@ where
     async fn write_with_optional_meta(
         &self,
         key: impl AsRef<K>,
-        value: Vec<u8>,
+        value: Bytes,
         meta: Option<Meta>,
     ) -> Result<()> {
         let key = key.as_ref();
@@ -322,7 +324,7 @@ where
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
-        let result = Blob::write(blob, record).await.or_else(|err| {
+        let result = Blob::write(blob, key, record).await.or_else(|err| {
             let e = err.downcast::<Error>()?;
             if let ErrorKind::FileUnavailable(kind) = e.kind() {
                 let work_dir = self
@@ -383,7 +385,7 @@ where
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     /// [`read_with`]: Storage::read_with
     #[inline]
-    pub async fn read(&self, key: impl AsRef<K>) -> Result<ReadResult<Vec<u8>>> {
+    pub async fn read(&self, key: impl AsRef<K>) -> Result<ReadResult<Bytes>> {
         let key = key.as_ref();
         debug!("storage read {:?}", key);
         self.read_with_optional_meta(key, None).await
@@ -405,7 +407,7 @@ where
     ///
     /// [`Error::RecordNotFound`]: enum.Error.html#RecordNotFound
     #[inline]
-    pub async fn read_with(&self, key: impl AsRef<K>, meta: &Meta) -> Result<ReadResult<Vec<u8>>> {
+    pub async fn read_with(&self, key: impl AsRef<K>, meta: &Meta) -> Result<ReadResult<Bytes>> {
         let key = key.as_ref();
         debug!("storage read with {:?}", key);
         self.read_with_optional_meta(key, Some(meta))
@@ -468,7 +470,7 @@ where
         &self,
         key: &K,
         meta: Option<&Meta>,
-    ) -> Result<ReadResult<Vec<u8>>> {
+    ) -> Result<ReadResult<Bytes>> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
@@ -485,52 +487,20 @@ where
         Self::get_any_data(&safe, key, meta).await
     }
 
-    async fn get_data_last(
-        safe: &Safe<K>,
-        key: &K,
-        meta: Option<&Meta>,
-    ) -> Result<ReadResult<Vec<u8>>> {
-        let blobs = safe.blobs.read().await;
-        let possible_blobs = blobs
-            .iter_possible_childs_rev(key)
-            .map(|(id, blob)| async move {
-                if !matches!(blob.data.check_filter(key).await, FilterResult::NotContains) {
-                    Some(id)
-                } else {
-                    None
-                }
-            })
-            .collect::<FuturesOrdered<_>>()
-            .filter_map(|x| x)
-            .collect::<Vec<_>>()
-            .await;
-        debug!(
-            "len of possible blobs: {} (start len: {})",
-            possible_blobs.len(),
-            blobs.len()
-        );
-        let stream: FuturesOrdered<_> = possible_blobs
-            .into_iter()
-            .filter_map(|id| blobs.get_child(id))
-            .map(|blob| blob.data.read_any(key, meta, false))
-            .collect();
-        debug!("read with optional meta {} closed blobs", stream.len());
-        let mut task = stream.skip_while(|r| {
-            if let Ok(h) = r {
-                !h.is_presented()
-            } else {
-                true
-            }
-        });
-        task.next().await.unwrap_or(Ok(ReadResult::NotFound))
-    }
-
     async fn get_any_data(
         safe: &Safe<K>,
         key: &K,
         meta: Option<&Meta>,
-    ) -> Result<ReadResult<Vec<u8>>> {
-        Self::get_data_last(safe, key, meta).await
+    ) -> Result<ReadResult<Bytes>> {
+        let blobs = safe.blobs.read().await;
+        let stream: FuturesUnordered<_> = blobs
+            .iter_possible_childs_rev(key)
+            .map(|blob| blob.1.data.read_any(key, meta, true))
+            .collect();
+        debug!("read with optional meta {} closed blobs", stream.len());
+        let mut task = stream.skip_while(Result::is_err);
+        let res = task.next().await;
+        res.unwrap_or(Ok(ReadResult::NotFound))
     }
 
     /// Stop blob updater and release lock file
@@ -570,6 +540,11 @@ where
         } else {
             count
         }
+    }
+
+    /// `blob_count` returns exact number of corrupted blobs.
+    pub fn corrupted_blobs_count(&self) -> usize {
+        self.inner.corrupted_blobs.load(Ordering::Acquire)
     }
 
     /// `active_index_memory` returns the amount of memory used by blob to store active indices
@@ -628,6 +603,11 @@ where
     }
 
     async fn init_new(&mut self) -> Result<()> {
+        let corrupted = Self::count_old_corrupted_blobs(&self.inner.config).await;
+        self.inner
+            .corrupted_blobs
+            .store(corrupted, Ordering::Release);
+
         let next = self.inner.next_blob_name()?;
         let mut safe = self.inner.safe.write().await;
         let blob =
@@ -639,7 +619,7 @@ where
     async fn init_from_existing(&mut self, files: Vec<DirEntry>, with_active: bool) -> Result<()> {
         trace!("init from existing: {:#?}", files);
         let disk_access_sem = self.observer.get_dump_sem();
-        let mut blobs = Self::read_blobs(
+        let (mut blobs, corrupted_count) = Self::read_blobs(
             &files,
             self.inner.ioring.clone(),
             disk_access_sem,
@@ -647,6 +627,10 @@ where
         )
         .await
         .context("failed to read blobs")?;
+
+        self.inner
+            .corrupted_blobs
+            .store(corrupted_count, Ordering::Release);
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
@@ -693,7 +677,9 @@ where
         ioring: Option<Rio>,
         disk_access_sem: Arc<Semaphore>,
         config: &Config,
-    ) -> Result<Vec<Blob<K>>> {
+    ) -> Result<(Vec<Blob<K>>, usize)> {
+        let mut corrupted = Self::count_old_corrupted_blobs(config).await;
+
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
         debug!("read {} entities", dir_content.len());
@@ -706,6 +692,7 @@ where
                 None
             }
         });
+
         debug!("init blobs from found files");
         let mut futures: FuturesUnordered<_> = blob_files
             .map(|file| async {
@@ -736,13 +723,47 @@ where
                             .with_context(|| {
                                 anyhow!(format!("failed to save corrupted blob {:?}", file))
                             })?;
+                        corrupted += 1;
                     } else {
                         return Err(e.context(msg));
                     }
                 }
             }
         }
-        Ok(blobs)
+        Ok((blobs, corrupted))
+    }
+
+    async fn count_old_corrupted_blobs(config: &Config) -> usize {
+        let mut corrupted = 0;
+
+        if let Some(work_dir_path) = config.work_dir() {
+            let mut corrupted_dir_path = work_dir_path.to_path_buf();
+            corrupted_dir_path.push(config.corrupted_dir_name());
+            if corrupted_dir_path.exists() {
+                let dir = read_dir(&corrupted_dir_path).await;
+                if let Err(e) = dir {
+                    warn!(
+                        "can't read corrupted blob dir {}: {}",
+                        corrupted_dir_path.display(),
+                        e
+                    );
+                    return corrupted;
+                }
+                let mut dir = dir.unwrap();
+
+                while let Ok(Some(file)) = dir.next_entry().await {
+                    let path = file.path();
+                    if path.is_file() {
+                        let extension = path.extension();
+                        if let Some(BLOB_FILE_EXTENSION) = extension.and_then(|ext| ext.to_str()) {
+                            corrupted += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        corrupted
     }
 
     fn should_save_corrupted_blob(error: &anyhow::Error) -> bool {
@@ -937,18 +958,24 @@ where
             .map(|b| b.mark_all_as_deleted(key, false))
             .collect::<FuturesUnordered<_>>();
         let total = entries_closed_blobs
-            .filter_map(|result| match result {
-                Ok(count) => count,
+            .map(|result| match result {
+                Ok(flag) => {
+                    if flag {
+                        1
+                    } else {
+                        0
+                    }
+                }
                 Err(error) => {
                     warn!("failed to delete records: {}", error);
-                    None
+                    0
                 }
             })
-            .fold(0, |a, b| a + b)
+            .fold(0, |s, n| s + n)
             .await;
         debug!("{} deleted from closed blobs", total);
         self.observer.defer_dump_old_blob_indexes().await;
-        Ok(total)
+        Ok(total as u64)
     }
 
     async fn mark_all_as_deleted_active(&self, key: &K, only_if_presented: bool) -> Result<u64> {
@@ -960,12 +987,12 @@ where
         let mut safe = self.inner.safe.write().await;
         let active_blob = safe.active_blob.as_deref_mut();
         let count = if let Some(active_blob) = active_blob {
-            let count = active_blob
+            let is_deleted = active_blob
                 .write()
                 .await
                 .mark_all_as_deleted(key, only_if_presented)
-                .await?
-                .unwrap_or(0);
+                .await?;
+            let count = if is_deleted { 1 } else { 0 };
             debug!("{} deleted from active blob", count);
             count
         } else {
@@ -985,6 +1012,7 @@ where
             config,
             next_blob_id: Arc::new(AtomicUsize::new(0)),
             ioring,
+            corrupted_blobs: Arc::new(AtomicUsize::new(0)),
         }
     }
 
@@ -1256,7 +1284,7 @@ where
 }
 
 /// Result of read operations
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ReadResult<T> {
     /// Data was found
     Found(T),

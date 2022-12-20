@@ -292,8 +292,13 @@ where
         self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
         let rh_size = self.header.record_header_size;
         if let Some((header, offset)) = self.read_header_buf(&buf[..buf_size], key, rh_size)? {
-            let mut headers = vec![header];
-            self.go_left(&mut headers, &buf[..buf_size], offset).await?;
+            let mut headers = Vec::with_capacity(1);
+            self.go_left(header.key(), &mut headers, &buf[..buf_size], offset)
+                .await?;
+            if headers.len() > 1 {
+                headers.reverse();
+            }
+            headers.push(header);
             self.go_right(&mut headers, &buf[..buf_size], offset, leaf_offset)
                 .await?;
             Ok(Some(headers))
@@ -352,6 +357,7 @@ where
     // with the same key to be on the left side from the start of leaf node, where it is)
     async fn go_left(
         &self,
+        key: &[u8],
         headers: &mut Vec<RecordHeader>,
         buf: &[u8],
         mut offset: usize,
@@ -360,7 +366,7 @@ where
         while offset >= record_header_size {
             let record_start = offset - record_header_size;
             let rh: RecordHeader = deserialize(&buf[record_start..offset])?;
-            if rh.key() == headers[0].key() {
+            if rh.key() == key {
                 headers.push(rh);
             } else {
                 return Ok(());
