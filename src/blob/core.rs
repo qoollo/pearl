@@ -404,21 +404,25 @@ where
 
     async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<ReadResult<Entry>> {
         let headers = self.index.get_all(key).await?;
-        headers
-            .try_map_async(|headers| async move {
-                let entries = Self::headers_to_entries(headers, &self.file);
-                self.filter_entries(entries, meta).await
-            })
-            .await
+        if let ReadResult::Found(headers) = headers {
+            let entries = Self::headers_to_entries(headers, &self.file);
+            if let Some(entries) = self.filter_entries(entries, meta).await? {
+                Ok(ReadResult::Found(entries))
+            } else {
+                Ok(ReadResult::NotFound)
+            }
+        } else {
+            Ok(headers.cast::<Entry>())
+        }
     }
 
-    async fn filter_entries(&self, entries: Vec<Entry>, meta: &Meta) -> Result<Entry> {
+    async fn filter_entries(&self, entries: Vec<Entry>, meta: &Meta) -> Result<Option<Entry>> {
         for mut entry in entries {
             if Some(meta) == entry.load_meta().await? {
-                return Ok(entry);
+                return Ok(Some(entry));
             }
         }
-        Err(Error::new(ErrorKind::Other).into())
+        Ok(None)
     }
 
     pub(crate) async fn contains(

@@ -422,7 +422,6 @@ where
         let key = key.as_ref();
         let mut all_entries = Vec::new();
         let safe = self.inner.safe.read().await;
-        let blobs = safe.blobs.read().await;
         let active_blob = safe
             .active_blob
             .as_ref()
@@ -438,7 +437,7 @@ where
         } else if read.is_deleted() {
             return Ok(read);
         }
-
+        let blobs = safe.blobs.read().await;
         let mut futures = blobs
             .iter_possible_childs_rev(key)
             .map(|b| b.1.data.read_all_entries(key))
@@ -942,16 +941,18 @@ where
     /// Fails after any disk IO errors.
     pub async fn delete(&self, key: impl AsRef<K>, only_if_presented: bool) -> Result<u64> {
         let mut total = 0;
+        let mut safe = self.inner.safe.write().await;
         total += self
-            .mark_all_as_deleted_active(key.as_ref(), only_if_presented)
+            .mark_all_as_deleted_active(&mut *safe, key.as_ref(), only_if_presented)
             .await?;
-        total += self.mark_all_as_deleted_closed(key.as_ref()).await?;
+        total += self
+            .mark_all_as_deleted_closed(&mut *safe, key.as_ref())
+            .await?;
         debug!("{} deleted total", total);
         Ok(total)
     }
 
-    async fn mark_all_as_deleted_closed(&self, key: &K) -> Result<u64> {
-        let safe = self.inner.safe.write().await;
+    async fn mark_all_as_deleted_closed(&self, safe: &mut Safe<K>, key: &K) -> Result<u64> {
         let mut blobs = safe.blobs.write().await;
         let entries_closed_blobs = blobs
             .iter_mut()
@@ -978,13 +979,17 @@ where
         Ok(total as u64)
     }
 
-    async fn mark_all_as_deleted_active(&self, key: &K, only_if_presented: bool) -> Result<u64> {
+    async fn mark_all_as_deleted_active(
+        &self,
+        safe: &mut Safe<K>,
+        key: &K,
+        only_if_presented: bool,
+    ) -> Result<u64> {
         if !only_if_presented {
             if self.try_create_active_blob().await.is_ok() {
                 debug!("created active blob during delete");
             }
         }
-        let mut safe = self.inner.safe.write().await;
         let active_blob = safe.active_blob.as_deref_mut();
         let count = if let Some(active_blob) = active_blob {
             let is_deleted = active_blob
@@ -1332,6 +1337,16 @@ impl<T> ReadResult<T> {
         }
     }
 
+    /// Cast result to type only if does not contain value
+    /// Warning: panics if result contains value
+    pub fn cast<Y>(self) -> ReadResult<Y> {
+        match self {
+            ReadResult::Found(_) => panic!("Attempt to cast non-empty read result"),
+            ReadResult::Deleted(ts) => ReadResult::Deleted(ts),
+            ReadResult::NotFound => ReadResult::NotFound,
+        }
+    }
+
     /// Map data if it exists
     pub async fn map_async<Y, F>(self, f: impl FnOnce(T) -> F) -> ReadResult<Y>
     where
@@ -1342,18 +1357,6 @@ impl<T> ReadResult<T> {
             ReadResult::Deleted(ts) => ReadResult::Deleted(ts),
             ReadResult::NotFound => ReadResult::NotFound,
         }
-    }
-
-    /// Map data if it exists and return result
-    pub async fn try_map_async<Y, F, E>(self, f: impl FnOnce(T) -> F) -> Result<ReadResult<Y>, E>
-    where
-        F: futures::Future<Output = Result<Y, E>>,
-    {
-        Ok(match self {
-            ReadResult::Found(d) => ReadResult::Found(f(d).await?),
-            ReadResult::Deleted(ts) => ReadResult::Deleted(ts),
-            ReadResult::NotFound => ReadResult::NotFound,
-        })
     }
 
     /// Unwrap into data, panics if no data is set

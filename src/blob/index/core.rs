@@ -335,14 +335,10 @@ where
                 findex.get_any(key).await?
             }
         };
-        Ok(if let Some(header) = result {
-            if header.is_deleted() {
-                ReadResult::Deleted(header.created())
-            } else {
-                ReadResult::Found(header)
-            }
-        } else {
-            ReadResult::NotFound
+        Ok(match result {
+            Some(header) if header.is_deleted() => ReadResult::Deleted(header.created()),
+            Some(header) => ReadResult::Found(header),
+            None => ReadResult::NotFound,
         })
     }
 
