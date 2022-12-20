@@ -27,6 +27,12 @@ impl Display for BlobRecordTimestamp {
     }
 }
 
+impl Into<u64> for BlobRecordTimestamp {
+    fn into(self) -> u64 {
+        self.0
+    }
+}
+
 impl<T> ReadResult<T> {
     pub(crate) fn is_presented(&self) -> bool {
         !matches!(self, ReadResult::NotFound)
