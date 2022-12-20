@@ -6,22 +6,13 @@ use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
 use crate::filter::{CombinedFilter, FilterTrait};
-use crate::storage::ReadResult;
+use crate::storage::{BlobRecordTimestamp, ReadResult};
 
 use super::prelude::*;
 
 use super::{header::Header, index::IndexTrait};
 
 pub(crate) const BLOB_INDEX_FILE_EXTENSION: &str = "index";
-
-#[derive(Debug, Clone, Copy)]
-pub struct BlobRecordTimestamp(u64);
-
-impl BlobRecordTimestamp {
-    pub(crate) fn new(t: u64) -> Self {
-        BlobRecordTimestamp(t)
-    }
-}
 
 /// A [`Blob`] struct representing file with records,
 /// provides methods for read/write access by key
@@ -434,7 +425,7 @@ where
         let contains = self
             .get_entry(key, meta, true)
             .await?
-            .map(|e| BlobRecordTimestamp(e.header().created()));
+            .map(|e| BlobRecordTimestamp::new(e.header().created()));
         debug!("blob contains any: {:?}", contains);
         Ok(contains)
     }

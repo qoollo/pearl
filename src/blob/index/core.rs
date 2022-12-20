@@ -1,5 +1,4 @@
 use super::prelude::*;
-use crate::blob::BlobRecordTimestamp;
 use crate::filter::{BloomDataProvider, CombinedFilter, FilterTrait};
 use std::mem::size_of;
 
@@ -306,7 +305,9 @@ where
             let first_del = hs.iter().position(|h| h.is_deleted());
             if let Some(first_del) = first_del {
                 if first_del == 0 {
-                    return Ok(ReadResult::Deleted(hs[first_del].created()));
+                    return Ok(ReadResult::Deleted(BlobRecordTimestamp::new(
+                        hs[first_del].created(),
+                    )));
                 } else {
                     hs.truncate(first_del);
                 }
@@ -336,7 +337,9 @@ where
             }
         };
         Ok(match result {
-            Some(header) if header.is_deleted() => ReadResult::Deleted(header.created()),
+            Some(header) if header.is_deleted() => {
+                ReadResult::Deleted(BlobRecordTimestamp::new(header.created()))
+            }
             Some(header) => ReadResult::Found(header),
             None => ReadResult::NotFound,
         })
