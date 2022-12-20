@@ -985,9 +985,7 @@ where
         only_if_presented: bool,
     ) -> Result<u64> {
         if !only_if_presented {
-            if self.try_create_active_blob().await.is_ok() {
-                debug!("created active blob during delete");
-            }
+            self.inner.ensure_active_blob_exists(safe).await?;
         }
         let active_blob = safe.active_blob.as_deref_mut();
         let count = if let Some(active_blob) = active_blob {
@@ -1043,6 +1041,10 @@ where
             return Err(Error::active_blob_already_exists().into());
         }
         let mut safe = self.safe.write().await;
+        self.ensure_active_blob_exists(&mut *safe).await
+    }
+
+    async fn ensure_active_blob_exists(&self, safe: &mut Safe<K>) -> Result<()> {
         if let None = safe.active_blob {
             let next = self.next_blob_name()?;
             let config = self.config.index();
