@@ -1,5 +1,7 @@
+use std::fmt::Display;
+
 /// Timestamp
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BlobRecordTimestamp(u64);
 
 /// Result of read operations
@@ -16,6 +18,12 @@ pub enum ReadResult<T> {
 impl BlobRecordTimestamp {
     pub(crate) fn new(t: u64) -> Self {
         BlobRecordTimestamp(t)
+    }
+}
+
+impl Display for BlobRecordTimestamp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
