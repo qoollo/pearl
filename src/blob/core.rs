@@ -338,7 +338,7 @@ where
         key: &K,
         only_if_presented: bool,
     ) -> Result<bool> {
-        if !only_if_presented || !self.index.get_any(key).await?.is_found() {
+        if !only_if_presented || self.index.get_any(key).await?.is_found() {
             self.push_deletion_record(key).await?;
             Ok(true)
         } else {
