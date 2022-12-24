@@ -11,13 +11,15 @@ pub(crate) const INDEX_HEADER_MAGIC_BYTE: u64 = 0xacdc_bcde;
 struct IndexParams {
     bloom_is_on: bool,
     recreate_file: bool,
+    validate_data_in_regen: bool,
 }
 
 impl IndexParams {
-    fn new(bloom_is_on: bool, recreate_file: bool) -> Self {
+    fn from(config: &IndexConfig) -> Self {
         Self {
-            bloom_is_on,
-            recreate_file,
+            bloom_is_on: config.bloom_config.is_some(),
+            recreate_file: config.recreate_index_file,
+            validate_data_in_regen: config.validate_data_in_regen,
         }
     }
 }
@@ -26,6 +28,7 @@ impl IndexParams {
 pub struct IndexConfig {
     pub bloom_config: Option<BloomConfig>,
     pub recreate_index_file: bool,
+    pub validate_data_in_regen: bool,
 }
 
 impl Default for IndexConfig {
@@ -33,6 +36,7 @@ impl Default for IndexConfig {
         Self {
             bloom_config: None,
             recreate_index_file: true,
+            validate_data_in_regen: false,
         }
     }
 }
@@ -76,7 +80,7 @@ where
     for<'a> K: Key<'a>,
 {
     pub(crate) fn new(name: FileName, ioring: Option<Rio>, config: IndexConfig) -> Self {
-        let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
+        let params = IndexParams::from(&config);
         let bloom_filter = if params.bloom_is_on {
             Some(config.bloom_config.map(Bloom::new).unwrap_or_default())
         } else {
@@ -116,6 +120,10 @@ where
         &self.name
     }
 
+    pub fn validate_data_in_regen(&self) -> bool {
+        self.params.validate_data_in_regen
+    }
+
     pub(crate) async fn from_file(
         name: FileName,
         config: IndexConfig,
@@ -128,7 +136,7 @@ where
             .with_context(|| "Header is corrupt")?;
         let meta_buf = findex.read_meta().await?;
         let (bloom_filter, range_filter, bloom_offset) = Self::deserialize_filters(&meta_buf)?;
-        let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
+        let params = IndexParams::from(&config);
         let bloom_filter = if params.bloom_is_on {
             Some(bloom_filter)
         } else {

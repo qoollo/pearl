@@ -216,7 +216,8 @@ where
             )
         })?;
         debug!("raw records loaded");
-        if let Some(headers) = raw_r.load().await.with_context(|| {
+        let validate_data = self.index.validate_data_in_regen();
+        if let Some(headers) = raw_r.load(validate_data).await.with_context(|| {
             format!(
                 "load headers from blob file failed, {:?}",
                 self.name.to_path()
@@ -534,16 +535,18 @@ impl RawRecords {
         }
     }
 
-    async fn load(mut self) -> Result<Option<Vec<RecordHeader>>> {
+    async fn load(mut self, validate_data: bool) -> Result<Option<Vec<RecordHeader>>> {
         debug!("blob raw records load");
         let mut headers = Vec::new();
         while self.current_offset < self.file.size() {
-            let (header, data) = self.read_current_record_header_and_data().await.with_context(|| {
+            let (header, data) = self.read_current_record(validate_data).await.with_context(|| {
                 format!("read record header or data failed, at {}", self.current_offset)
             })?;
-            Record::data_checksum_audit(&header, &data).with_context(|| {
-                format!("bad data checksum, at {}", self.current_offset)
-            })?;
+            if validate_data {
+                Record::data_checksum_audit(&header, &data).with_context(|| {
+                    format!("bad data checksum, at {}", self.current_offset)
+                })?;
+            }
             headers.push(header);
         }
         if headers.is_empty() {
@@ -553,7 +556,7 @@ impl RawRecords {
         }
     }
 
-    async fn read_current_record_header_and_data(&mut self) -> Result<(RecordHeader, Vec<u8>)> {
+    async fn read_current_record(&mut self, read_data: bool) -> Result<(RecordHeader, Vec<u8>)> {
         let mut buf = vec![0; self.record_header_size as usize];
         self.file
             .read_at(&mut buf, self.current_offset)
@@ -569,13 +572,13 @@ impl RawRecords {
             })?;
         self.current_offset += self.record_header_size;
         self.current_offset += header.meta_size();
-
-        buf.resize(header.data_size() as usize, 0);
-        self.file
-            .read_at(&mut buf, self.current_offset)
-            .await
-            .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
-        
+        if read_data {
+            buf.resize(header.data_size() as usize, 0);
+            self.file
+                .read_at(&mut buf, self.current_offset)
+                .await
+                .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
+        }
         self.current_offset += header.data_size();
         Ok((header, buf))
     }
