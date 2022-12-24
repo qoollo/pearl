@@ -5,8 +5,11 @@ Pearl changelog
 ## [Unreleased]
 #### Added
 - Index regeneration checks record data checksum (#215)
+- Corrupted blobs count calculation (#464)
 
 #### Changed
+- Save delete records in index (#207)
+- Use bytes for arguments (#191)
 
 
 #### Fixed
