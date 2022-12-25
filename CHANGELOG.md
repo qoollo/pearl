@@ -15,6 +15,7 @@ Pearl changelog
 
 
 #### Updated
+- Crate `crc` (#225)
 
 
 
