@@ -11,6 +11,7 @@ pub use self::{
     key::{Key, RefKey, ArrayKey},
     observer::ActiveBlobPred,
     observer::ActiveBlobStat,
+    config::Config,
 };
 
 mod prelude {

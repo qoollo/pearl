@@ -3,7 +3,7 @@ use std::time::Duration;
 use super::prelude::*;
 
 #[derive(Debug, Clone)]
-pub(crate) struct Config {
+pub struct Config {
     work_dir: Option<PathBuf>,
     create_work_dir: bool,
     max_blob_size: Option<u64>,
@@ -18,6 +18,7 @@ pub(crate) struct Config {
     bloom_filter_group_size: usize,
     deferred_min_time: Duration,
     deferred_max_time: Duration,
+    validate_data_in_regen: bool,
 }
 
 // Getters
@@ -88,6 +89,10 @@ impl Config {
     pub fn deferred_max_time(&self) -> Duration {
         self.deferred_max_time
     }
+
+    pub fn validate_data_in_regen(&self) -> bool {
+        self.validate_data_in_regen
+    }
 }
 
 //Setters
@@ -140,6 +145,10 @@ impl Config {
         self.deferred_min_time = min;
         self.deferred_max_time = max;
     }
+
+    pub fn set_validate_data_in_regen(&mut self, value: bool) {
+        self.validate_data_in_regen = value;
+    }
 }
 
 // Impl Traits
@@ -160,6 +169,7 @@ impl Default for Config {
             bloom_filter_group_size: 8,
             deferred_min_time: Duration::from_secs(60),
             deferred_max_time: Duration::from_secs(180),
+            validate_data_in_regen: false,
         }
     }
 }

@@ -607,7 +607,7 @@ where
         let next = self.inner.next_blob_name()?;
         let mut safe = self.inner.safe.write().await;
         let blob =
-            Blob::open_new(next, self.inner.ioring.clone(), self.inner.config.index()).await?;
+            Blob::open_new(next, self.inner.ioring.clone(), &self.inner.config).await?;
         safe.active_blob = Some(Box::new(ASRwLock::new(blob)));
         Ok(())
     }
@@ -687,7 +687,7 @@ where
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(file.clone(), ioring.clone(), config.index())
+                Blob::from_file(file.clone(), ioring.clone(), &config)
                     .await
                     .map_err(|e| (e, file))
             })
@@ -971,8 +971,7 @@ where
         let mut safe = self.safe.write().await;
         if let None = safe.active_blob {
             let next = self.next_blob_name()?;
-            let config = self.config.index();
-            let blob = Blob::open_new(next, self.ioring.clone(), config).await?;
+            let blob = Blob::open_new(next, self.ioring.clone(), &self.config).await?;
             safe.active_blob = Some(Box::new(ASRwLock::new(blob)));
             Ok(())
         } else {

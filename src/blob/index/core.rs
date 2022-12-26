@@ -11,7 +11,6 @@ pub(crate) const INDEX_HEADER_MAGIC_BYTE: u64 = 0xacdc_bcde;
 struct IndexParams {
     bloom_is_on: bool,
     recreate_file: bool,
-    validate_data_in_regen: bool,
 }
 
 impl IndexParams {
@@ -19,7 +18,6 @@ impl IndexParams {
         Self {
             bloom_is_on: config.bloom_config.is_some(),
             recreate_file: config.recreate_index_file,
-            validate_data_in_regen: config.validate_data_in_regen,
         }
     }
 }
@@ -28,7 +26,6 @@ impl IndexParams {
 pub struct IndexConfig {
     pub bloom_config: Option<BloomConfig>,
     pub recreate_index_file: bool,
-    pub validate_data_in_regen: bool,
 }
 
 impl Default for IndexConfig {
@@ -36,7 +33,6 @@ impl Default for IndexConfig {
         Self {
             bloom_config: None,
             recreate_index_file: true,
-            validate_data_in_regen: false,
         }
     }
 }
@@ -118,10 +114,6 @@ where
 
     pub(crate) fn name(&self) -> &FileName {
         &self.name
-    }
-
-    pub fn validate_data_in_regen(&self) -> bool {
-        self.params.validate_data_in_regen
     }
 
     pub(crate) async fn from_file(

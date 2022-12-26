@@ -7,6 +7,7 @@ use crate::error::ValidationErrorKind;
 use crate::filter::{CombinedFilter, FilterTrait};
 
 use super::prelude::*;
+use crate::storage::Config as StorageConfig;
 
 use super::{header::Header, index::IndexTrait};
 
@@ -27,6 +28,7 @@ where
     file: File,
     current_offset: u64,
     created_at: SystemTime,
+    validate_data_in_regen: bool,
 }
 
 impl<K> Blob<K>
@@ -43,10 +45,10 @@ where
     pub(crate) async fn open_new(
         name: FileName,
         ioring: Option<Rio>,
-        index_config: IndexConfig,
+        config: &StorageConfig,
     ) -> Result<Self> {
         let file = File::create(name.to_path(), ioring.clone()).await?;
-        let index = Self::create_index(name.clone(), ioring, index_config);
+        let index = Self::create_index(name.clone(), ioring, config.index());
         let header = Header::new();
         let mut blob = Self {
             header,
@@ -55,6 +57,7 @@ where
             file,
             current_offset: 0,
             created_at: SystemTime::now(),
+            validate_data_in_regen: config.validate_data_in_regen(),
         };
         blob.write_header().await?;
         Ok(blob)
@@ -118,7 +121,7 @@ where
     pub(crate) async fn from_file(
         path: PathBuf,
         ioring: Option<Rio>,
-        index_config: IndexConfig,
+        config: &StorageConfig,
     ) -> Result<Self> {
         let now = Instant::now();
         let file = File::open(&path, ioring.clone()).await?;
@@ -131,6 +134,7 @@ where
             .with_context(|| format!("failed to read blob header. Blob file: {:?}", path))?;
 
         let mut index_name = name.clone();
+        let index_config = config.index();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         trace!("looking for index file: [{}]", index_name);
         let mut is_index_corrupted = false;
@@ -173,6 +177,7 @@ where
             index,
             current_offset: size,
             created_at,
+            validate_data_in_regen: config.validate_data_in_regen(),
         };
         trace!("call update index");
         if is_index_corrupted || size as u64 > header_size {
@@ -197,6 +202,7 @@ where
             self.file.clone(),
             bincode::serialized_size(&self.header)?,
             K::LEN as usize,
+            self.validate_data_in_regen,
         )
         .await
         .context("failed to create iterator for raw records")
@@ -216,8 +222,7 @@ where
             )
         })?;
         debug!("raw records loaded");
-        let validate_data = self.index.validate_data_in_regen();
-        if let Some(headers) = raw_r.load(validate_data).await.with_context(|| {
+        if let Some(headers) = raw_r.load().await.with_context(|| {
             format!(
                 "load headers from blob file failed, {:?}",
                 self.name.to_path()
@@ -486,10 +491,11 @@ struct RawRecords {
     current_offset: u64,
     record_header_size: u64,
     file: File,
+    validate_data: bool,
 }
 
 impl RawRecords {
-    async fn start(file: File, blob_header_size: u64, key_size: usize) -> Result<Self> {
+    async fn start(file: File, blob_header_size: u64, key_size: usize, validate_data: bool) -> Result<Self> {
         let current_offset = blob_header_size;
         debug!("blob raw records start, current offset: {}", current_offset);
         let size_of_len = bincode::serialized_size(&(0_usize))? as usize;
@@ -523,6 +529,7 @@ impl RawRecords {
             current_offset,
             record_header_size,
             file,
+            validate_data,
         })
     }
 
@@ -535,14 +542,14 @@ impl RawRecords {
         }
     }
 
-    async fn load(mut self, validate_data: bool) -> Result<Option<Vec<RecordHeader>>> {
+    async fn load(mut self) -> Result<Option<Vec<RecordHeader>>> {
         debug!("blob raw records load");
         let mut headers = Vec::new();
         while self.current_offset < self.file.size() {
-            let (header, data) = self.read_current_record(validate_data).await.with_context(|| {
+            let (header, data) = self.read_current_record(self.validate_data).await.with_context(|| {
                 format!("read record header or data failed, at {}", self.current_offset)
             })?;
-            if validate_data {
+            if let Some(data) = data {
                 Record::data_checksum_audit(&header, &data).with_context(|| {
                     format!("bad data checksum, at {}", self.current_offset)
                 })?;
@@ -556,7 +563,7 @@ impl RawRecords {
         }
     }
 
-    async fn read_current_record(&mut self, read_data: bool) -> Result<(RecordHeader, Vec<u8>)> {
+    async fn read_current_record(&mut self, read_data: bool) -> Result<(RecordHeader, Option<Vec<u8>>)> {
         let mut buf = vec![0; self.record_header_size as usize];
         self.file
             .read_at(&mut buf, self.current_offset)
@@ -572,15 +579,19 @@ impl RawRecords {
             })?;
         self.current_offset += self.record_header_size;
         self.current_offset += header.meta_size();
+        let data =
         if read_data {
             buf.resize(header.data_size() as usize, 0);
             self.file
                 .read_at(&mut buf, self.current_offset)
                 .await
                 .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
-        }
+            Some(buf)
+        } else {
+            None
+        };
         self.current_offset += header.data_size();
-        Ok((header, buf))
+        Ok((header, data))
     }
 }
 
