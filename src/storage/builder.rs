@@ -162,8 +162,8 @@ impl Builder {
 
     /// Enables or disables data checksum validation during index regeneration
     #[must_use]
-    pub fn set_validate_data_in_regen(mut self, value: bool) -> Self {
-        self.config.set_validate_data_in_regen(value);
+    pub fn set_validate_data_during_index_regen(mut self, value: bool) -> Self {
+        self.config.set_validate_data_during_index_regen(value);
         self
     }
 
