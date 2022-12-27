@@ -500,42 +500,42 @@ where
                 Err(e) => debug!("read with optional meta active blob returned: {:#?}", e),
             }
         }
-        Self::get_any_data(&safe, key, meta).await
+        Self::get_data_last(&safe, key, meta).await
     }
 
-    async fn get_any_data(
+    async fn get_data_last(
         safe: &Safe<K>,
         key: &K,
         meta: Option<&Meta>,
     ) -> Result<ReadResult<Bytes>> {
         let blobs = safe.blobs.read().await;
-        let stream: FuturesUnordered<_> = blobs
+        let possible_blobs = blobs
             .iter_possible_childs_rev(key)
-            .map(|blob| blob.1.data.read_any(key, meta, true))
+            .map(|(id, blob)| async move {
+                if !matches!(blob.data.check_filter(key).await, FilterResult::NotContains) {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .collect::<FuturesOrdered<_>>()
+            .filter_map(|x| x)
+            .collect::<Vec<_>>()
+            .await;
+        debug!(
+            "len of possible blobs: {} (start len: {})",
+            possible_blobs.len(),
+            blobs.len()
+        );
+        let stream: FuturesOrdered<_> = possible_blobs
+            .into_iter()
+            .filter_map(|id| blobs.get_child(id))
+            .map(|blob| blob.data.read_any(key, meta, false))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         let mut task = stream.skip_while(Result::is_err);
-        let res = task.next().await;
-        res.unwrap_or(Ok(ReadResult::NotFound))
-    }
 
-    /// Stop blob updater and release lock file
-    /// # Errors
-    /// Fails because of any IO errors
-    pub async fn close(self) -> Result<()> {
-        let mut safe = self.inner.safe.write().await;
-        let active_blob = safe.active_blob.take();
-        let mut res = Ok(());
-        if let Some(blob) = active_blob {
-            let mut blob = blob.write().await;
-            res = res.and(
-                blob.dump()
-                    .await
-                    .map(|_| info!("active blob dumped"))
-                    .with_context(|| format!("blob {} dump failed", blob.name())),
-            )
-        }
-        res
+        task.next().await.unwrap_or(Ok(ReadResult::NotFound))
     }
 
     /// `blob_count` returns exact number of closed blobs plus one active, if there is some.
