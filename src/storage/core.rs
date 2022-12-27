@@ -425,13 +425,23 @@ where
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
-        let read = active_blob.read().await.read_all_entries(key).await?;
+        let read = active_blob
+            .read()
+            .await
+            .read_all_entries_with_deletion_marker(key)
+            .await?;
         if read.is_found() {
-            let entries = read.unwrap();
+            let mut entries = read.unwrap();
             debug!(
                 "storage core read all active blob entries {}",
                 entries.len()
             );
+            if let Some(e) = entries.last() {
+                if e.header().is_deleted() {
+                    entries.truncate(entries.len() - 1);
+                    return Ok(ReadResult::Found(entries));
+                }
+            }
             all_entries.extend(entries);
         } else if read.is_deleted() {
             return Ok(read);
@@ -439,12 +449,20 @@ where
         let blobs = safe.blobs.read().await;
         let mut futures = blobs
             .iter_possible_childs_rev(key)
-            .map(|b| b.1.data.read_all_entries(key))
+            .map(|b| b.1.data.read_all_entries_with_deletion_marker(key))
             .collect::<FuturesOrdered<_>>();
         while let Some(data) = futures.next().await {
             let data = data?;
             if data.is_found() {
-                all_entries.extend(data.unwrap());
+                let mut entries = data.unwrap();
+                if let Some(e) = entries.last() {
+                    if e.header().is_deleted() {
+                        entries.truncate(entries.len() - 1);
+                        all_entries.extend(entries);
+                        return Ok(ReadResult::Found(all_entries));
+                    }
+                }
+                all_entries.extend(entries);
             } else if data.is_deleted() {
                 if all_entries.is_empty() {
                     return Ok(data);

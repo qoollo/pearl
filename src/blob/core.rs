@@ -322,8 +322,11 @@ where
     }
 
     #[inline]
-    pub(crate) async fn read_all_entries(&self, key: &K) -> Result<ReadResult<Vec<Entry>>> {
-        let headers = self.index.get_all(key).await?;
+    pub(crate) async fn read_all_entries_with_deletion_marker(
+        &self,
+        key: &K,
+    ) -> Result<ReadResult<Vec<Entry>>> {
+        let headers = self.index.get_all_with_deletion_marker(key).await?;
         Ok(headers.map(|hs| {
             debug_assert!(hs
                 .iter()

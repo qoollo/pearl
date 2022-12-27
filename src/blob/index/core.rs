@@ -292,6 +292,20 @@ where
     }
 
     async fn get_all(&self, key: &K) -> Result<ReadResult<Vec<RecordHeader>>> {
+        let with_deletion = self.get_all_with_deletion_marker(key).await?;
+        Ok(with_deletion.map(|mut hs| {
+            if let Some(h) = hs.last() {
+                if h.is_deleted() {
+                    hs.truncate(hs.len() - 1);
+                }
+                hs
+            } else {
+                hs
+            }
+        }))
+    }
+
+    async fn get_all_with_deletion_marker(&self, key: &K) -> Result<ReadResult<Vec<RecordHeader>>> {
         let headers = match &self.inner {
             State::InMemory(headers) => Ok(headers.get(key).cloned().map(|mut hs| {
                 if hs.len() > 1 {
@@ -309,7 +323,7 @@ where
                         hs[first_del].created(),
                     )));
                 } else {
-                    hs.truncate(first_del);
+                    hs.truncate(first_del + 1);
                 }
             }
             Ok(if hs.len() > 0 {
