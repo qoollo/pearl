@@ -198,12 +198,12 @@ where
         Ok(blob)
     }
 
-    async fn raw_records(&self) -> Result<RawRecords> {
+    async fn raw_records(&self, validate_data_during_index_regen: bool) -> Result<RawRecords> {
         RawRecords::start(
             self.file.clone(),
             bincode::serialized_size(&self.header)?,
             K::LEN as usize,
-            self.validate_data_during_index_regen,
+            validate_data_during_index_regen,
         )
         .await
         .context("failed to create iterator for raw records")
@@ -216,7 +216,8 @@ where
             return Ok(());
         }
         debug!("index file missed");
-        let raw_r = self.raw_records().await.with_context(|| {
+        let raw_r = self.raw_records(self.validate_data_during_index_regen)
+        .await.with_context(|| {
             format!(
                 "failed to read raw records from blob {:?}",
                 self.name.to_path()
