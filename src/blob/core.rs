@@ -216,8 +216,7 @@ where
             return Ok(());
         }
         debug!("index file missed");
-        let raw_r = self.raw_records(self.validate_data_during_index_regen)
-        .await.with_context(|| {
+        let raw_r = self.raw_records(self.validate_data_during_index_regen).await.with_context(|| {
             format!(
                 "failed to read raw records from blob {:?}",
                 self.name.to_path()
@@ -554,9 +553,7 @@ impl RawRecords {
         debug!("blob raw records load");
         let mut headers = Vec::new();
         while self.current_offset < self.file.size() {
-            let (header, data) = self.read_current_record(self.validate_data)
-            .await
-            .with_context(|| {
+            let (header, data) = self.read_current_record(self.validate_data).await.with_context(|| {
                 format!("read record header or data failed, at {}", self.current_offset)
             })?;
             if let Some(data) = data {
