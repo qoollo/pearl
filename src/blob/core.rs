@@ -198,12 +198,12 @@ where
         Ok(blob)
     }
 
-    async fn raw_records(&self, validate_data_during_index_regen: bool) -> Result<RawRecords> {
+    async fn raw_records(&self, validate_data: bool) -> Result<RawRecords> {
         RawRecords::start(
             self.file.clone(),
             bincode::serialized_size(&self.header)?,
             K::LEN as usize,
-            validate_data_during_index_regen,
+            validate_data,
         )
         .await
         .context("failed to create iterator for raw records")
@@ -499,11 +499,11 @@ struct RawRecords {
     current_offset: u64,
     record_header_size: u64,
     file: File,
-    validate_data_during_index_regen: bool,
+    validate_data: bool,
 }
 
 impl RawRecords {
-    async fn start(file: File, blob_header_size: u64, key_size: usize, validate_data_during_index_regen: bool) -> Result<Self> {
+    async fn start(file: File, blob_header_size: u64, key_size: usize, validate_data: bool) -> Result<Self> {
         let current_offset = blob_header_size;
         debug!("blob raw records start, current offset: {}", current_offset);
         let size_of_len = bincode::serialized_size(&(0_usize))? as usize;
@@ -537,7 +537,7 @@ impl RawRecords {
             current_offset,
             record_header_size,
             file,
-            validate_data_during_index_regen,
+            validate_data,
         })
     }
 
@@ -554,7 +554,7 @@ impl RawRecords {
         debug!("blob raw records load");
         let mut headers = Vec::new();
         while self.current_offset < self.file.size() {
-            let (header, data) = self.read_current_record(self.validate_data_during_index_regen)
+            let (header, data) = self.read_current_record(self.validate_data)
             .await
             .with_context(|| {
                 format!("read record header or data failed, at {}", self.current_offset)
