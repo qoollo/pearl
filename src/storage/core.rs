@@ -417,7 +417,20 @@ where
     /// Returns entries with matching key
     /// # Errors
     /// Fails after any disk IO errors.
-    pub async fn read_all(&self, key: impl AsRef<K>) -> Result<ReadResult<Vec<Entry>>> {
+    pub async fn read_all(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
+        let mut entries = self.read_all_with_deletion_marker(key).await?;
+        if let Some(e) = entries.last() {
+            if e.header().is_deleted() {
+                entries.truncate(entries.len() - 1);
+            }
+        }
+        Ok(entries)
+    }
+
+    /// Returns entries with matching key and deletion marker, if any
+    /// # Errors
+    /// Fails after any disk IO errors.
+    pub async fn read_all_with_deletion_marker(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
         let key = key.as_ref();
         let mut all_entries = Vec::new();
         let safe = self.inner.safe.read().await;
@@ -425,51 +438,35 @@ where
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
-        let read = active_blob
+        let entries = active_blob
             .read()
             .await
             .read_all_entries_with_deletion_marker(key)
             .await?;
-        if read.is_found() {
-            let mut entries = read.unwrap();
-            debug!(
-                "storage core read all active blob entries {}",
-                entries.len()
-            );
-            if let Some(e) = entries.last() {
-                if e.header().is_deleted() {
-                    entries.truncate(entries.len() - 1);
-                    return Ok(ReadResult::Found(entries));
-                }
+        debug!(
+            "storage core read all active blob entries {}",
+            entries.len()
+        );
+        if let Some(e) = entries.last() {
+            if e.header().is_deleted() {
+                return Ok(entries);
             }
-            all_entries.extend(entries);
-        } else if read.is_deleted() {
-            return Ok(read);
         }
+        all_entries.extend(entries);
         let blobs = safe.blobs.read().await;
         let mut futures = blobs
             .iter_possible_childs_rev(key)
             .map(|b| b.1.data.read_all_entries_with_deletion_marker(key))
             .collect::<FuturesOrdered<_>>();
         while let Some(data) = futures.next().await {
-            let data = data?;
-            if data.is_found() {
-                let mut entries = data.unwrap();
-                if let Some(e) = entries.last() {
-                    if e.header().is_deleted() {
-                        entries.truncate(entries.len() - 1);
-                        all_entries.extend(entries);
-                        return Ok(ReadResult::Found(all_entries));
-                    }
-                }
-                all_entries.extend(entries);
-            } else if data.is_deleted() {
-                if all_entries.is_empty() {
-                    return Ok(data);
-                } else {
-                    return Ok(ReadResult::Found(all_entries));
+            let entries = data?;
+            if let Some(e) = entries.last() {
+                if e.header().is_deleted() {
+                    all_entries.extend(entries);
+                    return Ok(all_entries);
                 }
             }
+            all_entries.extend(entries);
         }
         debug!(
             "storage core read from non-active total {} entries",
@@ -479,7 +476,7 @@ where
             .iter()
             .zip(all_entries.iter().skip(1))
             .all(|(x, y)| x.header().created() >= y.header().created()));
-        Ok(ReadResult::Found(all_entries))
+        Ok(all_entries)
     }
 
     async fn read_with_optional_meta(

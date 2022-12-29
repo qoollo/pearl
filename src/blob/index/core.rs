@@ -291,21 +291,17 @@ where
         }
     }
 
-    async fn get_all(&self, key: &K) -> Result<ReadResult<Vec<RecordHeader>>> {
-        let with_deletion = self.get_all_with_deletion_marker(key).await?;
-        Ok(with_deletion.map(|mut hs| {
-            if let Some(h) = hs.last() {
-                if h.is_deleted() {
-                    hs.truncate(hs.len() - 1);
-                }
-                hs
-            } else {
-                hs
+    async fn get_all(&self, key: &K) -> Result<Vec<RecordHeader>> {
+        let mut with_deletion = self.get_all_with_deletion_marker(key).await?;
+        if let Some(h) = with_deletion.last() {
+            if h.is_deleted() {
+                with_deletion.truncate(with_deletion.len() - 1);
             }
-        }))
+        }
+        Ok(with_deletion)
     }
 
-    async fn get_all_with_deletion_marker(&self, key: &K) -> Result<ReadResult<Vec<RecordHeader>>> {
+    async fn get_all_with_deletion_marker(&self, key: &K) -> Result<Vec<RecordHeader>> {
         let headers = match &self.inner {
             State::InMemory(headers) => Ok(headers.get(key).cloned().map(|mut hs| {
                 if hs.len() > 1 {
@@ -318,21 +314,11 @@ where
         if let Some(mut hs) = headers {
             let first_del = hs.iter().position(|h| h.is_deleted());
             if let Some(first_del) = first_del {
-                if first_del == 0 {
-                    return Ok(ReadResult::Deleted(BlobRecordTimestamp::new(
-                        hs[first_del].created(),
-                    )));
-                } else {
-                    hs.truncate(first_del + 1);
-                }
+                hs.truncate(first_del + 1);
             }
-            Ok(if hs.len() > 0 {
-                ReadResult::Found(hs)
-            } else {
-                ReadResult::NotFound
-            })
+            Ok(hs)
         } else {
-            Ok(ReadResult::NotFound)
+            Ok(vec![])
         }
     }
 

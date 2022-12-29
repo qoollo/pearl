@@ -321,19 +321,28 @@ where
         }
     }
 
+    #[allow(dead_code)]
+    #[inline]
+    pub(crate) async fn read_all_entries(&self, key: &K) -> Result<Vec<Entry>> {
+        let headers = self.index.get_all(key).await?;
+        debug_assert!(headers
+            .iter()
+            .zip(headers.iter().skip(1))
+            .all(|(x, y)| x.created() >= y.created()));
+        Ok(Self::headers_to_entries(headers, &self.file))
+    }
+
     #[inline]
     pub(crate) async fn read_all_entries_with_deletion_marker(
         &self,
         key: &K,
-    ) -> Result<ReadResult<Vec<Entry>>> {
+    ) -> Result<Vec<Entry>> {
         let headers = self.index.get_all_with_deletion_marker(key).await?;
-        Ok(headers.map(|hs| {
-            debug_assert!(hs
-                .iter()
-                .zip(hs.iter().skip(1))
-                .all(|(x, y)| x.created() >= y.created()));
-            Self::headers_to_entries(hs, &self.file)
-        }))
+        debug_assert!(headers
+            .iter()
+            .zip(headers.iter().skip(1))
+            .all(|(x, y)| x.created() >= y.created()));
+        Ok(Self::headers_to_entries(headers, &self.file))
     }
 
     pub(crate) async fn mark_all_as_deleted(
@@ -397,16 +406,22 @@ where
     }
 
     async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<ReadResult<Entry>> {
-        let headers = self.index.get_all(key).await?;
-        if let ReadResult::Found(headers) = headers {
-            let entries = Self::headers_to_entries(headers, &self.file);
-            if let Some(entries) = self.filter_entries(entries, meta).await? {
-                Ok(ReadResult::Found(entries))
-            } else {
-                Ok(ReadResult::NotFound)
-            }
+        let mut headers = self.index.get_all_with_deletion_marker(key).await?;
+        let deleted_ts = headers
+            .last()
+            .filter(|h| h.is_deleted())
+            .map(|h| BlobRecordTimestamp::new(h.created()));
+        if deleted_ts.is_some() {
+            headers.truncate(headers.len() - 1);
+        }
+        let entries = Self::headers_to_entries(headers, &self.file);
+        if let Some(entries) = self.filter_entries(entries, meta).await? {
+            Ok(ReadResult::Found(entries))
         } else {
-            Ok(headers.cast::<Entry>())
+            if let Some(ts) = deleted_ts {
+                return Ok(ReadResult::Deleted(ts));
+            }
+            Ok(ReadResult::NotFound)
         }
     }
 

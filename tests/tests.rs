@@ -453,7 +453,6 @@ async fn test_read_all_load_all() {
         .read_all(&KeyTest::new(key))
         .and_then(|entry| {
             entry
-                .unwrap()
                 .into_iter()
                 .map(|e| e.load())
                 .collect::<FuturesUnordered<_>>()
@@ -508,7 +507,6 @@ async fn test_read_all_find_one_key() {
         .read_all(&KeyTest::new(key))
         .and_then(|entry| {
             entry
-                .unwrap()
                 .into_iter()
                 .map(|e| e.load())
                 .collect::<FuturesUnordered<_>>()
@@ -1057,7 +1055,6 @@ async fn test_in_memory_and_disk_records_retrieval() -> Result<()> {
             .read_all(&KeyTest::new(key))
             .and_then(|entries| {
                 entries
-                    .unwrap()
                     .into_iter()
                     .map(|e| e.load())
                     .collect::<FuturesOrdered<_>>()
