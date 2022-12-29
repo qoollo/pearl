@@ -538,6 +538,25 @@ where
         task.next().await.unwrap_or(Ok(ReadResult::NotFound))
     }
 
+    /// Stop blob updater and release lock file
+    /// # Errors
+    /// Fails because of any IO errors
+    pub async fn close(self) -> Result<()> {
+        let mut safe = self.inner.safe.write().await;
+        let active_blob = safe.active_blob.take();
+        let mut res = Ok(());
+        if let Some(blob) = active_blob {
+            let mut blob = blob.write().await;
+            res = res.and(
+                blob.dump()
+                    .await
+                    .map(|_| info!("active blob dumped"))
+                    .with_context(|| format!("blob {} dump failed", blob.name())),
+            )
+        }
+        res
+    }
+
     /// `blob_count` returns exact number of closed blobs plus one active, if there is some.
     /// It locks on inner structure, so it much slower than `next_blob_id`.
     /// # Examples
