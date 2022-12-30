@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-1.22.0/src/runtime/scheduler/multi_thread/worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../../normalize.css"><link rel="stylesheet" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../../dark.css" disabled><link rel="stylesheet" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../tokio/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../../tokio/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../tokio/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-1.23.0/src/runtime/scheduler/multi_thread/worker.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../../normalize.css"><link rel="stylesheet" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../../dark.css" disabled><link rel="stylesheet" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../tokio/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -864,6 +864,41 @@
 <span id="864">864</span>
 <span id="865">865</span>
 <span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
 </pre><pre class="rust"><code><span class="doccomment">//! A scheduler is initialized with a fixed number of workers. Each worker is
 //! driven by a thread. Each worker has a &quot;core&quot; which contains data such as the
 //! run queue and other state. When `block_in_place` is called, the worker&#39;s
@@ -1234,6 +1269,22 @@
 }
 
 <span class="kw">fn </span>run(worker: Arc&lt;Worker&gt;) {
+    <span class="kw">struct </span>AbortOnPanic;
+
+    <span class="kw">impl </span>Drop <span class="kw">for </span>AbortOnPanic {
+        <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+            <span class="kw">if </span>std::thread::panicking() {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;worker thread panicking; aborting process&quot;</span>);
+                std::process::abort();
+            }
+        }
+    }
+
+    <span class="comment">// Catching panics on worker threads in tests is quite tricky. Instead, when
+    // debug assertions are enabled, we just abort the process.
+    </span><span class="attribute">#[cfg(debug_assertions)]
+    </span><span class="kw">let </span>_abort_on_panic = AbortOnPanic;
+
     <span class="comment">// Acquire a core. If this fails, then another thread is running this
     // worker and there is nothing further to do.
     </span><span class="kw">let </span>core = <span class="kw">match </span>worker.core.take() {
@@ -1254,6 +1305,11 @@
         <span class="comment">// This should always be an error. It only returns a `Result` to support
         // using `?` to short circuit.
         </span><span class="macro">assert!</span>(cx.run(core).is_err());
+
+        <span class="comment">// Check if there are any deferred tasks to notify. This can happen when
+        // the worker core is lost due to `block_in_place()` being called from
+        // within the task.
+        </span>wake_deferred_tasks();
     });
 }
 
@@ -1278,7 +1334,11 @@
                 core = <span class="self">self</span>.run_task(task, core)<span class="question-mark">?</span>;
             } <span class="kw">else </span>{
                 <span class="comment">// Wait for work
-                </span>core = <span class="self">self</span>.park(core);
+                </span>core = <span class="kw">if </span>did_defer_tasks() {
+                    <span class="self">self</span>.park_timeout(core, <span class="prelude-val">Some</span>(Duration::from_millis(<span class="number">0</span>)))
+                } <span class="kw">else </span>{
+                    <span class="self">self</span>.park(core)
+                };
             }
         }
 
@@ -1400,6 +1460,8 @@
         } <span class="kw">else </span>{
             park.park(<span class="kw-2">&amp;</span><span class="self">self</span>.worker.handle.driver);
         }
+
+        wake_deferred_tasks();
 
         <span class="comment">// Remove `core` from context
         </span>core = <span class="self">self</span>.core.borrow_mut().take().expect(<span class="string">&quot;core missing&quot;</span>);
@@ -1719,6 +1781,14 @@
     }
 }
 
+<span class="kw">fn </span>did_defer_tasks() -&gt; bool {
+    context::with_defer(|deferred| !deferred.is_empty()).unwrap()
+}
+
+<span class="kw">fn </span>wake_deferred_tasks() {
+    context::with_defer(|deferred| deferred.wake());
+}
+
 <span class="macro">cfg_metrics! </span>{
     <span class="kw">impl </span>Shared {
         <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>injection_queue_depth(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
@@ -1731,4 +1801,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="tokio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="tokio" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

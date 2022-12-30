@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/index/core.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../pearl/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/index/core.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../pearl/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -395,6 +395,28 @@
 <span id="395">395</span>
 <span id="396">396</span>
 <span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::filter::{BloomDataProvider, CombinedFilter, FilterTrait};
 <span class="kw">use </span>std::mem::size_of;
@@ -640,11 +662,6 @@
             <span class="number">0
         </span>}
     }
-
-    <span class="kw">fn </span>mark_all_as_deleted_in_memory(headers: <span class="kw-2">&amp;mut </span>InMemoryIndex&lt;K&gt;, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
-        <span class="macro">debug!</span>(<span class="string">&quot;headers: {}&quot;</span>, headers.len());
-        headers.remove(key).map(|v| v.len() <span class="kw">as </span>u64)
-    }
 }
 
 <span class="attribute">#[async_trait::async_trait]
@@ -653,23 +670,24 @@
     </span>FileIndex: FileIndexTrait&lt;K&gt; + Clone,
     <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
 {
-    <span class="kw">async fn </span>contains_key(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
-        <span class="self">self</span>.get_any(key).<span class="kw">await</span>.map(|h| h.is_some())
+    <span class="kw">async fn </span>contains_key(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;ReadResult&lt;BlobRecordTimestamp&gt;&gt; {
+        <span class="self">self</span>.get_any(key)
+            .<span class="kw">await
+            </span>.map(|h| h.map(|h| BlobRecordTimestamp::new(h.created())))
     }
 
-    <span class="kw">fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, h: RecordHeader) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K, h: RecordHeader) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob index simple push&quot;</span>);
         <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.inner {
             State::InMemory(headers) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;blob index simple push bloom filter add&quot;</span>);
-                <span class="kw">let </span>key = h.key().into();
-                <span class="self">self</span>.filter.add(<span class="kw-2">&amp;</span>key);
+                <span class="self">self</span>.filter.add(key);
                 <span class="macro">debug!</span>(<span class="string">&quot;blob index simple push key: {:?}&quot;</span>, h.key());
                 <span class="kw">let </span>mem = <span class="self">self
                     </span>.mem
                     .as_mut()
                     .expect(<span class="string">&quot;No memory info in `InMemory` State&quot;</span>);
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = headers.get_mut(<span class="kw-2">&amp;</span>key) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = headers.get_mut(key) {
                     <span class="kw">let </span>old_capacity = v.capacity();
                     v.push(h);
                     <span class="macro">trace!</span>(<span class="string">&quot;capacity growth: {}&quot;</span>, v.capacity() - old_capacity);
@@ -680,7 +698,7 @@
                     }
                     <span class="kw">let </span>v = <span class="macro">vec!</span>[h];
                     mem.records_allocated += v.capacity(); <span class="comment">// capacity == 1
-                    </span>headers.insert(key, v);
+                    </span>headers.insert(key.clone(), v);
                 }
                 mem.records_count += <span class="number">1</span>;
                 <span class="prelude-val">Ok</span>(())
@@ -692,28 +710,58 @@
         }
     }
 
-    <span class="kw">async fn </span>get_all(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;RecordHeader&gt;&gt;&gt; {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
-            State::InMemory(headers) =&gt; <span class="prelude-val">Ok</span>(headers.get(key).cloned()),
+    <span class="kw">async fn </span>get_all(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;RecordHeader&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>with_deletion = <span class="self">self</span>.get_all_with_deletion_marker(key).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(h) = with_deletion.last() {
+            <span class="kw">if </span>h.is_deleted() {
+                with_deletion.truncate(with_deletion.len() - <span class="number">1</span>);
+            }
+        }
+        <span class="prelude-val">Ok</span>(with_deletion)
+    }
+
+    <span class="kw">async fn </span>get_all_with_deletion_marker(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;RecordHeader&gt;&gt; {
+        <span class="kw">let </span>headers = <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            State::InMemory(headers) =&gt; <span class="prelude-val">Ok</span>(headers.get(key).cloned().map(|<span class="kw-2">mut </span>hs| {
+                <span class="kw">if </span>hs.len() &gt; <span class="number">1 </span>{
+                    hs.reverse();
+                }
+                hs
+            })),
             State::OnDisk(findex) =&gt; findex.find_by_key(key).<span class="kw">await</span>,
+        }<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>hs) = headers {
+            <span class="kw">let </span>first_del = hs.iter().position(|h| h.is_deleted());
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(first_del) = first_del {
+                hs.truncate(first_del + <span class="number">1</span>);
+            }
+            <span class="prelude-val">Ok</span>(hs)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[])
         }
     }
 
-    <span class="kw">async fn </span>get_any(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;RecordHeader&gt;&gt; {
+    <span class="kw">async fn </span>get_any(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;ReadResult&lt;RecordHeader&gt;&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;index get any&quot;</span>);
-        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+        <span class="kw">let </span>result = <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
             State::InMemory(headers) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;index get any in memory headers: {}&quot;</span>, headers.len());
                 <span class="comment">// in memory indexes with same key are stored in ascending order, so the last
                 // by adding time record is last in list (in b+tree disk index it&#39;s first)
-                </span><span class="prelude-val">Ok</span>(headers.get(key).and_then(|h| h.last()).cloned())
+                </span>headers.get(key).and_then(|h| h.last()).cloned()
             }
             State::OnDisk(findex) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;index get any on disk&quot;</span>);
-                <span class="kw">let </span>header = findex.get_any(key).<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(header)
+                findex.get_any(key).<span class="kw">await</span><span class="question-mark">?
+            </span>}
+        };
+        <span class="prelude-val">Ok</span>(<span class="kw">match </span>result {
+            <span class="prelude-val">Some</span>(header) <span class="kw">if </span>header.is_deleted() =&gt; {
+                ReadResult::Deleted(BlobRecordTimestamp::new(header.created()))
             }
-        }
+            <span class="prelude-val">Some</span>(header) =&gt; ReadResult::Found(header),
+            <span class="prelude-val">None </span>=&gt; ReadResult::NotFound,
+        })
     }
 
     <span class="kw">async fn </span>dump(<span class="kw-2">&amp;mut </span><span class="self">self</span>, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
@@ -741,15 +789,11 @@
         }
     }
 
-    <span class="kw">fn </span>mark_all_as_deleted(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;u64&gt;&gt; {
+    <span class="kw">fn </span>push_deletion(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K, header: RecordHeader) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;mark all as deleted by {:?} key&quot;</span>, key);
-        <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.inner {
-            State::InMemory(headers) =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::mark_all_as_deleted_in_memory(headers, key)),
-            State::OnDisk(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(Error::from(ErrorKind::Index(
-                <span class="string">&quot;Index is closed, delete is unavalaible&quot;</span>.to_string(),
-            ))
-            .into()),
-        }
+        <span class="macro">assert!</span>(header.is_deleted());
+        <span class="macro">assert!</span>(header.data_size() == <span class="number">0</span>);
+        <span class="self">self</span>.push(key, header)
     }
 }
 
@@ -793,4 +837,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

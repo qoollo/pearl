@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/blocking-1.2.0/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../blocking/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../blocking/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../blocking/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/blocking-1.3.0/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../blocking/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1273,6 +1273,14 @@
 <span id="1273">1273</span>
 <span id="1274">1274</span>
 <span id="1275">1275</span>
+<span id="1276">1276</span>
+<span id="1277">1277</span>
+<span id="1278">1278</span>
+<span id="1279">1279</span>
+<span id="1280">1280</span>
+<span id="1281">1281</span>
+<span id="1282">1282</span>
+<span id="1283">1283</span>
 </pre><pre class="rust"><code><span class="doccomment">//! A thread pool for isolating blocking I/O in async programs.
 //!
 //! Sometimes there&#39;s no way to avoid blocking I/O. Consider files or stdin, which have weak async
@@ -1368,10 +1376,10 @@
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>async_channel::{bounded, Receiver};
+<span class="kw">use </span>async_lock::OnceCell;
 <span class="kw">use </span>async_task::Runnable;
 <span class="kw">use </span>atomic_waker::AtomicWaker;
 <span class="kw">use </span>futures_lite::{future, prelude::<span class="kw-2">*</span>, ready};
-<span class="kw">use </span>once_cell::sync::Lazy;
 
 <span class="attribute">#[doc(no_inline)]
 </span><span class="kw">pub use </span>async_task::Task;
@@ -1387,17 +1395,6 @@
 
 <span class="doccomment">/// Env variable that allows to override default value for max threads.
 </span><span class="kw">const </span>MAX_THREADS_ENV: <span class="kw-2">&amp;</span>str = <span class="string">&quot;BLOCKING_MAX_THREADS&quot;</span>;
-
-<span class="doccomment">/// Lazily initialized global executor.
-</span><span class="kw">static </span>EXECUTOR: Lazy&lt;Executor&gt; = Lazy::new(|| Executor {
-    inner: Mutex::new(Inner {
-        idle_count: <span class="number">0</span>,
-        thread_count: <span class="number">0</span>,
-        queue: VecDeque::new(),
-    }),
-    cvar: Condvar::new(),
-    thread_limit: Executor::max_threads(),
-});
 
 <span class="doccomment">/// The blocking executor.
 </span><span class="kw">struct </span>Executor {
@@ -1437,11 +1434,31 @@
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; DEFAULT_MAX_THREADS,
         }
     }
+
     <span class="doccomment">/// Spawns a future onto this executor.
     ///
     /// Returns a [`Task`] handle for the spawned task.
     </span><span class="kw">fn </span>spawn&lt;T: Send + <span class="lifetime">&#39;static</span>&gt;(future: <span class="kw">impl </span>Future&lt;Output = T&gt; + Send + <span class="lifetime">&#39;static</span>) -&gt; Task&lt;T&gt; {
-        <span class="kw">let </span>(runnable, task) = async_task::spawn(future, |r| EXECUTOR.schedule(r));
+        <span class="kw">static </span>EXECUTOR: OnceCell&lt;Executor&gt; = OnceCell::new();
+
+        <span class="kw">let </span>(runnable, task) = async_task::spawn(future, |r| {
+            <span class="comment">// Initialize the executor if we haven&#39;t already.
+            </span><span class="kw">let </span>executor = EXECUTOR.get_or_init_blocking(|| {
+                <span class="kw">let </span>thread_limit = <span class="self">Self</span>::max_threads();
+                Executor {
+                    inner: Mutex::new(Inner {
+                        idle_count: <span class="number">0</span>,
+                        thread_count: <span class="number">0</span>,
+                        queue: VecDeque::new(),
+                    }),
+                    cvar: Condvar::new(),
+                    thread_limit,
+                }
+            });
+
+            <span class="comment">// Schedule the task on our executor.
+            </span>executor.schedule(r)
+        });
         runnable.schedule();
         task
     }
@@ -1498,8 +1515,7 @@
     </span><span class="kw">fn </span>grow_pool(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="self">self</span>, <span class="kw-2">mut </span>inner: MutexGuard&lt;<span class="lifetime">&#39;static</span>, Inner&gt;) {
         <span class="comment">// If runnable tasks greatly outnumber idle threads and there aren&#39;t too many threads
         // already, then be aggressive: wake all idle threads and spawn one more thread.
-        </span><span class="kw">while </span>inner.queue.len() &gt; inner.idle_count * <span class="number">5 </span>&amp;&amp; inner.thread_count &lt; EXECUTOR.thread_limit
-        {
+        </span><span class="kw">while </span>inner.queue.len() &gt; inner.idle_count * <span class="number">5 </span>&amp;&amp; inner.thread_count &lt; <span class="self">self</span>.thread_limit {
             <span class="comment">// The new thread starts in idle state.
             </span>inner.idle_count += <span class="number">1</span>;
             inner.thread_count += <span class="number">1</span>;
@@ -1862,7 +1878,7 @@
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
             State::Idle(<span class="prelude-val">None</span>) =&gt; f.debug_struct(<span class="string">&quot;Unblock&quot;</span>).field(<span class="string">&quot;io&quot;</span>, <span class="kw-2">&amp;</span>Closed).finish(),
             State::Idle(<span class="prelude-val">Some</span>(io)) =&gt; {
-                <span class="kw">let </span>io: <span class="kw-2">&amp;</span>T = <span class="kw-2">&amp;*</span>io;
+                <span class="kw">let </span>io: <span class="kw-2">&amp;</span>T = io;
                 f.debug_struct(<span class="string">&quot;Unblock&quot;</span>).field(<span class="string">&quot;io&quot;</span>, io).finish()
             }
             State::WithMut(..)
@@ -2549,4 +2565,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="blocking" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="blocking" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

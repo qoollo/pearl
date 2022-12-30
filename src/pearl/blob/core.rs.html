@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/core.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../pearl/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/core.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -622,13 +622,44 @@
 <span id="622">622</span>
 <span id="623">623</span>
 <span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::SystemTime;
 
 <span class="kw">use </span>async_std::sync::RwLockUpgradableReadGuard;
+<span class="kw">use </span>bytes::Bytes;
 <span class="kw">use </span>tokio::time::Instant;
 
 <span class="kw">use </span><span class="kw">crate</span>::error::ValidationErrorKind;
 <span class="kw">use </span><span class="kw">crate</span>::filter::{CombinedFilter, FilterTrait};
+<span class="kw">use </span><span class="kw">crate</span>::storage::{BlobRecordTimestamp, ReadResult};
 
 <span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
 
@@ -846,9 +877,9 @@
                 <span class="self">self</span>.name.to_path()
             )
         })<span class="question-mark">? </span>{
-            <span class="kw">let </span>headers = filter_deleted_headers(headers);
             <span class="kw">for </span>header <span class="kw">in </span>headers {
-                <span class="self">self</span>.index.push(header).context(<span class="string">&quot;index push failed&quot;</span>)<span class="question-mark">?</span>;
+                <span class="kw">let </span>key = header.key().into();
+                <span class="self">self</span>.index.push(<span class="kw-2">&amp;</span>key, header).context(<span class="string">&quot;index push failed&quot;</span>)<span class="question-mark">?</span>;
             }
         }
         <span class="macro">debug!</span>(<span class="string">&quot;index successfully generated: {}&quot;</span>, <span class="self">self</span>.index.name());
@@ -859,14 +890,14 @@
         <span class="comment">// @TODO implement
     </span>}
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write(blob: <span class="kw-2">&amp;</span>ASRwLock&lt;<span class="self">Self</span>&gt;, record: Record) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write(blob: <span class="kw-2">&amp;</span>ASRwLock&lt;<span class="self">Self</span>&gt;, key: <span class="kw-2">&amp;</span>K, record: Record) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob write&quot;</span>);
         <span class="comment">// Only one upgradable_read lock is allowed at a time
         </span><span class="kw">let </span>blob = blob.upgradable_read().<span class="kw">await</span>;
-        <span class="self">Self</span>::write_locked(blob, record).<span class="kw">await
+        <span class="self">Self</span>::write_locked(blob, key, record).<span class="kw">await
     </span>}
 
-    <span class="kw">async fn </span>write_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>record: Record) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">async fn </span>write_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K, <span class="kw-2">mut </span>record: Record) -&gt; <span class="prelude-ty">Result</span>&lt;RecordHeader&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob write&quot;</span>);
         <span class="macro">debug!</span>(<span class="string">&quot;blob write record offset: {}&quot;</span>, <span class="self">self</span>.current_offset);
         record.set_offset(<span class="self">self</span>.current_offset)<span class="question-mark">?</span>;
@@ -882,12 +913,14 @@
                     <span class="kw">_ </span>=&gt; e.into(),
                 }
             })<span class="question-mark">?</span>;
-        <span class="self">self</span>.index.push(record.header().clone())<span class="question-mark">?</span>;
+        <span class="self">self</span>.index.push(key, record.header().clone())<span class="question-mark">?</span>;
         <span class="self">self</span>.current_offset += buf.len() <span class="kw">as </span>u64;
-        <span class="prelude-val">Ok</span>(())
+        <span class="prelude-val">Ok</span>(record.into_header())
     }
+
     <span class="kw">async fn </span>write_locked(
         blob: ASRwLockUpgradableReadGuard&lt;<span class="lifetime">&#39;_</span>, Blob&lt;K&gt;&gt;,
+        key: <span class="kw-2">&amp;</span>K,
         <span class="kw-2">mut </span>record: Record,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob write record offset: {}&quot;</span>, blob.current_offset);
@@ -905,7 +938,7 @@
                 }
             })<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>blob = RwLockUpgradableReadGuard::upgrade(blob).<span class="kw">await</span>;
-        blob.index.push(record.header().clone())<span class="question-mark">?</span>;
+        blob.index.push(key, record.header().clone())<span class="question-mark">?</span>;
         blob.current_offset += buf.len() <span class="kw">as </span>u64;
         <span class="prelude-val">Ok</span>(())
     }
@@ -915,51 +948,77 @@
         key: <span class="kw-2">&amp;</span>K,
         meta: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Meta&gt;,
         check_filters: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ReadResult&lt;Bytes&gt;&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob read any&quot;</span>);
-        <span class="kw">let </span>entry = <span class="self">self
-            </span>.get_entry(key, meta, check_filters)
-            .<span class="kw">await</span><span class="question-mark">?
-            </span>.ok_or_else(|| Error::from(ErrorKind::RecordNotFound))<span class="question-mark">?</span>;
-        <span class="macro">debug!</span>(<span class="string">&quot;blob read any entry found&quot;</span>);
-        <span class="kw">let </span>buf = entry
-            .load()
-            .<span class="kw">await
-            </span>.with_context(|| {
-                <span class="macro">format!</span>(
-                    <span class="string">&quot;failed to read key {:?} with meta {:?} from blob {:?}&quot;</span>,
-                    key,
-                    meta,
-                    <span class="self">self</span>.name.to_path()
-                )
-            })<span class="question-mark">?
-            </span>.into_data();
-        <span class="macro">debug!</span>(<span class="string">&quot;blob read any entry loaded bytes: {}&quot;</span>, buf.len());
-        <span class="prelude-val">Ok</span>(buf)
+        <span class="kw">let </span>entry = <span class="self">self</span>.get_entry(key, meta, check_filters).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">match </span>entry {
+            ReadResult::Found(entry) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;blob read any entry found&quot;</span>);
+                <span class="kw">let </span>buf = entry
+                    .load()
+                    .<span class="kw">await
+                    </span>.with_context(|| {
+                        <span class="macro">format!</span>(
+                            <span class="string">&quot;failed to read key {:?} with meta {:?} from blob {:?}&quot;</span>,
+                            key,
+                            meta,
+                            <span class="self">self</span>.name.to_path()
+                        )
+                    })<span class="question-mark">?
+                    </span>.into_data();
+                <span class="macro">debug!</span>(<span class="string">&quot;blob read any entry loaded bytes: {}&quot;</span>, buf.len());
+                <span class="prelude-val">Ok</span>(ReadResult::Found(buf))
+            }
+            ReadResult::Deleted(ts) =&gt; <span class="prelude-val">Ok</span>(ReadResult::Deleted(ts)),
+            ReadResult::NotFound =&gt; <span class="prelude-val">Ok</span>(ReadResult::NotFound),
+        }
+    }
+
+    <span class="attribute">#[allow(dead_code)]
+    #[inline]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_all_entries(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Entry&gt;&gt; {
+        <span class="kw">let </span>headers = <span class="self">self</span>.index.get_all(key).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="macro">debug_assert!</span>(headers
+            .iter()
+            .zip(headers.iter().skip(<span class="number">1</span>))
+            .all(|(x, y)| x.created() &gt;= y.created()));
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::headers_to_entries(headers, <span class="kw-2">&amp;</span><span class="self">self</span>.file))
     }
 
     <span class="attribute">#[inline]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_all_entries(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;Entry&gt;&gt;&gt; {
-        <span class="kw">let </span>headers = <span class="self">self</span>.index.get_all(key).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(headers.map(|h| {
-            <span class="macro">debug!</span>(<span class="string">&quot;blob core read all {} headers&quot;</span>, h.len());
-            <span class="self">Self</span>::headers_to_entries(h, <span class="kw-2">&amp;</span><span class="self">self</span>.file)
-        }))
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_all_entries_with_deletion_marker(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        key: <span class="kw-2">&amp;</span>K,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Entry&gt;&gt; {
+        <span class="kw">let </span>headers = <span class="self">self</span>.index.get_all_with_deletion_marker(key).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="macro">debug_assert!</span>(headers
+            .iter()
+            .zip(headers.iter().skip(<span class="number">1</span>))
+            .all(|(x, y)| x.created() &gt;= y.created()));
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::headers_to_entries(headers, <span class="kw-2">&amp;</span><span class="self">self</span>.file))
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>mark_all_as_deleted(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;u64&gt;&gt; {
-        <span class="kw">if </span><span class="self">self</span>.index.get_any(key).<span class="kw">await</span><span class="question-mark">?</span>.is_some() {
-            <span class="kw">let </span>on_disk = <span class="self">self</span>.index.on_disk();
-            <span class="kw">if </span>on_disk {
-                <span class="self">self</span>.load_index().<span class="kw">await</span><span class="question-mark">?</span>;
-            }
-            <span class="kw">let </span>record = Record::deleted(key)<span class="question-mark">?</span>;
-            <span class="self">self</span>.write_mut(record).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let </span>res = <span class="self">self</span>.index.mark_all_as_deleted(key)<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(res)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>mark_all_as_deleted(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        key: <span class="kw-2">&amp;</span>K,
+        only_if_presented: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+        <span class="kw">if </span>!only_if_presented || <span class="self">self</span>.index.get_any(key).<span class="kw">await</span><span class="question-mark">?</span>.is_found() {
+            <span class="self">self</span>.push_deletion_record(key).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
         } <span class="kw">else </span>{
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+            <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
         }
+    }
+
+    <span class="kw">async fn </span>push_deletion_record(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>on_disk = <span class="self">self</span>.index.on_disk();
+        <span class="kw">if </span>on_disk {
+            <span class="self">self</span>.load_index().<span class="kw">await</span><span class="question-mark">?</span>;
+        }
+        <span class="kw">let </span>record = Record::deleted(key)<span class="question-mark">?</span>;
+        <span class="kw">let </span>header = <span class="self">self</span>.write_mut(key, record).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="self">self</span>.index.push_deletion(key, header)
     }
 
     <span class="kw">fn </span>headers_to_entries(headers: Vec&lt;RecordHeader&gt;, file: <span class="kw-2">&amp;</span>File) -&gt; Vec&lt;Entry&gt; {
@@ -974,35 +1033,48 @@
         key: <span class="kw-2">&amp;</span>K,
         meta: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Meta&gt;,
         check_filters: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Entry&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ReadResult&lt;Entry&gt;&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob get any entry {:?}, {:?}&quot;</span>, key, meta);
         <span class="kw">if </span>check_filters &amp;&amp; <span class="self">self</span>.check_filter(key).<span class="kw">await </span>== FilterResult::NotContains {
             <span class="macro">debug!</span>(<span class="string">&quot;Key was filtered out by filters&quot;</span>);
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+            <span class="prelude-val">Ok</span>(ReadResult::NotFound)
         } <span class="kw">else if let </span><span class="prelude-val">Some</span>(meta) = meta {
             <span class="macro">debug!</span>(<span class="string">&quot;blob get any entry meta: {:?}&quot;</span>, meta);
             <span class="self">self</span>.get_entry_with_meta(key, meta).<span class="kw">await
         </span>} <span class="kw">else </span>{
             <span class="macro">debug!</span>(<span class="string">&quot;blob get any entry bloom true no meta&quot;</span>);
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(header) = <span class="self">self</span>.index.get_any(key).<span class="kw">await</span>.with_context(|| {
-                <span class="macro">format!</span>(<span class="string">&quot;index get any failed for blob: {:?}&quot;</span>, <span class="self">self</span>.name.to_path())
-            })<span class="question-mark">? </span>{
-                <span class="kw">let </span>entry = Entry::new(header, <span class="self">self</span>.file.clone());
-                <span class="macro">debug!</span>(<span class="string">&quot;blob, get any entry, bloom true no meta, entry found&quot;</span>);
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(entry))
-            } <span class="kw">else </span>{
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
-            }
+            <span class="prelude-val">Ok</span>(<span class="self">self
+                </span>.index
+                .get_any(key)
+                .<span class="kw">await
+                </span>.with_context(|| {
+                    <span class="macro">format!</span>(<span class="string">&quot;index get any failed for blob: {:?}&quot;</span>, <span class="self">self</span>.name.to_path())
+                })<span class="question-mark">?
+                </span>.map(|header| {
+                    <span class="kw">let </span>entry = Entry::new(header, <span class="self">self</span>.file.clone());
+                    <span class="macro">debug!</span>(<span class="string">&quot;blob, get any entry, bloom true no meta, entry found&quot;</span>);
+                    entry
+                }))
         }
     }
 
-    <span class="kw">async fn </span>get_entry_with_meta(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K, meta: <span class="kw-2">&amp;</span>Meta) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Entry&gt;&gt; {
-        <span class="kw">let </span>headers = <span class="self">self</span>.index.get_all(key).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = headers {
-            <span class="kw">let </span>entries = <span class="self">Self</span>::headers_to_entries(headers, <span class="kw-2">&amp;</span><span class="self">self</span>.file);
-            <span class="self">self</span>.filter_entries(entries, meta).<span class="kw">await
-        </span>} <span class="kw">else </span>{
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+    <span class="kw">async fn </span>get_entry_with_meta(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K, meta: <span class="kw-2">&amp;</span>Meta) -&gt; <span class="prelude-ty">Result</span>&lt;ReadResult&lt;Entry&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>headers = <span class="self">self</span>.index.get_all_with_deletion_marker(key).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>deleted_ts = headers
+            .last()
+            .filter(|h| h.is_deleted())
+            .map(|h| BlobRecordTimestamp::new(h.created()));
+        <span class="kw">if </span>deleted_ts.is_some() {
+            headers.truncate(headers.len() - <span class="number">1</span>);
+        }
+        <span class="kw">let </span>entries = <span class="self">Self</span>::headers_to_entries(headers, <span class="kw-2">&amp;</span><span class="self">self</span>.file);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(entries) = <span class="self">self</span>.filter_entries(entries, meta).<span class="kw">await</span><span class="question-mark">? </span>{
+            <span class="prelude-val">Ok</span>(ReadResult::Found(entries))
+        } <span class="kw">else </span>{
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(ts) = deleted_ts {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(ReadResult::Deleted(ts));
+            }
+            <span class="prelude-val">Ok</span>(ReadResult::NotFound)
         }
     }
 
@@ -1015,10 +1087,17 @@
         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K, meta: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Meta&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>contains(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        key: <span class="kw-2">&amp;</span>K,
+        meta: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Meta&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ReadResult&lt;BlobRecordTimestamp&gt;&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob contains&quot;</span>);
-        <span class="kw">let </span>contains = <span class="self">self</span>.get_entry(key, meta, <span class="bool-val">true</span>).<span class="kw">await</span><span class="question-mark">?</span>.is_some();
-        <span class="macro">debug!</span>(<span class="string">&quot;blob contains any: {}&quot;</span>, contains);
+        <span class="kw">let </span>contains = <span class="self">self
+            </span>.get_entry(key, meta, <span class="bool-val">true</span>)
+            .<span class="kw">await</span><span class="question-mark">?
+            </span>.map(|e| BlobRecordTimestamp::new(e.created()));
+        <span class="macro">debug!</span>(<span class="string">&quot;blob contains any: {:?}&quot;</span>, contains);
         <span class="prelude-val">Ok</span>(contains)
     }
 
@@ -1195,27 +1274,6 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>filter_deleted_headers(headers: Vec&lt;RecordHeader&gt;) -&gt; Vec&lt;RecordHeader&gt; {
-    <span class="kw">let </span>deleted = headers.iter().fold(BTreeMap::new(), |<span class="kw-2">mut </span>map, h| {
-        <span class="kw">if </span>h.is_deleted() {
-            <span class="kw">let </span>entry = map.entry(h.key().to_vec()).or_insert(h.created());
-            <span class="kw-2">*</span>entry = h.created().max(<span class="kw-2">*</span>entry);
-        }
-        map
-    });
-    <span class="kw">if </span>deleted.is_empty() {
-        <span class="kw">return </span>headers;
-    }
-
-    <span class="kw">let </span><span class="kw-2">mut </span>new_headers = <span class="macro">vec!</span>[];
-    <span class="kw">for </span>header <span class="kw">in </span>headers {
-        <span class="kw">if </span>deleted.get(header.key()).cloned().unwrap_or_default() &lt; header.created() {
-            new_headers.push(header);
-        }
-    }
-    new_headers
-}
-
 <span class="attribute">#[async_trait::async_trait]
 </span><span class="kw">impl</span>&lt;K&gt; BloomProvider&lt;K&gt; <span class="kw">for </span>Blob&lt;K&gt;
 <span class="kw">where
@@ -1247,4 +1305,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
