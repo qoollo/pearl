@@ -4,6 +4,20 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+
+
+#### Changed
+
+
+#### Fixed
+
+
+#### Updated
+
+
+
+## [0.16.0] - 2022-12-30
+#### Added
 - Corrupted blobs count calculation (#464)
 
 #### Changed
@@ -11,13 +25,11 @@ Pearl changelog
 - Save delete records in index (#207)
 - Use bytes for arguments (#191)
 
-
 #### Fixed
 
 
 #### Updated
 - Crate `crc` (#225)
-
 
 
 ## [0.15.0] - 2022-11-22
