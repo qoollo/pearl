@@ -18,7 +18,7 @@ Pearl changelog
 
 ## [0.16.0] - 2022-12-30
 #### Added
-- Corrupted blobs count calculation (#464)
+- Corrupted blobs count calculation (#224)
 
 #### Changed
 - Return delete or not found as distinct results (#208)
