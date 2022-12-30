@@ -1322,3 +1322,54 @@ where
         active + closed
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{ArrayKey, Builder, Storage};
+    use anyhow::Result;
+    use bytes::Bytes;
+    use std::path::{Path, PathBuf};
+
+    fn init(dir_name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "pearl_test/{}/{}",
+            std::time::UNIX_EPOCH.elapsed().unwrap().as_secs() % 1_563_100_000,
+            dir_name
+        ))
+    }
+
+    async fn create_test_storage(
+        dir_name: impl AsRef<Path>,
+        max_blob_size: u64,
+    ) -> Result<Storage<ArrayKey<1>>> {
+        let path = std::env::temp_dir().join(dir_name);
+        let builder = Builder::new()
+            .work_dir(&path)
+            .blob_file_name_prefix("test")
+            .max_blob_size(max_blob_size)
+            .max_data_in_blob(100_000)
+            .allow_duplicates();
+        let mut storage = builder.build().unwrap();
+        storage.init().await?;
+        Ok(storage)
+    }
+
+    #[tokio::test]
+    async fn test_read_all_with_deletion_marker_delete_middle() -> Result<()> {
+        let path = init("new");
+        let storage = create_test_storage(path, 10_000).await?;
+        let key: ArrayKey<1> = vec![0].into();
+        let data: Bytes = "test data string".repeat(16).as_bytes().to_vec().into();
+        storage.write(&key, data.clone()).await?;
+        storage.delete(&key, true).await?;
+        storage.write(&key, data.clone()).await?;
+
+        let read = storage.read_all_with_deletion_marker(&key).await?;
+
+        assert_eq!(2, read.len());
+        assert!(!read[0].header().is_deleted());
+        assert!(read[1].header().is_deleted());
+
+        Ok(())
+    }
+}
