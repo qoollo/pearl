@@ -434,25 +434,24 @@ where
         let key = key.as_ref();
         let mut all_entries = Vec::new();
         let safe = self.inner.safe.read().await;
-        let active_blob = safe
-            .active_blob
-            .as_ref()
-            .ok_or_else(Error::active_blob_not_set)?;
-        let entries = active_blob
-            .read()
-            .await
-            .read_all_entries_with_deletion_marker(key)
-            .await?;
-        debug!(
-            "storage core read all active blob entries {}",
-            entries.len()
-        );
-        if let Some(e) = entries.last() {
-            if e.is_deleted() {
-                return Ok(entries);
+        let active_blob = safe.active_blob.as_ref();
+        if let Some(active_blob) = active_blob {
+            let entries = active_blob
+                .read()
+                .await
+                .read_all_entries_with_deletion_marker(key)
+                .await?;
+            debug!(
+                "storage core read all active blob entries {}",
+                entries.len()
+            );
+            if let Some(e) = entries.last() {
+                if e.is_deleted() {
+                    return Ok(entries);
+                }
             }
+            all_entries.extend(entries);
         }
-        all_entries.extend(entries);
         let blobs = safe.blobs.read().await;
         let mut futures = blobs
             .iter_possible_childs_rev(key)
