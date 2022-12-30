@@ -1073,7 +1073,7 @@ async fn test_in_memory_and_disk_records_retrieval() -> Result<()> {
 
 #[tokio::test]
 async fn test_read_all_with_deletion_marker_delete_middle() -> Result<()> {
-    let path = common::init("new");
+    let path = common::init("delete_middle");
     let storage = common::default_test_storage_in(path).await.unwrap();
     let key: KeyTest = vec![0].into();
     let data: Bytes = "test data string".repeat(16).as_bytes().to_vec().into();
@@ -1092,13 +1092,13 @@ async fn test_read_all_with_deletion_marker_delete_middle() -> Result<()> {
 
 #[tokio::test]
 async fn test_read_all_with_deletion_marker_delete_middle_different_blobs() -> Result<()> {
-    let path = common::init("new");
+    let path = common::init("delete_middle_blobs");
     let storage = common::default_test_storage_in(path).await.unwrap();
     let key: KeyTest = vec![0].into();
     let data: Bytes = "test data string".repeat(16).as_bytes().to_vec().into();
     storage.write(&key, data.clone()).await?;
     storage.try_close_active_blob().await?;
-    storage.delete(&key, true).await?;
+    storage.delete(&key, false).await?;
     storage.try_close_active_blob().await?;
     storage.write(&key, data.clone()).await?;
 
