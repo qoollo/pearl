@@ -59,6 +59,11 @@ impl Entry {
         Ok(self.meta.as_ref())
     }
 
+    /// Entry marked as deleted
+    pub fn is_deleted(&self) -> bool {
+        self.header().is_deleted()
+    }
+
     pub(crate) fn new(header: RecordHeader, blob_file: File) -> Self {
         Self {
             meta: None,
