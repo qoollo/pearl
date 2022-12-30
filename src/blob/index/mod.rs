@@ -1,4 +1,7 @@
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    storage::{BlobRecordTimestamp, ReadResult},
+};
 
 mod bptree;
 mod core;
@@ -26,10 +29,11 @@ mod prelude {
 
 #[async_trait::async_trait]
 pub(crate) trait IndexTrait<K>: Send + Sync {
-    async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
-    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>>;
+    async fn get_all(&self, key: &K) -> Result<Vec<RecordHeader>>;
+    async fn get_all_with_deletion_marker(&self, key: &K) -> Result<Vec<RecordHeader>>;
+    async fn get_any(&self, key: &K) -> Result<ReadResult<RecordHeader>>;
     fn push(&mut self, key: &K, h: RecordHeader) -> Result<()>;
-    async fn contains_key(&self, key: &K) -> Result<bool>;
+    async fn contains_key(&self, key: &K) -> Result<ReadResult<BlobRecordTimestamp>>;
     fn count(&self) -> usize;
     async fn dump(&mut self, blob_size: u64) -> Result<usize>;
     async fn load(&mut self, blob_size: u64) -> Result<()>;

@@ -6,6 +6,7 @@ use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
 use crate::filter::{CombinedFilter, FilterTrait};
+use crate::storage::{BlobRecordTimestamp, ReadResult};
 
 use super::prelude::*;
 
@@ -294,40 +295,62 @@ where
         key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
-    ) -> Result<Bytes> {
+    ) -> Result<ReadResult<Bytes>> {
         debug!("blob read any");
-        let entry = self
-            .get_entry(key, meta, check_filters)
-            .await?
-            .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
-        debug!("blob read any entry found");
-        let buf = entry
-            .load()
-            .await
-            .with_context(|| {
-                format!(
-                    "failed to read key {:?} with meta {:?} from blob {:?}",
-                    key,
-                    meta,
-                    self.name.to_path()
-                )
-            })?
-            .into_data();
-        debug!("blob read any entry loaded bytes: {}", buf.len());
-        Ok(buf)
+        let entry = self.get_entry(key, meta, check_filters).await?;
+        match entry {
+            ReadResult::Found(entry) => {
+                debug!("blob read any entry found");
+                let buf = entry
+                    .load()
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "failed to read key {:?} with meta {:?} from blob {:?}",
+                            key,
+                            meta,
+                            self.name.to_path()
+                        )
+                    })?
+                    .into_data();
+                debug!("blob read any entry loaded bytes: {}", buf.len());
+                Ok(ReadResult::Found(buf))
+            }
+            ReadResult::Deleted(ts) => Ok(ReadResult::Deleted(ts)),
+            ReadResult::NotFound => Ok(ReadResult::NotFound),
+        }
+    }
+
+    #[allow(dead_code)]
+    #[inline]
+    pub(crate) async fn read_all_entries(&self, key: &K) -> Result<Vec<Entry>> {
+        let headers = self.index.get_all(key).await?;
+        debug_assert!(headers
+            .iter()
+            .zip(headers.iter().skip(1))
+            .all(|(x, y)| x.created() >= y.created()));
+        Ok(Self::headers_to_entries(headers, &self.file))
     }
 
     #[inline]
-    pub(crate) async fn read_all_entries(&self, key: &K) -> Result<Option<Vec<Entry>>> {
-        let headers = self.index.get_all(key).await?;
-        Ok(headers.map(|h| {
-            debug!("blob core read all {} headers", h.len());
-            Self::headers_to_entries(h, &self.file)
-        }))
+    pub(crate) async fn read_all_entries_with_deletion_marker(
+        &self,
+        key: &K,
+    ) -> Result<Vec<Entry>> {
+        let headers = self.index.get_all_with_deletion_marker(key).await?;
+        debug_assert!(headers
+            .iter()
+            .zip(headers.iter().skip(1))
+            .all(|(x, y)| x.created() >= y.created()));
+        Ok(Self::headers_to_entries(headers, &self.file))
     }
 
-    pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<bool> {
-        if self.index.get_any(key).await?.is_some() {
+    pub(crate) async fn mark_all_as_deleted(
+        &mut self,
+        key: &K,
+        only_if_presented: bool,
+    ) -> Result<bool> {
+        if !only_if_presented || self.index.get_any(key).await?.is_found() {
             self.push_deletion_record(key).await?;
             Ok(true)
         } else {
@@ -357,35 +380,48 @@ where
         key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
-    ) -> Result<Option<Entry>> {
+    ) -> Result<ReadResult<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
         if check_filters && self.check_filter(key).await == FilterResult::NotContains {
             debug!("Key was filtered out by filters");
-            Ok(None)
+            Ok(ReadResult::NotFound)
         } else if let Some(meta) = meta {
             debug!("blob get any entry meta: {:?}", meta);
             self.get_entry_with_meta(key, meta).await
         } else {
             debug!("blob get any entry bloom true no meta");
-            if let Some(header) = self.index.get_any(key).await.with_context(|| {
-                format!("index get any failed for blob: {:?}", self.name.to_path())
-            })? {
-                let entry = Entry::new(header, self.file.clone());
-                debug!("blob, get any entry, bloom true no meta, entry found");
-                Ok(Some(entry))
-            } else {
-                Ok(None)
-            }
+            Ok(self
+                .index
+                .get_any(key)
+                .await
+                .with_context(|| {
+                    format!("index get any failed for blob: {:?}", self.name.to_path())
+                })?
+                .map(|header| {
+                    let entry = Entry::new(header, self.file.clone());
+                    debug!("blob, get any entry, bloom true no meta, entry found");
+                    entry
+                }))
         }
     }
 
-    async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<Option<Entry>> {
-        let headers = self.index.get_all(key).await?;
-        if let Some(headers) = headers {
-            let entries = Self::headers_to_entries(headers, &self.file);
-            self.filter_entries(entries, meta).await
+    async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<ReadResult<Entry>> {
+        let mut headers = self.index.get_all_with_deletion_marker(key).await?;
+        let deleted_ts = headers
+            .last()
+            .filter(|h| h.is_deleted())
+            .map(|h| BlobRecordTimestamp::new(h.created()));
+        if deleted_ts.is_some() {
+            headers.truncate(headers.len() - 1);
+        }
+        let entries = Self::headers_to_entries(headers, &self.file);
+        if let Some(entries) = self.filter_entries(entries, meta).await? {
+            Ok(ReadResult::Found(entries))
         } else {
-            Ok(None)
+            if let Some(ts) = deleted_ts {
+                return Ok(ReadResult::Deleted(ts));
+            }
+            Ok(ReadResult::NotFound)
         }
     }
 
@@ -398,10 +434,17 @@ where
         Ok(None)
     }
 
-    pub(crate) async fn contains(&self, key: &K, meta: Option<&Meta>) -> Result<bool> {
+    pub(crate) async fn contains(
+        &self,
+        key: &K,
+        meta: Option<&Meta>,
+    ) -> Result<ReadResult<BlobRecordTimestamp>> {
         debug!("blob contains");
-        let contains = self.get_entry(key, meta, true).await?.is_some();
-        debug!("blob contains any: {}", contains);
+        let contains = self
+            .get_entry(key, meta, true)
+            .await?
+            .map(|e| BlobRecordTimestamp::new(e.created()));
+        debug!("blob contains any: {:?}", contains);
         Ok(contains)
     }
 

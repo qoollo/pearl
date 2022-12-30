@@ -59,6 +59,16 @@ impl Entry {
         Ok(self.meta.as_ref())
     }
 
+    /// Entry marked as deleted
+    pub fn is_deleted(&self) -> bool {
+        self.header.is_deleted()
+    }
+
+    /// Timestamp when entry was created
+    pub fn created(&self) -> u64 {
+        self.header.created()
+    }
+
     pub(crate) fn new(header: RecordHeader, blob_file: File) -> Self {
         Self {
             meta: None,

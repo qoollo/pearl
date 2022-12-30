@@ -251,8 +251,10 @@ where
     FileIndex: FileIndexTrait<K> + Clone,
     for<'a> K: Key<'a>,
 {
-    async fn contains_key(&self, key: &K) -> Result<bool> {
-        self.get_any(key).await.map(|h| h.is_some())
+    async fn contains_key(&self, key: &K) -> Result<ReadResult<BlobRecordTimestamp>> {
+        self.get_any(key)
+            .await
+            .map(|h| h.map(|h| BlobRecordTimestamp::new(h.created())))
     }
 
     fn push(&mut self, key: &K, h: RecordHeader) -> Result<()> {
@@ -289,28 +291,38 @@ where
         }
     }
 
-    async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
-        let res = match &self.inner {
-            State::InMemory(headers) => Ok(headers.get(key).cloned().map(|mut v| {
-                if v.len() > 1 {
-                    v.reverse();
+    async fn get_all(&self, key: &K) -> Result<Vec<RecordHeader>> {
+        let mut with_deletion = self.get_all_with_deletion_marker(key).await?;
+        if let Some(h) = with_deletion.last() {
+            if h.is_deleted() {
+                with_deletion.truncate(with_deletion.len() - 1);
+            }
+        }
+        Ok(with_deletion)
+    }
+
+    async fn get_all_with_deletion_marker(&self, key: &K) -> Result<Vec<RecordHeader>> {
+        let headers = match &self.inner {
+            State::InMemory(headers) => Ok(headers.get(key).cloned().map(|mut hs| {
+                if hs.len() > 1 {
+                    hs.reverse();
                 }
-                v
+                hs
             })),
             State::OnDisk(findex) => findex.find_by_key(key).await,
-        };
-        if let Ok(Some(mut hs)) = res {
+        }?;
+        if let Some(mut hs) = headers {
             let first_del = hs.iter().position(|h| h.is_deleted());
             if let Some(first_del) = first_del {
-                hs.truncate(first_del);
+                hs.truncate(first_del + 1);
             }
-            Ok(if hs.len() > 0 { Some(hs) } else { None })
+            Ok(hs)
         } else {
-            res
+            Ok(vec![])
         }
     }
 
-    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
+    async fn get_any(&self, key: &K) -> Result<ReadResult<RecordHeader>> {
         debug!("index get any");
         let result = match &self.inner {
             State::InMemory(headers) => {
@@ -324,7 +336,13 @@ where
                 findex.get_any(key).await?
             }
         };
-        Ok(result.and_then(|h| if h.is_deleted() { None } else { Some(h) }))
+        Ok(match result {
+            Some(header) if header.is_deleted() => {
+                ReadResult::Deleted(BlobRecordTimestamp::new(header.created()))
+            }
+            Some(header) => ReadResult::Found(header),
+            None => ReadResult::NotFound,
+        })
     }
 
     async fn dump(&mut self, blob_size: u64) -> Result<usize> {
