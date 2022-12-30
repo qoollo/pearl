@@ -1089,3 +1089,24 @@ async fn test_read_all_with_deletion_marker_delete_middle() -> Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_read_all_with_deletion_marker_delete_middle_different_blobs() -> Result<()> {
+    let path = common::init("new");
+    let storage = common::default_test_storage_in(path).await.unwrap();
+    let key: KeyTest = vec![0].into();
+    let data: Bytes = "test data string".repeat(16).as_bytes().to_vec().into();
+    storage.write(&key, data.clone()).await?;
+    storage.try_close_active_blob().await?;
+    storage.delete(&key, true).await?;
+    storage.try_close_active_blob().await?;
+    storage.write(&key, data.clone()).await?;
+
+    let read = storage.read_all_with_deletion_marker(&key).await?;
+
+    assert_eq!(2, read.len());
+    assert!(!read[0].is_deleted());
+    assert!(read[1].is_deleted());
+
+    Ok(())
+}
