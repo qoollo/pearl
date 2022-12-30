@@ -1101,6 +1101,7 @@ async fn test_read_all_with_deletion_marker_delete_middle_different_blobs() -> R
     storage.delete(&key, false).await?;
     storage.try_close_active_blob().await?;
     storage.write(&key, data.clone()).await?;
+    storage.try_close_active_blob().await?;
 
     let read = storage.read_all_with_deletion_marker(&key).await?;
 
