@@ -61,7 +61,12 @@ impl Entry {
 
     /// Entry marked as deleted
     pub fn is_deleted(&self) -> bool {
-        self.header().is_deleted()
+        self.header.is_deleted()
+    }
+
+    /// Entry marked as deleted
+    pub fn created(&self) -> u64 {
+        self.header.created()
     }
 
     pub(crate) fn new(header: RecordHeader, blob_file: File) -> Self {
@@ -70,9 +75,5 @@ impl Entry {
             header,
             blob_file,
         }
-    }
-
-    pub(crate) fn header(&self) -> &RecordHeader {
-        &self.header
     }
 }

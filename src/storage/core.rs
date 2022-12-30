@@ -420,7 +420,7 @@ where
     pub async fn read_all(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
         let mut entries = self.read_all_with_deletion_marker(key).await?;
         if let Some(e) = entries.last() {
-            if e.header().is_deleted() {
+            if e.is_deleted() {
                 entries.truncate(entries.len() - 1);
             }
         }
@@ -448,7 +448,7 @@ where
             entries.len()
         );
         if let Some(e) = entries.last() {
-            if e.header().is_deleted() {
+            if e.is_deleted() {
                 return Ok(entries);
             }
         }
@@ -461,7 +461,7 @@ where
         while let Some(data) = futures.next().await {
             let entries = data?;
             if let Some(e) = entries.last() {
-                if e.header().is_deleted() {
+                if e.is_deleted() {
                     all_entries.extend(entries);
                     return Ok(all_entries);
                 }
@@ -475,7 +475,7 @@ where
         debug_assert!(all_entries
             .iter()
             .zip(all_entries.iter().skip(1))
-            .all(|(x, y)| x.header().created() >= y.header().created()));
+            .all(|(x, y)| x.created() >= y.created()));
         Ok(all_entries)
     }
 

@@ -443,7 +443,7 @@ where
         let contains = self
             .get_entry(key, meta, true)
             .await?
-            .map(|e| BlobRecordTimestamp::new(e.header().created()));
+            .map(|e| BlobRecordTimestamp::new(e.created()));
         debug!("blob contains any: {:?}", contains);
         Ok(contains)
     }
