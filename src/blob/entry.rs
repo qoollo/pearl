@@ -64,7 +64,7 @@ impl Entry {
         self.header.is_deleted()
     }
 
-    /// Entry marked as deleted
+    /// Timestamp when entry was created
     pub fn created(&self) -> u64 {
         self.header.created()
     }
