@@ -1,3 +1,4 @@
+use super::storage::Key;
 use crate::error::ValidationErrorKind;
 
 /// structure of b+-tree index file from the beginning:
@@ -82,6 +83,10 @@ where
         self.header.records_count
     }
 
+    fn blob_size(&self) -> u64 {
+        self.header.blob_size()
+    }
+
     async fn read_meta(&self) -> Result<Vec<u8>> {
         trace!("load meta");
         let mut buf = vec![0; self.header.meta_size];
@@ -161,6 +166,14 @@ where
             let param = ValidationErrorKind::IndexVersion;
             return Err(Error::validation(param, "Index Header version is not valid").into());
         }
+        if self.header.key_size() != K::LEN {
+            let param = ValidationErrorKind::IndexKeySize;
+            return Err(Error::validation(
+                param,
+                "Index header key_size is not equal to pearl compile-time key size",
+            )
+            .into());
+        }
         if self.header.blob_size() != blob_size {
             let param = ValidationErrorKind::IndexBlobSize;
             return Err(Error::validation(
@@ -204,24 +217,20 @@ where
         buf: &mut [u8],
     ) -> Result<Option<RecordHeader>> {
         let buf_size = self.leaf_node_buf_size(leaf_offset);
-        let read_buf_size = self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
-        if read_buf_size != buf_size {
-            Err(anyhow!("Can't read entire leaf node"))
+        self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
+        if let Some((record_header, offset)) =
+            self.read_header_buf(&buf[..buf_size], key, self.header.record_header_size)?
+        {
+            let leftmost_header = self.get_leftmost(
+                &buf[..buf_size],
+                key,
+                offset as usize,
+                record_header,
+                self.header.record_header_size,
+            )?;
+            Ok(Some(leftmost_header))
         } else {
-            if let Some((record_header, offset)) =
-                self.read_header_buf(&buf[..buf_size], key, self.header.record_header_size)?
-            {
-                let leftmost_header = self.get_leftmost(
-                    &buf[..buf_size],
-                    key,
-                    offset as usize,
-                    record_header,
-                    self.header.record_header_size,
-                )?;
-                Ok(Some(leftmost_header))
-            } else {
-                Ok(None)
-            }
+            Ok(None)
         }
     }
 
@@ -280,14 +289,16 @@ where
         buf: &mut [u8],
     ) -> Result<Option<Vec<RecordHeader>>> {
         let buf_size = self.leaf_node_buf_size(leaf_offset);
-        let read_buf_size = self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
+        self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
         let rh_size = self.header.record_header_size;
-        if read_buf_size != buf_size {
-            return Err(anyhow!("Can't read entire leaf node"));
-        }
         if let Some((header, offset)) = self.read_header_buf(&buf[..buf_size], key, rh_size)? {
-            let mut headers = vec![header];
-            self.go_left(&mut headers, &buf[..buf_size], offset).await?;
+            let mut headers = Vec::with_capacity(1);
+            self.go_left(header.key(), &mut headers, &buf[..buf_size], offset)
+                .await?;
+            if headers.len() > 1 {
+                headers.reverse();
+            }
+            headers.push(header);
             self.go_right(&mut headers, &buf[..buf_size], offset, leaf_offset)
                 .await?;
             Ok(Some(headers))
@@ -330,10 +341,7 @@ where
         let leaves_end = self.metadata.leaves_offset + records_size as u64;
         let mut buf = vec![0; record_header_size as usize];
         while offset + record_header_size <= leaves_end {
-            let read_buf_size = self.file.read_at(&mut buf, offset).await?;
-            if read_buf_size != buf.len() {
-                return Err(anyhow!("Can't read header from file"));
-            }
+            self.file.read_at(&mut buf, offset).await?;
             let header: RecordHeader = deserialize(&buf)?;
             if header.key() == headers[0].key() {
                 headers.push(header);
@@ -349,6 +357,7 @@ where
     // with the same key to be on the left side from the start of leaf node, where it is)
     async fn go_left(
         &self,
+        key: &[u8],
         headers: &mut Vec<RecordHeader>,
         buf: &[u8],
         mut offset: usize,
@@ -357,7 +366,7 @@ where
         while offset >= record_header_size {
             let record_start = offset - record_header_size;
             let rh: RecordHeader = deserialize(&buf[record_start..offset])?;
-            if rh.key() == headers[0].key() {
+            if rh.key() == key {
                 headers.push(rh);
             } else {
                 return Ok(());

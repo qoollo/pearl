@@ -46,7 +46,7 @@ where
                 .headers_btree
                 .iter()
                 .fold(0, |acc, (_k, v)| acc + v.len());
-            let header = IndexHeader::new(record_header_size, headers_len, meta.len(), blob_size);
+            let header = IndexHeader::new(record_header_size, headers_len, meta.len(), K::LEN, blob_size);
             Ok(HeaderStage {
                 headers_btree: self.headers_btree,
                 header,
@@ -227,8 +227,9 @@ where
             self.header.record_header_size,
             self.header.records_count,
             self.meta.len(),
+            self.header.key_size,
+            self.header.blob_size,
             hash,
-            self.header.blob_size
         );
         serialize_into(buf.as_mut_slice(), &header)?;
         Ok((header, self.metadata, buf))

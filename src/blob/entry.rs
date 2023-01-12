@@ -1,3 +1,5 @@
+use bytes::Bytes;
+
 use super::prelude::*;
 
 /// [`Entry`] is a [`Future`], which contains header and metadata of the record,
@@ -29,6 +31,7 @@ impl Entry {
             .read_at(&mut buf, self.header.meta_offset())
             .await
             .with_context(|| "blob load failed")?;
+        let mut buf = Bytes::from(buf);
         let data_buf = buf.split_off(meta_size);
         let meta = Meta::from_raw(&buf)?;
         let record = Record::new(self.header.clone(), meta, data_buf);
@@ -54,6 +57,16 @@ impl Entry {
         self.blob_file.read_at(&mut buf, meta_offset).await?;
         self.meta = Some(Meta::from_raw(&buf)?);
         Ok(self.meta.as_ref())
+    }
+
+    /// Entry marked as deleted
+    pub fn is_deleted(&self) -> bool {
+        self.header.is_deleted()
+    }
+
+    /// Timestamp when entry was created
+    pub fn created(&self) -> u64 {
+        self.header.created()
     }
 
     pub(crate) fn new(header: RecordHeader, blob_file: File) -> Self {

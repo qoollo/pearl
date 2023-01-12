@@ -33,7 +33,7 @@
 //!     storage.init().await.unwrap();
 //!     let key = ArrayKey::<8>::default();
 //!     let data = b"Hello World!".to_vec();
-//!     storage.write(key, data).await.unwrap();
+//!     storage.write(key, data.into()).await.unwrap();
 //! }
 //! ```
 
@@ -44,6 +44,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate anyhow;
 
+extern crate bytes;
 extern crate ring;
 
 /// Basic info about current build.
@@ -66,7 +67,7 @@ pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use rio;
-pub use storage::{Builder, Key, RefKey, Storage, ArrayKey};
+pub use storage::{ArrayKey, BlobRecordTimestamp, Builder, Key, ReadResult, RefKey, Storage};
 
 mod prelude {
     use crc::{Crc, CRC_32_ISCSI};
@@ -80,11 +81,7 @@ mod prelude {
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use blob::{self, Blob, IndexConfig};
     pub(crate) use filter::{Bloom, BloomProvider, Config as BloomConfig, HierarchicalFilters};
-    pub(crate) use futures::{
-        future,
-        lock::Mutex,
-        stream::{futures_unordered::FuturesUnordered, TryStreamExt},
-    };
+    pub(crate) use futures::{lock::Mutex, stream::futures_unordered::FuturesUnordered};
     pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
     pub(crate) use rio::Rio;
     pub(crate) use std::{

@@ -42,10 +42,6 @@ impl Error {
         Self::new(Kind::ActiveBlobExists)
     }
 
-    pub(crate) fn not_found() -> Self {
-        Self::new(Kind::RecordNotFound)
-    }
-
     pub(crate) fn io(s: String) -> Self {
         Self::new(Kind::IO(s))
     }
@@ -89,8 +85,6 @@ pub enum Kind {
     WrongConfig,
     /// Probably storage initialization failed.
     Uninitialized,
-    /// Record not found
-    RecordNotFound,
     /// Work directory is locked by another storage.
     /// Or the operation lacked the necessary privileges to complete.
     /// Stop another storage or delete `*.lock` file
@@ -153,6 +147,8 @@ pub enum ValidationErrorKind {
     IndexChecksum,
     /// Index version.
     IndexVersion,
+    /// Index key size.
+    IndexKeySize,
     /// Index magic byte
     IndexMagicByte,
     /// Record data checksum.

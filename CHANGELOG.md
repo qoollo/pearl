@@ -7,6 +7,54 @@ Pearl changelog
 
 
 #### Changed
+
+
+#### Fixed
+
+
+#### Updated
+
+
+
+## [0.16.0] - 2022-12-30
+#### Added
+- Corrupted blobs count calculation (#224)
+
+#### Changed
+- Return delete or not found as distinct results (#208)
+- Save delete records in index (#207)
+- Use bytes for arguments (#191)
+
+#### Fixed
+
+
+#### Updated
+- Crate `crc` (#225)
+
+
+## [0.15.0] - 2022-11-22
+#### Added
+- Add functions to get info about blobs and indexes (#151)
+- Add key_size field to index header (#151)
+
+#### Changed
+- Change file operations to work on full buffers (#190)
+- Remove iterators from bloom filter (#194)
+- Excessive key conversion removed (#193)
+
+#### Fixed
+
+
+#### Updated
+- Updated tokio, nix, clap, bitvec versions (#202)
+- Update locks (#187)
+
+
+## [0.14.0] - 2022-11-14
+#### Added
+
+
+#### Changed
 - File name added to error messages in Blob struct (#183)
 - Update rust edition (#175)
 - Added different path for sync read/write (#184)

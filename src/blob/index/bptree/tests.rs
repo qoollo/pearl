@@ -25,6 +25,13 @@ impl<'a> Key<'a> for KeyType {
     type Ref = RefKeyType<'a>;
 }
 
+impl<'a> From<&'a [u8]> for KeyType {
+    fn from(a: &[u8]) -> Self {
+        let data = a.try_into().expect("key size mismatch");
+        Self(data)
+    }
+}
+
 impl From<Vec<u8>> for KeyType {
     fn from(mut v: Vec<u8>) -> Self {
         v.resize(KeyType::LEN as usize, 0);
