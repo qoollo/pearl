@@ -99,9 +99,9 @@ impl File {
         let buf = buf.to_vec();
         let file = self.no_lock_fd.clone();
         if buf.len() <= MAX_SYNC_OPERATION_SIZE {
-            Self::inplace_call(move || file.write_all_at(&buf, offset))
+            Self::inplace_sync_call(move || file.write_all_at(&buf, offset))
         } else {
-            Self::blocking_call(move || file.write_all_at(&buf, offset)).await
+            Self::background_sync_call(move || file.write_all_at(&buf, offset)).await
         }
     }
 
@@ -124,10 +124,14 @@ impl File {
         let mut new_buf = buf.to_vec();
 
         let new_buf = if buf.len() <= MAX_SYNC_OPERATION_SIZE {
-            Self::inplace_call(move || file.read_exact_at(&mut new_buf, offset).map(|_| new_buf))
+            Self::inplace_sync_call(move || {
+                file.read_exact_at(&mut new_buf, offset).map(|_| new_buf)
+            })
         } else {
-            Self::blocking_call(move || file.read_exact_at(&mut new_buf, offset).map(|_| new_buf))
-                .await
+            Self::background_sync_call(move || {
+                file.read_exact_at(&mut new_buf, offset).map(|_| new_buf)
+            })
+            .await
         }?;
         buf.clone_from_slice(new_buf.as_slice());
         Ok(())
@@ -190,7 +194,7 @@ impl File {
             compl.await
         } else {
             let fd = self.no_lock_fd.clone();
-            Self::blocking_call(move || fd.sync_all()).await
+            Self::background_sync_call(move || fd.sync_all()).await
         }
     }
 
@@ -214,7 +218,7 @@ impl File {
         }
     }
 
-    async fn blocking_call<F, R>(f: F) -> R
+    async fn background_sync_call<F, R>(f: F) -> R
     where
         F: FnOnce() -> R + Send + 'static,
         R: Send + 'static,
@@ -224,7 +228,7 @@ impl File {
             .expect("spawned blocking task failed")
     }
 
-    fn inplace_call<F, R>(f: F) -> R
+    fn inplace_sync_call<F, R>(f: F) -> R
     where
         F: FnOnce() -> R + Send + 'static,
         R: Send + 'static,
