@@ -1,3 +1,5 @@
+use bytes::BytesMut;
+
 use super::prelude::*;
 use crate::filter::{BloomDataProvider, CombinedFilter, FilterTrait};
 use std::mem::size_of;
@@ -392,7 +394,7 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
     fn file_size(&self) -> u64;
     fn records_count(&self) -> usize;
     fn blob_size(&self) -> u64;
-    async fn read_meta(&self) -> Result<Vec<u8>>;
+    async fn read_meta(&self) -> Result<BytesMut>;
     async fn read_meta_at(&self, i: u64) -> Result<u8>;
     async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)>;

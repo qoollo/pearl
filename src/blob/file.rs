@@ -3,6 +3,7 @@ use std::{
     time::SystemTime,
 };
 
+use bytes::BytesMut;
 use nix::{errno::Errno, fcntl::FcntlArg};
 
 use super::prelude::*;
@@ -105,13 +106,16 @@ impl File {
         }
     }
 
-    pub(crate) async fn read_all(&self) -> Result<Vec<u8>> {
-        let mut buf = vec![0; self.size().try_into()?];
-        self.read_at(&mut buf, 0).await?; // TODO: verify read size
-        Ok(buf)
+    pub(crate) async fn read_all(&self) -> Result<BytesMut> {
+        self.read_at_allocate(self.size().try_into()?, 0).await
     }
 
-    pub(crate) async fn read_at(&self, buf: &mut [u8], offset: u64) -> Result<()> {
+    pub(crate) async fn read_at_allocate(&self, size: usize, offset: u64) -> Result<BytesMut> {
+        let buf = BytesMut::zeroed(size);
+        self.read_at(buf, offset).await
+    }
+
+    pub(crate) async fn read_at(&self, buf: BytesMut, offset: u64) -> Result<BytesMut> {
         if let Some(ref ioring) = self.ioring {
             self.read_at_aio(buf, offset, ioring).await
         } else {
@@ -119,25 +123,18 @@ impl File {
         }
     }
 
-    pub(crate) async fn read_at_sync(&self, buf: &mut [u8], offset: u64) -> Result<()> {
+    pub(crate) async fn read_at_sync(&self, mut buf: BytesMut, offset: u64) -> Result<BytesMut> {
         let file = self.no_lock_fd.clone();
-        let mut new_buf = buf.to_vec();
 
-        let new_buf = if buf.len() <= MAX_SYNC_OPERATION_SIZE {
-            Self::inplace_sync_call(move || {
-                file.read_exact_at(&mut new_buf, offset).map(|_| new_buf)
-            })
+        Ok(if buf.len() <= MAX_SYNC_OPERATION_SIZE {
+            Self::inplace_sync_call(move || file.read_exact_at(&mut buf, offset).map(|_| buf))
         } else {
-            Self::background_sync_call(move || {
-                file.read_exact_at(&mut new_buf, offset).map(|_| new_buf)
-            })
-            .await
-        }?;
-        buf.clone_from_slice(new_buf.as_slice());
-        Ok(())
+            Self::background_sync_call(move || file.read_exact_at(&mut buf, offset).map(|_| buf))
+                .await
+        }?)
     }
 
-    async fn read_at_aio(&self, buf: &mut [u8], offset: u64, ioring: &Rio) -> Result<()> {
+    async fn read_at_aio(&self, mut buf: BytesMut, offset: u64, ioring: &Rio) -> Result<BytesMut> {
         debug!("blob file read at");
         if buf.is_empty() {
             warn!("file read_at empty buf");
@@ -172,7 +169,7 @@ impl File {
             debug!("blob file read at proggress {}/{}", size, buf.len());
         }
         debug!("blob file read at complited: {}", size);
-        Ok(())
+        Ok(buf)
     }
 
     async fn from_tokio_file(file: TokioFile, ioring: Option<Rio>) -> IOResult<Self> {

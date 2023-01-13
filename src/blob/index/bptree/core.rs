@@ -1,3 +1,5 @@
+use bytes::BytesMut;
+
 use super::storage::Key;
 use crate::error::ValidationErrorKind;
 
@@ -19,7 +21,7 @@ pub(crate) struct BPTreeFileIndex<K> {
     file: File,
     header: IndexHeader,
     metadata: TreeMeta,
-    root_node: [u8; BLOCK_SIZE],
+    root_node: BytesMut,
     key_type_marker: PhantomData<K>,
 }
 
@@ -87,14 +89,12 @@ where
         self.header.blob_size()
     }
 
-    async fn read_meta(&self) -> Result<Vec<u8>> {
+    async fn read_meta(&self) -> Result<BytesMut> {
         trace!("load meta");
-        let mut buf = vec![0; self.header.meta_size];
-        trace!("read meta into buf: [0; {}]", buf.len());
+        trace!("read meta into buf: [0; {}]", self.header.meta_size);
         self.file
-            .read_at(&mut buf, self.header.serialized_size()? as u64)
-            .await?;
-        Ok(buf)
+            .read_at_allocate(self.header.meta_size, self.header.serialized_size()? as u64)
+            .await
     }
 
     async fn read_meta_at(&self, i: u64) -> Result<u8> {
@@ -102,23 +102,23 @@ where
         if i >= self.header.meta_size as u64 {
             return Err(anyhow::anyhow!("read meta out of range"));
         }
-        let mut buf = [0; 1];
-        self.file
-            .read_at(&mut buf, self.header.serialized_size()? + i)
+        let buf = self
+            .file
+            .read_at_allocate(1, self.header.serialized_size()? + i)
             .await?;
         Ok(buf[0])
     }
 
     async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
         let root_offset = self.metadata.tree_offset;
-        let mut buf = [0u8; BLOCK_SIZE];
-        let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
-        self.read_headers(leaf_offset, key, &mut buf).await
+        let buf = BytesMut::zeroed(BLOCK_SIZE);
+        let (buf, leaf_offset) = self.find_leaf_node(key, root_offset, buf).await?;
+        self.read_headers(leaf_offset, key, buf).await
     }
 
     async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)> {
-        let mut buf = self.file.read_all().await?;
-        self.validate_header(&mut buf, blob_size).await?;
+        let buf = self.file.read_all().await?;
+        let buf = self.validate_header(buf, blob_size).await?;
         let offset = self.metadata.leaves_offset as usize;
         let records_end = FileIndexTrait::<K>::file_size(self) as usize;
         let records_buf = &buf[offset..records_end];
@@ -149,9 +149,9 @@ where
 
     async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
         let root_offset = self.metadata.tree_offset;
-        let mut buf = [0u8; BLOCK_SIZE];
-        let leaf_offset = self.find_leaf_node(key, root_offset, &mut buf).await?;
-        self.read_header(leaf_offset, key, &mut buf).await
+        let buf = BytesMut::zeroed(BLOCK_SIZE);
+        let (buf, leaf_offset) = self.find_leaf_node(key, root_offset, buf).await?;
+        self.read_header(leaf_offset, key, buf).await
     }
 
     fn validate(&self, blob_size: u64) -> Result<()> {
@@ -198,31 +198,37 @@ impl<K> BPTreeFileIndex<K>
 where
     for<'a> K: Key<'a> + 'static,
 {
-    async fn find_leaf_node(&self, key: &K, mut offset: u64, buf: &mut [u8]) -> Result<u64> {
+    async fn find_leaf_node(
+        &self,
+        key: &K,
+        mut offset: u64,
+        mut buf: BytesMut,
+    ) -> Result<(BytesMut, u64)> {
         while offset < self.metadata.leaves_offset {
             offset = if offset == self.metadata.tree_offset {
                 Node::key_offset_serialized(&self.root_node, key)?
             } else {
-                self.file.read_at(buf, offset).await?;
-                Node::key_offset_serialized(buf, key)?
+                buf = self.file.read_at(buf, offset).await?;
+                Node::key_offset_serialized(&buf, key)?
             };
         }
-        Ok(offset)
+        Ok((buf, offset))
     }
 
     async fn read_header(
         &self,
         leaf_offset: u64,
         key: &K,
-        buf: &mut [u8],
+        mut buf: BytesMut,
     ) -> Result<Option<RecordHeader>> {
         let buf_size = self.leaf_node_buf_size(leaf_offset);
-        self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
+        buf.resize(buf_size, 0);
+        buf = self.file.read_at(buf, leaf_offset).await?;
         if let Some((record_header, offset)) =
-            self.read_header_buf(&buf[..buf_size], key, self.header.record_header_size)?
+            self.read_header_buf(&buf, key, self.header.record_header_size)?
         {
             let leftmost_header = self.get_leftmost(
-                &buf[..buf_size],
+                &buf,
                 key,
                 offset as usize,
                 record_header,
@@ -286,20 +292,21 @@ where
         &self,
         leaf_offset: u64,
         key: &K,
-        buf: &mut [u8],
+        mut buf: BytesMut,
     ) -> Result<Option<Vec<RecordHeader>>> {
         let buf_size = self.leaf_node_buf_size(leaf_offset);
-        self.file.read_at(&mut buf[..buf_size], leaf_offset).await?;
+        buf.resize(buf_size, 0);
+        buf = self.file.read_at(buf, leaf_offset).await?;
         let rh_size = self.header.record_header_size;
-        if let Some((header, offset)) = self.read_header_buf(&buf[..buf_size], key, rh_size)? {
+        if let Some((header, offset)) = self.read_header_buf(&buf, key, rh_size)? {
             let mut headers = Vec::with_capacity(1);
-            self.go_left(header.key(), &mut headers, &buf[..buf_size], offset)
+            self.go_left(header.key(), &mut headers, &buf, offset)
                 .await?;
             if headers.len() > 1 {
                 headers.reverse();
             }
             headers.push(header);
-            self.go_right(&mut headers, &buf[..buf_size], offset, leaf_offset)
+            self.go_right(&mut headers, &buf, offset, leaf_offset)
                 .await?;
             Ok(Some(headers))
         } else {
@@ -339,9 +346,9 @@ where
         let record_header_size = self.header.record_header_size as u64;
         let records_size = self.header.record_header_size * self.header.records_count;
         let leaves_end = self.metadata.leaves_offset + records_size as u64;
-        let mut buf = vec![0; record_header_size as usize];
+        let mut buf = BytesMut::zeroed(record_header_size as usize);
         while offset + record_header_size <= leaves_end {
-            self.file.read_at(&mut buf, offset).await?;
+            buf = self.file.read_at(buf, offset).await?;
             let header: RecordHeader = deserialize(&buf)?;
             if header.key() == headers[0].key() {
                 headers.push(header);
@@ -376,46 +383,51 @@ where
         Ok(())
     }
 
-    async fn validate_header(&self, buf: &mut Vec<u8>, blob_size: u64) -> Result<()> {
+    async fn validate_header(&self, buf: BytesMut, blob_size: u64) -> Result<BytesMut> {
         self.validate(blob_size)?;
-        if !Self::hash_valid(&self.header, buf)? {
+        if let Some(buf) = Self::hash_valid(&self.header, buf)? {
+            Ok(buf)
+        } else {
             let param = ValidationErrorKind::IndexChecksum;
-            return Err(Error::validation(param, "header hash mismatch").into());
+            Err(Error::validation(param, "header hash mismatch").into())
         }
-        Ok(())
     }
 
-    fn hash_valid(header: &IndexHeader, buf: &mut Vec<u8>) -> Result<bool> {
+    fn hash_valid(header: &IndexHeader, mut buf: BytesMut) -> Result<Option<BytesMut>> {
         let hash = header.hash.clone();
+        println!("Before {:?}", buf.len());
         let mut header = header.clone();
         header.hash = vec![0; ring::digest::SHA256.output_len];
         header.set_written(false);
-        serialize_into(buf.as_mut_slice(), &header)?;
+        serialize_into(&mut buf[..], &header)?;
         let new_hash = get_hash(&buf);
-        Ok(hash == new_hash)
+        println!("After {:?}", buf.len());
+        if hash == new_hash {
+            return Ok(Some(buf));
+        } else {
+            return Ok(None);
+        }
     }
 
     async fn read_index_header(file: &File) -> Result<IndexHeader> {
         let header_size = IndexHeader::serialized_size_default()? as usize;
-        let mut buf = vec![0; header_size];
-        file.read_at(&mut buf, 0).await?;
+        let buf = file.read_at_allocate(header_size, 0).await?;
         IndexHeader::from_raw(&buf).map_err(Into::into)
     }
 
-    async fn read_root(file: &File, root_offset: u64) -> Result<[u8; BLOCK_SIZE]> {
-        let mut buf = [0; BLOCK_SIZE];
+    async fn read_root(file: &File, root_offset: u64) -> Result<BytesMut> {
         let buf_size = std::cmp::min((file.size() - root_offset) as usize, BLOCK_SIZE);
-        file.read_at(&mut buf[..buf_size], root_offset).await?;
+        let mut buf = file.read_at_allocate(buf_size, root_offset).await?;
+        buf.resize(BLOCK_SIZE, 0);
         Ok(buf)
     }
 
     async fn read_tree_meta(file: &File, header: &IndexHeader) -> Result<TreeMeta> {
         let meta_size = TreeMeta::serialized_size_default()? as usize;
-        let mut buf = vec![0; meta_size];
         let fsize = header.meta_size as u64;
         let hs = header.serialized_size()?;
         let meta_offset = hs + fsize;
-        file.read_at(&mut buf, meta_offset).await?;
+        let buf = file.read_at_allocate(meta_size, meta_offset).await?;
         TreeMeta::from_raw(&buf).map_err(Into::into)
     }
 
