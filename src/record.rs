@@ -1,5 +1,7 @@
 use std::io::Cursor;
 
+use bytes::Bytes;
+
 use crate::{blob::File, error::ValidationErrorKind, prelude::*};
 
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
@@ -10,7 +12,41 @@ const MAX_SINGLE_PASS_DATA_SIZE: usize = 4 * 1024;
 pub struct Record {
     pub header: Header,
     pub meta: Meta,
-    pub data: Vec<u8>,
+    #[serde(
+        serialize_with = "serialize_data",
+        deserialize_with = "deserialize_data"
+    )]
+    pub data: Bytes,
+}
+
+fn serialize_data<S>(data: &Bytes, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_bytes(data.as_ref())
+}
+
+fn deserialize_data<'de, D>(deserializer: D) -> Result<Bytes, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct DataVisitor();
+    impl<'de> serde::de::Visitor<'de> for DataVisitor {
+        type Value = Bytes;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("bytes")
+        }
+
+        fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(v.into())
+        }
+    }
+
+    deserializer.deserialize_byte_buf(DataVisitor())
 }
 
 impl Debug for Record {
@@ -84,16 +120,20 @@ impl Meta {
 }
 
 impl Record {
-    pub(crate) fn new(header: Header, meta: Meta, data: Vec<u8>) -> Self {
+    pub(crate) fn new(header: Header, meta: Meta, data: Bytes) -> Self {
         Self { header, meta, data }
     }
 
-    pub fn into_data(self) -> Vec<u8> {
+    pub fn into_data(self) -> Bytes {
         self.data
     }
 
+    pub fn into_header(self) -> Header {
+        self.header
+    }
+
     /// Creates new `Record` with provided data, key and meta.
-    pub fn create<K>(key: &K, data: Vec<u8>, meta: Meta) -> bincode::Result<Self>
+    pub fn create<K>(key: &K, data: Bytes, meta: Meta) -> bincode::Result<Self>
     where
         for<'a> K: Key<'a>,
     {
@@ -155,7 +195,7 @@ impl Record {
     where
         for<'a> K: Key<'a> + 'static,
     {
-        let mut record = Record::create(key, vec![], Meta::default())?;
+        let mut record = Record::create(key, Bytes::new(), Meta::default())?;
         record.header.mark_as_deleted()?;
         Ok(record)
     }

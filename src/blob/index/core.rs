@@ -243,11 +243,6 @@ where
             0
         }
     }
-
-    fn mark_all_as_deleted_in_memory(headers: &mut InMemoryIndex<K>, key: &K) -> Option<u64> {
-        debug!("headers: {}", headers.len());
-        headers.remove(key).map(|v| v.len() as u64)
-    }
 }
 
 #[async_trait::async_trait]
@@ -256,23 +251,24 @@ where
     FileIndex: FileIndexTrait<K> + Clone,
     for<'a> K: Key<'a>,
 {
-    async fn contains_key(&self, key: &K) -> Result<bool> {
-        self.get_any(key).await.map(|h| h.is_some())
+    async fn contains_key(&self, key: &K) -> Result<ReadResult<BlobRecordTimestamp>> {
+        self.get_any(key)
+            .await
+            .map(|h| h.map(|h| BlobRecordTimestamp::new(h.created())))
     }
 
-    fn push(&mut self, h: RecordHeader) -> Result<()> {
+    fn push(&mut self, key: &K, h: RecordHeader) -> Result<()> {
         debug!("blob index simple push");
         match &mut self.inner {
             State::InMemory(headers) => {
                 debug!("blob index simple push bloom filter add");
-                let key = h.key().into();
-                self.filter.add(&key);
+                self.filter.add(key);
                 debug!("blob index simple push key: {:?}", h.key());
                 let mem = self
                     .mem
                     .as_mut()
                     .expect("No memory info in `InMemory` State");
-                if let Some(v) = headers.get_mut(&key) {
+                if let Some(v) = headers.get_mut(key) {
                     let old_capacity = v.capacity();
                     v.push(h);
                     trace!("capacity growth: {}", v.capacity() - old_capacity);
@@ -283,7 +279,7 @@ where
                     }
                     let v = vec![h];
                     mem.records_allocated += v.capacity(); // capacity == 1
-                    headers.insert(key, v);
+                    headers.insert(key.clone(), v);
                 }
                 mem.records_count += 1;
                 Ok(())
@@ -295,28 +291,58 @@ where
         }
     }
 
-    async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
-        match &self.inner {
-            State::InMemory(headers) => Ok(headers.get(key).cloned()),
+    async fn get_all(&self, key: &K) -> Result<Vec<RecordHeader>> {
+        let mut with_deletion = self.get_all_with_deletion_marker(key).await?;
+        if let Some(h) = with_deletion.last() {
+            if h.is_deleted() {
+                with_deletion.truncate(with_deletion.len() - 1);
+            }
+        }
+        Ok(with_deletion)
+    }
+
+    async fn get_all_with_deletion_marker(&self, key: &K) -> Result<Vec<RecordHeader>> {
+        let headers = match &self.inner {
+            State::InMemory(headers) => Ok(headers.get(key).cloned().map(|mut hs| {
+                if hs.len() > 1 {
+                    hs.reverse();
+                }
+                hs
+            })),
             State::OnDisk(findex) => findex.find_by_key(key).await,
+        }?;
+        if let Some(mut hs) = headers {
+            let first_del = hs.iter().position(|h| h.is_deleted());
+            if let Some(first_del) = first_del {
+                hs.truncate(first_del + 1);
+            }
+            Ok(hs)
+        } else {
+            Ok(vec![])
         }
     }
 
-    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
+    async fn get_any(&self, key: &K) -> Result<ReadResult<RecordHeader>> {
         debug!("index get any");
-        match &self.inner {
+        let result = match &self.inner {
             State::InMemory(headers) => {
                 debug!("index get any in memory headers: {}", headers.len());
                 // in memory indexes with same key are stored in ascending order, so the last
                 // by adding time record is last in list (in b+tree disk index it's first)
-                Ok(headers.get(key).and_then(|h| h.last()).cloned())
+                headers.get(key).and_then(|h| h.last()).cloned()
             }
             State::OnDisk(findex) => {
                 debug!("index get any on disk");
-                let header = findex.get_any(key).await?;
-                Ok(header)
+                findex.get_any(key).await?
             }
-        }
+        };
+        Ok(match result {
+            Some(header) if header.is_deleted() => {
+                ReadResult::Deleted(BlobRecordTimestamp::new(header.created()))
+            }
+            Some(header) => ReadResult::Found(header),
+            None => ReadResult::NotFound,
+        })
     }
 
     async fn dump(&mut self, blob_size: u64) -> Result<usize> {
@@ -344,15 +370,11 @@ where
         }
     }
 
-    fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
+    fn push_deletion(&mut self, key: &K, header: RecordHeader) -> Result<()> {
         debug!("mark all as deleted by {:?} key", key);
-        match &mut self.inner {
-            State::InMemory(headers) => Ok(Self::mark_all_as_deleted_in_memory(headers, key)),
-            State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
-                "Index is closed, delete is unavalaible".to_string(),
-            ))
-            .into()),
-        }
+        assert!(header.is_deleted());
+        assert!(header.data_size() == 0);
+        self.push(key, header)
     }
 }
 
