@@ -8,7 +8,7 @@ use futures::{
     stream::{futures_unordered::FuturesUnordered, FuturesOrdered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
-use pearl::{BloomProvider, Builder, Meta, ReadResult, Storage};
+use pearl::{BloomProvider, Builder, Meta, ReadResult, Storage, BlobRecordTimestamp};
 use rand::{seq::SliceRandom, Rng};
 use std::{
     fs,
@@ -325,7 +325,7 @@ async fn test_index_from_empty_blob() {
     assert!(blob_file_path.exists());
     let new_storage = common::create_test_storage(&path, 1_000_000).await.unwrap();
     new_storage
-        .write(KeyTest::new(1), vec![1; 8].into())
+        .write(KeyTest::new(1), vec![1; 8].into(), BlobRecordTimestamp::now())
         .await
         .unwrap();
     new_storage.close().await.unwrap();
@@ -390,7 +390,7 @@ async fn test_write_512_records_with_same_key() {
         meta.insert("version".to_owned(), i.to_string());
         sleep(Duration::from_micros(1)).await;
         storage
-            .write_with(&key, value.clone().into(), meta)
+            .write_with(&key, value.clone().into(), BlobRecordTimestamp::now(), meta)
             .await
             .unwrap();
     }
@@ -539,10 +539,10 @@ async fn test_check_bloom_filter_single() {
         let neg_key = KeyTest::new(i + 2 * repeat);
         trace!("key: {}, pos: {:?}, negative: {:?}", i, pos_key, neg_key);
         let key = KeyTest::new(i);
-        storage.write(&key, data.to_vec().into()).await.unwrap();
+        storage.write(&key, data.to_vec().into(), BlobRecordTimestamp::now()).await.unwrap();
         assert_eq!(storage.check_filters(key).await, Some(true));
         let data = b"other_random_data";
-        storage.write(&pos_key, data.to_vec().into()).await.unwrap();
+        storage.write(&pos_key, data.to_vec().into(), BlobRecordTimestamp::now()).await.unwrap();
         assert_eq!(storage.check_filters(pos_key).await, Some(true));
         assert_eq!(storage.check_filters(neg_key).await, Some(false));
     }
@@ -558,7 +558,7 @@ async fn test_check_bloom_filter_multiple() {
         b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
     for i in 1..800 {
         let key = KeyTest::new(i);
-        storage.write(&key, data.to_vec().into()).await.unwrap();
+        storage.write(&key, data.to_vec().into(), BlobRecordTimestamp::now()).await.unwrap();
         sleep(Duration::from_millis(6)).await;
         trace!("blobs count: {}", storage.blobs_count().await);
     }
@@ -581,7 +581,7 @@ async fn test_check_bloom_filter_multiple_offloaded() {
         b"lfolakfsjher_rladncreladlladkfsje_pkdieldpgkeolladkfsjeslladkfsj_slladkfsjorladgedom_dladlladkfsjlad";
     for i in 1..800 {
         let key = KeyTest::new(i);
-        storage.write(&key, data.to_vec().into()).await.unwrap();
+        storage.write(&key, data.to_vec().into(), BlobRecordTimestamp::now()).await.unwrap();
         sleep(Duration::from_millis(6)).await;
         trace!("blobs count: {}", storage.blobs_count().await);
     }
@@ -610,7 +610,7 @@ async fn test_check_bloom_filter_init_from_existing() {
         for i in 1..base {
             let key = KeyTest::new(i);
             trace!("write key: {}", i);
-            storage.write(&key, data.to_vec().into()).await.unwrap();
+            storage.write(&key, data.to_vec().into(), BlobRecordTimestamp::now()).await.unwrap();
             trace!("blobs count: {}", storage.blobs_count().await);
         }
         debug!("close storage");
@@ -656,7 +656,7 @@ async fn test_check_bloom_filter_generated() {
         for i in 1..base {
             let key = KeyTest::new(i);
             trace!("write key: {}", i);
-            storage.write(&key, data.to_vec().into()).await.unwrap();
+            storage.write(&key, data.to_vec().into(), BlobRecordTimestamp::now()).await.unwrap();
             trace!("blobs count: {}", storage.blobs_count().await);
         }
         debug!("close storage");
@@ -701,10 +701,10 @@ async fn write_one(
     debug!("tests write one key: {:?}", key);
     if let Some(v) = version {
         debug!("tests write one write with");
-        storage.write_with(key, data, meta_with(v)).await
+        storage.write_with(key, data, BlobRecordTimestamp::now(), meta_with(v)).await
     } else {
         debug!("tests write one write");
-        storage.write(key, data).await
+        storage.write(key, data, BlobRecordTimestamp::now()).await
     }
 }
 
@@ -910,7 +910,7 @@ async fn test_mark_as_deleted_single() {
         write_one(&storage, *key, data, None).await.unwrap();
         sleep(Duration::from_millis(64)).await;
     }
-    storage.delete(&delete_key, false).await.unwrap();
+    storage.delete(&delete_key, BlobRecordTimestamp::now(), false).await.unwrap();
     assert!(matches!(
         storage.contains(delete_key).await.unwrap(),
         ReadResult::Deleted(_)
@@ -934,7 +934,7 @@ async fn test_mark_as_deleted_deferred_dump() {
 
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let update_time = std::fs::metadata(&path.join("test.0.index")).expect("metadata");
-    storage.delete(&delete_key, false).await.unwrap();
+    storage.delete(&delete_key, BlobRecordTimestamp::now(), false).await.unwrap();
 
     sleep(MIN_DEFER_TIME / 2).await;
     let new_update_time = std::fs::metadata(&path.join("test.0.index")).expect("metadata");
@@ -1077,9 +1077,9 @@ async fn test_read_all_with_deletion_marker_delete_middle() -> Result<()> {
     let storage = common::default_test_storage_in(path).await.unwrap();
     let key: KeyTest = vec![0].into();
     let data: Bytes = "test data string".repeat(16).as_bytes().to_vec().into();
-    storage.write(&key, data.clone()).await?;
-    storage.delete(&key, true).await?;
-    storage.write(&key, data.clone()).await?;
+    storage.write(&key, data.clone(), BlobRecordTimestamp::now()).await?;
+    storage.delete(&key, BlobRecordTimestamp::now(), true).await?;
+    storage.write(&key, data.clone(), BlobRecordTimestamp::now()).await?;
 
     let read = storage.read_all_with_deletion_marker(&key).await?;
 
@@ -1096,11 +1096,11 @@ async fn test_read_all_with_deletion_marker_delete_middle_different_blobs() -> R
     let storage = common::default_test_storage_in(path).await.unwrap();
     let key: KeyTest = vec![0].into();
     let data: Bytes = "test data string".repeat(16).as_bytes().to_vec().into();
-    storage.write(&key, data.clone()).await?;
+    storage.write(&key, data.clone(), BlobRecordTimestamp::now()).await?;
     storage.try_close_active_blob().await?;
-    storage.delete(&key, false).await?;
+    storage.delete(&key, BlobRecordTimestamp::now(), false).await?;
     storage.try_close_active_blob().await?;
-    storage.write(&key, data.clone()).await?;
+    storage.write(&key, data.clone(), BlobRecordTimestamp::now()).await?;
     storage.try_close_active_blob().await?;
 
     let read = storage.read_all_with_deletion_marker(&key).await?;
