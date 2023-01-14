@@ -1076,15 +1076,17 @@ async fn test_read_all_with_deletion_marker_delete_middle() -> Result<()> {
     let path = common::init("delete_middle");
     let storage = common::default_test_storage_in(path).await.unwrap();
     let key: KeyTest = vec![0].into();
-    let data: Bytes = "test data string".repeat(16).as_bytes().to_vec().into();
-    storage.write(&key, data.clone(), BlobRecordTimestamp::now()).await?;
+    let data1: Bytes = "1. test data string".repeat(16).as_bytes().to_vec().into();
+    let data2: Bytes = "2. test data string".repeat(16).as_bytes().to_vec().into();
+    storage.write(&key, data1.clone(), BlobRecordTimestamp::now()).await?;
     storage.delete(&key, BlobRecordTimestamp::now(), true).await?;
-    storage.write(&key, data.clone(), BlobRecordTimestamp::now()).await?;
+    storage.write(&key, data2.clone(), BlobRecordTimestamp::now()).await?;
 
     let read = storage.read_all_with_deletion_marker(&key).await?;
 
     assert_eq!(2, read.len());
     assert!(!read[0].is_deleted());
+    assert_eq!(data2, Bytes::from(read[0].load_data().await.unwrap()));
     assert!(read[1].is_deleted());
 
     Ok(())
@@ -1095,18 +1097,20 @@ async fn test_read_all_with_deletion_marker_delete_middle_different_blobs() -> R
     let path = common::init("delete_middle_blobs");
     let storage = common::default_test_storage_in(path).await.unwrap();
     let key: KeyTest = vec![0].into();
-    let data: Bytes = "test data string".repeat(16).as_bytes().to_vec().into();
-    storage.write(&key, data.clone(), BlobRecordTimestamp::now()).await?;
+    let data1: Bytes = "1. test data string".repeat(16).as_bytes().to_vec().into();
+    let data2: Bytes = "2. test data string".repeat(16).as_bytes().to_vec().into();
+    storage.write(&key, data1.clone(), BlobRecordTimestamp::now()).await?;
     storage.try_close_active_blob().await?;
     storage.delete(&key, BlobRecordTimestamp::now(), false).await?;
     storage.try_close_active_blob().await?;
-    storage.write(&key, data.clone(), BlobRecordTimestamp::now()).await?;
+    storage.write(&key, data2.clone(), BlobRecordTimestamp::now()).await?;
     storage.try_close_active_blob().await?;
 
     let read = storage.read_all_with_deletion_marker(&key).await?;
 
     assert_eq!(2, read.len());
     assert!(!read[0].is_deleted());
+    assert_eq!(data2, Bytes::from(read[0].load_data().await.unwrap()));
     assert!(read[1].is_deleted());
 
     Ok(())
