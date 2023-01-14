@@ -435,7 +435,11 @@ where
     /// Fails after any disk IO errors.
     pub async fn read_all_with_deletion_marker(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
         let key = key.as_ref();
+
         let mut all_entries = Vec::new();
+        let mut deletion_marker_presence = false;
+        let mut affected_blobs_count = 0;
+
         let safe = self.inner.safe.read().await;
         let active_blob = safe.active_blob.as_ref();
         if let Some(active_blob) = active_blob {
@@ -448,13 +452,12 @@ where
                 "storage core read all active blob entries {}",
                 entries.len()
             );
-            if let Some(e) = entries.last() {
-                if e.is_deleted() {
-                    return Ok(entries);
-                }
-            }
+  
+            deletion_marker_presence = deletion_marker_presence || entries.last().map(|e| e.is_deleted()).unwrap_or(false);
+            affected_blobs_count += if entries.len() > 0 { 1 } else { 0 };
             all_entries.extend(entries);
         }
+
         let blobs = safe.blobs.read().await;
         let mut futures = blobs
             .iter_possible_childs_rev(key)
@@ -462,23 +465,29 @@ where
             .collect::<FuturesOrdered<_>>();
         while let Some(data) = futures.next().await {
             let entries = data?;
-            if let Some(e) = entries.last() {
-                if e.is_deleted() {
-                    all_entries.extend(entries);
-                    return Ok(all_entries);
-                }
-            }
+
+            deletion_marker_presence = deletion_marker_presence || entries.last().map(|e| e.is_deleted()).unwrap_or(false);
+            affected_blobs_count += if entries.len() > 0 { 1 } else { 0 };
             all_entries.extend(entries);
         }
         debug!(
             "storage core read from non-active total {} entries",
             all_entries.len()
         );
-        // TODO: ordering!
-        //debug_assert!(all_entries
-        //    .iter()
-        //    .zip(all_entries.iter().skip(1))
-        //    .all(|(x, y)| x.created() >= y.created()));
+
+        // Try to preserve ordering by timestamp
+        if affected_blobs_count > 1 {
+            // If more than 1 blobs affect the result, then the order can be broken: restore it
+            all_entries.sort_by(|a, b| b.timestamp().cmp(&a.timestamp()));
+            if deletion_marker_presence {
+                // If deletion marker presented, we should find it and remove
+                let first_del = all_entries.iter().position(|h| h.is_deleted());
+                if let Some(first_del) = first_del {
+                    all_entries.truncate(first_del + 1);
+                }
+            }
+        }
+
         Ok(all_entries)
     }
 
