@@ -4,10 +4,10 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Add ability to attach metadata to the deletion record (#229)
 
 #### Changed
-
+- Receive timestamp as parameter, store it within record and return it with BlobRecordTimestamp (#231)
 
 #### Fixed
 
