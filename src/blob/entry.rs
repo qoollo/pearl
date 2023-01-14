@@ -1,4 +1,4 @@
-use bytes::Bytes;
+use bytes::BytesMut;
 
 use super::prelude::*;
 
@@ -25,13 +25,13 @@ impl Entry {
     pub async fn load(self) -> Result<Record> {
         let meta_size = self.header.meta_size().try_into()?;
         let data_size: usize = self.header.data_size().try_into()?;
-        let mut buf = vec![0; data_size + meta_size];
         // The number of bytes read is checked by File internally.
-        self.blob_file
-            .read_at(&mut buf, self.header.meta_offset())
+        let buf = self
+            .blob_file
+            .read_exact_at_allocate(data_size + meta_size, self.header.meta_offset())
             .await
             .with_context(|| "blob load failed")?;
-        let mut buf = Bytes::from(buf);
+        let mut buf = buf.freeze();
         let data_buf = buf.split_off(meta_size);
         let meta = Meta::from_raw(&buf)?;
         let record = Record::new(self.header.clone(), meta, data_buf);
@@ -41,11 +41,11 @@ impl Entry {
     /// Returns only data.
     /// # Errors
     /// Fails after any disk IO errors.
-    pub async fn load_data(&self) -> Result<Vec<u8>> {
+    pub async fn load_data(&self) -> Result<BytesMut> {
         let data_offset = self.header.data_offset();
-        let mut buf = vec![0; self.header.data_size().try_into()?];
-        self.blob_file.read_at(&mut buf, data_offset).await?;
-        Ok(buf)
+        self.blob_file
+            .read_exact_at_allocate(self.header.data_size().try_into()?, data_offset)
+            .await
     }
 
     /// Loads meta data from fisk, and returns reference to it.
@@ -53,8 +53,10 @@ impl Entry {
     /// Fails after any disk IO errors.
     pub async fn load_meta(&mut self) -> Result<Option<&Meta>> {
         let meta_offset = self.header.meta_offset();
-        let mut buf = vec![0; self.header.meta_size().try_into()?];
-        self.blob_file.read_at(&mut buf, meta_offset).await?;
+        let buf = self
+            .blob_file
+            .read_exact_at_allocate(self.header.meta_size().try_into()?, meta_offset)
+            .await?;
         self.meta = Some(Meta::from_raw(&buf)?);
         Ok(self.meta.as_ref())
     }

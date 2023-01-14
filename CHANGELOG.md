@@ -8,6 +8,7 @@ Pearl changelog
 
 #### Changed
 - Receive timestamp as parameter, store it within record and return it with BlobRecordTimestamp (#231)
+- Added different path for sync read/write (#184)
 
 #### Fixed
 

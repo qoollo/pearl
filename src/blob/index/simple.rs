@@ -1,3 +1,5 @@
+use bytes::BytesMut;
+
 use crate::error::ValidationErrorKind;
 
 use super::prelude::*;
@@ -35,14 +37,12 @@ where
         self.header.blob_size()
     }
 
-    async fn read_meta(&self) -> Result<Vec<u8>> {
+    async fn read_meta(&self) -> Result<BytesMut> {
         trace!("load meta");
-        let mut buf = vec![0; self.header.meta_size];
-        trace!("read meta into buf: [0; {}]", buf.len());
+        trace!("read meta into buf: [0; {}]", self.header.meta_size);
         self.file
-            .read_at(&mut buf, self.header.serialized_size()? as u64)
-            .await?;
-        Ok(buf)
+            .read_exact_at_allocate(self.header.meta_size, self.header.serialized_size()? as u64)
+            .await
     }
 
     async fn read_meta_at(&self, i: u64) -> Result<u8> {
@@ -50,9 +50,9 @@ where
         if i >= self.header.meta_size as u64 {
             return Err(anyhow::anyhow!("read meta out of range"));
         }
-        let mut buf = [0; 1];
-        self.file
-            .read_at(&mut buf, self.header.serialized_size()? + i)
+        let buf = self
+            .file
+            .read_exact_at_allocate(1, self.header.serialized_size()? + i)
             .await?;
         Ok(buf[0])
     }
@@ -157,20 +157,19 @@ where
 
 // helpers
 impl SimpleFileIndex {
-    fn hash_valid(header: &IndexHeader, buf: &mut Vec<u8>) -> Result<bool> {
+    fn hash_valid(header: &IndexHeader, buf: &mut [u8]) -> Result<bool> {
         let hash = header.hash.clone();
         let mut header = header.clone();
         header.hash = vec![0; ring::digest::SHA256.output_len];
         header.set_written(false);
-        serialize_into(buf.as_mut_slice(), &header)?;
-        let new_hash = get_hash(buf);
+        serialize_into(&mut buf[..], &header)?;
+        let new_hash = get_hash(&buf);
         Ok(hash == new_hash)
     }
 
     async fn read_index_header(file: &File) -> Result<IndexHeader> {
         let header_size = IndexHeader::serialized_size_default()? as usize;
-        let mut buf = vec![0; header_size];
-        file.read_at(&mut buf, 0).await?;
+        let buf = file.read_exact_at_allocate(header_size, 0).await?;
         IndexHeader::from_raw(&buf).map_err(Into::into)
     }
 
@@ -291,7 +290,7 @@ impl SimpleFileIndex {
         Ok(None)
     }
 
-    async fn validate_header<K>(&self, buf: &mut Vec<u8>, blob_size: u64) -> Result<()>
+    async fn validate_header<K>(&self, buf: &mut [u8], blob_size: u64) -> Result<()>
     where
         for<'a> K: Key<'a>,
     {
@@ -317,7 +316,13 @@ impl SimpleFileIndex {
             let record_header_size = record_header.serialized_size().try_into()?;
             trace!("record header serialized size: {}", record_header_size);
             let headers = headers.iter().flat_map(|r| r.1).collect::<Vec<_>>(); // produce sorted
-            let header = IndexHeader::new(record_header_size, headers.len(), meta.len(), K::LEN, blob_size);
+            let header = IndexHeader::new(
+                record_header_size,
+                headers.len(),
+                meta.len(),
+                K::LEN,
+                blob_size,
+            );
             let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
             trace!("index header size: {}b", hs);
             let fsize = header.meta_size;
@@ -363,13 +368,13 @@ impl SimpleFileIndex {
         debug!("blob index simple read at header size {}", header_size);
         let offset =
             header_size + header.meta_size as u64 + (header.record_header_size * index) as u64;
-        let mut buf = vec![0; header.record_header_size];
         debug!(
             "blob index simple offset: {}, buf len: {}",
-            offset,
-            buf.len()
+            offset, header.record_header_size
         );
-        file.read_at(&mut buf, offset).await?;
+        let buf = file
+            .read_exact_at_allocate(header.record_header_size, offset)
+            .await?;
         let header = deserialize(&buf)?;
         debug!("blob index simple header: {:?}", header);
         Ok(header)
