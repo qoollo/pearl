@@ -480,7 +480,7 @@ where
             // If more than 1 blobs affect the result, then the order can be broken: restore it
             all_entries.sort_by(|a, b| b.timestamp().cmp(&a.timestamp()));
             if deletion_marker_presence {
-                // If deletion marker presented, we should find it and remove
+                // If deletion marker presented, we should find it and remove records after
                 let first_del = all_entries.iter().position(|h| h.is_deleted());
                 if let Some(first_del) = first_del {
                     all_entries.truncate(first_del + 1);
