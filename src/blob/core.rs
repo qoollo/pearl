@@ -328,7 +328,7 @@ where
         debug_assert!(headers
             .iter()
             .zip(headers.iter().skip(1))
-            .all(|(x, y)| x.created() >= y.created()));
+            .all(|(x, y)| x.timestamp() >= y.timestamp()));
         Ok(Self::headers_to_entries(headers, &self.file))
     }
 
@@ -341,29 +341,30 @@ where
         debug_assert!(headers
             .iter()
             .zip(headers.iter().skip(1))
-            .all(|(x, y)| x.created() >= y.created()));
+            .all(|(x, y)| x.timestamp() >= y.timestamp()));
         Ok(Self::headers_to_entries(headers, &self.file))
     }
 
     pub(crate) async fn mark_all_as_deleted(
         &mut self,
         key: &K,
+        timestamp: BlobRecordTimestamp,
         only_if_presented: bool,
     ) -> Result<bool> {
         if !only_if_presented || self.index.get_any(key).await?.is_found() {
-            self.push_deletion_record(key).await?;
+            self.push_deletion_record(key, timestamp).await?;
             Ok(true)
         } else {
             Ok(false)
         }
     }
 
-    async fn push_deletion_record(&mut self, key: &K) -> Result<()> {
+    async fn push_deletion_record(&mut self, key: &K, timestamp: BlobRecordTimestamp) -> Result<()> {
         let on_disk = self.index.on_disk();
         if on_disk {
             self.load_index().await?;
         }
-        let record = Record::deleted(key)?;
+        let record = Record::deleted(key, timestamp.into())?;
         let header = self.write_mut(key, record).await?;
         self.index.push_deletion(key, header)
     }
@@ -410,7 +411,7 @@ where
         let deleted_ts = headers
             .last()
             .filter(|h| h.is_deleted())
-            .map(|h| BlobRecordTimestamp::new(h.created()));
+            .map(|h| BlobRecordTimestamp::new(h.timestamp()));
         if deleted_ts.is_some() {
             headers.truncate(headers.len() - 1);
         }
@@ -443,7 +444,7 @@ where
         let contains = self
             .get_entry(key, meta, true)
             .await?
-            .map(|e| BlobRecordTimestamp::new(e.created()));
+            .map(|e| e.timestamp());
         debug!("blob contains any: {:?}", contains);
         Ok(contains)
     }

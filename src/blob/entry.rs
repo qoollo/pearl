@@ -65,8 +65,8 @@ impl Entry {
     }
 
     /// Timestamp when entry was created
-    pub fn created(&self) -> u64 {
-        self.header.created()
+    pub fn timestamp(&self) -> BlobRecordTimestamp {
+        BlobRecordTimestamp::new(self.header.timestamp())
     }
 
     pub(crate) fn new(header: RecordHeader, blob_file: File) -> Self {

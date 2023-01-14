@@ -243,15 +243,16 @@ where
     /// async fn write_data(storage: Storage<ArrayKey<8>>) {
     ///     let key = ArrayKey::<8>::default();
     ///     let data = b"async written to blob".to_vec().into();
-    ///     storage.write(key, data).await;
+    ///     let timestamp = BlobRecordTimestamp::now();
+    ///     storage.write(key, data, timestamp).await;
     /// }
     /// ```
     /// # Errors
     /// Fails with the same errors as [`write_with`]
     ///
     /// [`write_with`]: Storage::write_with
-    pub async fn write(&self, key: impl AsRef<K>, value: Bytes) -> Result<()> {
-        self.write_with_optional_meta(key, value, None).await
+    pub async fn write(&self, key: impl AsRef<K>, value: Bytes, timestamp: BlobRecordTimestamp) -> Result<()> {
+        self.write_with_optional_meta(key, value, timestamp, None).await
     }
 
     /// Similar to [`write`] but with metadata
@@ -262,15 +263,16 @@ where
     /// async fn write_data(storage: Storage<ArrayKey<8>>) {
     ///     let key = ArrayKey::<8>::default();
     ///     let data = b"async written to blob".to_vec().into();
+    ///     let timestamp = BlobRecordTimestamp::now();
     ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
-    ///     storage.write_with(&key, data, meta).await;
+    ///     storage.write_with(&key, data, timestamp, meta).await;
     /// }
     /// ```
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
-    pub async fn write_with(&self, key: impl AsRef<K>, value: Bytes, meta: Meta) -> Result<()> {
-        self.write_with_optional_meta(key, value, Some(meta)).await
+    pub async fn write_with(&self, key: impl AsRef<K>, value: Bytes, timestamp: BlobRecordTimestamp, meta: Meta) -> Result<()> {
+        self.write_with_optional_meta(key, value, timestamp, Some(meta)).await
     }
 
     /// Free all resources that may be freed without work interruption
@@ -298,6 +300,7 @@ where
         &self,
         key: impl AsRef<K>,
         value: Bytes,
+        timestamp: BlobRecordTimestamp,
         meta: Option<Meta>,
     ) -> Result<()> {
         let key = key.as_ref();
@@ -316,7 +319,7 @@ where
             );
             return Ok(());
         }
-        let record = Record::create(key, value, meta.unwrap_or_default())
+        let record = Record::create(key, timestamp.into(), value, meta.unwrap_or_default())
             .with_context(|| "storage write with record creation failed")?;
         let safe = self.inner.safe.read().await;
         let blob = safe
@@ -471,10 +474,10 @@ where
             "storage core read from non-active total {} entries",
             all_entries.len()
         );
-        debug_assert!(all_entries
-            .iter()
-            .zip(all_entries.iter().skip(1))
-            .all(|(x, y)| x.created() >= y.created()));
+        //debug_assert!(all_entries
+        //    .iter()
+        //    .zip(all_entries.iter().skip(1))
+        //    .all(|(x, y)| x.created() >= y.created()));
         Ok(all_entries)
     }
 
@@ -971,24 +974,24 @@ where
     /// Delete entries with matching key
     /// # Errors
     /// Fails after any disk IO errors.
-    pub async fn delete(&self, key: impl AsRef<K>, only_if_presented: bool) -> Result<u64> {
+    pub async fn delete(&self, key: impl AsRef<K>, timestamp: BlobRecordTimestamp, only_if_presented: bool) -> Result<u64> {
         let mut total = 0;
         let mut safe = self.inner.safe.write().await;
         total += self
-            .mark_all_as_deleted_active(&mut *safe, key.as_ref(), only_if_presented)
+            .mark_all_as_deleted_active(&mut *safe, key.as_ref(), timestamp, only_if_presented)
             .await?;
         total += self
-            .mark_all_as_deleted_closed(&mut *safe, key.as_ref())
+            .mark_all_as_deleted_closed(&mut *safe, key.as_ref(), timestamp)
             .await?;
         debug!("{} deleted total", total);
         Ok(total)
     }
 
-    async fn mark_all_as_deleted_closed(&self, safe: &mut Safe<K>, key: &K) -> Result<u64> {
+    async fn mark_all_as_deleted_closed(&self, safe: &mut Safe<K>, key: &K, timestamp: BlobRecordTimestamp) -> Result<u64> {
         let mut blobs = safe.blobs.write().await;
         let entries_closed_blobs = blobs
             .iter_mut()
-            .map(|b| b.mark_all_as_deleted(key, false))
+            .map(|b| b.mark_all_as_deleted(key, timestamp, false))
             .collect::<FuturesUnordered<_>>();
         let total = entries_closed_blobs
             .map(|result| match result {
@@ -1015,6 +1018,7 @@ where
         &self,
         safe: &mut Safe<K>,
         key: &K,
+        timestamp: BlobRecordTimestamp,
         only_if_presented: bool,
     ) -> Result<u64> {
         if !only_if_presented {
@@ -1025,7 +1029,7 @@ where
             let is_deleted = active_blob
                 .write()
                 .await
-                .mark_all_as_deleted(key, only_if_presented)
+                .mark_all_as_deleted(key, timestamp, only_if_presented)
                 .await?;
             let count = if is_deleted { 1 } else { 0 };
             debug!("{} deleted from active blob", count);

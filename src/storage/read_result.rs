@@ -16,8 +16,18 @@ pub enum ReadResult<T> {
 }
 
 impl BlobRecordTimestamp {
-    pub(crate) fn new(t: u64) -> Self {
+    /// Creates timestamp from user supplied number
+    pub fn new(t: u64) -> Self {
         BlobRecordTimestamp(t)
+    }
+
+    /// Current UNIX timestamp
+    pub fn now() -> Self {
+        BlobRecordTimestamp(
+            match std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH) {
+                Ok(n) => n.as_secs(),
+                Err(_) => panic!("SystemTime before UNIX EPOCH!"),
+            })
     }
 }
 

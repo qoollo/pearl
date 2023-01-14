@@ -254,7 +254,7 @@ where
     async fn contains_key(&self, key: &K) -> Result<ReadResult<BlobRecordTimestamp>> {
         self.get_any(key)
             .await
-            .map(|h| h.map(|h| BlobRecordTimestamp::new(h.created())))
+            .map(|h| h.map(|h| BlobRecordTimestamp::new(h.timestamp())))
     }
 
     fn push(&mut self, key: &K, h: RecordHeader) -> Result<()> {
@@ -270,7 +270,13 @@ where
                     .expect("No memory info in `InMemory` State");
                 if let Some(v) = headers.get_mut(key) {
                     let old_capacity = v.capacity();
-                    v.push(h);
+                    // Keep ordered by timestamp
+                    let mut pos = v.binary_search_by(|item| item.timestamp().cmp(&h.timestamp())).unwrap_or_else(|e| e);
+                    // Skip records with equal timestamp (our should be the latest)
+                    while pos < v.len() && v[pos].timestamp() == h.timestamp() {
+                        pos += 1;
+                    }
+                    v.insert(pos, h);
                     trace!("capacity growth: {}", v.capacity() - old_capacity);
                     mem.records_allocated += v.capacity() - old_capacity;
                 } else {
@@ -338,7 +344,7 @@ where
         };
         Ok(match result {
             Some(header) if header.is_deleted() => {
-                ReadResult::Deleted(BlobRecordTimestamp::new(header.created()))
+                ReadResult::Deleted(BlobRecordTimestamp::new(header.timestamp()))
             }
             Some(header) => ReadResult::Found(header),
             None => ReadResult::NotFound,
