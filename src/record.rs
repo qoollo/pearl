@@ -125,11 +125,12 @@ impl Record {
     }
 
     /// Creates new `Record` with provided data, key and meta.
-    pub fn create<K>(key: &K, timestamp: u64, data: Bytes, meta: Meta) -> bincode::Result<Self>
+    pub fn create<K>(key: &K, timestamp: u64, data: Bytes, meta: Option<Meta>) -> bincode::Result<Self>
     where
         for<'a> K: Key<'a>,
     {
         let key = key.as_ref().to_vec();
+        let meta = meta.unwrap_or_default();
         let meta_size = meta.serialized_size()?;
         let data_checksum = CRC32C.checksum(&data);
         let header = Header::new(key, timestamp, meta_size, data.len() as u64, data_checksum);
@@ -156,11 +157,11 @@ impl Record {
         Ok(buf)
     }
 
-    pub(crate) fn deleted<K>(key: &K, timestamp: u64) -> bincode::Result<Self>
+    pub(crate) fn deleted<K>(key: &K, timestamp: u64, meta: Option<Meta>) -> bincode::Result<Self>
     where
         for<'a> K: Key<'a> + 'static,
     {
-        let mut record = Record::create(key, timestamp, Bytes::new(), Meta::default())?;
+        let mut record = Record::create(key, timestamp, Bytes::new(), meta)?;
         record.header.mark_as_deleted()?;
         Ok(record)
     }

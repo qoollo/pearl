@@ -985,23 +985,35 @@ where
     /// # Errors
     /// Fails after any disk IO errors.
     pub async fn delete(&self, key: impl AsRef<K>, timestamp: BlobRecordTimestamp, only_if_presented: bool) -> Result<u64> {
+        self.delete_with_optional_meta(key, timestamp, None, only_if_presented).await
+    }
+
+    /// Delete entries with matching key. Appends metadata to deletion record
+    /// # Errors
+    /// Fails after any disk IO errors.
+    pub async fn delete_with(&self, key: impl AsRef<K>, timestamp: BlobRecordTimestamp, meta: Meta, only_if_presented: bool) -> Result<u64> {
+        self.delete_with_optional_meta(key, timestamp, Some(meta), only_if_presented).await
+    }
+
+
+    async fn delete_with_optional_meta(&self, key: impl AsRef<K>, timestamp: BlobRecordTimestamp, meta: Option<Meta>, only_if_presented: bool) -> Result<u64> {
         let mut total = 0;
         let mut safe = self.inner.safe.write().await;
         total += self
-            .mark_all_as_deleted_active(&mut *safe, key.as_ref(), timestamp, only_if_presented)
+            .delete_in_active(&mut *safe, key.as_ref(), timestamp, meta.clone(), only_if_presented)
             .await?;
         total += self
-            .mark_all_as_deleted_closed(&mut *safe, key.as_ref(), timestamp)
+            .delete_in_closed(&mut *safe, key.as_ref(), timestamp, meta)
             .await?;
         debug!("{} deleted total", total);
         Ok(total)
     }
 
-    async fn mark_all_as_deleted_closed(&self, safe: &mut Safe<K>, key: &K, timestamp: BlobRecordTimestamp) -> Result<u64> {
+    async fn delete_in_closed(&self, safe: &mut Safe<K>, key: &K, timestamp: BlobRecordTimestamp, meta: Option<Meta>) -> Result<u64> {
         let mut blobs = safe.blobs.write().await;
         let entries_closed_blobs = blobs
             .iter_mut()
-            .map(|b| b.mark_all_as_deleted(key, timestamp, false))
+            .map(|b| b.delete(key, timestamp, meta.clone(), false))
             .collect::<FuturesUnordered<_>>();
         let total = entries_closed_blobs
             .map(|result| match result {
@@ -1024,11 +1036,12 @@ where
         Ok(total as u64)
     }
 
-    async fn mark_all_as_deleted_active(
+    async fn delete_in_active(
         &self,
         safe: &mut Safe<K>,
         key: &K,
         timestamp: BlobRecordTimestamp,
+        meta: Option<Meta>,
         only_if_presented: bool,
     ) -> Result<u64> {
         if !only_if_presented {
@@ -1039,7 +1052,7 @@ where
             let is_deleted = active_blob
                 .write()
                 .await
-                .mark_all_as_deleted(key, timestamp, only_if_presented)
+                .delete(key, timestamp, meta, only_if_presented)
                 .await?;
             let count = if is_deleted { 1 } else { 0 };
             debug!("{} deleted from active blob", count);

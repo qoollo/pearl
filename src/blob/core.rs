@@ -345,26 +345,27 @@ where
         Ok(Self::headers_to_entries(headers, &self.file))
     }
 
-    pub(crate) async fn mark_all_as_deleted(
+    pub(crate) async fn delete(
         &mut self,
         key: &K,
         timestamp: BlobRecordTimestamp,
+        meta: Option<Meta>,
         only_if_presented: bool,
     ) -> Result<bool> {
         if !only_if_presented || self.index.get_any(key).await?.is_found() {
-            self.push_deletion_record(key, timestamp).await?;
+            let record = Record::deleted(key, timestamp.into(), meta)?;
+            self.push_deletion_record(key, record).await?;
             Ok(true)
         } else {
             Ok(false)
         }
     }
 
-    async fn push_deletion_record(&mut self, key: &K, timestamp: BlobRecordTimestamp) -> Result<()> {
+    async fn push_deletion_record(&mut self, key: &K, record: Record) -> Result<()> {
         let on_disk = self.index.on_disk();
         if on_disk {
             self.load_index().await?;
         }
-        let record = Record::deleted(key, timestamp.into())?;
         let header = self.write_mut(key, record).await?;
         self.index.push_deletion(key, header)
     }
