@@ -117,8 +117,8 @@ where
     }
 
     async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)> {
-        let buf = self.file.read_all().await?;
-        let buf = self.validate_header(buf, blob_size).await?;
+        let mut buf = self.file.read_all().await?;
+        self.validate_header(&mut buf, blob_size).await?;
         let offset = self.metadata.leaves_offset as usize;
         let records_end = FileIndexTrait::<K>::file_size(self) as usize;
         let records_buf = &buf[offset..records_end];
@@ -222,6 +222,7 @@ where
         mut buf: BytesMut,
     ) -> Result<Option<RecordHeader>> {
         let buf_size = self.leaf_node_buf_size(leaf_offset);
+        assert!(buf_size <= BLOCK_SIZE);
         buf.resize(buf_size, 0);
         buf = self.file.read_exact_at(buf, leaf_offset).await?;
         if let Some((record_header, offset)) =
@@ -295,6 +296,7 @@ where
         mut buf: BytesMut,
     ) -> Result<Option<Vec<RecordHeader>>> {
         let buf_size = self.leaf_node_buf_size(leaf_offset);
+        assert!(buf_size <= BLOCK_SIZE);
         buf.resize(buf_size, 0);
         buf = self.file.read_exact_at(buf, leaf_offset).await?;
         let rh_size = self.header.record_header_size;
@@ -383,30 +385,23 @@ where
         Ok(())
     }
 
-    async fn validate_header(&self, buf: BytesMut, blob_size: u64) -> Result<BytesMut> {
+    async fn validate_header(&self, buf: &mut [u8], blob_size: u64) -> Result<()> {
         self.validate(blob_size)?;
-        if let Some(buf) = Self::hash_valid(&self.header, buf)? {
-            Ok(buf)
-        } else {
+        if !Self::hash_valid(&self.header, buf)? {
             let param = ValidationErrorKind::IndexChecksum;
-            Err(Error::validation(param, "header hash mismatch").into())
+            return Err(Error::validation(param, "header hash mismatch").into());
         }
+        Ok(())
     }
 
-    fn hash_valid(header: &IndexHeader, mut buf: BytesMut) -> Result<Option<BytesMut>> {
+    fn hash_valid(header: &IndexHeader, buf: &mut [u8]) -> Result<bool> {
         let hash = header.hash.clone();
-        println!("Before {:?}", buf.len());
         let mut header = header.clone();
         header.hash = vec![0; ring::digest::SHA256.output_len];
         header.set_written(false);
         serialize_into(&mut buf[..], &header)?;
         let new_hash = get_hash(&buf);
-        println!("After {:?}", buf.len());
-        if hash == new_hash {
-            return Ok(Some(buf));
-        } else {
-            return Ok(None);
-        }
+        Ok(hash == new_hash)
     }
 
     async fn read_index_header(file: &File) -> Result<IndexHeader> {
@@ -417,7 +412,9 @@ where
 
     async fn read_root(file: &File, root_offset: u64) -> Result<BytesMut> {
         let buf_size = std::cmp::min((file.size() - root_offset) as usize, BLOCK_SIZE);
-        let mut buf = file.read_exact_at_allocate(buf_size, root_offset).await?;
+        let mut buf = BytesMut::zeroed(BLOCK_SIZE);
+        buf.resize(buf_size, 0);
+        let mut buf = file.read_exact_at(buf, root_offset).await?;
         buf.resize(BLOCK_SIZE, 0);
         Ok(buf)
     }

@@ -88,8 +88,8 @@ where
     }
 
     async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)> {
-        let buf = self.file.read_all().await?;
-        let buf = self.validate_header::<K>(buf, blob_size).await?;
+        let mut buf = self.file.read_all().await?;
+        self.validate_header::<K>(&mut buf, blob_size).await?;
         let offset = self.header.meta_size + self.header.serialized_size()? as usize;
         let records_buf = &buf[offset..];
         (0..self.header.records_count)
@@ -157,18 +157,14 @@ where
 
 // helpers
 impl SimpleFileIndex {
-    fn hash_valid(header: &IndexHeader, mut buf: BytesMut) -> Result<Option<BytesMut>> {
+    fn hash_valid(header: &IndexHeader, buf: &mut [u8]) -> Result<bool> {
         let hash = header.hash.clone();
         let mut header = header.clone();
         header.hash = vec![0; ring::digest::SHA256.output_len];
         header.set_written(false);
         serialize_into(&mut buf[..], &header)?;
         let new_hash = get_hash(&buf);
-        if hash == new_hash {
-            Ok(Some(buf))
-        } else {
-            Ok(None)
-        }
+        Ok(hash == new_hash)
     }
 
     async fn read_index_header(file: &File) -> Result<IndexHeader> {
@@ -294,17 +290,16 @@ impl SimpleFileIndex {
         Ok(None)
     }
 
-    async fn validate_header<K>(&self, buf: BytesMut, blob_size: u64) -> Result<BytesMut>
+    async fn validate_header<K>(&self, buf: &mut [u8], blob_size: u64) -> Result<()>
     where
         for<'a> K: Key<'a>,
     {
         FileIndexTrait::<K>::validate(self, blob_size)?;
-        if let Some(buf) = Self::hash_valid(&self.header, buf)? {
-            Ok(buf)
-        } else {
+        if !Self::hash_valid(&self.header, buf)? {
             let param = ValidationErrorKind::IndexChecksum;
-            Err(Error::validation(param, "header hash mismatch").into())
+            return Err(Error::validation(param, "header hash mismatch").into());
         }
+        Ok(())
     }
 
     fn serialize<K>(
