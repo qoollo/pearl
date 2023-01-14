@@ -7,7 +7,7 @@ Pearl changelog
 
 
 #### Changed
-
+- Added different path for sync read/write (#184)
 
 #### Fixed
 
@@ -57,7 +57,6 @@ Pearl changelog
 #### Changed
 - File name added to error messages in Blob struct (#183)
 - Update rust edition (#175)
-- Added different path for sync read/write (#184)
 
 #### Fixed
 - Fix docs (#177)
