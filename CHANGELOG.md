@@ -7,7 +7,7 @@ Pearl changelog
 
 
 #### Changed
-
+- Added different path for sync read/write (#184)
 
 #### Fixed
 
