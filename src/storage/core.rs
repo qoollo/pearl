@@ -319,7 +319,7 @@ where
             );
             return Ok(());
         }
-        let record = Record::create(key, timestamp.into(), value, meta.unwrap_or_default())
+        let record = Record::create(key, timestamp.into(), value, meta)
             .with_context(|| "storage write with record creation failed")?;
         let safe = self.inner.safe.read().await;
         let blob = safe
