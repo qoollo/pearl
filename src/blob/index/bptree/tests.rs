@@ -69,7 +69,7 @@ impl Into<usize> for KeyType {
 async fn serialize_deserialize_file() {
     let mut inmem = InMemoryIndex::<KeyType>::new();
     (0..10000).map(|i| i.into()).for_each(|key: KeyType| {
-        let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+        let rh = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
         inmem.insert(key, vec![rh]);
     });
     let meta = vec![META_VALUE; META_SIZE];
@@ -95,7 +95,7 @@ async fn blob_size_invalidation() {
     let filename = "/tmp/bptree_index.0.index";
     let mut inmem = InMemoryIndex::<KeyType>::new();
     (0..10000).map(|i| i.into()).for_each(|key: KeyType| {
-        let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+        let rh = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
         inmem.insert(key, vec![rh]);
     });
     let meta = vec![META_VALUE; META_SIZE];
@@ -129,7 +129,7 @@ async fn magic_byte_corruption() {
     let filename = "/tmp/bptree_index.0.index";
     let mut inmem = InMemoryIndex::<KeyType>::new();
     (0..10000).map(|i| i.into()).for_each(|key: KeyType| {
-        let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+        let rh = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
         inmem.insert(key, vec![rh]);
     });
     let meta = vec![META_VALUE; META_SIZE];
@@ -183,7 +183,7 @@ async fn check_get_any() {
     (RANGE_FROM..RANGE_TO)
         .map(|i| i.into())
         .for_each(|key: KeyType| {
-            let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+            let rh = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
             inmem.insert(key, vec![rh]);
         });
     let meta = vec![META_VALUE; META_SIZE];
@@ -231,8 +231,8 @@ async fn preserves_records_order() {
     (RANGE_FROM..RANGE_TO)
         .map(|i| i.into())
         .for_each(|key: KeyType| {
-            let rh1 = RecordHeader::new(key.to_vec(), 1, 1, 1);
-            let rh2 = RecordHeader::new(key.to_vec(), 2, 2, 2);
+            let rh1 = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
+            let rh2 = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 2, 2, 2);
             inmem.insert(key, vec![rh1, rh2]);
         });
     let meta = vec![META_VALUE; META_SIZE];
@@ -263,7 +263,7 @@ async fn check_get() {
     (RANGE_FROM..RANGE_TO)
         .map(|i| (i % MAX_AMOUNT + 1, i.into()))
         .for_each(|(times, key): (_, KeyType)| {
-            let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+            let rh = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
             let recs = (0..times).map(|_| rh.clone()).collect();
             inmem.insert(key, recs);
         });

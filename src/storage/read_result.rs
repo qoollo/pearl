@@ -26,7 +26,7 @@ impl BlobRecordTimestamp {
         BlobRecordTimestamp(
             match std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH) {
                 Ok(n) => n.as_secs(),
-                Err(_) => panic!("SystemTime before UNIX EPOCH!"),
+                Err(_) => 0,
             })
     }
 }
