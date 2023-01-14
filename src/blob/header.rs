@@ -31,7 +31,7 @@ impl Header {
             .with_context(|| format!("failed to open blob file: {}", name))?;
         let size = serialized_size(&Header::new()).expect("failed to serialize default header");
         let buf = file
-            .read_at_allocate(size as usize, 0)
+            .read_exact_at_allocate(size as usize, 0)
             .await
             .with_context(|| format!("failed to read from file: {}", name))?;
         let header: Self = deserialize(&buf)

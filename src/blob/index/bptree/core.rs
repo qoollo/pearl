@@ -93,7 +93,7 @@ where
         trace!("load meta");
         trace!("read meta into buf: [0; {}]", self.header.meta_size);
         self.file
-            .read_at_allocate(self.header.meta_size, self.header.serialized_size()? as u64)
+            .read_exact_at_allocate(self.header.meta_size, self.header.serialized_size()? as u64)
             .await
     }
 
@@ -104,7 +104,7 @@ where
         }
         let buf = self
             .file
-            .read_at_allocate(1, self.header.serialized_size()? + i)
+            .read_exact_at_allocate(1, self.header.serialized_size()? + i)
             .await?;
         Ok(buf[0])
     }
@@ -208,7 +208,7 @@ where
             offset = if offset == self.metadata.tree_offset {
                 Node::key_offset_serialized(&self.root_node, key)?
             } else {
-                buf = self.file.read_at(buf, offset).await?;
+                buf = self.file.read_exact_at(buf, offset).await?;
                 Node::key_offset_serialized(&buf, key)?
             };
         }
@@ -223,7 +223,7 @@ where
     ) -> Result<Option<RecordHeader>> {
         let buf_size = self.leaf_node_buf_size(leaf_offset);
         buf.resize(buf_size, 0);
-        buf = self.file.read_at(buf, leaf_offset).await?;
+        buf = self.file.read_exact_at(buf, leaf_offset).await?;
         if let Some((record_header, offset)) =
             self.read_header_buf(&buf, key, self.header.record_header_size)?
         {
@@ -296,7 +296,7 @@ where
     ) -> Result<Option<Vec<RecordHeader>>> {
         let buf_size = self.leaf_node_buf_size(leaf_offset);
         buf.resize(buf_size, 0);
-        buf = self.file.read_at(buf, leaf_offset).await?;
+        buf = self.file.read_exact_at(buf, leaf_offset).await?;
         let rh_size = self.header.record_header_size;
         if let Some((header, offset)) = self.read_header_buf(&buf, key, rh_size)? {
             let mut headers = Vec::with_capacity(1);
@@ -348,7 +348,7 @@ where
         let leaves_end = self.metadata.leaves_offset + records_size as u64;
         let mut buf = BytesMut::zeroed(record_header_size as usize);
         while offset + record_header_size <= leaves_end {
-            buf = self.file.read_at(buf, offset).await?;
+            buf = self.file.read_exact_at(buf, offset).await?;
             let header: RecordHeader = deserialize(&buf)?;
             if header.key() == headers[0].key() {
                 headers.push(header);
@@ -411,13 +411,13 @@ where
 
     async fn read_index_header(file: &File) -> Result<IndexHeader> {
         let header_size = IndexHeader::serialized_size_default()? as usize;
-        let buf = file.read_at_allocate(header_size, 0).await?;
+        let buf = file.read_exact_at_allocate(header_size, 0).await?;
         IndexHeader::from_raw(&buf).map_err(Into::into)
     }
 
     async fn read_root(file: &File, root_offset: u64) -> Result<BytesMut> {
         let buf_size = std::cmp::min((file.size() - root_offset) as usize, BLOCK_SIZE);
-        let mut buf = file.read_at_allocate(buf_size, root_offset).await?;
+        let mut buf = file.read_exact_at_allocate(buf_size, root_offset).await?;
         buf.resize(BLOCK_SIZE, 0);
         Ok(buf)
     }
@@ -427,7 +427,7 @@ where
         let fsize = header.meta_size as u64;
         let hs = header.serialized_size()?;
         let meta_offset = hs + fsize;
-        let buf = file.read_at_allocate(meta_size, meta_offset).await?;
+        let buf = file.read_exact_at_allocate(meta_size, meta_offset).await?;
         TreeMeta::from_raw(&buf).map_err(Into::into)
     }
 

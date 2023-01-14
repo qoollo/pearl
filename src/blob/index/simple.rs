@@ -41,7 +41,7 @@ where
         trace!("load meta");
         trace!("read meta into buf: [0; {}]", self.header.meta_size);
         self.file
-            .read_at_allocate(self.header.meta_size, self.header.serialized_size()? as u64)
+            .read_exact_at_allocate(self.header.meta_size, self.header.serialized_size()? as u64)
             .await
     }
 
@@ -52,7 +52,7 @@ where
         }
         let buf = self
             .file
-            .read_at_allocate(1, self.header.serialized_size()? + i)
+            .read_exact_at_allocate(1, self.header.serialized_size()? + i)
             .await?;
         Ok(buf[0])
     }
@@ -173,7 +173,7 @@ impl SimpleFileIndex {
 
     async fn read_index_header(file: &File) -> Result<IndexHeader> {
         let header_size = IndexHeader::serialized_size_default()? as usize;
-        let buf = file.read_at_allocate(header_size, 0).await?;
+        let buf = file.read_exact_at_allocate(header_size, 0).await?;
         IndexHeader::from_raw(&buf).map_err(Into::into)
     }
 
@@ -378,7 +378,7 @@ impl SimpleFileIndex {
             offset, header.record_header_size
         );
         let buf = file
-            .read_at_allocate(header.record_header_size, offset)
+            .read_exact_at_allocate(header.record_header_size, offset)
             .await?;
         let header = deserialize(&buf)?;
         debug!("blob index simple header: {:?}", header);

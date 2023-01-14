@@ -107,23 +107,32 @@ impl File {
     }
 
     pub(crate) async fn read_all(&self) -> Result<BytesMut> {
-        self.read_at_allocate(self.size().try_into()?, 0).await
+        self.read_exact_at_allocate(self.size().try_into()?, 0)
+            .await
     }
 
-    pub(crate) async fn read_at_allocate(&self, size: usize, offset: u64) -> Result<BytesMut> {
+    pub(crate) async fn read_exact_at_allocate(
+        &self,
+        size: usize,
+        offset: u64,
+    ) -> Result<BytesMut> {
         let buf = BytesMut::zeroed(size);
-        self.read_at(buf, offset).await
+        self.read_exact_at(buf, offset).await
     }
 
-    pub(crate) async fn read_at(&self, buf: BytesMut, offset: u64) -> Result<BytesMut> {
+    pub(crate) async fn read_exact_at(&self, buf: BytesMut, offset: u64) -> Result<BytesMut> {
         if let Some(ref ioring) = self.ioring {
-            self.read_at_aio(buf, offset, ioring).await
+            self.read_exact_at_aio(buf, offset, ioring).await
         } else {
-            self.read_at_sync(buf, offset).await
+            self.read_exact_at_sync(buf, offset).await
         }
     }
 
-    pub(crate) async fn read_at_sync(&self, mut buf: BytesMut, offset: u64) -> Result<BytesMut> {
+    pub(crate) async fn read_exact_at_sync(
+        &self,
+        mut buf: BytesMut,
+        offset: u64,
+    ) -> Result<BytesMut> {
         let file = self.no_lock_fd.clone();
 
         Ok(if buf.len() <= MAX_SYNC_OPERATION_SIZE {
@@ -134,7 +143,12 @@ impl File {
         }?)
     }
 
-    async fn read_at_aio(&self, mut buf: BytesMut, offset: u64, ioring: &Rio) -> Result<BytesMut> {
+    async fn read_exact_at_aio(
+        &self,
+        mut buf: BytesMut,
+        offset: u64,
+        ioring: &Rio,
+    ) -> Result<BytesMut> {
         debug!("blob file read at");
         if buf.is_empty() {
             warn!("file read_at empty buf");

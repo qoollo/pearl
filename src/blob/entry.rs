@@ -28,7 +28,7 @@ impl Entry {
         // The number of bytes read is checked by File internally.
         let buf = self
             .blob_file
-            .read_at_allocate(data_size + meta_size, self.header.meta_offset())
+            .read_exact_at_allocate(data_size + meta_size, self.header.meta_offset())
             .await
             .with_context(|| "blob load failed")?;
         let mut buf = buf.freeze();
@@ -44,7 +44,7 @@ impl Entry {
     pub async fn load_data(&self) -> Result<BytesMut> {
         let data_offset = self.header.data_offset();
         self.blob_file
-            .read_at_allocate(self.header.data_size().try_into()?, data_offset)
+            .read_exact_at_allocate(self.header.data_size().try_into()?, data_offset)
             .await
     }
 
@@ -55,7 +55,7 @@ impl Entry {
         let meta_offset = self.header.meta_offset();
         let buf = self
             .blob_file
-            .read_at_allocate(self.header.meta_size().try_into()?, meta_offset)
+            .read_exact_at_allocate(self.header.meta_size().try_into()?, meta_offset)
             .await?;
         self.meta = Some(Meta::from_raw(&buf)?);
         Ok(self.meta.as_ref())

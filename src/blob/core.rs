@@ -551,7 +551,7 @@ impl RawRecords {
         // plus size of usize because serialized
         // vector contains usize len in front
         let buf = file
-            .read_at_allocate(size_of_magic_byte + size_of_len, current_offset)
+            .read_exact_at_allocate(size_of_magic_byte + size_of_len, current_offset)
             .await?;
         let (magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         debug!("blob raw records start, read at {} bytes", buf.len());
@@ -604,7 +604,7 @@ impl RawRecords {
     async fn read_current_record_header(&mut self) -> Result<RecordHeader> {
         let buf = self
             .file
-            .read_at_allocate(self.record_header_size as usize, self.current_offset)
+            .read_exact_at_allocate(self.record_header_size as usize, self.current_offset)
             .await
             .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
         let header = RecordHeader::from_raw(&buf)
