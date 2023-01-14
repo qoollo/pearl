@@ -394,12 +394,12 @@ where
         Ok(())
     }
 
-    fn hash_valid(header: &IndexHeader, mut buf: &mut [u8]) -> Result<bool> {
+    fn hash_valid(header: &IndexHeader, buf: &mut [u8]) -> Result<bool> {
         let hash = header.hash.clone();
         let mut header = header.clone();
         header.hash = vec![0; ring::digest::SHA256.output_len];
         header.set_written(false);
-        serialize_into(buf, &header)?;
+        serialize_into(&mut buf[..], &header)?;
         let new_hash = get_hash(&buf);
         Ok(hash == new_hash)
     }
