@@ -238,7 +238,7 @@ where
     /// creation
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Storage, ArrayKey};
+    /// use pearl::{Builder, Storage, ArrayKey, BlobRecordTimestamp};
     ///
     /// async fn write_data(storage: Storage<ArrayKey<8>>) {
     ///     let key = ArrayKey::<8>::default();
@@ -258,7 +258,7 @@ where
     /// Similar to [`write`] but with metadata
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Meta, Storage, ArrayKey};
+    /// use pearl::{Builder, Meta, Storage, ArrayKey, BlobRecordTimestamp};
     ///
     /// async fn write_data(storage: Storage<ArrayKey<8>>) {
     ///     let key = ArrayKey::<8>::default();
@@ -474,6 +474,7 @@ where
             "storage core read from non-active total {} entries",
             all_entries.len()
         );
+        // TODO: ordering!
         //debug_assert!(all_entries
         //    .iter()
         //    .zip(all_entries.iter().skip(1))
