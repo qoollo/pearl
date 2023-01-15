@@ -11,7 +11,7 @@ use super::prelude::*;
 // This size was selected based on results of tests
 // These tests were performed on 8-core machine with HDD
 // Results are confirmed on 8 and 80 threads, for put and get
-const MAX_SYNC_OPERATION_SIZE: usize = 100_000;
+const MAX_SYNC_OPERATION_SIZE: usize = 81_920;
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -117,13 +117,22 @@ impl File {
         let len = first_len + second_len;
         let mut offset = self.size.fetch_add(len, Ordering::SeqCst);
         let file = self.no_lock_fd.clone();
-        Self::background_sync_call(move || {
-            file.write_all_at(&first_buf, offset)?;
-            offset = offset + first_len;
-            file.write_all_at(&second_buf, offset)?;
-            Ok(())
-        })
-        .await
+        if len <= MAX_SYNC_OPERATION_SIZE as u64 {
+            Self::inplace_sync_call(move || {
+                file.write_all_at(&first_buf, offset)?;
+                offset = offset + first_len;
+                file.write_all_at(&second_buf, offset)?;
+                Ok(())
+            })
+        } else {
+            Self::background_sync_call(move || {
+                file.write_all_at(&first_buf, offset)?;
+                offset = offset + first_len;
+                file.write_all_at(&second_buf, offset)?;
+                Ok(())
+            })
+            .await
+        }
     }
 
     pub(crate) async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
