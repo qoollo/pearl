@@ -239,7 +239,7 @@ where
             self.header.blob_size,
             hash,
         );
-        serialize_into((&mut buf).writer(), &header)?;
+        serialize_into(&mut buf[..], &header)?;
         Ok((header, self.metadata, buf))
     }
 

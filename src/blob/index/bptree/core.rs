@@ -400,7 +400,7 @@ where
         let mut header = header.clone();
         header.hash = vec![0; ring::digest::SHA256.output_len];
         header.set_written(false);
-        serialize_into(buf.writer(), &header)?;
+        serialize_into(&mut buf[..], &header)?;
         let new_hash = get_hash(&buf);
         Ok(hash == new_hash)
     }
