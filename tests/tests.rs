@@ -189,7 +189,7 @@ async fn test_storage_close() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_on_disk_index() -> Result<()> {
     let now = Instant::now();
     let path = common::init("index");
@@ -1005,7 +1005,7 @@ async fn test_blob_header_validation() {
     common::clean(storage, path).await.unwrap();
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_in_memory_and_disk_records_retrieval() -> Result<()> {
     let path = common::init("in_memory_and_disk_records_retrieval");
     let max_blob_size = 1_000_000;

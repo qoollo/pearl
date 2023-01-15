@@ -529,8 +529,9 @@ impl RawRecords {
         );
         // plus size of usize because serialized
         // vector contains usize len in front
-        let mut buf = vec![0; size_of_magic_byte + size_of_len];
-        file.read_at(&mut buf, current_offset).await?;
+        let buf = file
+            .read_exact_at_allocate(size_of_magic_byte + size_of_len, current_offset)
+            .await?;
         let (magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         debug!("blob raw records start, read at {} bytes", buf.len());
         let magic_byte = bincode::deserialize::<u64>(magic_byte_buf)
@@ -580,9 +581,9 @@ impl RawRecords {
     }
 
     async fn read_current_record_header(&mut self) -> Result<RecordHeader> {
-        let mut buf = vec![0; self.record_header_size as usize];
-        self.file
-            .read_at(&mut buf, self.current_offset)
+        let buf = self
+            .file
+            .read_exact_at_allocate(self.record_header_size as usize, self.current_offset)
             .await
             .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
         let header = RecordHeader::from_raw(&buf)
