@@ -529,7 +529,16 @@ where
             .map(|blob| blob.data.read_any(key, meta, false))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
-        let mut task = stream.skip_while(Result::is_err);
+        
+        let mut task = stream.skip_while(|read_res| {
+            match read_res {
+                Ok(inner_res) => inner_res.is_not_found(), // Skip not found
+                Err(e) => {
+                    debug!("error reading data from Blob (blob.read_any): {:?}", e);
+                    true // skip errors
+                }
+            }
+        });
 
         task.next().await.unwrap_or(Ok(ReadResult::NotFound))
     }
