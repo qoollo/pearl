@@ -1,4 +1,4 @@
-use bytes::BytesMut;
+use bytes::{BufMut, BytesMut};
 
 use super::storage::Key;
 use crate::error::ValidationErrorKind;
@@ -62,10 +62,11 @@ where
         let file = File::create(path, ioring)
             .await
             .with_context(|| format!("file open failed {:?}", path))?;
-        file.write_append(&buf).await?;
+        file.write_append_all(buf.freeze()).await?;
         header.set_written(true);
-        let serialized_header = serialize(&header)?;
-        file.write_at(0, &serialized_header).await?;
+        let mut serialized_header = BytesMut::new();
+        serialize_into((&mut serialized_header).writer(), &header)?;
+        file.write_all_at(0, serialized_header.freeze()).await?;
         file.fsyncdata().await?;
         let root_node = Self::read_root(&file, metadata.tree_offset).await?;
         Ok(Self {
@@ -399,7 +400,7 @@ where
         let mut header = header.clone();
         header.hash = vec![0; ring::digest::SHA256.output_len];
         header.set_written(false);
-        serialize_into(&mut buf[..], &header)?;
+        serialize_into(buf.writer(), &header)?;
         let new_hash = get_hash(&buf);
         Ok(hash == new_hash)
     }
@@ -432,7 +433,7 @@ where
         headers_btree: &InMemoryIndex<K>,
         meta: Vec<u8>,
         blob_size: u64,
-    ) -> Result<(IndexHeader, TreeMeta, Vec<u8>)> {
+    ) -> Result<(IndexHeader, TreeMeta, BytesMut)> {
         Serializer::new(headers_btree)
             .header_stage(meta, blob_size)?
             .tree_stage()?

@@ -3,7 +3,7 @@ use std::{
     time::SystemTime,
 };
 
-use bytes::BytesMut;
+use bytes::{Bytes, BytesMut};
 use nix::{errno::Errno, fcntl::FcntlArg};
 
 use super::prelude::*;
@@ -56,72 +56,94 @@ impl File {
         self.size.load(ORD)
     }
 
-    pub(crate) async fn write_append(&self, buf: &[u8]) -> IOResult<usize> {
+    pub(crate) async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
         if let Some(ref ioring) = self.ioring {
-            self.write_append_aio(buf, ioring).await?;
+            self.write_append_all_aio(buf, ioring).await?;
         } else {
-            self.write_append_sync(buf).await?;
-        }
-        Ok(buf.len())
-    }
-
-    pub(crate) async fn write_append_sync(&self, buf: &[u8]) -> IOResult<()> {
-        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
-        self.write_at_sync(offset, buf).await
-    }
-
-    async fn write_append_aio(&self, buf: &[u8], ioring: &Rio) -> IOResult<()> {
-        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
-        self.write_at_aio(offset, buf, ioring).await
-    }
-
-    pub(crate) async fn write_append_buffers(&self, buffers: Vec<&[u8]>) -> IOResult<usize> {
-        let len = buffers.iter().fold(0, |s, n| s + n.len());
-        if let Some(ref ioring) = self.ioring {
-            self.write_append_buffers_aio(buffers, ioring, len).await?;
-        } else {
-            self.write_append_buffers_sync(buffers, len).await?;
-        }
-        Ok(len)
-    }
-
-    async fn write_append_buffers_aio(
-        &self,
-        buffers: Vec<&[u8]>,
-        ioring: &Rio,
-        len: usize,
-    ) -> IOResult<()> {
-        let mut offset = self.size.fetch_add(len as u64, Ordering::SeqCst);
-        for buf in buffers {
-            self.write_at_aio(offset, buf, ioring).await?;
-            offset = offset + buf.len() as u64;
+            self.write_append_all_sync(buf).await?;
         }
         Ok(())
     }
 
-    async fn write_append_buffers_sync(&self, buffers: Vec<&[u8]>, len: usize) -> IOResult<()> {
-        let mut offset = self.size.fetch_add(len as u64, Ordering::SeqCst);
-        let file = self.no_lock_fd.clone();
-        let buffers: Vec<_> = buffers.into_iter().map(|v| v.to_vec()).collect();
-        Self::blocking_call(move || {
-            for buf in buffers {
-                file.write_all_at(&buf, offset)?;
-                offset = offset + buf.len() as u64;
-            }
-            Ok(())
-        })
-        .await
+    pub(crate) async fn write_append_all_sync(&self, buf: Bytes) -> IOResult<()> {
+        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
+        self.write_all_at_sync(offset, buf).await
     }
 
-    pub(crate) async fn write_at(&self, offset: u64, buf: &[u8]) -> IOResult<()> {
+    async fn write_append_all_aio(&self, buf: Bytes, ioring: &Rio) -> IOResult<()> {
+        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
+        self.write_all_at_aio(offset, buf, ioring).await
+    }
+
+    pub(crate) async fn write_append_all_buffers(
+        &self,
+        first_buf: Bytes,
+        second_buf: Bytes,
+    ) -> IOResult<()> {
         if let Some(ref ioring) = self.ioring {
-            self.write_at_aio(offset, buf, ioring).await
+            self.write_append_all_buffers_aio(ioring, first_buf, second_buf)
+                .await?;
         } else {
-            self.write_at_sync(offset, buf).await
+            self.write_append_all_buffers_sync(first_buf, second_buf)
+                .await?;
+        }
+        Ok(())
+    }
+
+    async fn write_append_all_buffers_aio(
+        &self,
+        ioring: &Rio,
+        first_buf: Bytes,
+        second_buf: Bytes,
+    ) -> IOResult<()> {
+        let first_len = first_buf.len() as u64;
+        let second_len = second_buf.len() as u64;
+        let mut offset = self
+            .size
+            .fetch_add(first_len + second_len, Ordering::SeqCst);
+        self.write_all_at_aio(offset, first_buf, ioring).await?;
+        offset = offset + first_len;
+        self.write_all_at_aio(offset, second_buf, ioring).await?;
+        Ok(())
+    }
+
+    async fn write_append_all_buffers_sync(
+        &self,
+        first_buf: Bytes,
+        second_buf: Bytes,
+    ) -> IOResult<()> {
+        let first_len = first_buf.len() as u64;
+        let second_len = second_buf.len() as u64;
+        let len = first_len + second_len;
+        let mut offset = self.size.fetch_add(len, Ordering::SeqCst);
+        let file = self.no_lock_fd.clone();
+        if len <= MAX_SYNC_OPERATION_SIZE as u64 {
+            Self::inplace_sync_call(move || {
+                file.write_all_at(&first_buf, offset)?;
+                offset = offset + first_len;
+                file.write_all_at(&second_buf, offset)?;
+                Ok(())
+            })
+        } else {
+            Self::background_sync_call(move || {
+                file.write_all_at(&first_buf, offset)?;
+                offset = offset + first_len;
+                file.write_all_at(&second_buf, offset)?;
+                Ok(())
+            })
+            .await
         }
     }
 
-    async fn write_at_aio(&self, offset: u64, buf: &[u8], ioring: &Rio) -> IOResult<()> {
+    pub(crate) async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
+        if let Some(ref ioring) = self.ioring {
+            self.write_all_at_aio(offset, buf, ioring).await
+        } else {
+            self.write_all_at_sync(offset, buf).await
+        }
+    }
+
+    async fn write_all_at_aio(&self, offset: u64, buf: Bytes, ioring: &Rio) -> IOResult<()> {
         let compl = ioring.write_at(&*self.no_lock_fd, &buf, offset);
         let count = compl.await?;
         // on blob level this error will be treated as unavailable file (rio doesn't return error
@@ -135,8 +157,7 @@ impl File {
         Ok(())
     }
 
-    async fn write_at_sync(&self, offset: u64, buf: &[u8]) -> IOResult<()> {
-        let buf = buf.to_vec();
+    async fn write_all_at_sync(&self, offset: u64, buf: Bytes) -> IOResult<()> {
         let file = self.no_lock_fd.clone();
         if buf.len() <= MAX_SYNC_OPERATION_SIZE {
             Self::inplace_sync_call(move || file.write_all_at(&buf, offset))

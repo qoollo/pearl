@@ -1,6 +1,4 @@
-use std::io::Cursor;
-
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 
 use crate::{blob::File, error::ValidationErrorKind, prelude::*};
 
@@ -157,31 +155,33 @@ impl Record {
         }
     }
 
-    fn create_header_meta_buffer(&self, data_size: Option<u64>) -> Result<Vec<u8>> {
+    fn create_header_meta_buffer(&self, data_size: Option<u64>) -> Result<BytesMut> {
         let size = self.header.serialized_size()
             + self.meta.serialized_size()
             + data_size.unwrap_or_default();
-        let mut c = Cursor::new(Vec::with_capacity(size as usize));
-        self.header.to_raw_into(&mut c)?;
-        self.meta.to_raw_into(&mut c)?;
-        Ok(c.into_inner())
+        let mut result = BytesMut::with_capacity(size as usize);
+        self.header.to_raw_into((&mut result).writer())?;
+        self.meta.to_raw_into((&mut result).writer())?;
+        Ok(result)
     }
 
     async fn write_single_pass(&self, file: &File) -> Result<u64> {
         let mut buf = self.create_header_meta_buffer(Some(self.data.len() as u64))?;
         buf.extend(&self.data);
-        Self::process_file_result(file.write_append(&buf).await)
+        let len = buf.len() as u64;
+        Self::process_file_result(file.write_append_all(buf.freeze()).await).map(|_| len)
     }
 
     async fn write_double_pass(&self, file: &File) -> Result<u64> {
         let buf = self.create_header_meta_buffer(None)?;
-        let data = &self.data;
-
-        Self::process_file_result(file.write_append_buffers(vec![&buf, data]).await)
+        let data = self.data.clone();
+        let len = (buf.len() + data.len()) as u64;
+        Self::process_file_result(file.write_append_all_buffers(buf.freeze(), data).await)
+            .map(|_| len)
     }
 
-    fn process_file_result(result: std::result::Result<usize, std::io::Error>) -> Result<u64> {
-        result.map(|x| x as u64).map_err(|e| -> anyhow::Error {
+    fn process_file_result(result: std::result::Result<(), std::io::Error>) -> Result<()> {
+        result.map_err(|e| -> anyhow::Error {
             match e.kind() {
                 kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
                     Error::file_unavailable(kind).into()

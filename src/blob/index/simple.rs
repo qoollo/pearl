@@ -1,4 +1,4 @@
-use bytes::BytesMut;
+use bytes::{BufMut, BytesMut};
 
 use crate::error::ValidationErrorKind;
 
@@ -79,10 +79,11 @@ where
         let file = File::create(path, ioring)
             .await
             .with_context(|| format!("file open failed {:?}", path))?;
-        file.write_append(&buf).await?;
+        file.write_append_all(buf.freeze()).await?;
         header.set_written(true);
-        let serialized_header = serialize(&header)?;
-        file.write_at(0, &serialized_header).await?;
+        let mut serialized_header = BytesMut::new();
+        serialize_into((&mut serialized_header).writer(), &header)?;
+        file.write_all_at(0, serialized_header.freeze()).await?;
         file.fsyncdata().await?;
         Ok(Self { file, header })
     }
@@ -306,7 +307,7 @@ impl SimpleFileIndex {
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         blob_size: u64,
-    ) -> Result<Option<(IndexHeader, Vec<u8>)>>
+    ) -> Result<Option<(IndexHeader, BytesMut)>>
     where
         for<'a> K: Key<'a>,
     {
@@ -326,8 +327,8 @@ impl SimpleFileIndex {
             let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
             trace!("index header size: {}b", hs);
             let fsize = header.meta_size;
-            let mut buf = Vec::with_capacity(hs + fsize + headers.len() * record_header_size);
-            serialize_into(&mut buf, &header)?;
+            let mut buf = BytesMut::with_capacity(hs + fsize + headers.len() * record_header_size);
+            serialize_into((&mut buf).writer(), &header)?;
             debug!(
                 "serialize headers meta size: {}, header.meta_size: {}, buf.len: {}",
                 meta.len(),
@@ -355,7 +356,7 @@ impl SimpleFileIndex {
                 blob_size,
                 hash,
             );
-            serialize_into(buf.as_mut_slice(), &header)?;
+            serialize_into((&mut buf).writer(), &header)?;
             Ok(Some((header, buf)))
         } else {
             Ok(None)

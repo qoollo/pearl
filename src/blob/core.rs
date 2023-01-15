@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 
 use async_std::sync::RwLockUpgradableReadGuard;
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
@@ -71,9 +71,11 @@ where
     }
 
     async fn write_header(&mut self) -> Result<()> {
-        let buf = serialize(&self.header)?;
-        self.file.write_append(&buf).await?;
-        self.current_offset = buf.len() as u64;
+        let mut buf = BytesMut::new();
+        serialize_into((&mut buf).writer(), &self.header)?;
+        let len = buf.len() as u64;
+        self.file.write_append_all(buf.freeze()).await?;
+        self.current_offset = len;
         Ok(())
     }
 
