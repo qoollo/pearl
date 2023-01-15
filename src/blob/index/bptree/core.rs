@@ -64,7 +64,7 @@ where
             .with_context(|| format!("file open failed {:?}", path))?;
         file.write_append_all(buf.freeze()).await?;
         header.set_written(true);
-        let size = header.serialized_size()?;
+        let size = header.serialized_size();
         let mut serialized_header = BytesMut::with_capacity(size as usize);
         serialize_into((&mut serialized_header).writer(), &header)?;
         file.write_all_at(0, serialized_header.freeze()).await?;
@@ -95,7 +95,7 @@ where
         trace!("load meta");
         trace!("read meta into buf: [0; {}]", self.header.meta_size);
         self.file
-            .read_exact_at_allocate(self.header.meta_size, self.header.serialized_size()? as u64)
+            .read_exact_at_allocate(self.header.meta_size, self.header.serialized_size())
             .await
     }
 
@@ -106,7 +106,7 @@ where
         }
         let buf = self
             .file
-            .read_exact_at_allocate(1, self.header.serialized_size()? + i)
+            .read_exact_at_allocate(1, self.header.serialized_size() + i)
             .await?;
         Ok(buf[0])
     }
@@ -407,7 +407,7 @@ where
     }
 
     async fn read_index_header(file: &File) -> Result<IndexHeader> {
-        let header_size = IndexHeader::serialized_size_default()? as usize;
+        let header_size = IndexHeader::serialized_size_default() as usize;
         let buf = file.read_exact_at_allocate(header_size, 0).await?;
         IndexHeader::from_raw(&buf).map_err(Into::into)
     }
@@ -424,7 +424,7 @@ where
     async fn read_tree_meta(file: &File, header: &IndexHeader) -> Result<TreeMeta> {
         let meta_size = TreeMeta::serialized_size_default()? as usize;
         let fsize = header.meta_size as u64;
-        let hs = header.serialized_size()?;
+        let hs = header.serialized_size();
         let meta_offset = hs + fsize;
         let buf = file.read_exact_at_allocate(meta_size, meta_offset).await?;
         TreeMeta::from_raw(&buf).map_err(Into::into)

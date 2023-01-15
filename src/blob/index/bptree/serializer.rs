@@ -71,7 +71,7 @@ where
     for<'b> K: Key<'b> + 'static,
 {
     pub(super) fn tree_stage(self) -> Result<TreeStage<'a, K>> {
-        let hs = self.header.serialized_size()? as usize;
+        let hs = self.header.serialized_size() as usize;
         let external_buf_size = self.header.meta_size;
         let meta_and_buf_end = (hs + external_buf_size) as u64;
         let headers_size = self.header.records_count * self.header.record_header_size;
@@ -220,7 +220,7 @@ where
     for<'b> K: Key<'b>,
 {
     pub(super) fn build(self) -> Result<(IndexHeader, TreeMeta, BytesMut)> {
-        let hs = self.header.serialized_size()? as usize;
+        let hs = self.header.serialized_size() as usize;
         let fsize = self.header.meta_size;
         let msize = self.meta_buf.len();
         let data_size = hs + fsize + self.headers_size + msize + self.tree_buf.len();

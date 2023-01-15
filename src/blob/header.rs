@@ -62,7 +62,7 @@ impl Header {
     }
 
     #[inline]
-    pub(crate) fn serialized_size(&self) -> usize {
-        serialized_size(&self).expect("blob header size") as usize
+    pub(crate) fn serialized_size(&self) -> u64 {
+        serialized_size(&self).expect("blob header size")
     }
 }
