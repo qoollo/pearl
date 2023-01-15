@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 
 use async_std::sync::RwLockUpgradableReadGuard;
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
@@ -71,9 +71,12 @@ where
     }
 
     async fn write_header(&mut self) -> Result<()> {
-        let buf = serialize(&self.header)?;
-        self.file.write_append(&buf).await?;
-        self.current_offset = buf.len() as u64;
+        let size = self.header.serialized_size();
+        let mut buf = BytesMut::with_capacity(size as usize);
+        serialize_into((&mut buf).writer(), &self.header)?;
+        let len = buf.len() as u64;
+        self.file.write_append_all(buf.freeze()).await?;
+        self.current_offset = len;
         Ok(())
     }
 
@@ -248,21 +251,11 @@ where
         debug!("blob write");
         debug!("blob write record offset: {}", self.current_offset);
         record.set_offset(self.current_offset)?;
-        let buf = record.to_raw()?;
-        self.file
-            .write_append(&buf)
-            .await
-            .map_err(|e| -> anyhow::Error {
-                match e.kind() {
-                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
-                        Error::file_unavailable(kind).into()
-                    }
-                    _ => e.into(),
-                }
-            })?;
-        self.index.push(key, record.header().clone())?;
-        self.current_offset += buf.len() as u64;
-        Ok(record.into_header())
+        let bytes_written = record.write_to_file(&self.file).await?;
+        let header = record.into_header();
+        self.index.push(key, header.clone())?;
+        self.current_offset += bytes_written;
+        Ok(header)
     }
 
     async fn write_locked(
@@ -272,21 +265,10 @@ where
     ) -> Result<()> {
         debug!("blob write record offset: {}", blob.current_offset);
         record.set_offset(blob.current_offset)?;
-        let buf = record.to_raw()?;
-        blob.file
-            .write_append(&buf)
-            .await
-            .map_err(|e| -> anyhow::Error {
-                match e.kind() {
-                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
-                        Error::file_unavailable(kind).into()
-                    }
-                    _ => e.into(),
-                }
-            })?;
+        let bytes_written = record.write_to_file(&blob.file).await?;
         let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
-        blob.index.push(key, record.header().clone())?;
-        blob.current_offset += buf.len() as u64;
+        blob.index.push(key, record.into_header())?;
+        blob.current_offset += bytes_written;
         Ok(())
     }
 

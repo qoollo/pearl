@@ -4,7 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Special handling for large data write (#192)
 
 #### Changed
 - Added different path for sync read/write (#184)
