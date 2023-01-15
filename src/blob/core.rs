@@ -71,7 +71,8 @@ where
     }
 
     async fn write_header(&mut self) -> Result<()> {
-        let mut buf = BytesMut::new();
+        let size = self.header.serialized_size()?;
+        let mut buf = BytesMut::with_capacity(size as usize);
         serialize_into((&mut buf).writer(), &self.header)?;
         let len = buf.len() as u64;
         self.file.write_append_all(buf.freeze()).await?;

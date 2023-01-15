@@ -60,4 +60,9 @@ impl Header {
         }
         Ok(())
     }
+
+    #[inline]
+    pub(crate) fn serialized_size(&self) -> bincode::Result<u64> {
+        serialized_size(&self)
+    }
 }

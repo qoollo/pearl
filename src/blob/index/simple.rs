@@ -81,7 +81,8 @@ where
             .with_context(|| format!("file open failed {:?}", path))?;
         file.write_append_all(buf.freeze()).await?;
         header.set_written(true);
-        let mut serialized_header = BytesMut::new();
+        let size = header.serialized_size()?;
+        let mut serialized_header = BytesMut::with_capacity(size as usize);
         serialize_into((&mut serialized_header).writer(), &header)?;
         file.write_all_at(0, serialized_header.freeze()).await?;
         file.fsyncdata().await?;
