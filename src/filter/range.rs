@@ -44,7 +44,7 @@ where
 
     fn checked_add_assign(&mut self, other: &Self) -> bool {
         let other = other.safe.read().expect("RwLock acquired").clone();
-        self.safe.write().expect("RwLock acquired").merge(&other);
+        self.safe.write().expect("RwLock acquired").merge_with(other);
         true
     }
 
@@ -121,17 +121,19 @@ where
     }
 
     /// Merge other into self
-    fn merge(&mut self, other: &Self) {
-        if !self.initialized {
-            self.min = other.min.clone();
-            self.max = other.max.clone();
-            self.initialized = true;
-        } else {
-            if &other.min < &self.min {
-                self.min = other.min.clone();
-            }
-            if &other.max > &self.max {
-                self.max = other.max.clone();
+    fn merge_with(&mut self, other: Self) {
+        if other.initialized {
+            if !self.initialized {
+                self.min = other.min;
+                self.max = other.max;
+                self.initialized = true;
+            } else {
+                if &other.min < &self.min {
+                    self.min = other.min;
+                }
+                if &other.max > &self.max {
+                    self.max = other.max;
+                }
             }
         }
     }
