@@ -10,7 +10,7 @@ Pearl changelog
 - Added different path for sync read/write (#184)
 
 #### Fixed
-
+- Fixed skip condition in Storage::get_data_last causing incorrect NotFound result (#235)
 
 #### Updated
 
