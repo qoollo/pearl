@@ -1,22 +1,29 @@
 use super::*;
 use std::sync::RwLock;
 
-#[derive(Debug, Default, Serialize, Deserialize, Clone)]
-/// Range filter
+#[derive(Debug, Default, Clone)]
+/// Range filter (concurrency supported)
 pub struct RangeFilter<K>
 where
     for<'a> K: Key<'a>,
 {
-    #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
-    min: Arc<RwLock<K>>,
-    #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
-    max: Arc<RwLock<K>>,
-    #[serde(
-        serialize_with = "serialize_initialized",
-        deserialize_with = "deserialize_initialized"
-    )]
-    initialized: Arc<RwLock<bool>>,
+    safe: Arc<RwLock<RangeFilterInner<K>>>
 }
+
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+/// Core Range filter struct
+struct RangeFilterInner<K> 
+where
+    for<'a> K: Key<'a>,
+{
+    #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
+    min: K,
+    #[serde(serialize_with = "serialize_key", deserialize_with = "deserialize_key")]
+    max: K,
+    initialized: bool,
+}
+
 
 #[async_trait::async_trait]
 impl<K> FilterTrait<K> for RangeFilter<K>
@@ -24,11 +31,11 @@ where
     for<'a> K: Key<'a>,
 {
     fn add(&self, key: &K) {
-        self.add(key);
+        self.safe.write().expect("RwLock acquired").add(key);
     }
 
     fn contains_fast(&self, key: &K) -> FilterResult {
-        if self.contains(key) {
+        if self.safe.read().expect("RwLock acquired").contains(key) {
             FilterResult::NeedAdditionalCheck
         } else {
             FilterResult::NotContains
@@ -36,13 +43,13 @@ where
     }
 
     fn checked_add_assign(&mut self, other: &Self) -> bool {
-        self.add(&other.min.read().expect("rwlock"));
-        self.add(&other.max.read().expect("rwlock"));
+        let other = other.safe.read().expect("RwLock acquired").clone();
+        self.safe.write().expect("RwLock acquired").merge(&other);
         true
     }
 
     fn clear_filter(&mut self) {
-        self.clear()
+        self.safe.write().expect("RwLock acquired").clear()
     }
 }
 
@@ -53,68 +60,113 @@ where
     /// Create filter
     pub fn new() -> Self {
         Self {
-            initialized: Arc::new(RwLock::new(false)),
-            ..Default::default()
+            safe: Arc::new(RwLock::new(RangeFilterInner::new()))
         }
     }
 
     /// Add key to filter
     pub fn add(&self, key: &K) {
-        {
-            let initialized = { *self.initialized.read().expect("rwlock") };
-            if !initialized {
-                let mut initialized = self.initialized.write().expect("rwlock");
-                if !*initialized {
-                    *self.min.write().expect("rwlock") = key.clone();
-                    *self.max.write().expect("rwlock") = key.clone();
-                    *initialized = true;
-                }
-            }
-        }
-        if key < &self.min.read().expect("rwlock") {
-            *self.min.write().expect("rwlock") = key.clone();
-        } else if key > &self.max.read().expect("rwlock") {
-            *self.max.write().expect("rwlock") = key.clone()
-        }
+        self.safe.write().expect("RwLock acquired").add(key);
     }
 
     /// Check if key contains in filter
     pub fn contains(&self, key: &K) -> bool {
-        if *self.initialized.read().expect("rwlock") {
-            let min = self.min.read().expect("rwlock");
-            if &*min <= key {
-                let max = self.max.read().expect("rwlock");
-                return key <= &*max;
-            }
-        }
-        false
+        self.safe.read().expect("RwLock acquired").contains(key)
     }
 
     /// Clear filter
     pub fn clear(&mut self) {
-        self.initialized = Arc::new(RwLock::new(false));
+        self.safe.write().expect("RwLock acquired").clear()
     }
 
     /// Create filter from raw bytes
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
-        bincode::deserialize(&buf).map_err(|e| e.into())
+        RangeFilterInner::from_raw(buf).map(|safe| {
+            Self {
+                safe: Arc::new(RwLock::new(safe))
+            }
+        })
     }
 
     /// Convert filter to raw bytes
     pub fn to_raw(&self) -> Result<Vec<u8>> {
+        self.safe.read().expect("RwLock acquired").to_raw()
+    }
+}
+
+
+impl<K> RangeFilterInner<K> 
+where
+    for<'a> K: Key<'a>,
+{
+    /// Create filter
+    fn new() -> Self {
+        Self {
+            initialized: false,
+            ..Default::default()
+        }
+    }
+
+    /// Add key to filter
+    fn add(&mut self, key: &K) {
+        if !self.initialized {
+            self.min = key.clone();
+            self.max = key.clone();
+            self.initialized = true;
+        } else if key < &self.min {
+            self.min = key.clone();
+        } else if key > &self.max {
+            self.max = key.clone();
+        }
+    }
+
+    /// Merge other into self
+    fn merge(&mut self, other: &Self) {
+        if !self.initialized {
+            self.min = other.min.clone();
+            self.max = other.max.clone();
+            self.initialized = true;
+        } else {
+            if &other.min < &self.min {
+                self.min = other.min.clone();
+            }
+            if &other.max > &self.max {
+                self.max = other.max.clone();
+            }
+        }
+    }
+
+    /// Check if key contains in filter
+    fn contains(&self, key: &K) -> bool {
+        self.initialized && &self.min <= key && key <= &self.max
+    }
+
+    /// Clear filter
+    fn clear(&mut self) {
+        self.initialized = false;
+    }
+
+    /// Create filter from raw bytes
+    fn from_raw(buf: &[u8]) -> Result<Self> {
+        bincode::deserialize(&buf).map_err(|e| e.into())
+    }
+
+    /// Convert filter to raw bytes
+    fn to_raw(&self) -> Result<Vec<u8>> {
         bincode::serialize(&self).map_err(|e| e.into())
     }
 }
 
-fn serialize_key<K, S>(key: &Arc<RwLock<K>>, serializer: S) -> Result<S::Ok, S::Error>
+
+fn serialize_key<K, S>(key: &K, serializer: S) -> Result<S::Ok, S::Error>
 where
     for<'a> K: Key<'a>,
     S: serde::Serializer,
 {
-    serializer.serialize_bytes(key.read().expect("rwlock").as_ref())
+    serializer.serialize_bytes(key.as_ref())
 }
 
-fn deserialize_key<'de, K, D>(deserializer: D) -> Result<Arc<RwLock<K>>, D::Error>
+fn deserialize_key<'de, K, D>(deserializer: D) -> Result<K, D::Error>
 where
     for<'a> K: Key<'a>,
     D: serde::Deserializer<'de>,
@@ -138,42 +190,9 @@ where
         }
     }
 
-    deserializer
-        .deserialize_byte_buf(KeyVisitor(PhantomData))
-        .map(|key| Arc::new(RwLock::new(key)))
+    deserializer.deserialize_byte_buf(KeyVisitor(PhantomData))
 }
 
-fn serialize_initialized<S>(b: &Arc<RwLock<bool>>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    serializer.serialize_bool(*b.read().expect("rwlock"))
-}
-
-fn deserialize_initialized<'de, D>(deserializer: D) -> Result<Arc<RwLock<bool>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    struct KeyVisitor;
-    impl<'de> serde::de::Visitor<'de> for KeyVisitor {
-        type Value = bool;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            write!(formatter, "bool")
-        }
-
-        fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(v)
-        }
-    }
-
-    deserializer
-        .deserialize_bool(KeyVisitor)
-        .map(|key| Arc::new(RwLock::new(key)))
-}
 
 #[cfg(test)]
 mod tests {
@@ -301,7 +320,7 @@ mod tests {
         for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
             filter.add(&key);
         }
-        let buf = bincode::serialize(&filter).unwrap();
+        let buf = filter.to_raw().unwrap();
         let wrong_key_filter: RangeFilter<WrongKey> = RangeFilter::from_raw(&buf).unwrap();
 
         let less_key = to_key(25);
