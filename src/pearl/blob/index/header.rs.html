@@ -208,14 +208,14 @@
         <span class="self">self</span>.version = (version &lt;&lt; <span class="number">1</span>) | written;
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>serialized_size_default() -&gt; bincode::Result&lt;u64&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>serialized_size_default() -&gt; u64 {
         <span class="kw">let </span>header = <span class="self">Self</span>::default();
         header.serialized_size()
     }
 
     <span class="attribute">#[inline]
-    </span><span class="kw">pub fn </span>serialized_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bincode::Result&lt;u64&gt; {
-        bincode::serialized_size(<span class="kw-2">&amp;</span><span class="self">self</span>)
+    </span><span class="kw">pub fn </span>serialized_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        bincode::serialized_size(<span class="kw-2">&amp;</span><span class="self">self</span>).expect(<span class="string">&quot;index header size&quot;</span>)
     }
 
     <span class="attribute">#[inline]
@@ -251,4 +251,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

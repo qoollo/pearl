@@ -634,27 +634,10 @@
 <span id="634">634</span>
 <span id="635">635</span>
 <span id="636">636</span>
-<span id="637">637</span>
-<span id="638">638</span>
-<span id="639">639</span>
-<span id="640">640</span>
-<span id="641">641</span>
-<span id="642">642</span>
-<span id="643">643</span>
-<span id="644">644</span>
-<span id="645">645</span>
-<span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
-<span id="650">650</span>
-<span id="651">651</span>
-<span id="652">652</span>
-<span id="653">653</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::SystemTime;
 
 <span class="kw">use </span>async_std::sync::RwLockUpgradableReadGuard;
-<span class="kw">use </span>bytes::Bytes;
+<span class="kw">use </span>bytes::{BufMut, Bytes, BytesMut};
 <span class="kw">use </span>tokio::time::Instant;
 
 <span class="kw">use </span><span class="kw">crate</span>::error::ValidationErrorKind;
@@ -724,9 +707,12 @@
     }
 
     <span class="kw">async fn </span>write_header(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>buf = serialize(<span class="kw-2">&amp;</span><span class="self">self</span>.header)<span class="question-mark">?</span>;
-        <span class="self">self</span>.file.write_append(<span class="kw-2">&amp;</span>buf).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="self">self</span>.current_offset = buf.len() <span class="kw">as </span>u64;
+        <span class="kw">let </span>size = <span class="self">self</span>.header.serialized_size();
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = BytesMut::with_capacity(size <span class="kw">as </span>usize);
+        serialize_into((<span class="kw-2">&amp;mut </span>buf).writer(), <span class="kw-2">&amp;</span><span class="self">self</span>.header)<span class="question-mark">?</span>;
+        <span class="kw">let </span>len = buf.len() <span class="kw">as </span>u64;
+        <span class="self">self</span>.file.write_append_all(buf.freeze()).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="self">self</span>.current_offset = len;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -901,21 +887,11 @@
         <span class="macro">debug!</span>(<span class="string">&quot;blob write&quot;</span>);
         <span class="macro">debug!</span>(<span class="string">&quot;blob write record offset: {}&quot;</span>, <span class="self">self</span>.current_offset);
         record.set_offset(<span class="self">self</span>.current_offset)<span class="question-mark">?</span>;
-        <span class="kw">let </span>buf = record.to_raw()<span class="question-mark">?</span>;
-        <span class="self">self</span>.file
-            .write_append(<span class="kw-2">&amp;</span>buf)
-            .<span class="kw">await
-            </span>.map_err(|e| -&gt; anyhow::Error {
-                <span class="kw">match </span>e.kind() {
-                    kind <span class="kw">if </span>kind == IOErrorKind::Other || kind == IOErrorKind::NotFound =&gt; {
-                        Error::file_unavailable(kind).into()
-                    }
-                    <span class="kw">_ </span>=&gt; e.into(),
-                }
-            })<span class="question-mark">?</span>;
-        <span class="self">self</span>.index.push(key, record.header().clone())<span class="question-mark">?</span>;
-        <span class="self">self</span>.current_offset += buf.len() <span class="kw">as </span>u64;
-        <span class="prelude-val">Ok</span>(record.into_header())
+        <span class="kw">let </span>bytes_written = record.write_to_file(<span class="kw-2">&amp;</span><span class="self">self</span>.file).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>header = record.into_header();
+        <span class="self">self</span>.index.push(key, header.clone())<span class="question-mark">?</span>;
+        <span class="self">self</span>.current_offset += bytes_written;
+        <span class="prelude-val">Ok</span>(header)
     }
 
     <span class="kw">async fn </span>write_locked(
@@ -925,21 +901,10 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob write record offset: {}&quot;</span>, blob.current_offset);
         record.set_offset(blob.current_offset)<span class="question-mark">?</span>;
-        <span class="kw">let </span>buf = record.to_raw()<span class="question-mark">?</span>;
-        blob.file
-            .write_append(<span class="kw-2">&amp;</span>buf)
-            .<span class="kw">await
-            </span>.map_err(|e| -&gt; anyhow::Error {
-                <span class="kw">match </span>e.kind() {
-                    kind <span class="kw">if </span>kind == IOErrorKind::Other || kind == IOErrorKind::NotFound =&gt; {
-                        Error::file_unavailable(kind).into()
-                    }
-                    <span class="kw">_ </span>=&gt; e.into(),
-                }
-            })<span class="question-mark">?</span>;
+        <span class="kw">let </span>bytes_written = record.write_to_file(<span class="kw-2">&amp;</span>blob.file).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>blob = RwLockUpgradableReadGuard::upgrade(blob).<span class="kw">await</span>;
-        blob.index.push(key, record.header().clone())<span class="question-mark">?</span>;
-        blob.current_offset += buf.len() <span class="kw">as </span>u64;
+        blob.index.push(key, record.into_header())<span class="question-mark">?</span>;
+        blob.current_offset += bytes_written;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1203,8 +1168,9 @@
         );
         <span class="comment">// plus size of usize because serialized
         // vector contains usize len in front
-        </span><span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; size_of_magic_byte + size_of_len];
-        file.read_at(<span class="kw-2">&amp;mut </span>buf, current_offset).<span class="kw">await</span><span class="question-mark">?</span>;
+        </span><span class="kw">let </span>buf = file
+            .read_exact_at_allocate(size_of_magic_byte + size_of_len, current_offset)
+            .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>(magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         <span class="macro">debug!</span>(<span class="string">&quot;blob raw records start, read at {} bytes&quot;</span>, buf.len());
         <span class="kw">let </span>magic_byte = bincode::deserialize::&lt;u64&gt;(magic_byte_buf)
@@ -1254,9 +1220,9 @@
     }
 
     <span class="kw">async fn </span>read_current_record_header(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;RecordHeader&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; <span class="self">self</span>.record_header_size <span class="kw">as </span>usize];
-        <span class="self">self</span>.file
-            .read_at(<span class="kw-2">&amp;mut </span>buf, <span class="self">self</span>.current_offset)
+        <span class="kw">let </span>buf = <span class="self">self
+            </span>.file
+            .read_exact_at_allocate(<span class="self">self</span>.record_header_size <span class="kw">as </span>usize, <span class="self">self</span>.current_offset)
             .<span class="kw">await
             </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;read at call failed, size {}&quot;</span>, <span class="self">self</span>.current_offset))<span class="question-mark">?</span>;
         <span class="kw">let </span>header = RecordHeader::from_raw(<span class="kw-2">&amp;</span>buf)
@@ -1305,4 +1271,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

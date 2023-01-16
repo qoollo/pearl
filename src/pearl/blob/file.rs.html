@@ -217,14 +217,115 @@
 <span id="217">217</span>
 <span id="218">218</span>
 <span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     os::unix::prelude::{AsRawFd, FileExt},
     time::SystemTime,
 };
 
+<span class="kw">use </span>bytes::{Bytes, BytesMut};
 <span class="kw">use </span>nix::{errno::Errno, fcntl::FcntlArg};
 
 <span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
+
+<span class="comment">// This size was selected based on results of tests
+// These tests were performed on 8-core machine with HDD
+// Results are confirmed on 8 and 80 threads, for put and get
+</span><span class="kw">const </span>MAX_SYNC_OPERATION_SIZE: usize = <span class="number">81_920</span>;
 
 <span class="attribute">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>File {
@@ -269,33 +370,94 @@
         <span class="self">self</span>.size.load(ORD)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_append(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;()&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_append_all(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: Bytes) -&gt; IOResult&lt;()&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>ioring) = <span class="self">self</span>.ioring {
-            <span class="self">self</span>.write_append_aio(buf, ioring).<span class="kw">await
-        </span>} <span class="kw">else </span>{
-            <span class="self">self</span>.write_append_sync(buf).<span class="kw">await
+            <span class="self">self</span>.write_append_all_aio(buf, ioring).<span class="kw">await</span><span class="question-mark">?</span>;
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.write_append_all_sync(buf).<span class="kw">await</span><span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_append_all_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: Bytes) -&gt; IOResult&lt;()&gt; {
+        <span class="kw">let </span>offset = <span class="self">self</span>.size.fetch_add(buf.len() <span class="kw">as </span>u64, Ordering::SeqCst);
+        <span class="self">self</span>.write_all_at_sync(offset, buf).<span class="kw">await
+    </span>}
+
+    <span class="kw">async fn </span>write_append_all_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: Bytes, ioring: <span class="kw-2">&amp;</span>Rio) -&gt; IOResult&lt;()&gt; {
+        <span class="kw">let </span>offset = <span class="self">self</span>.size.fetch_add(buf.len() <span class="kw">as </span>u64, Ordering::SeqCst);
+        <span class="self">self</span>.write_all_at_aio(offset, buf, ioring).<span class="kw">await
+    </span>}
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_append_all_buffers(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        first_buf: Bytes,
+        second_buf: Bytes,
+    ) -&gt; IOResult&lt;()&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>ioring) = <span class="self">self</span>.ioring {
+            <span class="self">self</span>.write_append_all_buffers_aio(ioring, first_buf, second_buf)
+                .<span class="kw">await</span><span class="question-mark">?</span>;
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.write_append_all_buffers_sync(first_buf, second_buf)
+                .<span class="kw">await</span><span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">async fn </span>write_append_all_buffers_aio(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        ioring: <span class="kw-2">&amp;</span>Rio,
+        first_buf: Bytes,
+        second_buf: Bytes,
+    ) -&gt; IOResult&lt;()&gt; {
+        <span class="kw">let </span>first_len = first_buf.len() <span class="kw">as </span>u64;
+        <span class="kw">let </span>second_len = second_buf.len() <span class="kw">as </span>u64;
+        <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="self">self
+            </span>.size
+            .fetch_add(first_len + second_len, Ordering::SeqCst);
+        <span class="self">self</span>.write_all_at_aio(offset, first_buf, ioring).<span class="kw">await</span><span class="question-mark">?</span>;
+        offset = offset + first_len;
+        <span class="self">self</span>.write_all_at_aio(offset, second_buf, ioring).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">async fn </span>write_append_all_buffers_sync(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        first_buf: Bytes,
+        second_buf: Bytes,
+    ) -&gt; IOResult&lt;()&gt; {
+        <span class="kw">let </span>first_len = first_buf.len() <span class="kw">as </span>u64;
+        <span class="kw">let </span>second_len = second_buf.len() <span class="kw">as </span>u64;
+        <span class="kw">let </span>len = first_len + second_len;
+        <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="self">self</span>.size.fetch_add(len, Ordering::SeqCst);
+        <span class="kw">let </span>file = <span class="self">self</span>.no_lock_fd.clone();
+        <span class="kw">if </span>len &lt;= MAX_SYNC_OPERATION_SIZE <span class="kw">as </span>u64 {
+            <span class="self">Self</span>::inplace_sync_call(<span class="kw">move </span>|| {
+                file.write_all_at(<span class="kw-2">&amp;</span>first_buf, offset)<span class="question-mark">?</span>;
+                offset = offset + first_len;
+                file.write_all_at(<span class="kw-2">&amp;</span>second_buf, offset)<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(())
+            })
+        } <span class="kw">else </span>{
+            <span class="self">Self</span>::background_sync_call(<span class="kw">move </span>|| {
+                file.write_all_at(<span class="kw-2">&amp;</span>first_buf, offset)<span class="question-mark">?</span>;
+                offset = offset + first_len;
+                file.write_all_at(<span class="kw-2">&amp;</span>second_buf, offset)<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(())
+            })
+            .<span class="kw">await
         </span>}
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_append_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;()&gt; {
-        <span class="kw">let </span>offset = <span class="self">self</span>.size.fetch_add(buf.len() <span class="kw">as </span>u64, Ordering::SeqCst);
-        <span class="self">self</span>.write_at_sync(offset, buf).<span class="kw">await
-    </span>}
-
-    <span class="kw">async fn </span>write_append_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8], ioring: <span class="kw-2">&amp;</span>Rio) -&gt; IOResult&lt;()&gt; {
-        <span class="kw">let </span>offset = <span class="self">self</span>.size.fetch_add(buf.len() <span class="kw">as </span>u64, Ordering::SeqCst);
-        <span class="self">self</span>.write_at_aio(offset, buf, ioring).<span class="kw">await
-    </span>}
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_at(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;()&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_all_at(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: Bytes) -&gt; IOResult&lt;()&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>ioring) = <span class="self">self</span>.ioring {
-            <span class="self">self</span>.write_at_aio(offset, buf, ioring).<span class="kw">await
+            <span class="self">self</span>.write_all_at_aio(offset, buf, ioring).<span class="kw">await
         </span>} <span class="kw">else </span>{
-            <span class="self">self</span>.write_at_sync(offset, buf).<span class="kw">await
+            <span class="self">self</span>.write_all_at_sync(offset, buf).<span class="kw">await
         </span>}
     }
 
-    <span class="kw">async fn </span>write_at_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: <span class="kw-2">&amp;</span>[u8], ioring: <span class="kw-2">&amp;</span>Rio) -&gt; IOResult&lt;()&gt; {
+    <span class="kw">async fn </span>write_all_at_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: Bytes, ioring: <span class="kw-2">&amp;</span>Rio) -&gt; IOResult&lt;()&gt; {
         <span class="kw">let </span>compl = ioring.write_at(<span class="kw-2">&amp;*</span><span class="self">self</span>.no_lock_fd, <span class="kw-2">&amp;</span>buf, offset);
         <span class="kw">let </span>count = compl.<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="comment">// on blob level this error will be treated as unavailable file (rio doesn&#39;t return error
@@ -309,38 +471,58 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async fn </span>write_at_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; IOResult&lt;()&gt; {
-        <span class="kw">let </span>buf = buf.to_vec();
+    <span class="kw">async fn </span>write_all_at_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: u64, buf: Bytes) -&gt; IOResult&lt;()&gt; {
         <span class="kw">let </span>file = <span class="self">self</span>.no_lock_fd.clone();
-        <span class="self">Self</span>::blocking_call(<span class="kw">move </span>|| file.write_all_at(<span class="kw-2">&amp;</span>buf, offset)).<span class="kw">await
-    </span>}
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; <span class="self">self</span>.size().try_into()<span class="question-mark">?</span>];
-        <span class="self">self</span>.read_at(<span class="kw-2">&amp;mut </span>buf, <span class="number">0</span>).<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// TODO: verify read size
-        </span><span class="prelude-val">Ok</span>(buf)
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_at(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8], offset: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>ioring) = <span class="self">self</span>.ioring {
-            <span class="self">self</span>.read_at_aio(buf, offset, ioring).<span class="kw">await
-        </span>} <span class="kw">else </span>{
-            <span class="self">self</span>.read_at_sync(buf, offset).<span class="kw">await
+        <span class="kw">if </span>buf.len() &lt;= MAX_SYNC_OPERATION_SIZE {
+            <span class="self">Self</span>::inplace_sync_call(<span class="kw">move </span>|| file.write_all_at(<span class="kw-2">&amp;</span>buf, offset))
+        } <span class="kw">else </span>{
+            <span class="self">Self</span>::background_sync_call(<span class="kw">move </span>|| file.write_all_at(<span class="kw-2">&amp;</span>buf, offset)).<span class="kw">await
         </span>}
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_at_sync(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8], offset: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>file = <span class="self">self</span>.no_lock_fd.clone();
-        <span class="kw">let </span><span class="kw-2">mut </span>new_buf = buf.to_vec();
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BytesMut&gt; {
+        <span class="self">self</span>.read_exact_at_allocate(<span class="self">self</span>.size().try_into()<span class="question-mark">?</span>, <span class="number">0</span>)
+            .<span class="kw">await
+    </span>}
 
-        <span class="kw">let </span>new_buf =
-            <span class="self">Self</span>::blocking_call(<span class="kw">move </span>|| file.read_exact_at(<span class="kw-2">&amp;mut </span>new_buf, offset).map(|<span class="kw">_</span>| new_buf))
-                .<span class="kw">await</span><span class="question-mark">?</span>;
-        buf.clone_from_slice(new_buf.as_slice());
-        <span class="prelude-val">Ok</span>(())
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_exact_at_allocate(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        size: usize,
+        offset: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;BytesMut&gt; {
+        <span class="kw">let </span>buf = BytesMut::zeroed(size);
+        <span class="self">self</span>.read_exact_at(buf, offset).<span class="kw">await
+    </span>}
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_exact_at(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: BytesMut, offset: u64) -&gt; <span class="prelude-ty">Result</span>&lt;BytesMut&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>ioring) = <span class="self">self</span>.ioring {
+            <span class="self">self</span>.read_exact_at_aio(buf, offset, ioring).<span class="kw">await
+        </span>} <span class="kw">else </span>{
+            <span class="self">self</span>.read_exact_at_sync(buf, offset).<span class="kw">await
+        </span>}
     }
 
-    <span class="kw">async fn </span>read_at_aio(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8], offset: u64, ioring: <span class="kw-2">&amp;</span>Rio) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_exact_at_sync(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">mut </span>buf: BytesMut,
+        offset: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;BytesMut&gt; {
+        <span class="kw">let </span>file = <span class="self">self</span>.no_lock_fd.clone();
+
+        <span class="prelude-val">Ok</span>(<span class="kw">if </span>buf.len() &lt;= MAX_SYNC_OPERATION_SIZE {
+            <span class="self">Self</span>::inplace_sync_call(<span class="kw">move </span>|| file.read_exact_at(<span class="kw-2">&amp;mut </span>buf, offset).map(|<span class="kw">_</span>| buf))
+        } <span class="kw">else </span>{
+            <span class="self">Self</span>::background_sync_call(<span class="kw">move </span>|| file.read_exact_at(<span class="kw-2">&amp;mut </span>buf, offset).map(|<span class="kw">_</span>| buf))
+                .<span class="kw">await
+        </span>}<span class="question-mark">?</span>)
+    }
+
+    <span class="kw">async fn </span>read_exact_at_aio(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">mut </span>buf: BytesMut,
+        offset: u64,
+        ioring: <span class="kw-2">&amp;</span>Rio,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;BytesMut&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob file read at&quot;</span>);
         <span class="kw">if </span>buf.is_empty() {
             <span class="macro">warn!</span>(<span class="string">&quot;file read_at empty buf&quot;</span>);
@@ -375,7 +557,7 @@
             <span class="macro">debug!</span>(<span class="string">&quot;blob file read at proggress {}/{}&quot;</span>, size, buf.len());
         }
         <span class="macro">debug!</span>(<span class="string">&quot;blob file read at complited: {}&quot;</span>, size);
-        <span class="prelude-val">Ok</span>(())
+        <span class="prelude-val">Ok</span>(buf)
     }
 
     <span class="kw">async fn </span>from_tokio_file(file: TokioFile, ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;) -&gt; IOResult&lt;<span class="self">Self</span>&gt; {
@@ -397,7 +579,7 @@
             compl.<span class="kw">await
         </span>} <span class="kw">else </span>{
             <span class="kw">let </span>fd = <span class="self">self</span>.no_lock_fd.clone();
-            <span class="self">Self</span>::blocking_call(<span class="kw">move </span>|| fd.sync_all()).<span class="kw">await
+            <span class="self">Self</span>::background_sync_call(<span class="kw">move </span>|| fd.sync_all()).<span class="kw">await
         </span>}
     }
 
@@ -421,7 +603,7 @@
         }
     }
 
-    <span class="kw">async fn </span>blocking_call&lt;F, R&gt;(f: F) -&gt; R
+    <span class="kw">async fn </span>background_sync_call&lt;F, R&gt;(f: F) -&gt; R
     <span class="kw">where
         </span>F: FnOnce() -&gt; R + Send + <span class="lifetime">&#39;static</span>,
         R: Send + <span class="lifetime">&#39;static</span>,
@@ -431,10 +613,18 @@
             </span>.expect(<span class="string">&quot;spawned blocking task failed&quot;</span>)
     }
 
+    <span class="kw">fn </span>inplace_sync_call&lt;F, R&gt;(f: F) -&gt; R
+    <span class="kw">where
+        </span>F: FnOnce() -&gt; R + Send + <span class="lifetime">&#39;static</span>,
+        R: Send + <span class="lifetime">&#39;static</span>,
+    {
+        tokio::task::block_in_place(<span class="kw">move </span>|| f())
+    }
+
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>created_at(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;SystemTime&gt; {
         <span class="kw">let </span>metadata = <span class="self">self</span>.no_lock_fd.metadata()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(metadata.created().unwrap_or(SystemTime::now()))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

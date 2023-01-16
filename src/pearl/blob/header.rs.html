@@ -61,6 +61,11 @@
 <span id="61">61</span>
 <span id="62">62</span>
 <span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
 </pre><pre class="rust"><code><span class="kw">use </span>anyhow::{Context, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>bincode::{deserialize, serialized_size};
 <span class="kw">use </span>rio::Rio;
@@ -93,8 +98,8 @@
             .<span class="kw">await
             </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;failed to open blob file: {}&quot;</span>, name))<span class="question-mark">?</span>;
         <span class="kw">let </span>size = serialized_size(<span class="kw-2">&amp;</span>Header::new()).expect(<span class="string">&quot;failed to serialize default header&quot;</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; size <span class="kw">as </span>usize];
-        file.read_at(<span class="kw-2">&amp;mut </span>buf, <span class="number">0</span>)
+        <span class="kw">let </span>buf = file
+            .read_exact_at_allocate(size <span class="kw">as </span>usize, <span class="number">0</span>)
             .<span class="kw">await
             </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;failed to read from file: {}&quot;</span>, name))<span class="question-mark">?</span>;
         <span class="kw">let </span>header: <span class="self">Self </span>= deserialize(<span class="kw-2">&amp;</span>buf)
@@ -123,6 +128,11 @@
         }
         <span class="prelude-val">Ok</span>(())
     }
+
+    <span class="attribute">#[inline]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>serialized_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        serialized_size(<span class="kw-2">&amp;</span><span class="self">self</span>).expect(<span class="string">&quot;blob header size&quot;</span>)
+    }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

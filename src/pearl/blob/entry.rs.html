@@ -77,7 +77,9 @@
 <span id="77">77</span>
 <span id="78">78</span>
 <span id="79">79</span>
-</pre><pre class="rust"><code><span class="kw">use </span>bytes::Bytes;
+<span id="80">80</span>
+<span id="81">81</span>
+</pre><pre class="rust"><code><span class="kw">use </span>bytes::BytesMut;
 
 <span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
 
@@ -104,13 +106,13 @@
     </span><span class="kw">pub async fn </span>load(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Record&gt; {
         <span class="kw">let </span>meta_size = <span class="self">self</span>.header.meta_size().try_into()<span class="question-mark">?</span>;
         <span class="kw">let </span>data_size: usize = <span class="self">self</span>.header.data_size().try_into()<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; data_size + meta_size];
         <span class="comment">// The number of bytes read is checked by File internally.
-        </span><span class="self">self</span>.blob_file
-            .read_at(<span class="kw-2">&amp;mut </span>buf, <span class="self">self</span>.header.meta_offset())
+        </span><span class="kw">let </span>buf = <span class="self">self
+            </span>.blob_file
+            .read_exact_at_allocate(data_size + meta_size, <span class="self">self</span>.header.meta_offset())
             .<span class="kw">await
             </span>.with_context(|| <span class="string">&quot;blob load failed&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = Bytes::from(buf);
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = buf.freeze();
         <span class="kw">let </span>data_buf = buf.split_off(meta_size);
         <span class="kw">let </span>meta = Meta::from_raw(<span class="kw-2">&amp;</span>buf)<span class="question-mark">?</span>;
         <span class="kw">let </span>record = Record::new(<span class="self">self</span>.header.clone(), meta, data_buf);
@@ -120,20 +122,22 @@
     <span class="doccomment">/// Returns only data.
     /// # Errors
     /// Fails after any disk IO errors.
-    </span><span class="kw">pub async fn </span>load_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+    </span><span class="kw">pub async fn </span>load_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BytesMut&gt; {
         <span class="kw">let </span>data_offset = <span class="self">self</span>.header.data_offset();
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; <span class="self">self</span>.header.data_size().try_into()<span class="question-mark">?</span>];
-        <span class="self">self</span>.blob_file.read_at(<span class="kw-2">&amp;mut </span>buf, data_offset).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(buf)
-    }
+        <span class="self">self</span>.blob_file
+            .read_exact_at_allocate(<span class="self">self</span>.header.data_size().try_into()<span class="question-mark">?</span>, data_offset)
+            .<span class="kw">await
+    </span>}
 
     <span class="doccomment">/// Loads meta data from fisk, and returns reference to it.
     /// # Errors
     /// Fails after any disk IO errors.
     </span><span class="kw">pub async fn </span>load_meta(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Meta&gt;&gt; {
         <span class="kw">let </span>meta_offset = <span class="self">self</span>.header.meta_offset();
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; <span class="self">self</span>.header.meta_size().try_into()<span class="question-mark">?</span>];
-        <span class="self">self</span>.blob_file.read_at(<span class="kw-2">&amp;mut </span>buf, meta_offset).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>buf = <span class="self">self
+            </span>.blob_file
+            .read_exact_at_allocate(<span class="self">self</span>.header.meta_size().try_into()<span class="question-mark">?</span>, meta_offset)
+            .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="self">self</span>.meta = <span class="prelude-val">Some</span>(Meta::from_raw(<span class="kw-2">&amp;</span>buf)<span class="question-mark">?</span>);
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.meta.as_ref())
     }
@@ -157,4 +161,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

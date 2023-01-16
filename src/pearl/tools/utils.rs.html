@@ -175,21 +175,17 @@
 <span id="175">175</span>
 <span id="176">176</span>
 <span id="177">177</span>
-<span id="178">178</span>
-<span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::blob::index::FileIndexTrait;
+<span class="kw">use </span><span class="kw">crate</span>::blob::index::HEADER_VERSION;
 <span class="kw">use </span><span class="kw">crate</span>::blob::FileName;
 <span class="kw">use </span><span class="kw">crate</span>::ArrayKey;
-<span class="kw">use </span><span class="kw">crate</span>::blob::index::HEADER_VERSION;
 <span class="kw">use </span>futures::Future;
 
 <span class="doccomment">/// Read index header from file
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>read_index_header(path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;IndexHeader&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>file = OpenOptions::new().read(<span class="bool-val">true</span>).open(path)<span class="question-mark">?</span>;
-    <span class="kw">let </span>header_size = IndexHeader::serialized_size_default()<span class="question-mark">? </span><span class="kw">as </span>usize;
+    <span class="kw">let </span>header_size = IndexHeader::serialized_size_default() <span class="kw">as </span>usize;
     <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[<span class="number">0</span>; header_size];
     file.read_exact(<span class="kw-2">&amp;mut </span>buf)<span class="question-mark">?</span>;
     <span class="kw">let </span>header = IndexHeader::from_raw(<span class="kw-2">&amp;</span>buf)<span class="question-mark">?</span>;
@@ -308,7 +304,6 @@
         <span class="prelude-val">Ok</span>(runtime) =&gt; <span class="prelude-val">Ok</span>(runtime.block_on(f)),
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(tokio::runtime::Runtime::new()<span class="question-mark">?</span>.block_on(f)),
     }
-    
 }
 
 <span class="kw">async fn </span>index_from_file&lt;K&gt;(
@@ -316,17 +311,14 @@
     path: <span class="kw-2">&amp;</span>Path,
 ) -&gt; AnyResult&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;record::Header&gt;&gt;&gt;
 <span class="kw">where
-    for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static
-</span>{
+    for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static</span>,
+{
     <span class="kw">let </span>headers = <span class="kw">match </span>header.version() {
         HEADER_VERSION =&gt; {
-            <span class="kw">let </span>index = BPTreeFileIndex::&lt;K&gt;::from_file(
-                FileName::from_path(path)<span class="question-mark">?</span>,
-                <span class="prelude-val">None</span>,
-            ).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>index = BPTreeFileIndex::&lt;K&gt;::from_file(FileName::from_path(path)<span class="question-mark">?</span>, <span class="prelude-val">None</span>).<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="kw">let </span>res = index.get_records_headers(index.blob_size()).<span class="kw">await</span><span class="question-mark">?</span>;
             AnyResult::&lt;<span class="kw">_</span>&gt;::Ok(res.<span class="number">0</span>)
-        },
+        }
         <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::index_header_validation_error(<span class="string">&quot;unsupported header version&quot;</span>).into()),
     }<span class="question-mark">?</span>;
     <span class="kw">let </span>headers = headers
@@ -359,5 +351,6 @@
 <span class="doccomment">/// Read index file, sync
 </span><span class="kw">pub fn </span>read_index_sync(path: <span class="kw-2">&amp;</span>Path) -&gt; AnyResult&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;record::Header&gt;&gt;&gt; {
     block_on(read_index(path))<span class="question-mark">?
-</span>}</code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</span>}
+</code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

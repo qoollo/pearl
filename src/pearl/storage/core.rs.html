@@ -1321,6 +1321,15 @@
 <span id="1321">1321</span>
 <span id="1322">1322</span>
 <span id="1323">1323</span>
+<span id="1324">1324</span>
+<span id="1325">1325</span>
+<span id="1326">1326</span>
+<span id="1327">1327</span>
+<span id="1328">1328</span>
+<span id="1329">1329</span>
+<span id="1330">1330</span>
+<span id="1331">1331</span>
+<span id="1332">1332</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     error::ValidationErrorKind,
     filter::{CombinedFilter, FilterTrait},
@@ -1852,7 +1861,16 @@
             .map(|blob| blob.data.read_any(key, meta, <span class="bool-val">false</span>))
             .collect();
         <span class="macro">debug!</span>(<span class="string">&quot;read with optional meta {} closed blobs&quot;</span>, stream.len());
-        <span class="kw">let </span><span class="kw-2">mut </span>task = stream.skip_while(Result::is_err);
+        
+        <span class="kw">let </span><span class="kw-2">mut </span>task = stream.skip_while(|read_res| {
+            <span class="kw">match </span>read_res {
+                <span class="prelude-val">Ok</span>(inner_res) =&gt; inner_res.is_not_found(), <span class="comment">// Skip not found
+                </span><span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="macro">debug!</span>(<span class="string">&quot;error reading data from Blob (blob.read_any): {:?}&quot;</span>, e);
+                    <span class="bool-val">true </span><span class="comment">// skip errors
+                </span>}
+            }
+        });
 
         task.next().<span class="kw">await</span>.unwrap_or(<span class="prelude-val">Ok</span>(ReadResult::NotFound))
     }
@@ -2645,4 +2663,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

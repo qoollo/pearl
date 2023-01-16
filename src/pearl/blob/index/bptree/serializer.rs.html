@@ -249,7 +249,17 @@
 <span id="249">249</span>
 <span id="250">250</span>
 <span id="251">251</span>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+</pre><pre class="rust"><code><span class="kw">use </span>bytes::{BufMut, BytesMut};
+
+<span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
 
 <span class="kw">type </span>MinKeyWithOffset = (Vec&lt;u8&gt;, u64);
 <span class="kw">type </span>NodesWithLayerSize = (Vec&lt;MinKeyWithOffset&gt;, u64);
@@ -297,7 +307,13 @@
                 </span>.headers_btree
                 .iter()
                 .fold(<span class="number">0</span>, |acc, (_k, v)| acc + v.len());
-            <span class="kw">let </span>header = IndexHeader::new(record_header_size, headers_len, meta.len(), K::LEN, blob_size);
+            <span class="kw">let </span>header = IndexHeader::new(
+                record_header_size,
+                headers_len,
+                meta.len(),
+                K::LEN,
+                blob_size,
+            );
             <span class="prelude-val">Ok</span>(HeaderStage {
                 headers_btree: <span class="self">self</span>.headers_btree,
                 header,
@@ -314,7 +330,7 @@
     for</span>&lt;<span class="lifetime">&#39;b</span>&gt; K: Key&lt;<span class="lifetime">&#39;b</span>&gt; + <span class="lifetime">&#39;static</span>,
 {
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>tree_stage(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;TreeStage&lt;<span class="lifetime">&#39;a</span>, K&gt;&gt; {
-        <span class="kw">let </span>hs = <span class="self">self</span>.header.serialized_size()<span class="question-mark">? </span><span class="kw">as </span>usize;
+        <span class="kw">let </span>hs = <span class="self">self</span>.header.serialized_size() <span class="kw">as </span>usize;
         <span class="kw">let </span>external_buf_size = <span class="self">self</span>.header.meta_size;
         <span class="kw">let </span>meta_and_buf_end = (hs + external_buf_size) <span class="kw">as </span>u64;
         <span class="kw">let </span>headers_size = <span class="self">self</span>.header.records_count * <span class="self">self</span>.header.record_header_size;
@@ -462,13 +478,13 @@
 <span class="kw">where
     for</span>&lt;<span class="lifetime">&#39;b</span>&gt; K: Key&lt;<span class="lifetime">&#39;b</span>&gt;,
 {
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(IndexHeader, TreeMeta, Vec&lt;u8&gt;)&gt; {
-        <span class="kw">let </span>hs = <span class="self">self</span>.header.serialized_size()<span class="question-mark">? </span><span class="kw">as </span>usize;
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(IndexHeader, TreeMeta, BytesMut)&gt; {
+        <span class="kw">let </span>hs = <span class="self">self</span>.header.serialized_size() <span class="kw">as </span>usize;
         <span class="kw">let </span>fsize = <span class="self">self</span>.header.meta_size;
         <span class="kw">let </span>msize = <span class="self">self</span>.meta_buf.len();
         <span class="kw">let </span>data_size = hs + fsize + <span class="self">self</span>.headers_size + msize + <span class="self">self</span>.tree_buf.len();
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::with_capacity(data_size);
-        serialize_into(<span class="kw-2">&amp;mut </span>buf, <span class="kw-2">&amp;</span><span class="self">self</span>.header)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = BytesMut::with_capacity(data_size);
+        serialize_into((<span class="kw-2">&amp;mut </span>buf).writer(), <span class="kw-2">&amp;</span><span class="self">self</span>.header)<span class="question-mark">?</span>;
         buf.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.meta);
         buf.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.meta_buf);
         buf.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.tree_buf);
@@ -482,11 +498,11 @@
             <span class="self">self</span>.header.blob_size,
             hash,
         );
-        serialize_into(buf.as_mut_slice(), <span class="kw-2">&amp;</span>header)<span class="question-mark">?</span>;
+        serialize_into(<span class="kw-2">&amp;mut </span>buf[..], <span class="kw-2">&amp;</span>header)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>((header, <span class="self">self</span>.metadata, buf))
     }
 
-    <span class="kw">fn </span>append_headers(headers_btree: <span class="kw-2">&amp;</span>InMemoryIndex&lt;K&gt;, buf: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">fn </span>append_headers(headers_btree: <span class="kw-2">&amp;</span>InMemoryIndex&lt;K&gt;, buf: <span class="kw-2">&amp;mut </span>BytesMut) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="comment">// headers are pushed in reversed order because it helps to perform something like update
         // operation: the latest written (the first after reverse) record will be retrieved from file
         </span>headers_btree
@@ -501,4 +517,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="pearl" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>
