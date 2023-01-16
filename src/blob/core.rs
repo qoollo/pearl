@@ -611,11 +611,27 @@ where
 {
     type Filter = CombinedFilter<K>;
     async fn check_filter(&self, item: &K) -> FilterResult {
-        self.index.get_filter().contains(&self.index, item).await
+        if self.index.get_filter().contains(&self.index, item).await == FilterResult::NotContains {
+            return FilterResult::NotContains;
+        }
+
+        if !self.index.contains_key_fast(item).unwrap_or(true) {
+            return FilterResult::NotContains;
+        }
+
+        return FilterResult::NeedAdditionalCheck;
     }
 
     fn check_filter_fast(&self, item: &K) -> FilterResult {
-        self.index.get_filter().contains_fast(item)
+        if self.index.get_filter().contains_fast(item) == FilterResult::NotContains {
+            return FilterResult::NotContains;
+        }
+
+        if !self.index.contains_key_fast(item).unwrap_or(true) {
+            return FilterResult::NotContains;
+        }
+
+        return FilterResult::NeedAdditionalCheck;
     }
 
     async fn offload_buffer(&mut self, _: usize, _: usize) -> usize {
