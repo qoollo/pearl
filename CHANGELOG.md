@@ -4,7 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Use InMemoryIndex as an additional filter on Blob level (#238)
 
 #### Changed
 
