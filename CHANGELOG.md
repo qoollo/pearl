@@ -10,7 +10,7 @@ Pearl changelog
 
 
 #### Fixed
-
+- Converting UnexpectedEOF errors to bincode errors before deserialize() calls (#233)
 
 #### Updated
 
