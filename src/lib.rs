@@ -64,7 +64,7 @@ pub use filter::{Bloom, BloomDataProvider, BloomProvider, Config as BloomConfig,
 pub mod tools;
 
 pub use blob::Entry;
-pub use error::{Error, Kind as ErrorKind};
+pub use error::{Error, Kind as ErrorKind, unexpected_eof_converter, unexpected_eof_converter_ctx};
 pub use record::Meta;
 pub use rio;
 pub use storage::{ArrayKey, BlobRecordTimestamp, Builder, Key, ReadResult, RefKey, Storage};

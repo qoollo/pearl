@@ -124,11 +124,11 @@ where
         ioring: Option<Rio>,
         blob_size: u64,
     ) -> Result<Self> {
-        let findex = FileIndex::from_file(name.clone(), ioring.clone()).await?;
+        let findex = FileIndex::from_file(name.clone(), ioring.clone()).await.map_err(unexpected_eof_converter)?;
         findex
             .validate(blob_size)
             .with_context(|| "Header is corrupt")?;
-        let meta_buf = findex.read_meta().await?;
+        let meta_buf = findex.read_meta().await.map_err(unexpected_eof_converter)?;
         let (bloom_filter, range_filter, bloom_offset) = Self::deserialize_filters(&meta_buf)?;
         let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
         let bloom_filter = if params.bloom_is_on {
@@ -208,7 +208,7 @@ where
         let (record_headers, records_count) = findex.get_records_headers(blob_size).await?;
         self.mem = Some(compute_mem_attrs(&record_headers, records_count));
         self.inner = State::InMemory(record_headers);
-        let meta_buf = findex.read_meta().await?;
+        let meta_buf = findex.read_meta().await.map_err(unexpected_eof_converter)?;
         let (bloom_filter, range_filter, _) = Self::deserialize_filters(&meta_buf)?;
         let bloom_filter = if self.params.bloom_is_on {
             Some(bloom_filter)

@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use anyhow::Error as AHError;
 
 /// The error type for `Storage` operations.
 #[derive(Debug, Error)]
@@ -44,6 +45,10 @@ impl Error {
 
     pub(crate) fn io(s: String) -> Self {
         Self::new(Kind::IO(s))
+    }
+
+    pub(crate) fn bincode(s: String) -> Self {
+        Self::new(Kind::Bincode(s))
     }
 
     pub(crate) fn file_unavailable(kind: IOErrorKind) -> Self {
@@ -173,4 +178,24 @@ impl AsPearlError for anyhow::Error {
     fn as_pearl_error(&self) -> Option<&Error> {
         self.downcast_ref()
     }
+}
+
+/// Util function for UnexpectedEOF error conversion
+pub fn unexpected_eof_converter(e: AHError) -> AHError {
+    if let Some(io_error) = e.downcast_ref::<std::io::Error>() {
+        if let std::io::ErrorKind::UnexpectedEof = io_error.kind() {
+            return AHError::from(Error::bincode("unexpected eof".into()));
+        }
+    }
+    e
+}
+
+/// Util function for UnexpectedEOF error conversion with additional context
+pub fn unexpected_eof_converter_ctx(e: AHError, context: String) -> AHError {
+    if let Some(io_error) = e.downcast_ref::<std::io::Error>() {
+        if let std::io::ErrorKind::UnexpectedEof = io_error.kind() {
+            return AHError::from(Error::bincode("unexpected eof".into())).context(context);
+        }
+    }
+    e.context(context)
 }

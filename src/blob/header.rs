@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use bincode::{deserialize, serialized_size};
 use rio::Rio;
 
-use crate::{blob::File, error::ValidationErrorKind, Error};
+use crate::{blob::File, error::ValidationErrorKind, Error, unexpected_eof_converter_ctx};
 
 use super::FileName;
 
@@ -33,7 +33,8 @@ impl Header {
         let buf = file
             .read_exact_at_allocate(size as usize, 0)
             .await
-            .with_context(|| format!("failed to read from file: {}", name))?;
+            .map_err(|e| unexpected_eof_converter_ctx(e, 
+                format!("failed to read from file: {}", name)))?;
         let header: Self = deserialize(&buf)
             .with_context(|| format!("failed to deserialize header from file: {}", name))?;
         header.validate().context("header validation failed")?;

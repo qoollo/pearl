@@ -210,7 +210,7 @@ where
             offset = if offset == self.metadata.tree_offset {
                 Node::key_offset_serialized(&self.root_node, key)?
             } else {
-                buf = self.file.read_exact_at(buf, offset).await?;
+                buf = self.file.read_exact_at(buf, offset).await.map_err(unexpected_eof_converter)?;
                 Node::key_offset_serialized(&buf, key)?
             };
         }
@@ -226,7 +226,7 @@ where
         let buf_size = self.leaf_node_buf_size(leaf_offset);
         assert!(buf_size <= BLOCK_SIZE);
         buf.resize(buf_size, 0);
-        buf = self.file.read_exact_at(buf, leaf_offset).await?;
+        buf = self.file.read_exact_at(buf, leaf_offset).await.map_err(unexpected_eof_converter)?;
         if let Some((record_header, offset)) =
             self.read_header_buf(&buf, key, self.header.record_header_size)?
         {
@@ -300,7 +300,7 @@ where
         let buf_size = self.leaf_node_buf_size(leaf_offset);
         assert!(buf_size <= BLOCK_SIZE);
         buf.resize(buf_size, 0);
-        buf = self.file.read_exact_at(buf, leaf_offset).await?;
+        buf = self.file.read_exact_at(buf, leaf_offset).await.map_err(unexpected_eof_converter)?;
         let rh_size = self.header.record_header_size;
         if let Some((header, offset)) = self.read_header_buf(&buf, key, rh_size)? {
             let mut headers = Vec::with_capacity(1);
@@ -352,7 +352,7 @@ where
         let leaves_end = self.metadata.leaves_offset + records_size as u64;
         let mut buf = BytesMut::zeroed(record_header_size as usize);
         while offset + record_header_size <= leaves_end {
-            buf = self.file.read_exact_at(buf, offset).await?;
+            buf = self.file.read_exact_at(buf, offset).await.map_err(unexpected_eof_converter)?;
             let header: RecordHeader = deserialize(&buf)?;
             if header.key() == headers[0].key() {
                 headers.push(header);
@@ -408,7 +408,8 @@ where
 
     async fn read_index_header(file: &File) -> Result<IndexHeader> {
         let header_size = IndexHeader::serialized_size_default() as usize;
-        let buf = file.read_exact_at_allocate(header_size, 0).await?;
+        let buf = file.read_exact_at_allocate(header_size, 0).await
+            .map_err(unexpected_eof_converter)?;
         IndexHeader::from_raw(&buf).map_err(Into::into)
     }
 
@@ -426,7 +427,8 @@ where
         let fsize = header.meta_size as u64;
         let hs = header.serialized_size();
         let meta_offset = hs + fsize;
-        let buf = file.read_exact_at_allocate(meta_size, meta_offset).await?;
+        let buf = file.read_exact_at_allocate(meta_size, meta_offset).await
+            .map_err(unexpected_eof_converter)?;
         TreeMeta::from_raw(&buf).map_err(Into::into)
     }
 

@@ -30,7 +30,8 @@ impl Entry {
             .blob_file
             .read_exact_at_allocate(data_size + meta_size, self.header.meta_offset())
             .await
-            .with_context(|| "blob load failed")?;
+            .map_err(|e| unexpected_eof_converter_ctx(e, 
+                "blob load failed".into()))?;
         let mut buf = buf.freeze();
         let data_buf = buf.split_off(meta_size);
         let meta = Meta::from_raw(&buf)?;
@@ -56,7 +57,9 @@ impl Entry {
         let buf = self
             .blob_file
             .read_exact_at_allocate(self.header.meta_size().try_into()?, meta_offset)
-            .await?;
+            .await
+            .map_err(|e| unexpected_eof_converter_ctx(e, 
+                format!("failed to read, offset: {}", meta_offset)))?;
         self.meta = Some(Meta::from_raw(&buf)?);
         Ok(self.meta.as_ref())
     }

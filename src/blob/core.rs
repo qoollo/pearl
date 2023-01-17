@@ -534,7 +534,8 @@ impl RawRecords {
         // vector contains usize len in front
         let buf = file
             .read_exact_at_allocate(size_of_magic_byte + size_of_len, current_offset)
-            .await?;
+            .await
+            .map_err(unexpected_eof_converter)?;
         let (magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         debug!("blob raw records start, read at {} bytes", buf.len());
         let magic_byte = bincode::deserialize::<u64>(magic_byte_buf)
@@ -588,7 +589,8 @@ impl RawRecords {
             .file
             .read_exact_at_allocate(self.record_header_size as usize, self.current_offset)
             .await
-            .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
+            .map_err(|e| unexpected_eof_converter_ctx(e, 
+                format!("read at call failed, size {}", self.current_offset)))?;
         let header = RecordHeader::from_raw(&buf)
             .map_err(|e| Error::from(ErrorKind::Bincode(e.to_string())))
             .with_context(|| {
