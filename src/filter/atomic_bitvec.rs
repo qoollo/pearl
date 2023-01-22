@@ -31,6 +31,7 @@ impl AtomicBitVec {
         }
     }
 
+    /// Creates new AtomicBitVec with specific size in bits
     pub(crate) fn new(bits_count: usize) -> Self {
         let items_count = Self::items_count(bits_count);
         let mut data = Vec::with_capacity(items_count);
@@ -44,9 +45,11 @@ impl AtomicBitVec {
         }
     }
 
+    /// Length in bits
     pub(crate) fn len(&self) -> usize {
         self.bits_count
     }
+    /// Occupied memory in bytes (includes internal vector capacity)
     pub(crate) fn size_in_mem(&self) -> usize {
         self.data.capacity() * Self::ITEM_BYTES_SIZE
     }
@@ -103,7 +106,7 @@ impl AtomicBitVec {
     }
 
     /// Merge bits from 'other' into self. Other is mut to prevent data modification during merge
-    pub(crate) fn merge_with(&mut self, other: &mut Self) -> Result<(), AtomicBitVecError> {
+    pub(crate) fn or_with(&mut self, other: &mut Self) -> Result<(), AtomicBitVecError> {
         if self.bits_count != other.bits_count {
             return Err(AtomicBitVecError::BitsCountMismatch);
         }
@@ -209,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    fn test_merge_with() {
+    fn test_or_with() {
         let mut bitvec_a = AtomicBitVec::new(111);
         for i in 0..bitvec_a.len() {
             bitvec_a.set(i, i % 5 == 0);
@@ -220,7 +223,7 @@ mod tests {
             bitvec_b.set(i, i % 3 == 0);
         }
 
-        bitvec_a.merge_with(&mut bitvec_b).expect("merge success");
+        bitvec_a.or_with(&mut bitvec_b).expect("merge success");
 
         for i in 0..bitvec_a.len() {
             assert_eq!((i % 3 == 0) || (i % 5) == 0, bitvec_a.get(i));
@@ -228,11 +231,11 @@ mod tests {
     }
 
     #[test]
-    fn test_merge_with_mismatch_size() {
+    fn test_or_with_mismatch_size() {
         let mut bitvec_a = AtomicBitVec::new(111);
         let mut bitvec_b = AtomicBitVec::new(112);
 
-        bitvec_a.merge_with(&mut bitvec_b).expect_err("merge error");
+        bitvec_a.or_with(&mut bitvec_b).expect_err("merge error");
     }
 
     #[test]
@@ -254,6 +257,7 @@ mod tests {
 
     #[test]
     fn test_backward_compat() {
+        // Data acquired from BitVec<u64, Lsb0> from bitvec crate
         let bits_count = 1111;
         let raw_vec: Vec<u64> = vec![1190112520884487201, 2380365779257329730, 4760450083537948804, 9520900168149639432, 595056260442243600, 1190112520884495393, 3533146546375821378, 4760450083537948804, 9520900167075897608, 595056260442243600, 1190112520951596065, 2380225041768974402, 4760450083537949316, 9592957761113825544, 595056260442243600, 1190113070640301089, 2380225041768974402, 4329604];
 
