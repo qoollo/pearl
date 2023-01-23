@@ -29,6 +29,7 @@ where
     file: File,
     current_offset: u64,
     created_at: SystemTime,
+    max_dirty_bytes_before_sync: usize,
 }
 
 impl<K> Blob<K>
@@ -46,6 +47,7 @@ where
         name: FileName,
         ioring: Option<Rio>,
         index_config: IndexConfig,
+        max_dirty_bytes_before_sync: usize,
     ) -> Result<Self> {
         let file = File::create(name.to_path(), ioring.clone()).await?;
         let index = Self::create_index(name.clone(), ioring, index_config);
@@ -57,6 +59,7 @@ where
             file,
             current_offset: 0,
             created_at: SystemTime::now(),
+            max_dirty_bytes_before_sync,
         };
         blob.write_header().await?;
         Ok(blob)
@@ -77,7 +80,14 @@ where
         let len = buf.len() as u64;
         self.file.write_append_all(buf.freeze()).await?;
         self.current_offset = len;
+        self.try_flush_dirty_bytes_in_background();
         Ok(())
+    }
+
+    fn try_flush_dirty_bytes_in_background(&self) {
+        if self.file.dirty_bytes() > self.max_dirty_bytes_before_sync {
+            self.file.background_fsyncdata();
+        }
     }
 
     #[inline]
@@ -124,6 +134,7 @@ where
         path: PathBuf,
         ioring: Option<Rio>,
         index_config: IndexConfig,
+        max_dirty_bytes_before_sync: usize,
     ) -> Result<Self> {
         let now = Instant::now();
         let file = File::open(&path, ioring.clone()).await?;
@@ -178,6 +189,7 @@ where
             index,
             current_offset: size,
             created_at,
+            max_dirty_bytes_before_sync,
         };
         trace!("call update index");
         if is_index_corrupted || size as u64 > header_size {
@@ -255,6 +267,7 @@ where
         let header = record.into_header();
         self.index.push(key, header.clone())?;
         self.current_offset += bytes_written;
+        self.try_flush_dirty_bytes_in_background();
         Ok(header)
     }
 
@@ -269,6 +282,7 @@ where
         let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
         blob.index.push(key, record.into_header())?;
         blob.current_offset += bytes_written;
+        blob.try_flush_dirty_bytes_in_background();
         Ok(())
     }
 

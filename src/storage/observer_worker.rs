@@ -217,7 +217,13 @@ where
 {
     let next_name = inner.next_blob_name()?;
     trace!("obtaining new active blob");
-    let new_active = Blob::open_new(next_name, inner.ioring.clone(), inner.config.index())
+    let max_dirty_bytes_before_sync = inner.config.max_dirty_bytes_before_sync();
+    let new_active = 
+        Blob::open_new(
+            next_name,
+            inner.ioring.clone(),
+            inner.config.index(),
+            max_dirty_bytes_before_sync)
         .await?
         .boxed();
     Ok(new_active)

@@ -18,6 +18,7 @@ pub struct File {
     ioring: Option<Rio>,
     no_lock_fd: Arc<StdFile>, // requires only for read_at/write_at methods
     size: Arc<AtomicU64>,
+    dirty_bytes: Arc<AtomicUsize>,
 }
 
 #[derive(PartialEq, Eq)]
@@ -54,6 +55,10 @@ impl File {
 
     pub fn size(&self) -> u64 {
         self.size.load(ORD)
+    }
+
+    pub fn dirty_bytes(&self) -> usize {
+        self.dirty_bytes.load(ORD)
     }
 
     pub(crate) async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
@@ -117,7 +122,7 @@ impl File {
         let len = first_len + second_len;
         let mut offset = self.size.fetch_add(len, Ordering::SeqCst);
         let file = self.no_lock_fd.clone();
-        if len <= MAX_SYNC_OPERATION_SIZE as u64 {
+        let res = if len <= MAX_SYNC_OPERATION_SIZE as u64 {
             Self::inplace_sync_call(move || {
                 file.write_all_at(&first_buf, offset)?;
                 offset = offset + first_len;
@@ -132,7 +137,11 @@ impl File {
                 Ok(())
             })
             .await
+        };
+        if res.is_ok() {
+            self.dirty_bytes.fetch_add((first_len + second_len) as usize, ORD);
         }
+        res
     }
 
     pub(crate) async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
@@ -146,6 +155,7 @@ impl File {
     async fn write_all_at_aio(&self, offset: u64, buf: Bytes, ioring: &Rio) -> IOResult<()> {
         let compl = ioring.write_at(&*self.no_lock_fd, &buf, offset);
         let count = compl.await?;
+        self.dirty_bytes.fetch_add(count, ORD);
         // on blob level this error will be treated as unavailable file (rio doesn't return error
         // in explicit format so we do that for it)
         // P.S.: previous solution was to panic, where this situation appears, seems like this solution
@@ -159,11 +169,14 @@ impl File {
 
     async fn write_all_at_sync(&self, offset: u64, buf: Bytes) -> IOResult<()> {
         let file = self.no_lock_fd.clone();
-        if buf.len() <= MAX_SYNC_OPERATION_SIZE {
-            Self::inplace_sync_call(move || file.write_all_at(&buf, offset))
+        let length = buf.len();
+        if length <= MAX_SYNC_OPERATION_SIZE {
+            Self::inplace_sync_call(move || file.write_all_at(&buf, offset))?
         } else {
-            Self::background_sync_call(move || file.write_all_at(&buf, offset)).await
-        }
+            Self::background_sync_call(move || file.write_all_at(&buf, offset)).await?
+        };
+        self.dirty_bytes.fetch_add(length, ORD);
+        Ok(())
     }
 
     pub(crate) async fn read_all(&self) -> Result<BytesMut> {
@@ -255,6 +268,7 @@ impl File {
             ioring,
             no_lock_fd: Arc::new(std_file),
             size,
+            dirty_bytes: Arc::new(AtomicUsize::new(0)),
         };
         Ok(file)
     }
@@ -262,11 +276,26 @@ impl File {
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
         if let Some(ref ioring) = self.ioring {
             let compl = ioring.fsync(&*self.no_lock_fd);
-            compl.await
+            compl.await?
         } else {
             let fd = self.no_lock_fd.clone();
-            Self::background_sync_call(move || fd.sync_all()).await
-        }
+            Self::background_sync_call(move || fd.sync_all()).await?
+        };
+        self.dirty_bytes.store(0, ORD);
+        Ok(())
+    }
+
+    pub(crate) fn background_fsyncdata(&self) {
+        let fd = self.no_lock_fd.clone();
+        if let Some(ref ioring) = self.ioring {
+            let ioring = ioring.clone();
+            tokio::spawn(async move {
+                ioring.fsync(&fd).await
+            });
+        } else {
+            tokio::task::spawn_blocking(move || fd.sync_all());
+        };
+        self.dirty_bytes.store(0, ORD);
     }
 
     fn advisory_write_lock_file(fd: i32) -> LockAcquisitionResult {

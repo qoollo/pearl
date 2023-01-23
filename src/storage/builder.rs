@@ -117,6 +117,18 @@ impl Builder {
         }
         self
     }
+    
+    /// Limits max number of records in a single blob.
+    /// Must be greater than zero
+    #[must_use]
+    pub fn max_dirty_bytes_before_sync(mut self, max_dirty_bytes_before_sync: usize) -> Self {
+        if max_dirty_bytes_before_sync > 0 {
+            self.config.set_max_dirty_bytes_before_sync(max_dirty_bytes_before_sync);
+        } else {
+            error!("zero byte fsync is useless");
+        }
+        self
+    }
 
     /// Sets blob file name prefix, e.g. if prefix set to `hellopearl`,
     /// files will be named as `hellopearl.[N].blob`.

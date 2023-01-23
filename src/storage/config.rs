@@ -18,6 +18,7 @@ pub(crate) struct Config {
     bloom_filter_group_size: usize,
     deferred_min_time: Duration,
     deferred_max_time: Duration,
+    max_dirty_bytes_before_sync: usize,
 }
 
 // Getters
@@ -50,6 +51,11 @@ impl Config {
     #[inline]
     pub const fn allow_duplicates(&self) -> bool {
         self.allow_duplicates
+    }
+
+    #[inline]
+    pub const fn max_dirty_bytes_before_sync(&self) -> usize {
+        self.max_dirty_bytes_before_sync
     }
 
     #[inline]
@@ -102,6 +108,10 @@ impl Config {
 
     pub fn set_max_data_in_blob(&mut self, max_data_in_blob: u64) {
         self.max_data_in_blob = Some(max_data_in_blob);
+    }
+
+    pub fn set_max_dirty_bytes_before_sync(&mut self, max_dirty_bytes_before_sync: usize) {
+        self.max_dirty_bytes_before_sync = max_dirty_bytes_before_sync;
     }
 
     pub fn set_blob_file_name_prefix(&mut self, blob_file_name_prefix: String) {
@@ -160,6 +170,7 @@ impl Default for Config {
             bloom_filter_group_size: 8,
             deferred_min_time: Duration::from_secs(60),
             deferred_max_time: Duration::from_secs(180),
+            max_dirty_bytes_before_sync: 10485760,
         }
     }
 }

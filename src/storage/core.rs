@@ -650,8 +650,14 @@ where
 
         let next = self.inner.next_blob_name()?;
         let mut safe = self.inner.safe.write().await;
+        let max_dirty_bytes_before_sync = self.inner.config.max_dirty_bytes_before_sync();
         let blob =
-            Blob::open_new(next, self.inner.ioring.clone(), self.inner.config.index()).await?;
+            Blob::open_new(
+                next,
+                self.inner.ioring.clone(),
+                self.inner.config.index(),
+                max_dirty_bytes_before_sync)
+            .await?;
         safe.active_blob = Some(Box::new(ASRwLock::new(blob)));
         Ok(())
     }
@@ -738,7 +744,8 @@ where
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(file.clone(), ioring.clone(), config.index())
+                let max_dirty_bytes_before_sync = config.max_dirty_bytes_before_sync();
+                Blob::from_file(file.clone(), ioring.clone(), config.index(), max_dirty_bytes_before_sync)
                     .await
                     .map_err(|e| (e, file))
             })
@@ -1090,7 +1097,14 @@ where
         if let None = safe.active_blob {
             let next = self.next_blob_name()?;
             let config = self.config.index();
-            let blob = Blob::open_new(next, self.ioring.clone(), config).await?;
+            let max_dirty_bytes_before_sync = self.config.max_dirty_bytes_before_sync();
+            let blob = 
+                Blob::open_new(
+                    next,
+                    self.ioring.clone(),
+                    config,
+                    max_dirty_bytes_before_sync)
+                .await?;
             safe.active_blob = Some(Box::new(ASRwLock::new(blob)));
             Ok(())
         } else {
