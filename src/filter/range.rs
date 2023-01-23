@@ -1,13 +1,13 @@
 use super::*;
 use std::sync::RwLock;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 /// Range filter (concurrency supported)
 pub struct RangeFilter<K>
 where
     for<'a> K: Key<'a>,
 {
-    safe: Arc<RwLock<RangeFilterInner<K>>>
+    safe: RwLock<RangeFilterInner<K>>
 }
 
 
@@ -24,6 +24,17 @@ where
     initialized: bool,
 }
 
+impl<K> Clone for RangeFilter<K> 
+where
+    for<'a> K: Key<'a>,
+{
+    // We should implement deep clone for filters!
+    fn clone(&self) -> Self {
+        Self {
+            safe: RwLock::new(self.safe.read().expect("RwLock acquired").clone())
+        }
+    }
+}
 
 #[async_trait::async_trait]
 impl<K> FilterTrait<K> for RangeFilter<K>
@@ -60,7 +71,7 @@ where
     /// Create filter
     pub fn new() -> Self {
         Self {
-            safe: Arc::new(RwLock::new(RangeFilterInner::new()))
+            safe: RwLock::new(RangeFilterInner::new())
         }
     }
 
@@ -83,7 +94,7 @@ where
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
         RangeFilterInner::from_raw(buf).map(|safe| {
             Self {
-                safe: Arc::new(RwLock::new(safe))
+                safe: RwLock::new(safe)
             }
         })
     }
@@ -331,5 +342,30 @@ mod tests {
         assert!(wrong_key_filter.contains(&less_key));
         assert!(wrong_key_filter.contains(&greater_key));
         assert!(wrong_key_filter.contains(&in_key));
+    }
+
+    #[test]
+    fn test_range_filter_clone() {
+        let filter: RangeFilter<ProperKey> = RangeFilter::new();
+        for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
+            filter.add(&key);
+        }
+
+        let filter_clone = filter.clone();
+        for key in [10, 200].iter().map(|&i| to_key(i)) {
+            filter_clone.add(&key);
+        }
+
+        assert_eq!(false, filter.contains(&to_key(5)));
+        assert_eq!(false, filter.contains(&to_key(25)));
+        assert_eq!(true, filter.contains(&to_key(100)));
+        assert_eq!(false, filter.contains(&to_key(170)));
+        assert_eq!(false, filter.contains(&to_key(250)));
+
+        assert_eq!(false, filter_clone.contains(&to_key(5)));
+        assert_eq!(true, filter_clone.contains(&to_key(25)));
+        assert_eq!(true, filter_clone.contains(&to_key(100)));
+        assert_eq!(true, filter_clone.contains(&to_key(170)));
+        assert_eq!(false, filter_clone.contains(&to_key(250)));
     }
 }
