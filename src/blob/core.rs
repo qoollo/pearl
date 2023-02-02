@@ -1,11 +1,13 @@
 use std::time::SystemTime;
 
 use async_std::sync::RwLockUpgradableReadGuard;
+use bytes::{BufMut, Bytes, BytesMut};
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
 use crate::filter::{CombinedFilter, FilterTrait};
 use crate::record::PartiallySerializedRecord;
+use crate::storage::{BlobRecordTimestamp, ReadResult};
 
 use super::prelude::*;
 
@@ -70,9 +72,12 @@ where
     }
 
     async fn write_header(&mut self) -> Result<()> {
-        let buf = serialize(&self.header)?;
-        let bytes_written = self.file.write_append(&buf).await? as u64;
-        self.current_offset = bytes_written;
+        let size = self.header.serialized_size();
+        let mut buf = BytesMut::with_capacity(size as usize);
+        serialize_into((&mut buf).writer(), &self.header)?;
+        let len = buf.len() as u64;
+        self.file.write_append_all(buf.freeze()).await?;
+        self.current_offset = len;
         Ok(())
     }
 
@@ -223,9 +228,9 @@ where
                 self.name.to_path()
             )
         })? {
-            let headers = filter_deleted_headers(headers);
             for header in headers {
-                self.index.push(header).context("index push failed")?;
+                let key = header.key().into();
+                self.index.push(&key, header).context("index push failed")?;
             }
         }
         debug!("index successfully generated: {}", self.index.name());
@@ -236,62 +241,35 @@ where
         // @TODO implement
     }
 
-    pub(crate) async fn write(blob: &ASRwLock<Self>, record: Record) -> Result<()> {
+    pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<()> {
         debug!("blob write");
         // Only one upgradable_read lock is allowed at a time
         let partially_serialized = record.to_partially_serialized()?;
         let blob = blob.upgradable_read().await;
-        Self::write_locked(blob, partially_serialized, record).await
+        Self::write_locked(blob, key, record).await
     }
 
-    async fn write_mut(&mut self, record: Record) -> Result<()> {
+    async fn write_mut(&mut self, key: &K, mut record: Record) -> Result<RecordHeader> {
         debug!("blob write");
         debug!("blob write record offset: {}", self.current_offset);
-        let (buf, header_checksum) = record
-            .to_partially_serialized()?
-            .into_serialized_with_header_checksum(self.current_offset)?;
-        let mut header = record.into_header();
-        header.set_offset_checksum(self.current_offset, header_checksum);
-        let bytes_written = self
-            .file
-            .write_append(&buf)
-            .await
-            .map_err(|e| -> anyhow::Error {
-                match e.kind() {
-                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
-                        Error::file_unavailable(kind).into()
-                    }
-                    _ => e.into(),
-                }
-            })? as u64;
-        self.index.push(header)?;
+        record.set_offset(self.current_offset)?;
+        let bytes_written = record.write_to_file(&self.file).await?;
+        let header = record.into_header();
+        self.index.push(key, header.clone())?;
         self.current_offset += bytes_written;
-        Ok(())
+        Ok(header)
     }
+
     async fn write_locked(
         blob: ASRwLockUpgradableReadGuard<'_, Blob<K>>,
-        ps_record: PartiallySerializedRecord,
-        record: Record,
+        key: &K,
+        mut record: Record,
     ) -> Result<()> {
         debug!("blob write record offset: {}", blob.current_offset);
-        let (buf, header_checksum) =
-            ps_record.into_serialized_with_header_checksum(blob.current_offset)?;
-        let mut header = record.into_header();
-        header.set_offset_checksum(blob.current_offset, header_checksum);
-        let bytes_written = blob
-            .file
-            .write_append(&buf)
-            .await
-            .map_err(|e| -> anyhow::Error {
-                match e.kind() {
-                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
-                        Error::file_unavailable(kind).into()
-                    }
-                    _ => e.into(),
-                }
-            })? as u64;
+        record.set_offset(blob.current_offset)?;
+        let bytes_written = record.write_to_file(&blob.file).await?;
         let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
-        blob.index.push(header)?;
+        blob.index.push(key, record.into_header())?;
         blob.current_offset += bytes_written;
         Ok(())
     }
@@ -301,51 +279,77 @@ where
         key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<ReadResult<Bytes>> {
         debug!("blob read any");
-        let entry = self
-            .get_entry(key, meta, check_filters)
-            .await?
-            .ok_or_else(|| Error::from(ErrorKind::RecordNotFound))?;
-        debug!("blob read any entry found");
-        let buf = entry
-            .load()
-            .await
-            .with_context(|| {
-                format!(
-                    "failed to read key {:?} with meta {:?} from blob {:?}",
-                    key,
-                    meta,
-                    self.name.to_path()
-                )
-            })?
-            .into_data();
-        debug!("blob read any entry loaded bytes: {}", buf.len());
-        Ok(buf)
+        let entry = self.get_entry(key, meta, check_filters).await?;
+        match entry {
+            ReadResult::Found(entry) => {
+                debug!("blob read any entry found");
+                let buf = entry
+                    .load()
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "failed to read key {:?} with meta {:?} from blob {:?}",
+                            key,
+                            meta,
+                            self.name.to_path()
+                        )
+                    })?
+                    .into_data();
+                debug!("blob read any entry loaded bytes: {}", buf.len());
+                Ok(ReadResult::Found(buf))
+            }
+            ReadResult::Deleted(ts) => Ok(ReadResult::Deleted(ts)),
+            ReadResult::NotFound => Ok(ReadResult::NotFound),
+        }
+    }
+
+    #[allow(dead_code)]
+    #[inline]
+    pub(crate) async fn read_all_entries(&self, key: &K) -> Result<Vec<Entry>> {
+        let headers = self.index.get_all(key).await?;
+        debug_assert!(headers
+            .iter()
+            .zip(headers.iter().skip(1))
+            .all(|(x, y)| x.created() >= y.created()));
+        Ok(Self::headers_to_entries(headers, &self.file))
     }
 
     #[inline]
-    pub(crate) async fn read_all_entries(&self, key: &K) -> Result<Option<Vec<Entry>>> {
-        let headers = self.index.get_all(key).await?;
-        Ok(headers.map(|h| {
-            debug!("blob core read all {} headers", h.len());
-            Self::headers_to_entries(h, &self.file)
-        }))
+    pub(crate) async fn read_all_entries_with_deletion_marker(
+        &self,
+        key: &K,
+    ) -> Result<Vec<Entry>> {
+        let headers = self.index.get_all_with_deletion_marker(key).await?;
+        debug_assert!(headers
+            .iter()
+            .zip(headers.iter().skip(1))
+            .all(|(x, y)| x.created() >= y.created()));
+        Ok(Self::headers_to_entries(headers, &self.file))
     }
 
-    pub(crate) async fn mark_all_as_deleted(&mut self, key: &K) -> Result<Option<u64>> {
-        if self.index.get_last(key).await?.is_some() {
-            let on_disk = self.index.on_disk();
-            if on_disk {
-                self.load_index().await?;
-            }
-            let record = Record::deleted(key)?;
-            self.write_mut(record).await?;
-            let res = self.index.mark_all_as_deleted(key)?;
-            Ok(res)
+    pub(crate) async fn mark_all_as_deleted(
+        &mut self,
+        key: &K,
+        only_if_presented: bool,
+    ) -> Result<bool> {
+        if !only_if_presented || self.index.get_any(key).await?.is_found() {
+            self.push_deletion_record(key).await?;
+            Ok(true)
         } else {
-            Ok(None)
+            Ok(false)
         }
+    }
+
+    async fn push_deletion_record(&mut self, key: &K) -> Result<()> {
+        let on_disk = self.index.on_disk();
+        if on_disk {
+            self.load_index().await?;
+        }
+        let record = Record::deleted(key)?;
+        let header = self.write_mut(key, record).await?;
+        self.index.push_deletion(key, header)
     }
 
     fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
@@ -360,35 +364,48 @@ where
         key: &K,
         meta: Option<&Meta>,
         check_filters: bool,
-    ) -> Result<Option<Entry>> {
+    ) -> Result<ReadResult<Entry>> {
         debug!("blob get any entry {:?}, {:?}", key, meta);
         if check_filters && self.check_filter(key).await == FilterResult::NotContains {
             debug!("Key was filtered out by filters");
-            Ok(None)
+            Ok(ReadResult::NotFound)
         } else if let Some(meta) = meta {
             debug!("blob get any entry meta: {:?}", meta);
             self.get_entry_with_meta(key, meta).await
         } else {
             debug!("blob get any entry bloom true no meta");
-            if let Some(header) = self.index.get_last(key).await.with_context(|| {
-                format!("index get any failed for blob: {:?}", self.name.to_path())
-            })? {
-                let entry = Entry::new(header, self.file.clone());
-                debug!("blob, get any entry, bloom true no meta, entry found");
-                Ok(Some(entry))
-            } else {
-                Ok(None)
-            }
+            Ok(self
+                .index
+                .get_any(key)
+                .await
+                .with_context(|| {
+                    format!("index get any failed for blob: {:?}", self.name.to_path())
+                })?
+                .map(|header| {
+                    let entry = Entry::new(header, self.file.clone());
+                    debug!("blob, get any entry, bloom true no meta, entry found");
+                    entry
+                }))
         }
     }
 
-    async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<Option<Entry>> {
-        let headers = self.index.get_all(key).await?;
-        if let Some(headers) = headers {
-            let entries = Self::headers_to_entries(headers, &self.file);
-            self.filter_entries(entries, meta).await
+    async fn get_entry_with_meta(&self, key: &K, meta: &Meta) -> Result<ReadResult<Entry>> {
+        let mut headers = self.index.get_all_with_deletion_marker(key).await?;
+        let deleted_ts = headers
+            .last()
+            .filter(|h| h.is_deleted())
+            .map(|h| BlobRecordTimestamp::new(h.created()));
+        if deleted_ts.is_some() {
+            headers.truncate(headers.len() - 1);
+        }
+        let entries = Self::headers_to_entries(headers, &self.file);
+        if let Some(entries) = self.filter_entries(entries, meta).await? {
+            Ok(ReadResult::Found(entries))
         } else {
-            Ok(None)
+            if let Some(ts) = deleted_ts {
+                return Ok(ReadResult::Deleted(ts));
+            }
+            Ok(ReadResult::NotFound)
         }
     }
 
@@ -401,10 +418,17 @@ where
         Ok(None)
     }
 
-    pub(crate) async fn contains(&self, key: &K, meta: Option<&Meta>) -> Result<bool> {
+    pub(crate) async fn contains(
+        &self,
+        key: &K,
+        meta: Option<&Meta>,
+    ) -> Result<ReadResult<BlobRecordTimestamp>> {
         debug!("blob contains");
-        let contains = self.get_entry(key, meta, true).await?.is_some();
-        debug!("blob contains any: {}", contains);
+        let contains = self
+            .get_entry(key, meta, true)
+            .await?
+            .map(|e| BlobRecordTimestamp::new(e.created()));
+        debug!("blob contains any: {:?}", contains);
         Ok(contains)
     }
 
@@ -510,8 +534,9 @@ impl RawRecords {
         );
         // plus size of usize because serialized
         // vector contains usize len in front
-        let mut buf = vec![0; size_of_magic_byte + size_of_len];
-        file.read_at(&mut buf, current_offset).await?;
+        let buf = file
+            .read_exact_at_allocate(size_of_magic_byte + size_of_len, current_offset)
+            .await?;
         let (magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         debug!("blob raw records start, read at {} bytes", buf.len());
         let magic_byte = bincode::deserialize::<u64>(magic_byte_buf)
@@ -561,9 +586,9 @@ impl RawRecords {
     }
 
     async fn read_current_record_header(&mut self) -> Result<RecordHeader> {
-        let mut buf = vec![0; self.record_header_size as usize];
-        self.file
-            .read_at(&mut buf, self.current_offset)
+        let buf = self
+            .file
+            .read_exact_at_allocate(self.record_header_size as usize, self.current_offset)
             .await
             .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
         let header = RecordHeader::from_raw(&buf)
@@ -579,27 +604,6 @@ impl RawRecords {
         self.current_offset += header.data_size();
         Ok(header)
     }
-}
-
-pub(crate) fn filter_deleted_headers(headers: Vec<RecordHeader>) -> Vec<RecordHeader> {
-    let deleted = headers.iter().fold(BTreeMap::new(), |mut map, h| {
-        if h.is_deleted() {
-            let entry = map.entry(h.key().to_vec()).or_insert(h.created());
-            *entry = h.created().max(*entry);
-        }
-        map
-    });
-    if deleted.is_empty() {
-        return headers;
-    }
-
-    let mut new_headers = vec![];
-    for header in headers {
-        if deleted.get(header.key()).cloned().unwrap_or_default() < header.created() {
-            new_headers.push(header);
-        }
-    }
-    new_headers
 }
 
 #[async_trait::async_trait]

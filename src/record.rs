@@ -1,13 +1,50 @@
-use crate::{error::ValidationErrorKind, prelude::*};
+use bytes::{BufMut, Bytes, BytesMut};
+
+use crate::{blob::File, error::ValidationErrorKind, prelude::*};
 
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 const DELETE_FLAG: u8 = 0x01;
+const MAX_SINGLE_PASS_DATA_SIZE: usize = 4 * 1024;
 
 #[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
 pub struct Record {
     pub header: Header,
     pub meta: Meta,
-    pub data: Vec<u8>,
+    #[serde(
+        serialize_with = "serialize_data",
+        deserialize_with = "deserialize_data"
+    )]
+    pub data: Bytes,
+}
+
+fn serialize_data<S>(data: &Bytes, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_bytes(data.as_ref())
+}
+
+fn deserialize_data<'de, D>(deserializer: D) -> Result<Bytes, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct DataVisitor();
+    impl<'de> serde::de::Visitor<'de> for DataVisitor {
+        type Value = Bytes;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("bytes")
+        }
+
+        fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(v.into())
+        }
+    }
+
+    deserializer.deserialize_byte_buf(DataVisitor())
 }
 
 impl Debug for Record {
@@ -65,13 +102,13 @@ impl Meta {
     }
 
     #[inline]
-    fn serialized_size(&self) -> bincode::Result<u64> {
-        serialized_size(&self)
+    fn serialized_size(&self) -> u64 {
+        serialized_size(&self).expect("serialized_size")
     }
 
     #[inline]
-    pub(crate) fn to_raw(&self) -> bincode::Result<Vec<u8>> {
-        serialize(&self)
+    pub(crate) fn to_raw_into(&self, writer: impl std::io::Write) -> bincode::Result<()> {
+        serialize_into(writer, &self)
     }
 
     /// Get attribute.
@@ -124,24 +161,72 @@ impl PartiallySerializedRecord {
         bincode::serialize_into(checksum_slice, &checksum)?;
         Ok((buf, checksum))
     }
+
+    pub(crate) async fn write_to_file(&self, file: &File) -> Result<u64> {
+        if self.data.len() <= MAX_SINGLE_PASS_DATA_SIZE {
+            self.write_single_pass(file).await
+        } else {
+            self.write_double_pass(file).await
+        }
+    }
+
+    fn create_header_meta_buffer(&self, data_size: Option<u64>) -> Result<BytesMut> {
+        let size = self.header.serialized_size()
+            + self.meta.serialized_size()
+            + data_size.unwrap_or_default();
+        let mut result = BytesMut::with_capacity(size as usize);
+        self.header.to_raw_into((&mut result).writer())?;
+        self.meta.to_raw_into((&mut result).writer())?;
+        Ok(result)
+    }
+
+    async fn write_single_pass(&self, file: &File) -> Result<u64> {
+        let mut buf = self.create_header_meta_buffer(Some(self.data.len() as u64))?;
+        buf.extend(&self.data);
+        let len = buf.len() as u64;
+        Self::process_file_result(file.write_append_all(buf.freeze()).await).map(|_| len)
+    }
+
+    async fn write_double_pass(&self, file: &File) -> Result<u64> {
+        let buf = self.create_header_meta_buffer(None)?;
+        let data = self.data.clone();
+        let len = (buf.len() + data.len()) as u64;
+        Self::process_file_result(file.write_append_all_buffers(buf.freeze(), data).await)
+            .map(|_| len)
+    }
+
+    fn process_file_result(result: std::result::Result<(), std::io::Error>) -> Result<()> {
+        result.map_err(|e| -> anyhow::Error {
+            match e.kind() {
+                kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
+                    Error::file_unavailable(kind).into()
+                }
+                _ => e.into(),
+            }
+        })
+    }
 }
 
 impl Record {
-    pub(crate) fn new(header: Header, meta: Meta, data: Vec<u8>) -> Self {
+    pub(crate) fn new(header: Header, meta: Meta, data: Bytes) -> Self {
         Self { header, meta, data }
     }
 
-    pub fn into_data(self) -> Vec<u8> {
+    pub fn into_data(self) -> Bytes {
         self.data
     }
 
+    pub fn into_header(self) -> Header {
+        self.header
+    }
+
     /// Creates new `Record` with provided data, key and meta.
-    pub fn create<K>(key: &K, data: Vec<u8>, meta: Meta) -> bincode::Result<Self>
+    pub fn create<K>(key: &K, data: Bytes, meta: Meta) -> bincode::Result<Self>
     where
         for<'a> K: Key<'a>,
     {
         let key = key.as_ref().to_vec();
-        let meta_size = meta.serialized_size()?;
+        let meta_size = meta.serialized_size();
         let data_checksum = CRC32C.checksum(&data);
         let header = Header::new(key, meta_size, data.len() as u64, data_checksum);
         Ok(Self { header, meta, data })
@@ -171,7 +256,7 @@ impl Record {
     where
         for<'a> K: Key<'a> + 'static,
     {
-        let mut record = Record::create(key, vec![], Meta::default())?;
+        let mut record = Record::create(key, Bytes::new(), Meta::default())?;
         record.header.mark_as_deleted()?;
         Ok(record)
     }
@@ -257,6 +342,11 @@ impl Header {
     #[inline]
     pub(crate) fn to_raw(&self) -> bincode::Result<Vec<u8>> {
         serialize(&self)
+    }
+
+    #[inline]
+    pub(crate) fn to_raw_into(&self, writer: impl std::io::Write) -> bincode::Result<()> {
+        serialize_into(writer, &self)
     }
 
     #[inline]

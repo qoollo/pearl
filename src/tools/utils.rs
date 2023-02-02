@@ -1,14 +1,14 @@
 use super::prelude::*;
 use crate::blob::index::FileIndexTrait;
+use crate::blob::index::HEADER_VERSION;
 use crate::blob::FileName;
 use crate::ArrayKey;
-use crate::blob::index::HEADER_VERSION;
 use futures::Future;
 
 /// Read index header from file
 pub(crate) fn read_index_header(path: &Path) -> Result<IndexHeader> {
     let mut file = OpenOptions::new().read(true).open(path)?;
-    let header_size = IndexHeader::serialized_size_default()? as usize;
+    let header_size = IndexHeader::serialized_size_default() as usize;
     let mut buf = vec![0; header_size];
     file.read_exact(&mut buf)?;
     let header = IndexHeader::from_raw(&buf)?;
@@ -127,7 +127,6 @@ pub(super) fn block_on<T, F: Future<Output = T>>(f: F) -> Result<T> {
         Ok(runtime) => Ok(runtime.block_on(f)),
         Err(_) => Ok(tokio::runtime::Runtime::new()?.block_on(f)),
     }
-    
 }
 
 async fn index_from_file<K>(
@@ -135,17 +134,14 @@ async fn index_from_file<K>(
     path: &Path,
 ) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::Header>>>
 where
-    for<'a> K: Key<'a> + 'static
+    for<'a> K: Key<'a> + 'static,
 {
     let headers = match header.version() {
         HEADER_VERSION => {
-            let index = BPTreeFileIndex::<K>::from_file(
-                FileName::from_path(path)?,
-                None,
-            ).await?;
+            let index = BPTreeFileIndex::<K>::from_file(FileName::from_path(path)?, None).await?;
             let res = index.get_records_headers(index.blob_size()).await?;
             AnyResult::<_>::Ok(res.0)
-        },
+        }
         _ => return Err(Error::index_header_validation_error("unsupported header version").into()),
     }?;
     let headers = headers
