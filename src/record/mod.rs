@@ -160,8 +160,8 @@ impl Record {
         Ok(PartiallySerializedHeader::new(
             head,
             header_len,
-            header_len - Header::blob_offset_end_offset(),
-            header_len - Header::checksum_end_offset(),
+            Header::blob_offset_offset(header_len),
+            Header::checksum_offset(header_len),
         ))
     }
 
@@ -291,12 +291,12 @@ impl Header {
         self.header_checksum = header_checksum;
     }
 
-    fn blob_offset_end_offset() -> usize {
-        24
+    fn blob_offset_offset(len: usize) -> usize {
+        len - 24
     }
 
-    fn checksum_end_offset() -> usize {
-        4
+    fn checksum_offset(len: usize) -> usize {
+        len - 4
     }
 
     fn update_checksum(&mut self) -> bincode::Result<()> {
