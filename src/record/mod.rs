@@ -5,6 +5,8 @@ pub(crate) use partially_serialized::PartiallySerializedRecord;
 
 use crate::{error::ValidationErrorKind, prelude::*};
 
+use self::partially_serialized::PartiallySerializedHeader;
+
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 const DELETE_FLAG: u8 = 0x01;
 
@@ -149,26 +151,26 @@ impl Record {
         &self.header
     }
 
-    pub(crate) fn to_partially_serialized_and_header(
-        self,
-    ) -> Result<(PartiallySerializedRecord, Header)> {
+    fn create_partially_serialized_header(&self) -> Result<PartiallySerializedHeader> {
         let head_size = self.header.serialized_size() + self.meta.serialized_size();
         let mut head = BytesMut::with_capacity(head_size as usize);
         self.header.to_raw_into((&mut head).writer())?;
         let header_len = head.len();
         self.meta.to_raw_into((&mut head).writer())?;
-        let Self { data, header, .. } = self;
-        Ok((
-            PartiallySerializedRecord::new(
-                head,
-                data,
-                header_len - 24,
-                header_len - 4,
-                0,
-                header_len,
-            ),
-            header,
+        Ok(PartiallySerializedHeader::new(
+            head,
+            header_len,
+            header_len - Header::blob_offset_end_offset(),
+            header_len - Header::checksum_end_offset(),
         ))
+    }
+
+    pub(crate) fn to_partially_serialized_and_header(
+        self,
+    ) -> Result<(PartiallySerializedRecord, Header)> {
+        let head = self.create_partially_serialized_header()?;
+        let Self { data, header, .. } = self;
+        Ok((PartiallySerializedRecord::new(head, data), header))
     }
 
     pub(crate) fn deleted<K>(key: &K) -> bincode::Result<Self>
@@ -289,6 +291,14 @@ impl Header {
         self.header_checksum = header_checksum;
     }
 
+    fn blob_offset_end_offset() -> usize {
+        24
+    }
+
+    fn checksum_end_offset() -> usize {
+        4
+    }
+
     fn update_checksum(&mut self) -> bincode::Result<()> {
         self.header_checksum = 0;
         self.header_checksum = self.crc32()?;
@@ -354,5 +364,34 @@ impl Header {
 
     pub(crate) fn created(&self) -> u64 {
         self.created
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bytes::Bytes;
+
+    use crate::prelude::*;
+
+    #[test]
+    pub fn partial_serialization_preserves_checksum_and_offset() -> Result<()> {
+        let key = vec![0, 0, 0];
+        let data = Bytes::new();
+        let checksum: u32 = CRC32C.checksum(&data);
+        let meta = Meta::new();
+        let header = RecordHeader::new(key, meta.serialized_size(), data.len() as u64, checksum);
+        let header_size = header.serialized_size();
+        let record = Record::new(header, meta, data);
+        let offset: u64 = 100;
+
+        let partially_serialized_header = record.create_partially_serialized_header()?;
+        let (serialized, checksum) = partially_serialized_header.finalize_with_checksum(offset)?;
+
+        let from_raw = RecordHeader::from_raw(&serialized[..(header_size as usize)])?;
+
+        assert_eq!(offset, from_raw.blob_offset);
+        assert_eq!(checksum, from_raw.header_checksum);
+
+        Ok(())
     }
 }
