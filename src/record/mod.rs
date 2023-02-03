@@ -157,12 +157,7 @@ impl Record {
         self.header.to_raw_into((&mut head).writer())?;
         let header_len = head.len();
         self.meta.to_raw_into((&mut head).writer())?;
-        Ok(PartiallySerializedHeader::new(
-            head,
-            header_len,
-            Header::blob_offset_offset(header_len),
-            Header::checksum_offset(header_len),
-        ))
+        Ok(PartiallySerializedHeader::new(head, header_len))
     }
 
     pub(crate) fn to_partially_serialized_and_header(

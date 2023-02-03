@@ -42,32 +42,20 @@ impl PartiallySerializedData {
 pub(crate) struct PartiallySerializedHeader {
     buf: BytesMut,
     header_len: usize,
-    offset_pos: usize,
-    checksum_pos: usize,
 }
 
 impl PartiallySerializedHeader {
-    pub(crate) fn new(
-        buf: BytesMut,
-        header_len: usize,
-        offset_pos: usize,
-        checksum_pos: usize,
-    ) -> Self {
-        Self {
-            buf,
-            header_len,
-            offset_pos,
-            checksum_pos,
-        }
+    pub(crate) fn new(buf: BytesMut, header_len: usize) -> Self {
+        Self { buf, header_len }
     }
 
     pub(crate) fn finalize_with_checksum(self, bytes_offset: u64) -> Result<(BytesMut, u32)> {
         let Self {
             mut buf,
             header_len,
-            offset_pos,
-            checksum_pos,
         } = self;
+        let offset_pos = RecordHeader::blob_offset_offset(header_len);
+        let checksum_pos = RecordHeader::checksum_offset(header_len);
         let offset_slice = &mut buf[offset_pos..];
         bincode::serialize_into(offset_slice, &bytes_offset)?;
         let header_slice = &buf[..header_len];
