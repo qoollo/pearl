@@ -283,7 +283,7 @@ where
         Ok(())
     }
 
-    pub(crate) async fn read_any(
+    pub(crate) async fn read_last(
         &self,
         key: &K,
         meta: Option<&Meta>,
