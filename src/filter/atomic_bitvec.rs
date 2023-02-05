@@ -2,7 +2,7 @@ use std::{sync::atomic::*, fmt::Display};
 
 /// Bit vector with atomic operations on its bits
 pub(crate) struct AtomicBitVec {
-    data: Vec<AtomicU64>,
+    data: Box<[AtomicU64]>,
     bits_count: usize
 }
 
@@ -60,7 +60,7 @@ impl AtomicBitVec {
         }
 
         Self {
-            data,
+            data: data.into_boxed_slice(),
             bits_count
         }
     }
@@ -71,7 +71,7 @@ impl AtomicBitVec {
     }
     /// Occupied memory in bytes (includes internal vector capacity)
     pub(crate) fn size_in_mem(&self) -> usize {
-        self.data.capacity() * Self::ITEM_BYTES_SIZE
+        self.data.len() * Self::ITEM_BYTES_SIZE
     }
 
 
@@ -162,7 +162,7 @@ impl AtomicBitVec {
         }
 
         Ok(Self {
-            data,
+            data: data.into_boxed_slice(),
             bits_count
         })
     }
@@ -170,7 +170,7 @@ impl AtomicBitVec {
     /// Count the number of '1' bits
     pub(crate) fn count_ones(&self) -> u64 {
         let mut result = 0;
-        for item in &self.data {
+        for item in self.data.iter() {
             result += item.load(Ordering::Acquire).count_ones() as u64;
         }
         result
@@ -186,7 +186,7 @@ impl Clone for AtomicBitVec {
         }
 
         Self {
-            data: data,
+            data: data.into_boxed_slice(),
             bits_count: self.bits_count
         }
     }

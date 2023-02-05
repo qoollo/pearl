@@ -12,7 +12,7 @@ pub struct Bloom {
     /// Protects `save` and `checked_add_assign` from seeing partial updates
     snapshot_protector: RwLock<()>,
     bits_count: usize,
-    hashers: Vec<AHasher>,
+    hashers: Box<[AHasher]>,
     config: Arc<Config>
 }
 
@@ -196,16 +196,20 @@ fn bits_count_via_iterations(config: &Config) -> usize {
 }
 
 impl Bloom {
-    /// Create new bloom filter
-    pub fn new(config: Config) -> Self {
+    /// Create bloom filter with shared config
+    pub(crate) fn new_from_shared_config(config: Arc<Config>) -> Self {
         let bits_count = bits_count_from_formula(&config);
         Self {
             inner: Some(AtomicBitVec::new(bits_count)),
             snapshot_protector: RwLock::new(()),
             bits_count: bits_count,
             hashers: Self::hashers(config.hashers_count),
-            config: Arc::new(config)
+            config: config
         }
+    }
+    /// Create new bloom filter
+    pub fn new(config: Config) -> Self {
+        Self::new_from_shared_config(Arc::new(config))
     }
 
     /// Creates empty bloom filter
@@ -214,7 +218,7 @@ impl Bloom {
             inner: Some(AtomicBitVec::new(0)),
             snapshot_protector: RwLock::new(()),
             bits_count: 0,
-            hashers: Vec::new(),
+            hashers: Self::hashers(0),
             config: Arc::new(Config::empty())
         }
     }
@@ -272,11 +276,14 @@ impl Bloom {
         freed
     }
 
-    fn hashers(k: usize) -> Vec<AHasher> {
-        trace!("@TODO create configurable hashers???");
-        (0..k)
-            .map(|i| AHasher::new_with_keys((i + 1) as u128, (i + 2) as u128))
-            .collect()
+    fn hashers(k: usize) -> Box<[AHasher]> {
+        // TODO create configurable hashers???
+        let mut result = Vec::with_capacity(k);
+        for i in 0..k {
+            result.push(AHasher::new_with_keys((i + 1) as u128, (i + 2) as u128));
+        }
+
+        return result.into_boxed_slice();
     }
 
     fn save(&self) -> Option<Save> {
