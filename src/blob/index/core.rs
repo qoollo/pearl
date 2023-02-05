@@ -75,7 +75,7 @@ where
     FileIndex: FileIndexTrait<K>,
     for<'a> K: Key<'a>,
 {
-    pub(crate) fn new(name: FileName, async_io_driver: Option<AsyncIoDriver>, config: IndexConfig) -> Self {
+    pub(crate) fn new(name: FileName, ioring: Option<Rio>, config: IndexConfig) -> Self {
         let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
         let bloom_filter = config.bloom_config.map(|cfg| Bloom::new(cfg));
         let mem = Some(Default::default());
