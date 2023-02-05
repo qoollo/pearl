@@ -133,11 +133,31 @@ impl Default for Config {
     }
 }
 
+impl Config {
+    /// Config to create empty bloom filter
+    pub fn empty() -> Self {
+        Self {
+            elements: 0,
+            hashers_count: 0,
+            max_buf_bits_count: 0,
+            buf_increase_step: 0,
+            preferred_false_positive_rate: 0.0
+        }
+    }
+}
+
 fn m_from_fpr(fpr: f64, k: f64, n: f64) -> f64 {
     -k * n / (1_f64 - fpr.powf(1_f64 / k)).ln()
 }
 
 fn bits_count_from_formula(config: &Config) -> usize {
+    if config.hashers_count == 0 {
+        return 0;
+    }
+    if config.max_buf_bits_count == 0 {
+        return 64;
+    }
+
     let max_bit_count = config.max_buf_bits_count; // 1Mb
     trace!("max bit count: {}", max_bit_count);
     let k = config.hashers_count;
@@ -182,9 +202,20 @@ impl Bloom {
         Self {
             inner: Some(AtomicBitVec::new(bits_count)),
             snapshot_protector: RwLock::new(()),
+            bits_count: bits_count,
             hashers: Self::hashers(config.hashers_count),
-            config: Arc::new(config),
-            bits_count,
+            config: Arc::new(config)
+        }
+    }
+
+    /// Creates empty bloom filter
+    pub fn empty() -> Self {
+        Self {
+            inner: Some(AtomicBitVec::new(0)),
+            snapshot_protector: RwLock::new(()),
+            bits_count: 0,
+            hashers: Vec::new(),
+            config: Arc::new(Config::empty())
         }
     }
 
@@ -270,7 +301,7 @@ impl Bloom {
     fn from(save: Save) -> Result<Self> {
         use serde::de::Error;
         
-        let mut inner = 
+        let inner = 
             AtomicBitVec::from_raw_slice(&save.buf, save.bits_count)
                 .map_err(|e| bincode::Error::custom(e))?;
 
@@ -300,10 +331,14 @@ impl Bloom {
     /// Add value to filter
     pub fn add(&self, item: impl AsRef<[u8]>) -> Result<()> {
         if let Some(inner) = &self.inner {
+            let len = inner.len() as u64;
+            if len == 0 {
+                return Ok(());
+            }
+
             // snapshot_protector prevents partial modifications to be observable in other functions
             let _guard = self.snapshot_protector.read().expect("read lock acquired");
 
-            let len = inner.len() as u64;
             for mut hasher in self.hashers.iter().cloned() {
                 hasher.write(item.as_ref());
                 if let Some(i) = hasher.finish().checked_rem(len) {

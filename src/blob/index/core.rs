@@ -75,13 +75,9 @@ where
     FileIndex: FileIndexTrait<K>,
     for<'a> K: Key<'a>,
 {
-    pub(crate) fn new(name: FileName, ioring: Option<Rio>, config: IndexConfig) -> Self {
+    pub(crate) fn new(name: FileName, async_io_driver: Option<AsyncIoDriver>, config: IndexConfig) -> Self {
         let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
-        let bloom_filter = if params.bloom_is_on {
-            Some(config.bloom_config.map(Bloom::new).unwrap_or_default())
-        } else {
-            None
-        };
+        let bloom_filter = config.bloom_config.map(|cfg| Bloom::new(cfg));
         let mem = Some(Default::default());
         Self {
             params,
@@ -184,7 +180,8 @@ where
             .filter
             .bloom()
             .as_ref()
-            .map_or(Bloom::default().to_raw(), |bloom| bloom.to_raw())?;
+            .unwrap_or(&Bloom::empty())
+            .to_raw()?;
         let mut buf = Vec::with_capacity(size_of::<u64>() + range_buf.len() + bloom_buf.len());
         let bloom_offset = size_of::<u64>() + range_buf.len();
         buf.extend_from_slice(&serialize(&range_buf_size)?);

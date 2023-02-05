@@ -119,12 +119,6 @@ impl AtomicBitVec {
         self.set_ord(index, value, Ordering::AcqRel)
     }
 
-    /// Sets bit value to true at `index` offset with [`Ordering::AcqRel`] ordering
-    #[inline(always)]
-    pub(crate) fn set_true(&self, index: usize) -> bool {
-        self.set_ord(index, true, Ordering::AcqRel)
-    }
-
     /// Merge bits from `other` into self. 
     /// Attention: data modification on `other` is possible during the operation. If needed then explicit protection should be done outside
     pub(crate) fn or_with(&mut self, other: &Self) -> Result<(), AtomicBitVecError> {
@@ -185,7 +179,7 @@ impl AtomicBitVec {
 
 impl Clone for AtomicBitVec {
     fn clone(&self) -> Self {
-        let data = Vec::with_capacity(self.data.len());
+        let mut data = Vec::with_capacity(self.data.len());
 
         for i in 0..self.data.len() {
             data.push(AtomicU64::new(self.data[i].load(Ordering::Acquire)));
@@ -347,5 +341,13 @@ mod tests {
         for i in 0..bitvec_b.len() {
             assert_eq!((i % 3) == 0 || (i % 5) == 0, bitvec_b.get(i));
         }
+    }
+
+    #[test]
+    fn test_zero_len() {
+        let bitvec_a = AtomicBitVec::new(0);
+        assert_eq!(0, bitvec_a.len());
+        assert_eq!(0, bitvec_a.size_in_mem());
+        assert_eq!(0, bitvec_a.count_ones());
     }
 }
