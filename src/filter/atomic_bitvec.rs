@@ -1,4 +1,4 @@
-use std::sync::atomic::*;
+use std::{sync::atomic::*, fmt::Display};
 
 /// Bit vector with atomic operations on its bits
 pub(crate) struct AtomicBitVec {
@@ -12,13 +12,33 @@ pub(crate) enum AtomicBitVecError {
     DataLengthLessThanRequired
 }
 
+/// Contains helper functions for bit access
+pub(crate) struct OffsetAndMaskCalculator<TItem: Sized> {
+    _phantom: std::marker::PhantomData<TItem>
+}
+
+impl OffsetAndMaskCalculator<u8> {
+    #[inline(always)]
+    pub(crate) const fn offset_and_mask(bit_index: u64) -> (u64, u8) {
+        let mask = 1u8 << (bit_index % 8);
+        let offset = bit_index >> 3;
+        (offset, mask)
+    }
+
+    #[inline(always)]
+    pub(crate) const fn get_bit(data: u8, mask: u8) -> bool {
+        (data & mask) != 0
+    }
+}
+
 
 impl AtomicBitVec {
     const ITEM_BYTES_SIZE: usize = 8;
     const ITEM_BITS_SIZE: usize = 64;
 
+    #[inline(always)]
     const fn offset_and_mask(bit_index: usize) -> (usize, u64) {
-        let mask = 1u64 << (bit_index & (64 - 1));
+        let mask = 1u64 << (bit_index % 64);
         let offset = bit_index >> 6;
         (offset, mask)
     }
@@ -105,8 +125,9 @@ impl AtomicBitVec {
         self.set_ord(index, true, Ordering::AcqRel)
     }
 
-    /// Merge bits from 'other' into self. Other is mut to prevent data modification during merge
-    pub(crate) fn or_with(&mut self, other: &mut Self) -> Result<(), AtomicBitVecError> {
+    /// Merge bits from `other` into self. 
+    /// Attention: data modification on `other` is possible during the operation. If needed then explicit protection should be done outside
+    pub(crate) fn or_with(&mut self, other: &Self) -> Result<(), AtomicBitVecError> {
         if self.bits_count != other.bits_count {
             return Err(AtomicBitVecError::BitsCountMismatch);
         }
@@ -120,8 +141,8 @@ impl AtomicBitVec {
     }
 
 
-    /// Copy inner raw data to vector. mut on self is used to prevent modification during the operation
-    pub(crate) fn to_raw_vec(&mut self) -> Vec<u64> {
+    /// Copy inner raw data to vector
+    pub(crate) fn to_raw_vec(&self) -> Vec<u64> {
         if self.bits_count == 0 {
             return Vec::new();
         }
@@ -151,14 +172,38 @@ impl AtomicBitVec {
             bits_count
         })
     }
+
+    /// Count the number of '1' bits
+    pub(crate) fn count_ones(&self) -> u64 {
+        let mut result = 0;
+        for item in &self.data {
+            result += item.load(Ordering::Acquire).count_ones() as u64;
+        }
+        result
+    }
+}
+
+impl Clone for AtomicBitVec {
+    fn clone(&self) -> Self {
+        let data = Vec::with_capacity(self.data.len());
+
+        for i in 0..self.data.len() {
+            data.push(AtomicU64::new(self.data[i].load(Ordering::Acquire)));
+        }
+
+        Self {
+            data: data,
+            bits_count: self.bits_count
+        }
+    }
 }
 
 
-impl Default for AtomicBitVec {
-    fn default() -> Self {
-        Self {
-            data: Vec::new(),
-            bits_count: 0
+impl Display for AtomicBitVecError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AtomicBitVecError::BitsCountMismatch => f.write_str("Bits count in two AtomicBitVecs are not equal"),
+            AtomicBitVecError::DataLengthLessThanRequired => f.write_str("Can't create AtomicBitVec: supplied slice size is less than required bits count")
         }
     }
 }
@@ -218,12 +263,12 @@ mod tests {
             bitvec_a.set(i, i % 5 == 0);
         }
 
-        let mut bitvec_b = AtomicBitVec::new(111);
+        let bitvec_b = AtomicBitVec::new(111);
         for i in 0..bitvec_b.len() {
             bitvec_b.set(i, i % 3 == 0);
         }
 
-        bitvec_a.or_with(&mut bitvec_b).expect("merge success");
+        bitvec_a.or_with(&bitvec_b).expect("merge success");
 
         for i in 0..bitvec_a.len() {
             assert_eq!((i % 3 == 0) || (i % 5) == 0, bitvec_a.get(i));
@@ -233,14 +278,14 @@ mod tests {
     #[test]
     fn test_or_with_mismatch_size() {
         let mut bitvec_a = AtomicBitVec::new(111);
-        let mut bitvec_b = AtomicBitVec::new(112);
+        let bitvec_b = AtomicBitVec::new(112);
 
-        bitvec_a.or_with(&mut bitvec_b).expect_err("merge error");
+        bitvec_a.or_with(&bitvec_b).expect_err("merge error");
     }
 
     #[test]
     fn test_to_raw_from_raw() {
-        let mut bitvec_a = AtomicBitVec::new(1111);
+        let bitvec_a = AtomicBitVec::new(1111);
         for i in 0..bitvec_a.len() {
             bitvec_a.set(i, i % 5 == 0);
         }
@@ -267,12 +312,40 @@ mod tests {
             assert_eq!(((i % 5) == 0) || ((i % 111) == 0), bitvec_a.get(i));
         }
 
-        let mut bitvec_b = AtomicBitVec::new(bits_count);
+        let bitvec_b = AtomicBitVec::new(bits_count);
         for i in 0..bitvec_b.len() {
             bitvec_b.set(i, ((i % 5) == 0) || ((i % 111) == 0));
         }
 
         let bitvec_b_raw = bitvec_b.to_raw_vec();
         assert_eq!(raw_vec, bitvec_b_raw);
+    }
+
+    #[test]
+    fn test_clone() {
+        let bitvec_a = AtomicBitVec::new(1111);
+        for i in 0..bitvec_a.len() {
+            bitvec_a.set(i, i % 5 == 0);
+        }
+
+        // clone
+        let bitvec_b = bitvec_a.clone();
+        for i in 0..bitvec_b.len() {
+            assert_eq!((i % 5) == 0, bitvec_b.get(i));
+        }
+
+        // modify clonned
+        for i in 0..bitvec_b.len() {
+            bitvec_b.set(i, i % 3 == 0);
+        }
+
+        // check original not changed
+        for i in 0..bitvec_a.len() {
+            assert_eq!((i % 5) == 0, bitvec_a.get(i));
+        }
+        // check cloned changed
+        for i in 0..bitvec_b.len() {
+            assert_eq!((i % 3) == 0 || (i % 5) == 0, bitvec_b.get(i));
+        }
     }
 }

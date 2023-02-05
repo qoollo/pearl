@@ -1,23 +1,24 @@
 use super::*;
 use ahash::AHasher;
-use bitvec::order::Lsb0;
-use bitvec::prelude::*;
+use atomic_bitvec::*;
 use std::hash::Hasher;
 use std::sync::RwLock;
 
 // All usizes in structures are serialized as u64 in binary
-#[derive(Clone)]
 /// Bloom filter
 pub struct Bloom {
-    inner: Option<Arc<RwLock<BitVec<u64, Lsb0>>>>,
+    /// Bit vector. None - means offloaded
+    inner: Option<AtomicBitVec>,
+    /// Protects `save` and `checked_add_assign` from seeing partial updates
+    snapshot_protector: RwLock<()>,
     bits_count: usize,
     hashers: Vec<AHasher>,
-    config: Config,
+    config: Arc<Config>
 }
 
 impl Debug for Bloom {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        struct InnerDebug(usize, usize);
+        struct InnerDebug(u64, usize);
         impl Debug for InnerDebug {
             fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
                 f.write_fmt(format_args!("{} ones from {}", self.0, self.1))
@@ -27,7 +28,6 @@ impl Debug for Bloom {
             .field(
                 "inner",
                 &self.inner.as_ref().map(|x| {
-                    let x = x.read().expect("rwlock");
                     InnerDebug(x.count_ones(), x.len())
                 }),
             )
@@ -36,13 +36,14 @@ impl Debug for Bloom {
     }
 }
 
-impl Default for Bloom {
-    fn default() -> Self {
+impl Clone for Bloom {
+    fn clone(&self) -> Self {
         Self {
-            inner: Some(Default::default()),
-            bits_count: 0,
-            hashers: vec![],
-            config: Default::default(),
+            inner: self.inner.clone(),
+            snapshot_protector: RwLock::new(()),
+            bits_count: self.bits_count,
+            hashers: self.hashers.clone(),
+            config: self.config.clone()
         }
     }
 }
@@ -179,10 +180,33 @@ impl Bloom {
     pub fn new(config: Config) -> Self {
         let bits_count = bits_count_from_formula(&config);
         Self {
-            inner: Some(Arc::new(RwLock::new(bitvec![u64, Lsb0; 0; bits_count]))),
+            inner: Some(AtomicBitVec::new(bits_count)),
+            snapshot_protector: RwLock::new(()),
             hashers: Self::hashers(config.hashers_count),
-            config,
+            config: Arc::new(config),
             bits_count,
+        }
+    }
+
+    /// Acquired write lock on RwLock pair.
+    /// Preserve ordering by address comparison. This prevents deadlocks on cycle updates
+    fn acquire_snapshot_protection_ordered<'rw>(a: &'rw RwLock<()>, b: &'rw RwLock<()>) -> (std::sync::RwLockWriteGuard<'rw, ()>, Option<std::sync::RwLockWriteGuard<'rw, ()>>) {
+        let a_ptr: *const RwLock<()> = a;
+        let b_ptr: *const RwLock<()> = b;
+
+        // First lock on RwLock which have smaller address in memory. This allow to preserve order
+        if a_ptr < b_ptr {
+            let g1 = a.write().expect("write lock acquired");
+            let g2 = b.write().expect("write lock acquired");
+            (g1, Some(g2))
+        } else if a_ptr > b_ptr {
+            let g2 = b.write().expect("write lock acquired");
+            let g1 = a.write().expect("write lock acquired");
+            (g1, Some(g2))
+        } else {
+            // Identical references
+            let g1 = a.write().expect("write lock acquired");
+            (g1, None)
         }
     }
 
@@ -191,16 +215,13 @@ impl Bloom {
     pub fn checked_add_assign(&mut self, other: &Bloom) -> bool {
         match (&mut self.inner, &other.inner) {
             (Some(inner), Some(other_inner)) => {
-                let mut inner = inner.write().expect("rwlock");
-                let other_inner = other_inner.read().expect("rwlock");
                 if inner.len() != other_inner.len() {
                     return false;
                 }
-                inner
-                    .as_raw_mut_slice()
-                    .iter_mut()
-                    .zip(other_inner.as_raw_slice())
-                    .for_each(|(a, b)| *a |= *b);
+ 
+                let _guard_pair = Self::acquire_snapshot_protection_ordered(&self.snapshot_protector, &other.snapshot_protector);
+
+                inner.or_with(other_inner).expect("AtomicBitVec::or_with expects to be successful");
                 true
             }
             _ => false,
@@ -209,9 +230,7 @@ impl Bloom {
 
     /// Set in-memory filter buffer to zeroed array
     pub fn clear(&mut self) {
-        self.inner = Some(Arc::new(RwLock::new(
-            bitvec![u64, Lsb0; 0; self.bits_count],
-        )));
+        self.inner = Some(AtomicBitVec::new(self.bits_count));
     }
 
     /// Check if filter offloaded
@@ -221,11 +240,7 @@ impl Bloom {
 
     /// Clear in-memory filter buffer
     pub fn offload_from_memory(&mut self) -> usize {
-        let freed = self
-            .inner
-            .as_ref()
-            .map(|x| x.read().expect("rwlock").capacity() / 8)
-            .unwrap_or(0);
+        let freed = self.inner.as_ref().map(|x| x.size_in_mem()).unwrap_or(0);
         self.inner = None;
         freed
     }
@@ -239,10 +254,12 @@ impl Bloom {
 
     fn save(&self) -> Option<Save> {
         if let Some(inner) = &self.inner {
-            let inner = inner.read().expect("rwlock");
+            // Protect from modification while `inner.to_raw_vec()` executing
+            let _guard = self.snapshot_protector.write().expect("write lock acquired");
+
             Some(Save {
-                config: self.config.clone(),
-                buf: inner.as_raw_slice().to_vec(),
+                config: self.config.as_ref().clone(),
+                buf: inner.to_raw_vec(),
                 bits_count: inner.len(),
             })
         } else {
@@ -250,15 +267,20 @@ impl Bloom {
         }
     }
 
-    fn from(save: Save) -> Self {
-        let mut inner = BitVec::from_vec(save.buf);
-        inner.truncate(save.bits_count);
-        Self {
-            hashers: Self::hashers(save.config.hashers_count),
-            config: save.config,
-            inner: Some(Arc::new(RwLock::new(inner))),
+    fn from(save: Save) -> Result<Self> {
+        use serde::de::Error;
+        
+        let mut inner = 
+            AtomicBitVec::from_raw_slice(&save.buf, save.bits_count)
+                .map_err(|e| bincode::Error::custom(e))?;
+
+        Ok(Self {
+            inner: Some(inner),
+            snapshot_protector: RwLock::new(()),
             bits_count: save.bits_count,
-        }
+            hashers: Self::hashers(save.config.hashers_count),
+            config: Arc::new(save.config),
+        })
     }
 
     /// Serialize filter to bytes
@@ -272,20 +294,20 @@ impl Bloom {
     /// Deserialize filter from bytes
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
         let save: Save = bincode::deserialize(buf)?;
-        Ok(Self::from(save))
+        Ok(Self::from(save)?)
     }
 
     /// Add value to filter
     pub fn add(&self, item: impl AsRef<[u8]>) -> Result<()> {
         if let Some(inner) = &self.inner {
-            let mut inner = inner.write().expect("rwlock");
+            // snapshot_protector prevents partial modifications to be observable in other functions
+            let _guard = self.snapshot_protector.read().expect("read lock acquired");
+
             let len = inner.len() as u64;
             for mut hasher in self.hashers.iter().cloned() {
                 hasher.write(item.as_ref());
                 if let Some(i) = hasher.finish().checked_rem(len) {
-                    *inner
-                        .get_mut(i as usize)
-                        .expect("impossible due to mod by len") = true;
+                    inner.set(i as usize, true);
                 }
             }
             Ok(())
@@ -297,7 +319,6 @@ impl Bloom {
     /// Check filter in-memory (if not offloaded)
     pub fn contains_in_memory(&self, item: impl AsRef<[u8]>) -> Option<FilterResult> {
         if let Some(inner) = &self.inner {
-            let inner = inner.read().expect("rwlock");
             let len = inner.len() as u64;
             // Check because NeedAdditionalCheck will be returned is self.hashers is empty
             if len == 0 {
@@ -306,7 +327,7 @@ impl Bloom {
             for mut hasher in self.hashers.iter().cloned() {
                 hasher.write(item.as_ref());
                 if let Some(i) = hasher.finish().checked_rem(len) {
-                    if !*inner.get(i as usize).expect("unreachable") {
+                    if !inner.get(i as usize) {
                         return Some(FilterResult::NotContains);
                     }
                 }
@@ -332,13 +353,10 @@ impl Bloom {
             hasher.write(item.as_ref());
             hasher.finish() % self.bits_count as u64
         }) {
-            let byte = provider.read_byte(start_pos + index / 8).await?;
+            let (offset, bit_mask) = OffsetAndMaskCalculator::<u8>::offset_and_mask(index);
+            let byte = provider.read_byte(start_pos + offset).await?;
 
-            if !byte
-                .view_bits::<Lsb0>()
-                .get(index as usize % 8)
-                .expect("unreachable")
-            {
+            if !OffsetAndMaskCalculator::<u8>::get_bit(byte, bit_mask) {
                 return Ok(FilterResult::NotContains);
             }
         }
@@ -347,14 +365,14 @@ impl Bloom {
 
     // bincode write len as u64 before Vec elements. sizeof(config) + sizeof(u64)
     fn buffer_start_position(&self) -> Result<u64> {
-        Ok(bincode::serialized_size(&self.config)? + std::mem::size_of::<u64>() as u64)
+        Ok(bincode::serialized_size(self.config.as_ref())? + std::mem::size_of::<u64>() as u64)
     }
 
     /// Get amount of memory allocated for filter
     pub fn memory_allocated(&self) -> usize {
         self.inner
             .as_ref()
-            .map_or(0, |buf| buf.read().expect("rwlock").capacity() / 8)
+            .map_or(0, |buf| buf.size_in_mem())
     }
 }
 
