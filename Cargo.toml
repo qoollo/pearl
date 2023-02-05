@@ -27,7 +27,6 @@ ahash = "=0.7.6"
 anyhow = "1.0"
 async-trait = "0.1"
 bincode = "1.3"
-bitvec = "1.0"
 chrono = "0.4"
 clap = { version = "3.2", optional = true }
 crc = "=2.0.0"
