@@ -330,7 +330,9 @@ mod tests {
 
         // modify clonned
         for i in 0..bitvec_b.len() {
-            bitvec_b.set(i, i % 3 == 0);
+            if (i % 3) == 0 {
+                bitvec_b.set(i, true);
+            }
         }
 
         // check original not changed

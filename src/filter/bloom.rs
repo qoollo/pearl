@@ -106,7 +106,7 @@ pub struct Config {
     pub hashers_count: usize,
     /// number of bits in the inner buffer.
     pub max_buf_bits_count: usize,
-    /// filter buf increase value.
+    /// filter buf increase value. Not used anymore
     pub buf_increase_step: usize,
     /// filter incrementally increases buffer
     /// size by step and checks result false positive rate to be less than param.
@@ -225,7 +225,7 @@ impl Bloom {
         let a_ptr: *const RwLock<()> = a;
         let b_ptr: *const RwLock<()> = b;
 
-        // First lock on RwLock which have smaller address in memory. This allow to preserve order
+        // First lock on RwLock with lower memory address. This preserved order and prevents deadlock on cycle updates
         if a_ptr < b_ptr {
             let g1 = a.write().expect("write lock acquired");
             let g2 = b.write().expect("write lock acquired");
@@ -245,11 +245,7 @@ impl Bloom {
     #[must_use]
     pub fn checked_add_assign(&mut self, other: &Bloom) -> bool {
         match (&mut self.inner, &other.inner) {
-            (Some(inner), Some(other_inner)) => {
-                if inner.len() != other_inner.len() {
-                    return false;
-                }
- 
+            (Some(inner), Some(other_inner)) if inner.len() == other_inner.len() => {
                 let _guard_pair = Self::acquire_snapshot_protection_ordered(&self.snapshot_protector, &other.snapshot_protector);
 
                 inner.or_with(other_inner).expect("AtomicBitVec::or_with expects to be successful");
@@ -411,7 +407,12 @@ impl Bloom {
     }
 }
 
+
+#[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::ArrayKey;
+
     #[test]
     fn check_inversed_formula() {
         use super::Config;
@@ -456,5 +457,156 @@ mod tests {
             iterations_method_fpr,
             diff
         );
+    }
+
+    #[test]
+    fn test_simple_operations() {
+        let bloom = Bloom::new(Config {
+            elements: 1000,
+            hashers_count: 2,
+            max_buf_bits_count: 1000,
+            preferred_false_positive_rate: 0.01,
+            buf_increase_step: 1
+        });
+
+        assert_eq!(false, bloom.is_offloaded());
+
+        let k1 = ArrayKey::from([1u8; 1]);
+        let k2 = ArrayKey::from([50u8; 1]);
+        let k3 = ArrayKey::from([255u8; 1]);
+
+        bloom.add(k1.clone()).expect("add");
+        bloom.add(k2.clone()).expect("add2");
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k2));
+        assert_eq!(FilterResult::NotContains, bloom.contains_fast(&k3));
+    }
+
+    #[test]
+    fn test_empty_not_fails() {
+        let bloom = Bloom::empty();
+
+        assert_eq!(false, bloom.is_offloaded());
+
+        let k1 = ArrayKey::from([1u8; 1]);
+        let k2 = ArrayKey::from([50u8; 1]);
+        let k3 = ArrayKey::from([255u8; 1]);
+
+        bloom.add(k1.clone()).expect("add");
+        bloom.add(k2.clone()).expect("add2");
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k2));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k3));
+    }
+
+    #[test]
+    fn test_merge() {
+        let cfg = Config {
+            elements: 1000,
+            hashers_count: 2,
+            max_buf_bits_count: 1000,
+            preferred_false_positive_rate: 0.01,
+            buf_increase_step: 1
+        };
+
+        let mut bloom_a = Bloom::new(cfg.clone());
+        let bloom_b = Bloom::new(cfg);
+
+        let k1 = ArrayKey::from([1u8; 1]);
+        let k2 = ArrayKey::from([50u8; 1]);
+
+        bloom_a.add(k1.clone()).expect("add");
+        bloom_b.add(k2.clone()).expect("add2");
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_a.contains_fast(&k1));
+        assert_eq!(FilterResult::NotContains, bloom_a.contains_fast(&k2));
+
+        assert_eq!(FilterResult::NotContains, bloom_b.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_b.contains_fast(&k2));
+
+        assert_eq!(true, bloom_a.checked_add_assign(&bloom_b));
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_a.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_a.contains_fast(&k2));
+    }
+
+    #[test]
+    fn test_clone() {
+        let cfg = Config {
+            elements: 1000,
+            hashers_count: 2,
+            max_buf_bits_count: 1000,
+            preferred_false_positive_rate: 0.01,
+            buf_increase_step: 1
+        };
+
+        let bloom_a = Bloom::new(cfg.clone());
+
+        let k1 = ArrayKey::from([1u8; 1]);
+        let k2 = ArrayKey::from([50u8; 1]);
+
+        bloom_a.add(k1.clone()).expect("add");
+        
+        let bloom_b = bloom_a.clone();
+        bloom_b.add(k2.clone()).expect("add2");
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_a.contains_fast(&k1));
+        assert_eq!(FilterResult::NotContains, bloom_a.contains_fast(&k2));
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_b.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_b.contains_fast(&k2));
+    }
+
+
+    #[test]
+    fn test_backward_compat() {
+        let raw_buf: Vec<u64> = vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16384, 0, 0, 0, 0, 0, 0, 524288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4398046511104, 0, 0, 0, 0, 0, 0, 1073741824, 0];
+
+        let cfg = Config {
+            elements: 1000,
+            hashers_count: 2,
+            max_buf_bits_count: 1000,
+            preferred_false_positive_rate: 0.01,
+            buf_increase_step: 1
+        };
+
+        let sv = Save {
+            bits_count: 2885,
+            buf: raw_buf.clone(),
+            config: cfg
+        };
+
+        let bloom = Bloom::from(sv).expect("success");
+
+        let k1 = ArrayKey::from([1u8; 1]);
+        let k2 = ArrayKey::from([50u8; 1]);
+        let k3 = ArrayKey::from([255u8; 1]);
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k2));
+        assert_eq!(FilterResult::NotContains, bloom.contains_fast(&k3));
+
+        let sv2 = bloom.save().unwrap();
+        assert_eq!(raw_buf, sv2.buf);
+    }
+
+    #[test]
+    fn test_backward_compat_serialization() {
+        let serialized: Vec<u8> = vec![232, 3, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 232, 3, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 123, 20, 174, 71, 225, 122, 132, 63, 46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 69, 11, 0, 0, 0, 0, 0, 0];
+
+        let bloom = Bloom::from_raw(&serialized[..]).expect("success");
+
+        let k1 = ArrayKey::from([1u8; 1]);
+        let k2 = ArrayKey::from([50u8; 1]);
+        let k3 = ArrayKey::from([255u8; 1]);
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k2));
+        assert_eq!(FilterResult::NotContains, bloom.contains_fast(&k3));
+
+        let serialized2 = bloom.to_raw().unwrap();
+        assert_eq!(serialized, serialized2);
     }
 }
