@@ -880,16 +880,31 @@ where
     ) -> Result<ReadResult<BlobRecordTimestamp>> {
         let inner = self.inner.safe.read().await;
         if let Some(active_blob) = &inner.active_blob {
-            let res = active_blob.read().await.contains(key, meta).await?;
-            if res.is_presented() {
-                return Ok(res);
+            let active_blob = active_blob.read().await;
+            match active_blob.contains(key, meta).await {
+                Ok(res) => {
+                    if res.is_presented() {
+                        return Ok(res);
+                    }
+                },
+                Err(err) => {
+                    // Skip errors (same behavior as in read_with_optional_meta)
+                    debug!("error in key existance check from Blob (blob.contains). Blob: {}. Error: {:?}", active_blob.name().to_path().display(), err);
+                }
             }
         }
         let blobs = inner.blobs.read().await;
         for blob in blobs.iter_possible_childs_rev(key) {
-            let res = blob.1.data.contains(key, meta).await?;
-            if res.is_presented() {
-                return Ok(res);
+            match blob.1.data.contains(key, meta).await {
+                Ok(res) => {
+                    if res.is_presented() {
+                        return Ok(res);
+                    }
+                },
+                Err(err) => {
+                    // Skip errors (same behavior as in read_with_optional_meta)
+                    debug!("error in key existance check from Blob (blob.contains). Blob: {}. Error: {:?}", blob.1.data.name().to_path().display(), err);
+                }
             }
         }
 
