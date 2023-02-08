@@ -286,7 +286,7 @@ impl Header {
         self.header_checksum = header_checksum;
     }
 
-    fn blob_offset_offset(len: usize) -> usize {
+    const fn blob_offset_offset(len: usize) -> usize {
         len - 24
     }
 
