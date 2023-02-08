@@ -290,7 +290,7 @@ impl Header {
         len - 24
     }
 
-    fn checksum_offset(len: usize) -> usize {
+    const fn checksum_offset(len: usize) -> usize {
         len - 4
     }
 
