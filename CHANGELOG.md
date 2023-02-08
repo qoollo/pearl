@@ -7,7 +7,7 @@ Pearl changelog
 
 
 #### Changed
-- Skip errors in Storage::contains (#241)
+- Skip errors in Storage::contains_with (#241)
 
 #### Fixed
 
