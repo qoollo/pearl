@@ -278,6 +278,8 @@ impl Header {
 
     pub(crate) fn set_offset_checksum(&mut self, blob_offset: u64, header_checksum: u32) {
         self.blob_offset = blob_offset;
+        self.header_checksum = 0;
+        debug_assert_eq!(self.crc32().expect("debug assert crc32"), header_checksum);
         self.header_checksum = header_checksum;
     }
 
@@ -289,10 +291,10 @@ impl Header {
         len - 4
     }
 
-    fn update_checksum(&mut self) -> bincode::Result<()> {
+    fn update_checksum(&mut self) -> bincode::Result<u32> {
         self.header_checksum = 0;
         self.header_checksum = self.crc32()?;
-        Ok(())
+        Ok(self.header_checksum)
     }
 
     fn crc32(&self) -> bincode::Result<u32> {
