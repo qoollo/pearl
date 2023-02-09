@@ -379,7 +379,7 @@ mod tests {
                 RecordHeader::new(key, meta.serialized_size(), data.len() as u64, checksum);
             let header_size = header.serialized_size();
             let record = Record::new(header, meta, data);
-            let offset: u64 = 100 + i as u64;
+            let offset: u64 = 101 * i as u64;
 
             let partially_serialized_header = record.create_partially_serialized_header()?;
             let (serialized, checksum) =
