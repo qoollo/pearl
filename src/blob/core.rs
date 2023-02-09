@@ -249,14 +249,10 @@ where
         Self::write_locked(blob, key, partially_serialized, header).await
     }
 
-    async fn write_mut(
-        &mut self,
-        key: &K,
-        record: PartiallySerializedRecord,
-        mut header: RecordHeader,
-    ) -> Result<RecordHeader> {
+    async fn write_mut(&mut self, key: &K, record: Record) -> Result<RecordHeader> {
         debug!("blob write");
         debug!("blob write record offset: {}", self.current_offset);
+        let (record, mut header) = record.to_partially_serialized_and_header()?;
         let (bytes_written, header_checksum) = record
             .write_to_file(&self.file, self.current_offset)
             .await?;
@@ -357,8 +353,7 @@ where
             self.load_index().await?;
         }
         let record = Record::deleted(key)?;
-        let (partially_serialized, header) = record.to_partially_serialized_and_header()?;
-        let header = self.write_mut(key, partially_serialized, header).await?;
+        let header = self.write_mut(key, record).await?;
         self.index.push_deletion(key, header)
     }
 
