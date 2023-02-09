@@ -2,19 +2,90 @@ use crate::blob::File;
 use crate::prelude::*;
 use bytes::{Bytes, BytesMut};
 
-const MAX_SINGLE_PASS_DATA_SIZE: usize = 4 * 1024;
-
-enum PartiallySerializedData {
-    SinglePass(Bytes),
-    DoublePass(Bytes, Bytes),
+pub(crate) struct PartiallySerializedWriteResult {
+    bytes_written: u64,
+    header_checksum: u32,
 }
 
-impl PartiallySerializedData {
-    pub(crate) async fn write_to_file(self, file: &File) -> Result<u64> {
-        match self {
-            PartiallySerializedData::SinglePass(b) => Self::write_single_pass(b, file).await,
-            PartiallySerializedData::DoublePass(h, d) => Self::write_double_pass(h, d, file).await,
+impl PartiallySerializedWriteResult {
+    pub(crate) fn bytes_written(&self) -> u64 {
+        self.bytes_written
+    }
+
+    pub(crate) fn header_checksum(&self) -> u32 {
+        self.header_checksum
+    }
+}
+
+pub(crate) struct PartiallySerializedRecord {
+    head_with_data: BytesMut,
+    header_len: usize,
+    data: Option<Bytes>,
+}
+
+impl PartiallySerializedRecord {
+    pub(crate) fn new(head_with_data: BytesMut, header_len: usize, data: Option<Bytes>) -> Self {
+        Self {
+            head_with_data,
+            header_len,
+            data,
         }
+    }
+
+    pub(super) fn serialize_with_checksum(
+        self,
+        blob_offset: u64,
+    ) -> Result<(Bytes, Option<Bytes>, u32)> {
+        let Self {
+            head_with_data,
+            header_len,
+            data,
+        } = self;
+        let (head, checksum) =
+            Self::finalize_with_checksum(head_with_data, header_len, blob_offset)?;
+        Ok((head.freeze(), data, checksum))
+    }
+
+    pub(crate) async fn write_to_file(
+        self,
+        file: &File,
+        offset: u64,
+    ) -> Result<PartiallySerializedWriteResult> {
+        let (head, data, checksum) = self.serialize_with_checksum(offset)?;
+
+        let res = if let Some(data) = data {
+            Self::write_double_pass(head, data, file).await
+        } else {
+            Self::write_single_pass(head, file).await
+        };
+
+        res.map(|l| PartiallySerializedWriteResult {
+            bytes_written: l,
+            header_checksum: checksum,
+        })
+    }
+
+    fn finalize_with_checksum(
+        mut buf: BytesMut,
+        header_len: usize,
+        bytes_offset: u64,
+    ) -> Result<(BytesMut, u32)> {
+        use std::mem::size_of;
+
+        let offset_pos = RecordHeader::blob_offset_offset(header_len);
+        let checksum_pos = RecordHeader::checksum_offset(header_len);
+        let offset_slice = &mut buf[offset_pos..];
+        offset_slice[..size_of::<u64>()].copy_from_slice(&bytes_offset.to_le_bytes());
+
+        let checksum_slice = &mut buf[checksum_pos..];
+        checksum_slice[..size_of::<u32>()].copy_from_slice(&0u32.to_le_bytes());
+
+        let header_slice = &buf[..header_len];
+        let checksum: u32 = CRC32C.checksum(header_slice);
+        let checksum_slice = &mut buf[checksum_pos..];
+        checksum_slice[..size_of::<u32>()].copy_from_slice(&checksum.to_le_bytes());
+
+        Ok((buf, checksum))
     }
 
     async fn write_single_pass(buf: Bytes, file: &File) -> Result<u64> {
@@ -36,70 +107,5 @@ impl PartiallySerializedData {
                 _ => e.into(),
             }
         })
-    }
-}
-
-pub(crate) struct PartiallySerializedHeader {
-    buf: BytesMut,
-    header_len: usize,
-}
-
-impl PartiallySerializedHeader {
-    pub(crate) fn new(buf: BytesMut, header_len: usize) -> Self {
-        Self { buf, header_len }
-    }
-
-    pub(crate) fn finalize_with_checksum(self, bytes_offset: u64) -> Result<(BytesMut, u32)> {
-        use std::mem::size_of;
-
-        let Self {
-            mut buf,
-            header_len,
-        } = self;
-        let offset_pos = RecordHeader::blob_offset_offset(header_len);
-        let checksum_pos = RecordHeader::checksum_offset(header_len);
-        let offset_slice = &mut buf[offset_pos..];
-        offset_slice[..size_of::<u64>()].copy_from_slice(&bytes_offset.to_le_bytes());
-
-        let checksum_slice = &mut buf[checksum_pos..];
-        checksum_slice[..size_of::<u32>()].copy_from_slice(&0u32.to_le_bytes());
-
-        let header_slice = &buf[..header_len];
-        let checksum: u32 = CRC32C.checksum(header_slice);
-        let checksum_slice = &mut buf[checksum_pos..];
-        checksum_slice[..size_of::<u32>()].copy_from_slice(&checksum.to_le_bytes());
-
-        Ok((buf, checksum))
-    }
-}
-
-pub(crate) struct PartiallySerializedRecord {
-    head: PartiallySerializedHeader,
-    data: Bytes,
-}
-
-impl PartiallySerializedRecord {
-    pub(crate) fn new(head: PartiallySerializedHeader, data: Bytes) -> Self {
-        Self { head, data }
-    }
-
-    fn into_serialized_with_header_checksum(
-        self,
-        blob_offset: u64,
-    ) -> Result<(PartiallySerializedData, u32)> {
-        let Self { head, data } = self;
-        let (mut head, checksum) = head.finalize_with_checksum(blob_offset)?;
-        let data = if head.len() + data.len() > MAX_SINGLE_PASS_DATA_SIZE {
-            PartiallySerializedData::DoublePass(head.freeze(), data)
-        } else {
-            head.extend_from_slice(&data);
-            PartiallySerializedData::SinglePass(head.freeze())
-        };
-        Ok((data, checksum))
-    }
-
-    pub async fn write_to_file(self, file: &File, offset: u64) -> Result<(u64, u32)> {
-        let (data, checksum) = self.into_serialized_with_header_checksum(offset)?;
-        data.write_to_file(file).await.map(|l| (l, checksum))
     }
 }

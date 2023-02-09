@@ -253,12 +253,12 @@ where
         debug!("blob write");
         debug!("blob write record offset: {}", self.current_offset);
         let (record, mut header) = record.to_partially_serialized_and_header()?;
-        let (bytes_written, header_checksum) = record
+        let write_result = record
             .write_to_file(&self.file, self.current_offset)
             .await?;
-        header.set_offset_checksum(self.current_offset, header_checksum);
+        header.set_offset_checksum(self.current_offset, write_result.header_checksum());
         self.index.push(key, header.clone())?;
-        self.current_offset += bytes_written;
+        self.current_offset += write_result.bytes_written();
         Ok(header)
     }
 
@@ -269,13 +269,13 @@ where
         mut header: RecordHeader,
     ) -> Result<()> {
         debug!("blob write record offset: {}", blob.current_offset);
-        let (bytes_written, header_checksum) = record
+        let write_result = record
             .write_to_file(&blob.file, blob.current_offset)
             .await?;
-        header.set_offset_checksum(blob.current_offset, header_checksum);
+        header.set_offset_checksum(blob.current_offset, write_result.header_checksum());
         let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
         blob.index.push(key, header)?;
-        blob.current_offset += bytes_written;
+        blob.current_offset += write_result.bytes_written();
         Ok(())
     }
 

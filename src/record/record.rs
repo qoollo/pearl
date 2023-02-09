@@ -1,10 +1,13 @@
 use crate::{error::ValidationErrorKind, prelude::*};
 use bytes::{BufMut, Bytes, BytesMut};
 
-use super::partially_serialized::{PartiallySerializedHeader, PartiallySerializedRecord};
+use super::partially_serialized::PartiallySerializedRecord;
 
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 const DELETE_FLAG: u8 = 0x01;
+
+const MAX_SINGLE_PASS_DATA_SIZE: usize = 4 * 1024;
+
 #[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
 pub struct Record {
     pub header: Header,
@@ -146,21 +149,30 @@ impl Record {
         &self.header
     }
 
-    fn create_partially_serialized_header(&self) -> Result<PartiallySerializedHeader> {
-        let head_size = self.header.serialized_size() + self.meta.serialized_size();
-        let mut head = BytesMut::with_capacity(head_size as usize);
-        self.header.to_raw_into((&mut head).writer())?;
-        let header_len = head.len();
-        self.meta.to_raw_into((&mut head).writer())?;
-        Ok(PartiallySerializedHeader::new(head, header_len))
-    }
-
     pub(crate) fn to_partially_serialized_and_header(
         self,
     ) -> Result<(PartiallySerializedRecord, Header)> {
-        let head = self.create_partially_serialized_header()?;
-        let Self { data, header, .. } = self;
-        Ok((PartiallySerializedRecord::new(head, data), header))
+        let Self {
+            data, header, meta, ..
+        } = self;
+        let head_size = (header.serialized_size() + meta.serialized_size()) as usize;
+        let include_data = head_size + data.len() <= MAX_SINGLE_PASS_DATA_SIZE;
+        let buf_len = head_size + if include_data { data.len() } else { 0 };
+        let mut buf = BytesMut::with_capacity(buf_len);
+        header.to_raw_into((&mut buf).writer())?;
+        let header_len = buf.len();
+        meta.to_raw_into((&mut buf).writer())?;
+        let data = if include_data {
+            buf.extend(&data);
+            None
+        } else {
+            Some(data)
+        };
+
+        Ok((
+            PartiallySerializedRecord::new(buf, header_len, data),
+            header,
+        ))
     }
 
     pub(crate) fn deleted<K>(key: &K) -> bincode::Result<Self>
@@ -347,7 +359,7 @@ impl Header {
 
     pub(crate) fn mark_as_deleted(&mut self) -> bincode::Result<()> {
         self.flags |= DELETE_FLAG;
-        self.update_checksum();
+        self.update_checksum()?;
         Ok(())
     }
 
@@ -381,11 +393,10 @@ mod tests {
             let record = Record::new(header, meta, data);
             let offset: u64 = 101 * i as u64;
 
-            let partially_serialized_header = record.create_partially_serialized_header()?;
-            let (serialized, checksum) =
-                partially_serialized_header.finalize_with_checksum(offset)?;
+            let (partially_serialized, _) = record.to_partially_serialized_and_header()?;
+            let (head, _, checksum) = partially_serialized.serialize_with_checksum(offset)?;
 
-            let from_raw = RecordHeader::from_raw(&serialized[..(header_size as usize)])?;
+            let from_raw = RecordHeader::from_raw(&head[..(header_size as usize)])?;
 
             assert_eq!(offset, from_raw.blob_offset);
             assert_eq!(checksum, from_raw.header_checksum);
