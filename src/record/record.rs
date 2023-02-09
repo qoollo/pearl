@@ -347,7 +347,8 @@ impl Header {
 
     pub(crate) fn mark_as_deleted(&mut self) -> bincode::Result<()> {
         self.flags |= DELETE_FLAG;
-        self.update_checksum()
+        self.update_checksum();
+        Ok(())
     }
 
     pub(crate) fn is_deleted(&self) -> bool {
@@ -367,23 +368,28 @@ mod tests {
 
     #[test]
     pub fn partial_serialization_preserves_checksum_and_offset() -> Result<()> {
-        let key = vec![0, 0, 0];
-        let data = Bytes::new();
-        let checksum: u32 = CRC32C.checksum(&data);
-        let meta = Meta::new();
-        let header = RecordHeader::new(key, meta.serialized_size(), data.len() as u64, checksum);
-        let header_size = header.serialized_size();
-        let record = Record::new(header, meta, data);
-        let offset: u64 = 100;
+        let data = Bytes::from((0..16).map(|i| i * i).collect::<Vec<u8>>());
 
-        let partially_serialized_header = record.create_partially_serialized_header()?;
-        let (serialized, checksum) = partially_serialized_header.finalize_with_checksum(offset)?;
+        for i in 0..8 {
+            let key = vec![0, 0, i];
+            let data = data.clone();
+            let checksum: u32 = CRC32C.checksum(&data);
+            let meta = Meta::new();
+            let header =
+                RecordHeader::new(key, meta.serialized_size(), data.len() as u64, checksum);
+            let header_size = header.serialized_size();
+            let record = Record::new(header, meta, data);
+            let offset: u64 = 100 + i as u64;
 
-        let from_raw = RecordHeader::from_raw(&serialized[..(header_size as usize)])?;
+            let partially_serialized_header = record.create_partially_serialized_header()?;
+            let (serialized, checksum) =
+                partially_serialized_header.finalize_with_checksum(offset)?;
 
-        assert_eq!(offset, from_raw.blob_offset);
-        assert_eq!(checksum, from_raw.header_checksum);
+            let from_raw = RecordHeader::from_raw(&serialized[..(header_size as usize)])?;
 
+            assert_eq!(offset, from_raw.blob_offset);
+            assert_eq!(checksum, from_raw.header_checksum);
+        }
         Ok(())
     }
 }
