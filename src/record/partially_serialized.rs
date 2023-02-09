@@ -50,6 +50,8 @@ impl PartiallySerializedHeader {
     }
 
     pub(crate) fn finalize_with_checksum(self, bytes_offset: u64) -> Result<(BytesMut, u32)> {
+        use std::mem::size_of;
+
         let Self {
             mut buf,
             header_len,
@@ -57,11 +59,11 @@ impl PartiallySerializedHeader {
         let offset_pos = RecordHeader::blob_offset_offset(header_len);
         let checksum_pos = RecordHeader::checksum_offset(header_len);
         let offset_slice = &mut buf[offset_pos..];
-        bincode::serialize_into(offset_slice, &bytes_offset)?;
+        offset_slice[..size_of::<u64>()].copy_from_slice(&bytes_offset.to_le_bytes());
         let header_slice = &buf[..header_len];
         let checksum: u32 = CRC32C.checksum(header_slice);
         let checksum_slice = &mut buf[checksum_pos..];
-        bincode::serialize_into(checksum_slice, &checksum)?;
+        checksum_slice[..size_of::<u32>()].copy_from_slice(&checksum.to_le_bytes());
         Ok((buf, checksum))
     }
 }
