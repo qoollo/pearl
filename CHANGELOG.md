@@ -7,7 +7,9 @@ Pearl changelog
 
 
 #### Changed
-
+- Removed serialization from critical section (#188)
+- Removed multiple header checksum calculations (#206)
+- Rename functions to show that it returns last entry (#199)
 
 #### Fixed
 
@@ -55,9 +57,6 @@ Pearl changelog
 - Change file operations to work on full buffers (#190)
 - Remove iterators from bloom filter (#194)
 - Excessive key conversion removed (#193)
-- Removed serialization from critical section (#188)
-- Removed multiple header checksum calculations (#206)
-- Rename functions to show that it returns last entry (#199)
 
 #### Fixed
 
