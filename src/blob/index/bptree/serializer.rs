@@ -1,3 +1,5 @@
+use bytes::{BufMut, BytesMut};
+
 use super::prelude::*;
 
 type MinKeyWithOffset = (Vec<u8>, u64);
@@ -46,7 +48,13 @@ where
                 .headers_btree
                 .iter()
                 .fold(0, |acc, (_k, v)| acc + v.len());
-            let header = IndexHeader::new(record_header_size, headers_len, meta.len(), K::LEN, blob_size);
+            let header = IndexHeader::new(
+                record_header_size,
+                headers_len,
+                meta.len(),
+                K::LEN,
+                blob_size,
+            );
             Ok(HeaderStage {
                 headers_btree: self.headers_btree,
                 header,
@@ -63,7 +71,7 @@ where
     for<'b> K: Key<'b> + 'static,
 {
     pub(super) fn tree_stage(self) -> Result<TreeStage<'a, K>> {
-        let hs = self.header.serialized_size()? as usize;
+        let hs = self.header.serialized_size() as usize;
         let external_buf_size = self.header.meta_size;
         let meta_and_buf_end = (hs + external_buf_size) as u64;
         let headers_size = self.header.records_count * self.header.record_header_size;
@@ -211,13 +219,13 @@ impl<'a, K> TreeStage<'a, K>
 where
     for<'b> K: Key<'b>,
 {
-    pub(super) fn build(self) -> Result<(IndexHeader, TreeMeta, Vec<u8>)> {
-        let hs = self.header.serialized_size()? as usize;
+    pub(super) fn build(self) -> Result<(IndexHeader, TreeMeta, BytesMut)> {
+        let hs = self.header.serialized_size() as usize;
         let fsize = self.header.meta_size;
         let msize = self.meta_buf.len();
         let data_size = hs + fsize + self.headers_size + msize + self.tree_buf.len();
-        let mut buf = Vec::with_capacity(data_size);
-        serialize_into(&mut buf, &self.header)?;
+        let mut buf = BytesMut::with_capacity(data_size);
+        serialize_into((&mut buf).writer(), &self.header)?;
         buf.extend_from_slice(&self.meta);
         buf.extend_from_slice(&self.meta_buf);
         buf.extend_from_slice(&self.tree_buf);
@@ -231,11 +239,11 @@ where
             self.header.blob_size,
             hash,
         );
-        serialize_into(buf.as_mut_slice(), &header)?;
+        serialize_into(&mut buf[..], &header)?;
         Ok((header, self.metadata, buf))
     }
 
-    fn append_headers(headers_btree: &InMemoryIndex<K>, buf: &mut Vec<u8>) -> Result<()> {
+    fn append_headers(headers_btree: &InMemoryIndex<K>, buf: &mut BytesMut) -> Result<()> {
         // headers are pushed in reversed order because it helps to perform something like update
         // operation: the latest written (the first after reverse) record will be retrieved from file
         headers_btree
