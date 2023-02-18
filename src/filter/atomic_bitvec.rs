@@ -13,33 +13,32 @@ pub(crate) enum AtomicBitVecError {
 }
 
 /// Contains helper functions for bit access
-pub(crate) struct OffsetAndMaskCalculator<TItem: Sized> {
-    _phantom: std::marker::PhantomData<TItem>
-}
+pub(crate) struct OffsetAndMaskCalculator;
 
-impl OffsetAndMaskCalculator<u8> {
+impl OffsetAndMaskCalculator {
     #[inline(always)]
-    pub(crate) const fn offset_and_mask(bit_index: u64) -> (u64, u8) {
+    pub(crate) const fn offset_and_mask_u8(bit_index: u64) -> (u64, u8) {
         let mask = 1u8 << (bit_index % 8);
         let offset = bit_index >> 3;
         (offset, mask)
     }
 
     #[inline(always)]
-    pub(crate) const fn get_bit(data: u8, mask: u8) -> bool {
+    pub(crate) const fn get_bit_u8(data: u8, mask: u8) -> bool {
         (data & mask) != 0
     }
 }
 
 
 impl AtomicBitVec {
-    const ITEM_BYTES_SIZE: usize = 8;
-    const ITEM_BITS_SIZE: usize = 64;
+    const ITEM_BYTES_SIZE: usize = std::mem::size_of::<u64>();
+    const ITEM_BITS_SIZE: usize = Self::ITEM_BYTES_SIZE * 8;
 
     #[inline(always)]
     const fn offset_and_mask(bit_index: usize) -> (usize, u64) {
-        let mask = 1u64 << (bit_index % 64);
-        let offset = bit_index >> 6;
+        // Optimizer works very well here, so we are able to use 'mod' and 'div' operations without perf loss
+        let mask = 1u64 << (bit_index % Self::ITEM_BITS_SIZE);
+        let offset = bit_index / Self::ITEM_BITS_SIZE; 
         (offset, mask)
     }
 
@@ -120,7 +119,8 @@ impl AtomicBitVec {
     }
 
     /// Merge bits from `other` into self. 
-    /// Attention: data modification on `other` is possible during the operation. If needed then explicit protection should be done outside
+    /// Attention: `or_with` does not prevent modification of `other` during the operation. 
+    /// If changes of `other` are not desired during the operation, then they should be restricted at a higher level
     pub(crate) fn or_with(&mut self, other: &Self) -> Result<(), AtomicBitVecError> {
         if self.bits_count != other.bits_count {
             return Err(AtomicBitVecError::BitsCountMismatch);

@@ -391,10 +391,10 @@ impl Bloom {
             hasher.write(item.as_ref());
             hasher.finish() % self.bits_count as u64
         }) {
-            let (offset, bit_mask) = OffsetAndMaskCalculator::<u8>::offset_and_mask(index);
+            let (offset, bit_mask) = OffsetAndMaskCalculator::offset_and_mask_u8(index);
             let byte = provider.read_byte(start_pos + offset).await?;
 
-            if !OffsetAndMaskCalculator::<u8>::get_bit(byte, bit_mask) {
+            if !OffsetAndMaskCalculator::get_bit_u8(byte, bit_mask) {
                 return Ok(FilterResult::NotContains);
             }
         }
