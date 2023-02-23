@@ -378,7 +378,7 @@ impl Header {
 
 #[cfg(test)]
 mod tests {
-    use bytes::Bytes;
+    use bytes::{BufMut, Bytes, BytesMut};
 
     use crate::prelude::*;
 
@@ -404,6 +404,41 @@ mod tests {
 
             assert_eq!(offset, from_raw.blob_offset);
             assert_eq!(checksum, from_raw.header_checksum);
+        }
+        Ok(())
+    }
+
+    #[test]
+    pub fn partial_serialization_is_equal_to_normal_serialization() -> Result<()> {
+        let data = Bytes::from((0..16).map(|i| i * i).collect::<Vec<u8>>());
+        for i in 0..8 {
+            let key = vec![0, 0, i];
+            let data = data.clone();
+            let checksum: u32 = CRC32C.checksum(&data);
+            let meta = Meta::new();
+            let mut header =
+                RecordHeader::new(key, meta.serialized_size(), data.len() as u64, checksum);
+            let header_size = header.serialized_size() as usize;
+            let record = Record::new(header.clone(), meta.clone(), data.clone());
+            let offset: u64 = 101 * i as u64;
+
+            let (partially_serialized, _) = record.to_partially_serialized_and_header()?;
+            let (head, body, _) = partially_serialized.serialize_with_checksum(offset)?;
+            let mut new_method_buf = BytesMut::with_capacity(header_size + data.len());
+            new_method_buf.extend(&head);
+            if let Some(body) = body {
+                new_method_buf.extend(&body);
+            }
+
+            let mut old_method_buf = BytesMut::with_capacity(header_size + data.len());
+            header.blob_offset = offset;
+            header.header_checksum = 0;
+            header.header_checksum = header.crc32()?;
+            serialize_into((&mut old_method_buf).writer(), &header)?;
+            serialize_into((&mut old_method_buf).writer(), &meta)?;
+            old_method_buf.extend(data);
+
+            assert_eq!(old_method_buf, new_method_buf);
         }
         Ok(())
     }
