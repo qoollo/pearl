@@ -295,10 +295,14 @@ impl Header {
         self.header_checksum = header_checksum;
     }
 
+    /// Calculates offset for the `blob_offset` field in serialized header
+    /// len is length of serialized header in bytes
     pub(super) const fn blob_offset_offset(len: usize) -> usize {
         len - 24
     }
 
+    /// Calculates offset for the `checksum` field in serialized header
+    /// len is length of serialized header in bytes
     pub(super) const fn checksum_offset(len: usize) -> usize {
         len - 4
     }

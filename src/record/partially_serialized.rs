@@ -68,22 +68,22 @@ impl PartiallySerializedRecord {
     fn finalize_with_checksum(
         mut buf: BytesMut,
         header_len: usize,
-        bytes_offset: u64,
+        blob_offset: u64,
     ) -> Result<(BytesMut, u32)> {
         use std::mem::size_of;
 
         let offset_pos = RecordHeader::blob_offset_offset(header_len);
         let checksum_pos = RecordHeader::checksum_offset(header_len);
-        let offset_slice = &mut buf[offset_pos..];
-        offset_slice[..size_of::<u64>()].copy_from_slice(&bytes_offset.to_le_bytes());
+        let offset_slice = &mut buf[offset_pos..(offset_pos + size_of::<u64>())];
+        offset_slice.copy_from_slice(&blob_offset.to_le_bytes());
 
-        let checksum_slice = &mut buf[checksum_pos..];
-        checksum_slice[..size_of::<u32>()].copy_from_slice(&0u32.to_le_bytes());
+        let checksum_slice = &mut buf[checksum_pos..(checksum_pos + size_of::<u32>())];
+        checksum_slice.copy_from_slice(&0u32.to_le_bytes());
 
         let header_slice = &buf[..header_len];
         let checksum: u32 = CRC32C.checksum(header_slice);
-        let checksum_slice = &mut buf[checksum_pos..];
-        checksum_slice[..size_of::<u32>()].copy_from_slice(&checksum.to_le_bytes());
+        let checksum_slice = &mut buf[checksum_pos..(checksum_pos + size_of::<u32>())];
+        checksum_slice.copy_from_slice(&checksum.to_le_bytes());
 
         Ok((buf, checksum))
     }
