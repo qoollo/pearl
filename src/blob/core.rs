@@ -6,6 +6,7 @@ use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
 use crate::filter::{CombinedFilter, FilterTrait};
+use crate::record::PartiallySerializedRecord;
 use crate::storage::{BlobRecordTimestamp, ReadResult};
 
 use super::prelude::*;
@@ -243,36 +244,42 @@ where
     pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<()> {
         debug!("blob write");
         // Only one upgradable_read lock is allowed at a time
+        let (partially_serialized, header) = record.to_partially_serialized_and_header()?;
         let blob = blob.upgradable_read().await;
-        Self::write_locked(blob, key, record).await
+        Self::write_locked(blob, key, partially_serialized, header).await
     }
 
-    async fn write_mut(&mut self, key: &K, mut record: Record) -> Result<RecordHeader> {
+    async fn write_mut(&mut self, key: &K, record: Record) -> Result<RecordHeader> {
         debug!("blob write");
         debug!("blob write record offset: {}", self.current_offset);
-        record.set_offset(self.current_offset)?;
-        let bytes_written = record.write_to_file(&self.file).await?;
-        let header = record.into_header();
+        let (record, mut header) = record.to_partially_serialized_and_header()?;
+        let write_result = record
+            .write_to_file(&self.file, self.current_offset)
+            .await?;
+        header.set_offset_checksum(self.current_offset, write_result.header_checksum());
         self.index.push(key, header.clone())?;
-        self.current_offset += bytes_written;
+        self.current_offset += write_result.bytes_written();
         Ok(header)
     }
 
     async fn write_locked(
         blob: ASRwLockUpgradableReadGuard<'_, Blob<K>>,
         key: &K,
-        mut record: Record,
+        record: PartiallySerializedRecord,
+        mut header: RecordHeader,
     ) -> Result<()> {
         debug!("blob write record offset: {}", blob.current_offset);
-        record.set_offset(blob.current_offset)?;
-        let bytes_written = record.write_to_file(&blob.file).await?;
+        let write_result = record
+            .write_to_file(&blob.file, blob.current_offset)
+            .await?;
+        header.set_offset_checksum(blob.current_offset, write_result.header_checksum());
         let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
-        blob.index.push(key, record.into_header())?;
-        blob.current_offset += bytes_written;
+        blob.index.push(key, header)?;
+        blob.current_offset += write_result.bytes_written();
         Ok(())
     }
 
-    pub(crate) async fn read_any(
+    pub(crate) async fn read_last(
         &self,
         key: &K,
         meta: Option<&Meta>,

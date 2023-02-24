@@ -8,7 +8,9 @@ Pearl changelog
 
 #### Changed
 - Change locks for filters update (#218)
-
+- Serialization moved out of critical section (#188)
+- Removed multiple header checksum calculations (#206)
+- Rename functions to show that it returns last entry (#199)
 
 #### Fixed
 
