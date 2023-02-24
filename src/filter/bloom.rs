@@ -248,6 +248,11 @@ impl Bloom {
     /// Merge filters
     #[must_use]
     pub fn checked_add_assign(&mut self, other: &Bloom) -> bool {
+        if self.hashers.len() != other.hashers.len() {
+            // Hashers should be identical
+            return false;
+        }
+
         match (&mut self.inner, &other.inner) {
             (Some(inner), Some(other_inner)) if inner.len() == other_inner.len() => {
                 let _guard_pair = Self::acquire_snapshot_protection_ordered(&self.snapshot_protector, &other.snapshot_protector);
