@@ -5,19 +5,48 @@ Pearl changelog
 ## [Unreleased]
 #### Added
 - Index regeneration checks record data checksum (#215)
-- Corrupted blobs count calculation (#464)
 
 #### Changed
+- Change locks for filters update (#218)
+- Serialization moved out of critical section (#188)
+- Removed multiple header checksum calculations (#206)
+- Rename functions to show that it returns last entry (#199)
+
+#### Fixed
+
+
+#### Updated
+
+
+
+## [0.17.0] - 2023-01-16
+#### Added
+- Special handling for large data write (#192)
+
+#### Changed
+- Added different path for sync read/write (#184)
+
+#### Fixed
+- Fixed skip condition in Storage::get_data_last causing incorrect NotFound result (#235)
+
+#### Updated
+
+
+
+## [0.16.0] - 2022-12-30
+#### Added
+- Corrupted blobs count calculation (#224)
+
+#### Changed
+- Return delete or not found as distinct results (#208)
 - Save delete records in index (#207)
 - Use bytes for arguments (#191)
-
 
 #### Fixed
 
 
 #### Updated
 - Crate `crc` (#225)
-
 
 
 ## [0.15.0] - 2022-11-22

@@ -82,14 +82,14 @@ impl IndexHeader {
         self.version = (version << 1) | written;
     }
 
-    pub(crate) fn serialized_size_default() -> bincode::Result<u64> {
+    pub(crate) fn serialized_size_default() -> u64 {
         let header = Self::default();
         header.serialized_size()
     }
 
     #[inline]
-    pub fn serialized_size(&self) -> bincode::Result<u64> {
-        bincode::serialized_size(&self)
+    pub fn serialized_size(&self) -> u64 {
+        bincode::serialized_size(&self).expect("index header size")
     }
 
     #[inline]

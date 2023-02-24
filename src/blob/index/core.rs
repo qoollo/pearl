@@ -1,3 +1,5 @@
+use bytes::BytesMut;
+
 use super::prelude::*;
 use crate::filter::{BloomDataProvider, CombinedFilter, FilterTrait};
 use std::mem::size_of;
@@ -14,10 +16,10 @@ struct IndexParams {
 }
 
 impl IndexParams {
-    fn from(config: &IndexConfig) -> Self {
+    fn new(bloom_is_on: bool, recreate_file: bool) -> Self {
         Self {
-            bloom_is_on: config.bloom_config.is_some(),
-            recreate_file: config.recreate_index_file,
+            bloom_is_on,
+            recreate_file
         }
     }
 }
@@ -76,12 +78,8 @@ where
     for<'a> K: Key<'a>,
 {
     pub(crate) fn new(name: FileName, ioring: Option<Rio>, config: IndexConfig) -> Self {
-        let params = IndexParams::from(&config);
-        let bloom_filter = if params.bloom_is_on {
-            Some(config.bloom_config.map(Bloom::new).unwrap_or_default())
-        } else {
-            None
-        };
+        let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
+        let bloom_filter = config.bloom_config.map(|cfg| Bloom::new(cfg));
         let mem = Some(Default::default());
         Self {
             params,
@@ -128,7 +126,7 @@ where
             .with_context(|| "Header is corrupt")?;
         let meta_buf = findex.read_meta().await?;
         let (bloom_filter, range_filter, bloom_offset) = Self::deserialize_filters(&meta_buf)?;
-        let params = IndexParams::from(&config);
+        let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
         let bloom_filter = if params.bloom_is_on {
             Some(bloom_filter)
         } else {
@@ -184,7 +182,8 @@ where
             .filter
             .bloom()
             .as_ref()
-            .map_or(Bloom::default().to_raw(), |bloom| bloom.to_raw())?;
+            .unwrap_or(&Bloom::empty())
+            .to_raw()?;
         let mut buf = Vec::with_capacity(size_of::<u64>() + range_buf.len() + bloom_buf.len());
         let bloom_offset = size_of::<u64>() + range_buf.len();
         buf.extend_from_slice(&serialize(&range_buf_size)?);
@@ -251,8 +250,10 @@ where
     FileIndex: FileIndexTrait<K> + Clone,
     for<'a> K: Key<'a>,
 {
-    async fn contains_key(&self, key: &K) -> Result<bool> {
-        self.get_any(key).await.map(|h| h.is_some())
+    async fn contains_key(&self, key: &K) -> Result<ReadResult<BlobRecordTimestamp>> {
+        self.get_any(key)
+            .await
+            .map(|h| h.map(|h| BlobRecordTimestamp::new(h.created())))
     }
 
     fn push(&mut self, key: &K, h: RecordHeader) -> Result<()> {
@@ -289,28 +290,38 @@ where
         }
     }
 
-    async fn get_all(&self, key: &K) -> Result<Option<Vec<RecordHeader>>> {
-        let res = match &self.inner {
-            State::InMemory(headers) => Ok(headers.get(key).cloned().map(|mut v| {
-                if v.len() > 1 {
-                    v.reverse();
+    async fn get_all(&self, key: &K) -> Result<Vec<RecordHeader>> {
+        let mut with_deletion = self.get_all_with_deletion_marker(key).await?;
+        if let Some(h) = with_deletion.last() {
+            if h.is_deleted() {
+                with_deletion.truncate(with_deletion.len() - 1);
+            }
+        }
+        Ok(with_deletion)
+    }
+
+    async fn get_all_with_deletion_marker(&self, key: &K) -> Result<Vec<RecordHeader>> {
+        let headers = match &self.inner {
+            State::InMemory(headers) => Ok(headers.get(key).cloned().map(|mut hs| {
+                if hs.len() > 1 {
+                    hs.reverse();
                 }
-                v
+                hs
             })),
             State::OnDisk(findex) => findex.find_by_key(key).await,
-        };
-        if let Ok(Some(mut hs)) = res {
+        }?;
+        if let Some(mut hs) = headers {
             let first_del = hs.iter().position(|h| h.is_deleted());
             if let Some(first_del) = first_del {
-                hs.truncate(first_del);
+                hs.truncate(first_del + 1);
             }
-            Ok(if hs.len() > 0 { Some(hs) } else { None })
+            Ok(hs)
         } else {
-            res
+            Ok(vec![])
         }
     }
 
-    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
+    async fn get_any(&self, key: &K) -> Result<ReadResult<RecordHeader>> {
         debug!("index get any");
         let result = match &self.inner {
             State::InMemory(headers) => {
@@ -324,7 +335,13 @@ where
                 findex.get_any(key).await?
             }
         };
-        Ok(result.and_then(|h| if h.is_deleted() { None } else { Some(h) }))
+        Ok(match result {
+            Some(header) if header.is_deleted() => {
+                ReadResult::Deleted(BlobRecordTimestamp::new(header.created()))
+            }
+            Some(header) => ReadResult::Found(header),
+            None => ReadResult::NotFound,
+        })
     }
 
     async fn dump(&mut self, blob_size: u64) -> Result<usize> {
@@ -374,7 +391,7 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
     fn file_size(&self) -> u64;
     fn records_count(&self) -> usize;
     fn blob_size(&self) -> u64;
-    async fn read_meta(&self) -> Result<Vec<u8>>;
+    async fn read_meta(&self) -> Result<BytesMut>;
     async fn read_meta_at(&self, i: u64) -> Result<u8>;
     async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)>;
