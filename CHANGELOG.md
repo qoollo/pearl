@@ -7,7 +7,8 @@ Pearl changelog
 
 
 #### Changed
-
+- `ring` crate replaced with `sha2` crate (#246)
+- `async-std` replaced with `async-lock` to avoid redundant dependencies (#247)
 
 #### Fixed
 
