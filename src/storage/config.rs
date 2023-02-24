@@ -3,7 +3,7 @@ use std::time::Duration;
 use super::prelude::*;
 
 #[derive(Debug, Clone)]
-pub(crate) struct Config {
+pub struct Config {
     work_dir: Option<PathBuf>,
     create_work_dir: bool,
     max_blob_size: Option<u64>,
