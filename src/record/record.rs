@@ -432,8 +432,7 @@ mod tests {
 
             let mut old_method_buf = BytesMut::with_capacity(header_size + data.len());
             header.blob_offset = offset;
-            header.header_checksum = 0;
-            header.header_checksum = header.crc32()?;
+            header.update_checksum()?;
             serialize_into((&mut old_method_buf).writer(), &header)?;
             serialize_into((&mut old_method_buf).writer(), &meta)?;
             old_method_buf.extend(data);
