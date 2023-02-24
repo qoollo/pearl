@@ -1,6 +1,6 @@
 use std::time::SystemTime;
 
-use async_std::sync::RwLockUpgradableReadGuard;
+use async_lock::RwLockUpgradableReadGuard;
 use bytes::{BufMut, Bytes, BytesMut};
 use tokio::time::Instant;
 

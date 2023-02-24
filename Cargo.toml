@@ -45,7 +45,7 @@ nix = "0.25.0"
 libc = "0.2"
 static_assertions = "1.1.0"
 bytes = "1.2"
-async-std = "1.12"
+async-lock = "2.6"
 
 [dependencies.tokio]
 version = "1.21"
