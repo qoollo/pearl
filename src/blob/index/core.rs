@@ -19,7 +19,7 @@ impl IndexParams {
     fn new(bloom_is_on: bool, recreate_file: bool) -> Self {
         Self {
             bloom_is_on,
-            recreate_file
+            recreate_file,
         }
     }
 }
