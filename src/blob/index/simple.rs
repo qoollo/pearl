@@ -160,13 +160,13 @@ where
 // helpers
 impl SimpleFileIndex {
     fn hash_valid(header: &IndexHeader, buf: &mut [u8]) -> Result<bool> {
-        let hash = header.hash.clone();
+        let hash = &header.hash;
         let mut header = header.clone();
-        header.hash = vec![0; ring::digest::SHA256.output_len];
+        header.reset_hash();
         header.set_written(false);
         serialize_into(&mut buf[..], &header)?;
-        let new_hash = get_hash(&buf);
-        Ok(hash == new_hash)
+        let new_hash = IndexHashCalculator::get_hash(&buf);
+        Ok(*hash == new_hash)
     }
 
     async fn read_index_header(file: &File) -> Result<IndexHeader> {
@@ -348,7 +348,7 @@ impl SimpleFileIndex {
                 "blob index simple serialize headers buf len after: {}",
                 buf.len()
             );
-            let hash = get_hash(&buf);
+            let hash = IndexHashCalculator::get_hash(&buf);
             let header = IndexHeader::with_hash(
                 record_header_size,
                 headers.len(),
