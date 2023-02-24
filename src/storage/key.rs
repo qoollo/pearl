@@ -60,6 +60,12 @@ impl<const N: usize> From<&[u8]> for ArrayKey<N> {
     }
 }
 
+impl<const N: usize> From<[u8; N]> for ArrayKey<N> {
+    fn from(a: [u8; N]) -> Self {
+        Self(a)
+    }
+}
+
 impl<const N: usize> PartialOrd for ArrayKey<N> {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         self.0.partial_cmp(&rhs.0)

@@ -111,10 +111,10 @@ where
     Key: Sync + Send,
     Filter: FilterTrait<Key>,
 {
-    fn add_to_filter(&mut self, item: &Key) {
+    fn add_to_filter(&self, item: &Key) {
         match self {
             Self::Node(node) => {
-                if let Some(filter) = &mut node.filter {
+                if let Some(filter) = &node.filter {
                     let _ = filter.add(item);
                 }
             }
@@ -378,11 +378,11 @@ where
     }
 
     /// Add key to all parents in collection
-    pub fn add_to_parents(&mut self, child_id: ChildId, item: &Key) {
+    pub fn add_to_parents(&self, child_id: ChildId, item: &Key) {
         if let Some(child) = self.get_child(child_id) {
             let mut id = child.parent;
             loop {
-                let curr = self.get_inner_mut(id);
+                let curr = self.get_inner(id);
                 if let Some(curr) = curr {
                     curr.add_to_filter(item);
                     if let Some(parent) = curr.parent_id() {

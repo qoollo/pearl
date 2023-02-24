@@ -30,7 +30,7 @@ pub trait BloomProvider<Key: Send + Sync>: Sync + Send {
 #[async_trait::async_trait]
 pub trait FilterTrait<Key: Send + Sync>: Clone + Sync + Send {
     /// Add key to filter
-    fn add(&mut self, key: &Key);
+    fn add(&self, key: &Key);
 
     /// Check if key in filter (should be implemented if filter can be checked without waiting)
     fn contains_fast(&self, key: &Key) -> FilterResult;
@@ -69,7 +69,7 @@ where
     K: Send + Sync,
     T: Send + Sync + Clone + FilterTrait<K>,
 {
-    fn add(&mut self, key: &K) {
+    fn add(&self, key: &K) {
         if let Some(filter) = self {
             filter.add(key);
         }
