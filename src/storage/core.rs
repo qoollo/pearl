@@ -486,7 +486,7 @@ where
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
-            match ablob.read().await.read_any(key, meta, true).await {
+            match ablob.read().await.read_last(key, meta, true).await {
                 Ok(data) => {
                     if data.is_presented() {
                         debug!("storage read with optional meta active blob returned data");
@@ -526,7 +526,7 @@ where
         let stream: FuturesOrdered<_> = possible_blobs
             .into_iter()
             .filter_map(|id| blobs.get_child(id))
-            .map(|blob| blob.data.read_any(key, meta, false))
+            .map(|blob| blob.data.read_last(key, meta, false))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
         

@@ -1,9 +1,11 @@
+use crate::{error::ValidationErrorKind, prelude::*};
 use bytes::{BufMut, Bytes, BytesMut};
 
-use crate::{blob::File, error::ValidationErrorKind, prelude::*};
+use super::partially_serialized::PartiallySerializedRecord;
 
 pub(crate) const RECORD_MAGIC_BYTE: u64 = 0xacdc_bcde;
 const DELETE_FLAG: u8 = 0x01;
+
 const MAX_SINGLE_PASS_DATA_SIZE: usize = 4 * 1024;
 
 #[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
@@ -147,48 +149,30 @@ impl Record {
         &self.header
     }
 
-    pub(crate) async fn write_to_file(&self, file: &File) -> Result<u64> {
-        if self.data.len() <= MAX_SINGLE_PASS_DATA_SIZE {
-            self.write_single_pass(file).await
+    pub(crate) fn to_partially_serialized_and_header(
+        self,
+    ) -> Result<(PartiallySerializedRecord, Header)> {
+        let Self {
+            data, header, meta, ..
+        } = self;
+        let head_size = (header.serialized_size() + meta.serialized_size()) as usize;
+        let include_data = head_size + data.len() <= MAX_SINGLE_PASS_DATA_SIZE;
+        let buf_len = head_size + if include_data { data.len() } else { 0 };
+        let mut buf = BytesMut::with_capacity(buf_len);
+        header.to_raw_into((&mut buf).writer())?;
+        let header_len = buf.len();
+        meta.to_raw_into((&mut buf).writer())?;
+        let data = if include_data {
+            buf.extend(&data);
+            None
         } else {
-            self.write_double_pass(file).await
-        }
-    }
+            Some(data)
+        };
 
-    fn create_header_meta_buffer(&self, data_size: Option<u64>) -> Result<BytesMut> {
-        let size = self.header.serialized_size()
-            + self.meta.serialized_size()
-            + data_size.unwrap_or_default();
-        let mut result = BytesMut::with_capacity(size as usize);
-        self.header.to_raw_into((&mut result).writer())?;
-        self.meta.to_raw_into((&mut result).writer())?;
-        Ok(result)
-    }
-
-    async fn write_single_pass(&self, file: &File) -> Result<u64> {
-        let mut buf = self.create_header_meta_buffer(Some(self.data.len() as u64))?;
-        buf.extend(&self.data);
-        let len = buf.len() as u64;
-        Self::process_file_result(file.write_append_all(buf.freeze()).await).map(|_| len)
-    }
-
-    async fn write_double_pass(&self, file: &File) -> Result<u64> {
-        let buf = self.create_header_meta_buffer(None)?;
-        let data = self.data.clone();
-        let len = (buf.len() + data.len()) as u64;
-        Self::process_file_result(file.write_append_all_buffers(buf.freeze(), data).await)
-            .map(|_| len)
-    }
-
-    fn process_file_result(result: std::result::Result<(), std::io::Error>) -> Result<()> {
-        result.map_err(|e| -> anyhow::Error {
-            match e.kind() {
-                kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
-                    Error::file_unavailable(kind).into()
-                }
-                _ => e.into(),
-            }
-        })
+        Ok((
+            PartiallySerializedRecord::new(buf, header_len, data),
+            header,
+        ))
     }
 
     pub(crate) fn deleted<K>(key: &K) -> bincode::Result<Self>
@@ -198,11 +182,6 @@ impl Record {
         let mut record = Record::create(key, Bytes::new(), Meta::default())?;
         record.header.mark_as_deleted()?;
         Ok(record)
-    }
-
-    pub(crate) fn set_offset(&mut self, offset: u64) -> bincode::Result<()> {
-        self.header.blob_offset = offset;
-        self.header.update_checksum()
     }
 
     pub(crate) fn validate(self) -> Result<Self> {
@@ -309,10 +288,29 @@ impl Header {
         bincode::serialized_size(&self).expect("calc record serialized size")
     }
 
-    fn update_checksum(&mut self) -> bincode::Result<()> {
+    pub(crate) fn set_offset_checksum(&mut self, blob_offset: u64, header_checksum: u32) {
+        self.blob_offset = blob_offset;
+        self.header_checksum = 0;
+        debug_assert_eq!(self.crc32().expect("debug assert crc32"), header_checksum);
+        self.header_checksum = header_checksum;
+    }
+
+    /// Calculates offset for the `blob_offset` field in serialized header
+    /// len is length of serialized header in bytes
+    pub(super) const fn blob_offset_offset(len: usize) -> usize {
+        len - 24
+    }
+
+    /// Calculates offset for the `checksum` field in serialized header
+    /// len is length of serialized header in bytes
+    pub(super) const fn checksum_offset(len: usize) -> usize {
+        len - 4
+    }
+
+    fn update_checksum(&mut self) -> bincode::Result<u32> {
         self.header_checksum = 0;
         self.header_checksum = self.crc32()?;
-        Ok(())
+        Ok(self.header_checksum)
     }
 
     fn crc32(&self) -> bincode::Result<u32> {
@@ -365,7 +363,8 @@ impl Header {
 
     pub(crate) fn mark_as_deleted(&mut self) -> bincode::Result<()> {
         self.flags |= DELETE_FLAG;
-        self.update_checksum()
+        self.update_checksum()?;
+        Ok(())
     }
 
     pub(crate) fn is_deleted(&self) -> bool {
@@ -374,5 +373,72 @@ impl Header {
 
     pub(crate) fn created(&self) -> u64 {
         self.created
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bytes::{BufMut, Bytes, BytesMut};
+
+    use crate::prelude::*;
+
+    #[test]
+    pub fn partial_serialization_preserves_checksum_and_offset() -> Result<()> {
+        let data = Bytes::from((0..16).map(|i| i * i).collect::<Vec<u8>>());
+
+        for i in 0..8 {
+            let key = vec![0, 0, i];
+            let data = data.clone();
+            let checksum: u32 = CRC32C.checksum(&data);
+            let meta = Meta::new();
+            let header =
+                RecordHeader::new(key, meta.serialized_size(), data.len() as u64, checksum);
+            let header_size = header.serialized_size();
+            let record = Record::new(header, meta, data);
+            let offset: u64 = 101 * i as u64;
+
+            let (partially_serialized, _) = record.to_partially_serialized_and_header()?;
+            let (head, _, checksum) = partially_serialized.serialize_with_checksum(offset)?;
+
+            let from_raw = RecordHeader::from_raw(&head[..(header_size as usize)])?;
+
+            assert_eq!(offset, from_raw.blob_offset);
+            assert_eq!(checksum, from_raw.header_checksum);
+        }
+        Ok(())
+    }
+
+    #[test]
+    pub fn partial_serialization_is_equal_to_normal_serialization() -> Result<()> {
+        let data = Bytes::from((0..16).map(|i| i * i).collect::<Vec<u8>>());
+        for i in 0..8 {
+            let key = vec![0, 0, i];
+            let data = data.clone();
+            let checksum: u32 = CRC32C.checksum(&data);
+            let meta = Meta::new();
+            let mut header =
+                RecordHeader::new(key, meta.serialized_size(), data.len() as u64, checksum);
+            let header_size = header.serialized_size() as usize;
+            let record = Record::new(header.clone(), meta.clone(), data.clone());
+            let offset: u64 = 101 * i as u64;
+
+            let (partially_serialized, _) = record.to_partially_serialized_and_header()?;
+            let (head, body, _) = partially_serialized.serialize_with_checksum(offset)?;
+            let mut new_method_buf = BytesMut::with_capacity(header_size + data.len());
+            new_method_buf.extend(&head);
+            if let Some(body) = body {
+                new_method_buf.extend(&body);
+            }
+
+            let mut old_method_buf = BytesMut::with_capacity(header_size + data.len());
+            header.blob_offset = offset;
+            header.update_checksum()?;
+            serialize_into((&mut old_method_buf).writer(), &header)?;
+            serialize_into((&mut old_method_buf).writer(), &meta)?;
+            old_method_buf.extend(data);
+
+            assert_eq!(old_method_buf, new_method_buf);
+        }
+        Ok(())
     }
 }
