@@ -1,8 +1,19 @@
 use super::*;
+use std::sync::RwLock;
+
+#[derive(Debug, Default)]
+/// Range filter (concurrency supported)
+pub struct RangeFilter<K>
+where
+    for<'a> K: Key<'a>,
+{
+    safe: RwLock<RangeFilterInner<K>>
+}
+
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
-/// Range filter
-pub struct RangeFilter<K>
+/// Core Range filter struct
+struct RangeFilterInner<K> 
 where
     for<'a> K: Key<'a>,
 {
@@ -13,17 +24,29 @@ where
     initialized: bool,
 }
 
+impl<K> Clone for RangeFilter<K> 
+where
+    for<'a> K: Key<'a>,
+{
+    // We should implement deep clone for filters!
+    fn clone(&self) -> Self {
+        Self {
+            safe: RwLock::new(self.safe.read().expect("RwLock acquired").clone())
+        }
+    }
+}
+
 #[async_trait::async_trait]
 impl<K> FilterTrait<K> for RangeFilter<K>
 where
     for<'a> K: Key<'a>,
 {
-    fn add(&mut self, key: &K) {
-        self.add(key);
+    fn add(&self, key: &K) {
+        self.safe.write().expect("RwLock acquired").add(key);
     }
 
     fn contains_fast(&self, key: &K) -> FilterResult {
-        if self.contains(key) {
+        if self.safe.read().expect("RwLock acquired").contains(key) {
             FilterResult::NeedAdditionalCheck
         } else {
             FilterResult::NotContains
@@ -31,13 +54,13 @@ where
     }
 
     fn checked_add_assign(&mut self, other: &Self) -> bool {
-        self.add(&other.min);
-        self.add(&other.max);
+        let other = other.safe.read().expect("RwLock acquired").clone();
+        self.safe.write().expect("RwLock acquired").merge_with(other);
         true
     }
 
     fn clear_filter(&mut self) {
-        self.clear()
+        self.safe.write().expect("RwLock acquired").clear()
     }
 }
 
@@ -48,13 +71,55 @@ where
     /// Create filter
     pub fn new() -> Self {
         Self {
+            safe: RwLock::new(RangeFilterInner::new())
+        }
+    }
+
+    /// Add key to filter
+    pub fn add(&self, key: &K) {
+        self.safe.write().expect("RwLock acquired").add(key);
+    }
+
+    /// Check if key contains in filter
+    pub fn contains(&self, key: &K) -> bool {
+        self.safe.read().expect("RwLock acquired").contains(key)
+    }
+
+    /// Clear filter
+    pub fn clear(&mut self) {
+        self.safe.write().expect("RwLock acquired").clear()
+    }
+
+    /// Create filter from raw bytes
+    pub fn from_raw(buf: &[u8]) -> Result<Self> {
+        RangeFilterInner::from_raw(buf).map(|safe| {
+            Self {
+                safe: RwLock::new(safe)
+            }
+        })
+    }
+
+    /// Convert filter to raw bytes
+    pub fn to_raw(&self) -> Result<Vec<u8>> {
+        self.safe.read().expect("RwLock acquired").to_raw()
+    }
+}
+
+
+impl<K> RangeFilterInner<K> 
+where
+    for<'a> K: Key<'a>,
+{
+    /// Create filter
+    fn new() -> Self {
+        Self {
             initialized: false,
             ..Default::default()
         }
     }
 
     /// Add key to filter
-    pub fn add(&mut self, key: &K) {
+    fn add(&mut self, key: &K) {
         if !self.initialized {
             self.min = key.clone();
             self.max = key.clone();
@@ -62,30 +127,49 @@ where
         } else if key < &self.min {
             self.min = key.clone();
         } else if key > &self.max {
-            self.max = key.clone()
+            self.max = key.clone();
+        }
+    }
+
+    /// Merge other into self
+    fn merge_with(&mut self, other: Self) {
+        if other.initialized {
+            if !self.initialized {
+                self.min = other.min;
+                self.max = other.max;
+                self.initialized = true;
+            } else {
+                if &other.min < &self.min {
+                    self.min = other.min;
+                }
+                if &other.max > &self.max {
+                    self.max = other.max;
+                }
+            }
         }
     }
 
     /// Check if key contains in filter
-    pub fn contains(&self, key: &K) -> bool {
+    fn contains(&self, key: &K) -> bool {
         self.initialized && &self.min <= key && key <= &self.max
     }
 
     /// Clear filter
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         self.initialized = false;
     }
 
     /// Create filter from raw bytes
-    pub fn from_raw(buf: &[u8]) -> Result<Self> {
+    fn from_raw(buf: &[u8]) -> Result<Self> {
         bincode::deserialize(&buf).map_err(|e| e.into())
     }
 
     /// Convert filter to raw bytes
-    pub fn to_raw(&self) -> Result<Vec<u8>> {
+    fn to_raw(&self) -> Result<Vec<u8>> {
         bincode::serialize(&self).map_err(|e| e.into())
     }
 }
+
 
 fn serialize_key<K, S>(key: &K, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -121,6 +205,7 @@ where
 
     deserializer.deserialize_byte_buf(KeyVisitor(PhantomData))
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -230,7 +315,7 @@ mod tests {
 
     #[test]
     fn test_range_index_key_cmp_proper_key() {
-        let mut filter: RangeFilter<ProperKey> = RangeFilter::new();
+        let filter: RangeFilter<ProperKey> = RangeFilter::new();
         for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
             filter.add(&key);
         }
@@ -244,11 +329,11 @@ mod tests {
 
     #[test]
     fn test_range_index_key_cmp_wrong_key() {
-        let mut filter: RangeFilter<ProperKey> = RangeFilter::new();
+        let filter: RangeFilter<ProperKey> = RangeFilter::new();
         for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
             filter.add(&key);
         }
-        let buf = bincode::serialize(&filter).unwrap();
+        let buf = filter.to_raw().unwrap();
         let wrong_key_filter: RangeFilter<WrongKey> = RangeFilter::from_raw(&buf).unwrap();
 
         let less_key = to_key(25);
@@ -257,5 +342,30 @@ mod tests {
         assert!(wrong_key_filter.contains(&less_key));
         assert!(wrong_key_filter.contains(&greater_key));
         assert!(wrong_key_filter.contains(&in_key));
+    }
+
+    #[test]
+    fn test_range_filter_clone() {
+        let filter: RangeFilter<ProperKey> = RangeFilter::new();
+        for key in [50, 100, 150].iter().map(|&i| to_key(i)) {
+            filter.add(&key);
+        }
+
+        let filter_clone = filter.clone();
+        for key in [10, 200].iter().map(|&i| to_key(i)) {
+            filter_clone.add(&key);
+        }
+
+        assert_eq!(false, filter.contains(&to_key(5)));
+        assert_eq!(false, filter.contains(&to_key(25)));
+        assert_eq!(true, filter.contains(&to_key(100)));
+        assert_eq!(false, filter.contains(&to_key(170)));
+        assert_eq!(false, filter.contains(&to_key(250)));
+
+        assert_eq!(false, filter_clone.contains(&to_key(5)));
+        assert_eq!(true, filter_clone.contains(&to_key(25)));
+        assert_eq!(true, filter_clone.contains(&to_key(100)));
+        assert_eq!(true, filter_clone.contains(&to_key(170)));
+        assert_eq!(false, filter_clone.contains(&to_key(250)));
     }
 }
