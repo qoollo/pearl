@@ -7,6 +7,7 @@ pub struct BlobConfig {
 }
 
 
+#[allow(dead_code)]
 impl BlobConfig {
     pub fn new(index: IndexConfig, validate_data_during_index_regen: bool) -> Self {
         Self {
