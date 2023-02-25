@@ -70,7 +70,7 @@ impl Config {
 
     #[inline]
     pub fn blob(&self) -> BlobConfig {
-        BlobConfig::new(self.index.clone(), self.validate_data_during_index_regen)
+        BlobConfig::new(self.index().clone(), self.validate_data_during_index_regen())
     }
 
     #[inline]
