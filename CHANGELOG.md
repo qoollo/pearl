@@ -7,6 +7,8 @@ Pearl changelog
 - Index regeneration checks record data checksum (#215)
 
 #### Changed
+- `ring` crate replaced with `sha2` crate (#246)
+- `async-std` replaced with `async-lock` to avoid redundant dependencies (#247)
 - Change locks for filters update (#218)
 - Serialization moved out of critical section (#188)
 - Removed multiple header checksum calculations (#206)

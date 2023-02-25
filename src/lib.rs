@@ -45,7 +45,6 @@ extern crate serde_derive;
 extern crate anyhow;
 
 extern crate bytes;
-extern crate ring;
 
 /// Basic info about current build.
 pub mod build_info;
