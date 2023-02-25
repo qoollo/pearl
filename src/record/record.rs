@@ -191,13 +191,17 @@ impl Record {
     }
 
     fn check_data_checksum(&self) -> Result<()> {
-        let calc_crc = CRC32C.checksum(&self.data);
-        if calc_crc == self.header.data_checksum {
+        Self::data_checksum_audit(&self.header, &self.data)
+    }
+
+    pub fn data_checksum_audit(header: &Header, data: &[u8]) -> Result<()> {
+        let calc_crc = CRC32C.checksum(data);
+        if calc_crc == header.data_checksum {
             Ok(())
         } else {
             let cause = format!(
                 "wrong data checksum {} vs {}",
-                calc_crc, self.header.data_checksum
+                calc_crc, header.data_checksum
             );
             let param = ValidationErrorKind::RecordDataChecksum;
             let e = Error::validation(param, cause);

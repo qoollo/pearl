@@ -154,9 +154,16 @@ impl Builder {
     /// Sets custom bloom filter config, if not set, use default values.
     #[must_use]
     pub fn set_filter_config(mut self, config: BloomConfig) -> Self {
-        let mut index_config = self.config.index();
+        let mut index_config = self.config.index().clone();
         index_config.bloom_config = Some(config);
         self.config.set_index(index_config);
+        self
+    }
+
+    /// Enables or disables data checksum validation during index regeneration
+    #[must_use]
+    pub fn set_validate_data_during_index_regen(mut self, value: bool) -> Self {
+        self.config.set_validate_data_during_index_regen(value);
         self
     }
 
