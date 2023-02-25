@@ -13,7 +13,6 @@ pub use self::{
     observer::ActiveBlobPred,
     observer::ActiveBlobStat,
     read_result::{BlobRecordTimestamp, ReadResult},
-    config::Config
 };
 
 mod prelude {

@@ -217,7 +217,7 @@ where
 {
     let next_name = inner.next_blob_name()?;
     trace!("obtaining new active blob");
-    let new_active = Blob::open_new(next_name, inner.ioring.clone(), &inner.config)
+    let new_active = Blob::open_new(next_name, inner.ioring.clone(), inner.config.blob())
         .await?
         .boxed();
     Ok(new_active)

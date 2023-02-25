@@ -64,8 +64,13 @@ impl Config {
     }
 
     #[inline]
-    pub fn index(&self) -> IndexConfig {
-        self.index.clone()
+    pub fn index(&self) -> &IndexConfig {
+        &self.index
+    }
+
+    #[inline]
+    pub fn blob(&self) -> BlobConfig {
+        BlobConfig::new(self.index.clone(), self.validate_data_during_index_regen)
     }
 
     #[inline]

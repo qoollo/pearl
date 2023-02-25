@@ -10,7 +10,6 @@ use crate::record::PartiallySerializedRecord;
 use crate::storage::{BlobRecordTimestamp, ReadResult};
 
 use super::prelude::*;
-use crate::storage::Config as StorageConfig;
 
 use super::{header::Header, index::IndexTrait};
 
@@ -48,10 +47,11 @@ where
     pub(crate) async fn open_new(
         name: FileName,
         ioring: Option<Rio>,
-        config: &StorageConfig,
+        config: BlobConfig,
     ) -> Result<Self> {
+        let BlobConfig { index: index_config, validate_data_during_index_regen} = config;
         let file = File::create(name.to_path(), ioring.clone()).await?;
-        let index = Self::create_index(name.clone(), ioring, config.index());
+        let index = Self::create_index(name.clone(), ioring, index_config);
         let header = Header::new();
         let mut blob = Self {
             header,
@@ -60,7 +60,7 @@ where
             file,
             current_offset: 0,
             created_at: SystemTime::now(),
-            validate_data_during_index_regen: config.validate_data_during_index_regen(),
+            validate_data_during_index_regen,
         };
         blob.write_header().await?;
         Ok(blob)
@@ -127,7 +127,7 @@ where
     pub(crate) async fn from_file(
         path: PathBuf,
         ioring: Option<Rio>,
-        config: &StorageConfig,
+        config: BlobConfig,
     ) -> Result<Self> {
         let now = Instant::now();
         let file = File::open(&path, ioring.clone()).await?;
@@ -140,7 +140,7 @@ where
             .with_context(|| format!("failed to read blob header. Blob file: {:?}", path))?;
 
         let mut index_name = name.clone();
-        let index_config = config.index();
+        let BlobConfig { index: index_config, validate_data_during_index_regen} = config;
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         trace!("looking for index file: [{}]", index_name);
         let mut is_index_corrupted = false;
@@ -183,7 +183,7 @@ where
             index,
             current_offset: size,
             created_at,
-            validate_data_during_index_regen: config.validate_data_during_index_regen(),
+            validate_data_during_index_regen,
         };
         trace!("call update index");
         if is_index_corrupted || size as u64 > header_size {
