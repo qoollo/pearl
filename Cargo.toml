@@ -11,6 +11,12 @@ license = "MIT"
 authors = [
     "Pavel Yakushin <p.yakushin@qoollo.com>",
     "Kirill Bushminkin <kbushminkin@gmail.com>",
+    "Ilia Kopylov",
+    "Ivan Druzhitskiy",
+    "Vladimir Stepanenko",
+    "Pavel Perestoronin",
+    "Konstantin Konnov",
+    "Konstantin Bulany"
 ]
 edition = "2021"
 readme = "README.md"
