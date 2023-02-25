@@ -1,8 +1,6 @@
-use std::ops::Index;
-
 use super::IndexConfig;
 
-#[derivce(Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct BlobConfig {
     pub(super) index: IndexConfig,
     pub(super) validate_data_during_index_regen: bool,
