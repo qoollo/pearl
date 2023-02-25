@@ -4,6 +4,20 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+
+
+#### Changed
+
+
+#### Fixed
+
+
+#### Updated
+
+
+
+## [0.18.0] - 2023-02-25
+#### Added
 - Index regeneration checks record data checksum (#215)
 
 #### Changed
