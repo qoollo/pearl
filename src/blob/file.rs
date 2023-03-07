@@ -27,6 +27,16 @@ enum LockAcquisitionResult {
     Error(Errno),
 }
 
+pub(crate) trait OffsetDependableBytesProvider {
+    fn into_writable_data(self, offset: u64) -> Result<WritableData, Error>;
+    fn len(&self) -> u64;
+}
+
+pub(crate) enum WritableData {
+    Single(Bytes),
+    Double(Bytes, Bytes),
+}
+
 impl File {
     pub(crate) async fn open(path: impl AsRef<Path>, ioring: Option<Rio>) -> IOResult<Self> {
         Self::from_file(path, |f| f.create(false).append(true).read(true), ioring).await
@@ -57,22 +67,22 @@ impl File {
     }
 
     pub(crate) async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
-        if let Some(ref ioring) = self.ioring {
-            self.write_append_all_aio(buf, ioring).await?;
-        } else {
-            self.write_append_all_sync(buf).await?;
+        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
+        self.write_all_at(offset, buf).await
+    }
+
+    pub(crate) async fn write_append_all_dependable<T: OffsetDependableBytesProvider>(
+        &self,
+        dependable: T,
+    ) -> Result<u64> {
+        let len = dependable.len();
+        let offset = self.size.fetch_add(len, Ordering::SeqCst);
+        let writable = dependable.into_writable_data(offset)?;
+        match writable {
+            WritableData::Single(buf) => self.write_all_at(offset, buf).await?,
+            WritableData::Double(b1, b2) => self.write_buffers_at(offset, b1, b2).await?,
         }
-        Ok(())
-    }
-
-    pub(crate) async fn write_append_all_sync(&self, buf: Bytes) -> IOResult<()> {
-        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
-        self.write_all_at_sync(offset, buf).await
-    }
-
-    async fn write_append_all_aio(&self, buf: Bytes, ioring: &Rio) -> IOResult<()> {
-        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
-        self.write_all_at_aio(offset, buf, ioring).await
+        Ok(offset)
     }
 
     pub(crate) async fn write_append_all_buffers(
@@ -80,11 +90,26 @@ impl File {
         first_buf: Bytes,
         second_buf: Bytes,
     ) -> IOResult<()> {
+        let first_len = first_buf.len() as u64;
+        let second_len = second_buf.len() as u64;
+        let offset = self
+            .size
+            .fetch_add(first_len + second_len, Ordering::SeqCst);
+
+        self.write_buffers_at(offset, first_buf, second_buf).await
+    }
+
+    async fn write_buffers_at(
+        &self,
+        offset: u64,
+        first_buf: Bytes,
+        second_buf: Bytes,
+    ) -> std::result::Result<(), IOError> {
         if let Some(ref ioring) = self.ioring {
-            self.write_append_all_buffers_aio(ioring, first_buf, second_buf)
+            self.write_append_all_buffers_aio(offset, ioring, first_buf, second_buf)
                 .await?;
         } else {
-            self.write_append_all_buffers_sync(first_buf, second_buf)
+            self.write_append_all_buffers_sync(offset, first_buf, second_buf)
                 .await?;
         }
         Ok(())
@@ -92,15 +117,12 @@ impl File {
 
     async fn write_append_all_buffers_aio(
         &self,
+        mut offset: u64,
         ioring: &Rio,
         first_buf: Bytes,
         second_buf: Bytes,
     ) -> IOResult<()> {
         let first_len = first_buf.len() as u64;
-        let second_len = second_buf.len() as u64;
-        let mut offset = self
-            .size
-            .fetch_add(first_len + second_len, Ordering::SeqCst);
         self.write_all_at_aio(offset, first_buf, ioring).await?;
         offset = offset + first_len;
         self.write_all_at_aio(offset, second_buf, ioring).await?;
@@ -109,13 +131,13 @@ impl File {
 
     async fn write_append_all_buffers_sync(
         &self,
+        mut offset: u64,
         first_buf: Bytes,
         second_buf: Bytes,
     ) -> IOResult<()> {
         let first_len = first_buf.len() as u64;
         let second_len = second_buf.len() as u64;
         let len = first_len + second_len;
-        let mut offset = self.size.fetch_add(len, Ordering::SeqCst);
         let file = self.no_lock_fd.clone();
         if len <= MAX_SYNC_OPERATION_SIZE as u64 {
             Self::inplace_sync_call(move || {
