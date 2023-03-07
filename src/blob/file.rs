@@ -85,7 +85,7 @@ impl File {
         self.write_all_at_aio(offset, buf, ioring).await
     }
 
-    pub(crate) async fn write_new<T: BytesGenerator + 'static>(
+    pub(crate) async fn write_bgs<T: BytesGenerator + 'static>(
         &self,
         src: BytesGeneratorSource<T>,
     ) -> IOResult<u64> {
@@ -129,20 +129,18 @@ impl File {
         let size = self.size.clone();
         if len <= MAX_SYNC_OPERATION_SIZE as u64 {
             Self::inplace_sync_call(move || {
-                let mut offset = size.fetch_add(len, Ordering::SeqCst);
+                let offset = size.fetch_add(len, Ordering::SeqCst);
                 let buf = bg.with_offset(offset);
                 file.write_all_at(&buf, offset)?;
-                offset = offset + first_len;
-                file.write_all_at(&data, offset)?;
+                file.write_all_at(&data, offset + first_len)?;
                 Ok(offset)
             })
         } else {
             Self::background_sync_call(move || {
-                let mut offset = size.fetch_add(len, Ordering::SeqCst);
+                let offset = size.fetch_add(len, Ordering::SeqCst);
                 let buf = bg.with_offset(offset);
                 file.write_all_at(&buf, offset)?;
-                offset = offset + first_len;
-                file.write_all_at(&data, offset)?;
+                file.write_all_at(&data, offset + first_len)?;
                 Ok(offset)
             })
             .await
