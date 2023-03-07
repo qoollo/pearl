@@ -27,6 +27,16 @@ enum LockAcquisitionResult {
     Error(Errno),
 }
 
+pub(crate) trait BytesGenerator: Send + Sync {
+    fn with_offset(self, offset: u64) -> Bytes;
+    fn len(&self) -> u64;
+}
+
+pub(crate) enum BytesGeneratorSource<T: BytesGenerator> {
+    Single(T),
+    WithData(T, Bytes),
+}
+
 impl File {
     pub(crate) async fn open(path: impl AsRef<Path>, ioring: Option<Rio>) -> IOResult<Self> {
         Self::from_file(path, |f| f.create(false).append(true).read(true), ioring).await
@@ -73,6 +83,70 @@ impl File {
     async fn write_append_all_aio(&self, buf: Bytes, ioring: &Rio) -> IOResult<()> {
         let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
         self.write_all_at_aio(offset, buf, ioring).await
+    }
+
+    pub(crate) async fn write_new<T: BytesGenerator + 'static>(
+        &self,
+        src: BytesGeneratorSource<T>,
+    ) -> IOResult<u64> {
+        match src {
+            BytesGeneratorSource::Single(bg) => self.append_bg(bg).await,
+            BytesGeneratorSource::WithData(bg, data) => self.append_bg_data(bg, data).await,
+        }
+    }
+
+    async fn append_bg<T: BytesGenerator + 'static>(&self, bg: T) -> IOResult<u64> {
+        let file = self.no_lock_fd.clone();
+        let size = self.size.clone();
+        let len = bg.len();
+        if len <= MAX_SYNC_OPERATION_SIZE as u64 {
+            Self::inplace_sync_call(move || {
+                let offset = size.fetch_add(len, Ordering::SeqCst);
+                let bytes = bg.with_offset(offset);
+                file.write_all_at(&bytes, offset)?;
+                Ok(offset)
+            })
+        } else {
+            Self::background_sync_call(move || {
+                let offset = size.fetch_add(len, Ordering::SeqCst);
+                let bytes = bg.with_offset(offset);
+                file.write_all_at(&bytes, offset)?;
+                Ok(offset)
+            })
+            .await
+        }
+    }
+
+    async fn append_bg_data<T: BytesGenerator + 'static>(
+        &self,
+        bg: T,
+        data: Bytes,
+    ) -> IOResult<u64> {
+        let first_len = bg.len();
+        let second_len = data.len() as u64;
+        let len = first_len + second_len;
+        let file = self.no_lock_fd.clone();
+        let size = self.size.clone();
+        if len <= MAX_SYNC_OPERATION_SIZE as u64 {
+            Self::inplace_sync_call(move || {
+                let mut offset = size.fetch_add(len, Ordering::SeqCst);
+                let buf = bg.with_offset(offset);
+                file.write_all_at(&buf, offset)?;
+                offset = offset + first_len;
+                file.write_all_at(&data, offset)?;
+                Ok(offset)
+            })
+        } else {
+            Self::background_sync_call(move || {
+                let mut offset = size.fetch_add(len, Ordering::SeqCst);
+                let buf = bg.with_offset(offset);
+                file.write_all_at(&buf, offset)?;
+                offset = offset + first_len;
+                file.write_all_at(&data, offset)?;
+                Ok(offset)
+            })
+            .await
+        }
     }
 
     pub(crate) async fn write_append_all_buffers(
