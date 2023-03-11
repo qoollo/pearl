@@ -76,6 +76,7 @@ fn generate_meta(meta_size: usize) -> Vec<u8> {
 pub(crate) fn get_rio() -> Option<crate::prelude::Rio> {
     #[cfg(target_os = "linux")]
     return rio::new().ok();
+    #[cfg(not(target_os = "linux"))]
     return None;
 }
 

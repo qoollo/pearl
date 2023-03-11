@@ -92,8 +92,7 @@ mod prelude {
     pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
 
     #[cfg(target_os = "linux")]
-    pub(crate) use rio::Rio;
-
+    pub use rio::Rio;
     #[cfg(not(target_os = "linux"))]
     pub(crate) use rio_stub::Rio;
 
