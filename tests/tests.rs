@@ -228,7 +228,6 @@ async fn test_on_disk_index() -> Result<()> {
     common::clean(storage, path).await
 }
 
-#[cfg(target_os = "linux")]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_work_dir_lock() {
     use nix::sys::wait::{waitpid, WaitStatus};
@@ -240,7 +239,7 @@ async fn test_work_dir_lock() {
     match unsafe { fork() } {
         Ok(ForkResult::Parent { child }) => {
             let now = Instant::now();
-
+            println!("Forked");
             let storage_one = common::create_test_storage(&path, 1_000_000);
             let res_one = storage_one.await;
             assert!(res_one.is_ok());
@@ -256,6 +255,7 @@ async fn test_work_dir_lock() {
             warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
         }
         Ok(ForkResult::Child) => {
+            println!("Fork child");
             sleep(Duration::from_secs(1)).await;
             let storage_two = common::create_test_storage(&path, 1_000_000);
             let _ = storage_two.await;
@@ -955,6 +955,7 @@ async fn test_mark_as_deleted_deferred_dump() {
 fn get_rio() -> Option<pearl::Rio> {
     #[cfg(target_os = "linux")]
     return rio::new().ok();
+    #[cfg(not(target_os = "linux"))]
     return None;
 }
 

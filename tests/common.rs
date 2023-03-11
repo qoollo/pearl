@@ -117,6 +117,7 @@ pub async fn default_test_storage_in(
 fn get_rio() -> Option<pearl::Rio> {
     #[cfg(target_os = "linux")]
     return rio::new().ok();
+    #[cfg(not(target_os = "linux"))]
     return None;
 }
 

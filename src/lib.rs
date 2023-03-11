@@ -71,6 +71,10 @@ pub use storage::{ArrayKey, BlobRecordTimestamp, Builder, Key, ReadResult, RefKe
 #[cfg(target_os = "linux")]
 pub use rio;
 
+#[cfg(target_os = "linux")]
+pub use rio::Rio;
+
+#[cfg(not(target_os = "linux"))]
 mod rio_stub;
 
 #[cfg(not(target_os = "linux"))]
@@ -92,7 +96,7 @@ mod prelude {
     pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
 
     #[cfg(target_os = "linux")]
-    pub use rio::Rio;
+    pub(crate) use rio::Rio;
     #[cfg(not(target_os = "linux"))]
     pub(crate) use rio_stub::Rio;
 
