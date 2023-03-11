@@ -228,8 +228,8 @@ async fn test_on_disk_index() -> Result<()> {
     common::clean(storage, path).await
 }
 
-#[cfg(target_os = "linux")] // On non-linux env child will block on await calls
-#[tokio::test(flavor = "multi_thread")]
+#[cfg(target_os = "linux")] // On non-linux env non-multithreaded flavor does not work
+#[tokio::test] // Multithreaded flavor can't be used, or child will block
 async fn test_work_dir_lock() {
     use nix::sys::wait::{waitpid, WaitStatus};
     use nix::unistd::{fork, ForkResult};
