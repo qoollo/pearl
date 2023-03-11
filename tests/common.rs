@@ -114,6 +114,12 @@ pub async fn default_test_storage_in(
     create_test_storage(dir_name, 10_000).await
 }
 
+fn get_rio() -> Option<pearl::Rio> {
+    #[cfg(target_os = "linux")]
+    return rio::new().ok();
+    return None;
+}
+
 pub async fn create_test_storage(
     dir_name: impl AsRef<Path>,
     max_blob_size: u64,
@@ -127,7 +133,7 @@ pub async fn create_test_storage(
         .set_filter_config(Default::default())
         .set_deferred_index_dump_times(MIN_DEFER_TIME, MAX_DEFER_TIME)
         .allow_duplicates();
-    let builder = if let Ok(ioring) = rio::new() {
+    let builder = if let Some(ioring) = get_rio() {
         builder.enable_aio(ioring)
     } else {
         println!("current OS doesn't support AIO");

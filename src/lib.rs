@@ -64,9 +64,17 @@ pub mod tools;
 
 pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
+
 pub use record::Meta;
-pub use rio;
 pub use storage::{ArrayKey, BlobRecordTimestamp, Builder, Key, ReadResult, RefKey, Storage};
+
+#[cfg(target_os = "linux")]
+pub use rio;
+
+mod rio_stub;
+
+#[cfg(not(target_os = "linux"))]
+pub use rio_stub::Rio;
 
 mod prelude {
     use crc::{Crc, CRC_32_ISCSI};
@@ -82,7 +90,13 @@ mod prelude {
     pub(crate) use filter::{Bloom, BloomProvider, Config as BloomConfig, HierarchicalFilters};
     pub(crate) use futures::{lock::Mutex, stream::futures_unordered::FuturesUnordered};
     pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
+
+    #[cfg(target_os = "linux")]
     pub(crate) use rio::Rio;
+
+    #[cfg(not(target_os = "linux"))]
+    pub(crate) use rio_stub::Rio;
+
     pub(crate) use std::{
         cmp::Ordering as CmpOrdering,
         collections::HashMap,

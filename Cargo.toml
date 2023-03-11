@@ -26,6 +26,9 @@ opt-level = 3
 lto = true
 codegen-units = 1
 
+[target.'cfg(target_os = "linux")'.dependencies]
+rio = "0.9.4"
+
 [dependencies]
 # Don't update without checking for backwards compatibility!!!
 ahash = "=0.7.6"
@@ -37,7 +40,6 @@ crc = "=3.0.0"
 futures = "0.3"
 log = "0.4"
 sha2 = "0.10"
-rio = "0.9.4"
 serde = "1.0"
 serde_derive = "1.0"
 thiserror = "1.0"

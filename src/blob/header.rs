@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use bincode::{deserialize, serialized_size};
-use rio::Rio;
+use crate::prelude::Rio;
 
 use crate::{blob::File, error::ValidationErrorKind, Error};
 

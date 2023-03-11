@@ -73,6 +73,12 @@ fn generate_meta(meta_size: usize) -> Vec<u8> {
     vec![0; meta_size]
 }
 
+pub(crate) fn get_rio() -> Option<crate::prelude::Rio> {
+    #[cfg(target_os = "linux")]
+    return rio::new().ok();
+    return None;
+}
+
 #[tokio::test]
 #[ignore]
 async fn benchmark_from_records() {
@@ -82,11 +88,10 @@ async fn benchmark_from_records() {
     const FILEPATH: &str = "/tmp/index_ser_bench.b";
     const KEY_MAPPER: fn(u32) -> u32 = |k| k % 100_000;
 
-    let ioring = rio::new();
-    if ioring.is_err() {
+    let ioring = get_rio();
+    if ioring.is_none() {
         println!("Current OS doesn't support AIO");
     }
-    let ioring = ioring.ok();
     println!("Generating headers...");
     let headers = generate_headers(RECORDS_AMOUNT, KEY_MAPPER);
     let meta = generate_meta(META_SIZE);
@@ -125,11 +130,10 @@ async fn benchmark_from_file() {
     const EXTENSION: &str = "b";
     let filepath = format!("{}/{}.{}.{}", DIR, PREFIX, ID, EXTENSION);
 
-    let ioring = rio::new();
-    if ioring.is_err() {
+    let ioring = get_rio();
+    if ioring.is_none() {
         println!("Current OS doesn't support AIO");
     }
-    let ioring = ioring.ok();
     println!("Generating headers...");
     let headers = generate_headers(RECORDS_AMOUNT, KEY_MAPPER);
     let meta = generate_meta(META_SIZE);
@@ -179,11 +183,10 @@ async fn benchmark_get_any() {
     const KEY_TO: u32 = 10_100_000;
     const PRINT_EVERY: u32 = 10_000;
 
-    let ioring = rio::new();
-    if ioring.is_err() {
+    let ioring = get_rio();
+    if ioring.is_none() {
         println!("Current OS doesn't support AIO");
     }
-    let ioring = ioring.ok();
     println!("Generating headers...");
     let headers = generate_headers(RECORDS_AMOUNT, KEY_MAPPER);
     let meta = generate_meta(META_SIZE);
@@ -233,11 +236,10 @@ async fn benchmark_get_all() {
     const KEY_TO: u32 = 10_100_000;
     const PRINT_EVERY: u32 = 10_000;
 
-    let ioring = rio::new();
-    if ioring.is_err() {
+    let ioring = get_rio();
+    if ioring.is_none() {
         println!("Current OS doesn't support AIO");
     }
-    let ioring = ioring.ok();
     println!("Generating headers...");
     let headers = generate_headers(RECORDS_AMOUNT, KEY_MAPPER);
     let meta = generate_meta(META_SIZE);
