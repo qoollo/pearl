@@ -37,7 +37,7 @@ fn test_hash(data: &[u8], eq_to: u64) {
     assert_eq!(hash_7, eq_to);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_storage_init_new() {
     let path = common::init("new");
     let storage = common::default_test_storage_in(&path).await.unwrap();
@@ -48,7 +48,7 @@ async fn test_storage_init_new() {
     common::clean(storage, path).await.unwrap();
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_storage_init_from_existing() {
     let now = Instant::now();
     let path = common::init("existing");
@@ -71,7 +71,7 @@ async fn test_storage_init_from_existing() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_storage_read_write() {
     let now = Instant::now();
     let path = common::init("read_write");
@@ -85,7 +85,7 @@ async fn test_storage_read_write() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_storage_multiple_read_write() {
     let now = Instant::now();
     let path = common::init("multiple");
@@ -110,7 +110,7 @@ async fn test_storage_multiple_read_write() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_multithread_read_write() -> Result<(), String> {
     let now = Instant::now();
     let path = common::init("multithread");
@@ -156,7 +156,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_storage_multithread_blob_overflow() -> Result<()> {
     let now = Instant::now();
     let path = common::init("overflow");
@@ -175,7 +175,7 @@ async fn test_storage_multithread_blob_overflow() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_storage_close() {
     let now = Instant::now();
     let path = common::init("pearl_close");
@@ -228,7 +228,8 @@ async fn test_on_disk_index() -> Result<()> {
     common::clean(storage, path).await
 }
 
-#[tokio::test]
+#[cfg(target_os = "linux")]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_work_dir_lock() {
     use nix::sys::wait::{waitpid, WaitStatus};
     use nix::unistd::{fork, ForkResult};
@@ -264,7 +265,7 @@ async fn test_work_dir_lock() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_corrupted_index_regeneration() {
     let now = Instant::now();
     let path = common::init("corrupted_index");
@@ -291,7 +292,7 @@ async fn test_corrupted_index_regeneration() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_index_from_blob() {
     let now = Instant::now();
     let path = common::init("index_from_blob");
@@ -313,7 +314,7 @@ async fn test_index_from_blob() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_index_from_empty_blob() {
     let now = Instant::now();
     let path = common::init("index_from_empty_blob");
@@ -334,7 +335,7 @@ async fn test_index_from_empty_blob() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_with() {
     let now = Instant::now();
     let path = common::init("write_with");
@@ -350,7 +351,7 @@ async fn test_write_with() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_with_with_on_disk_index() {
     let now = Instant::now();
     let path = common::init("write_with_with_on_disk_index");
@@ -378,7 +379,7 @@ async fn test_write_with_with_on_disk_index() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_512_records_with_same_key() {
     let now = Instant::now();
     let path = common::init("write_1_000_000_records_with_same_key");
@@ -398,7 +399,7 @@ async fn test_write_512_records_with_same_key() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_read_with() {
     let now = Instant::now();
     let path = common::init("read_with");
@@ -432,7 +433,7 @@ async fn test_read_with() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_read_all_load_all() {
     let now = Instant::now();
     let path = common::init("read_all");
@@ -489,7 +490,7 @@ async fn test_read_all_load_all() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_read_all_find_one_key() {
     let now = Instant::now();
     let path = common::init("read_all_1000_find_one_key");
@@ -527,7 +528,7 @@ async fn test_read_all_find_one_key() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_check_bloom_filter_single() {
     let now = Instant::now();
     let path = common::init("contains_bloom_filter_single");
@@ -549,7 +550,7 @@ async fn test_check_bloom_filter_single() {
     common::clean(storage, path).await.expect("clean failed");
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_check_bloom_filter_multiple() {
     let now = Instant::now();
     let path = common::init("check_bloom_filter_multiple");
@@ -572,7 +573,7 @@ async fn test_check_bloom_filter_multiple() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_check_bloom_filter_multiple_offloaded() {
     let now = Instant::now();
     let path = common::init("check_bloom_filter_multiple_offloaded");
@@ -596,7 +597,7 @@ async fn test_check_bloom_filter_multiple_offloaded() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_check_bloom_filter_init_from_existing() {
     let now = Instant::now();
     let path = common::init("check_bloom_filter_init_from_existing");
@@ -640,7 +641,7 @@ async fn test_check_bloom_filter_init_from_existing() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_check_bloom_filter_generated() {
     let now = Instant::now();
     let path = common::init("check_bloom_filter_generated");
@@ -714,7 +715,7 @@ fn meta_with(version: &str) -> Meta {
     meta
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_records_count() {
     let now = Instant::now();
     let path = common::init("records_count");
@@ -734,7 +735,7 @@ async fn test_records_count() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_records_count_in_active() {
     let now = Instant::now();
     let path = common::init("records_count_in_active");
@@ -753,7 +754,7 @@ async fn test_records_count_in_active() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_records_count_detailed() {
     let now = Instant::now();
     let path = common::init("records_count_detailed");
@@ -774,7 +775,7 @@ async fn test_records_count_detailed() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_manual_close_active_blob() {
     let path = common::init("manual_close_active_blob");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
@@ -792,7 +793,7 @@ async fn test_manual_close_active_blob() {
     common::clean(storage, path).await.unwrap();
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_blobs_count_random_names() {
     let path = common::init("blobs_count_random_names");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
@@ -830,7 +831,7 @@ async fn test_blobs_count_random_names() {
     common::clean(storage, path).await.unwrap();
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_memory_index() {
     let path = common::init("memory_index");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
@@ -898,7 +899,7 @@ async fn test_memory_index() {
     common::clean(storage, path).await.unwrap();
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_mark_as_deleted_single() {
     let now = Instant::now();
     let path = common::init("mark_as_deleted_single");
@@ -919,7 +920,7 @@ async fn test_mark_as_deleted_single() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_mark_as_deleted_deferred_dump() {
     let path = common::init("mark_as_deleted_deferred_dump");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
@@ -951,7 +952,7 @@ async fn test_mark_as_deleted_deferred_dump() {
     common::clean(storage, path).await.expect("clean failed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_blob_header_validation() {
     use pearl::error::{AsPearlError, ValidationErrorKind};
     use std::os::unix::fs::FileExt;
@@ -1065,7 +1066,7 @@ async fn test_in_memory_and_disk_records_retrieval() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_read_all_with_deletion_marker_delete_middle() -> Result<()> {
     let path = common::init("delete_middle");
     let storage = common::default_test_storage_in(path).await.unwrap();
@@ -1084,7 +1085,7 @@ async fn test_read_all_with_deletion_marker_delete_middle() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_read_all_with_deletion_marker_delete_middle_different_blobs() -> Result<()> {
     let path = common::init("delete_middle_blobs");
     let storage = common::default_test_storage_in(path).await.unwrap();

@@ -60,7 +60,7 @@ where
         clean_file(path, recreate_index_file)?;
         let res = Self::serialize(headers, meta, blob_size)?;
         let (mut header, metadata, buf) = res;
-        let file = iodrivier
+        let file = iodriver
             .create(path)
             .await
             .with_context(|| format!("file open failed {:?}", path))?;
