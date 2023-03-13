@@ -85,7 +85,7 @@ mod prelude {
     pub(crate) use filter::{Bloom, BloomProvider, Config as BloomConfig, HierarchicalFilters};
     pub(crate) use futures::{lock::Mutex, stream::futures_unordered::FuturesUnordered};
     pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
-    #[cfg(target_os = "linux")]
+    #[cfg(all(feature = "async-io-rio", target_os = "linux"))]
     pub(crate) use rio::Rio;
 
     pub(crate) use io::File;
