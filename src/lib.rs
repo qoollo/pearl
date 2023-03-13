@@ -67,7 +67,7 @@ pub mod tools;
 pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
-#[cfg(target_os = "linux")]
+#[cfg(all(feature = "async-io-rio", target_os = "linux"))]
 pub use rio;
 pub use storage::{ArrayKey, BlobRecordTimestamp, Builder, Key, ReadResult, RefKey, Storage};
 
@@ -84,8 +84,6 @@ mod prelude {
     pub(crate) use blob::{self, Blob, BlobConfig, IndexConfig};
     pub(crate) use filter::{Bloom, BloomProvider, Config as BloomConfig, HierarchicalFilters};
     pub(crate) use futures::{lock::Mutex, stream::futures_unordered::FuturesUnordered};
-    pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
-    #[cfg(all(feature = "async-io-rio", target_os = "linux"))]
     pub(crate) use rio::Rio;
 
     pub(crate) use io::File;
