@@ -84,7 +84,7 @@ mod prelude {
     pub(crate) use blob::{self, Blob, BlobConfig, IndexConfig};
     pub(crate) use filter::{Bloom, BloomProvider, Config as BloomConfig, HierarchicalFilters};
     pub(crate) use futures::{lock::Mutex, stream::futures_unordered::FuturesUnordered};
-    pub(crate) use rio::Rio;
+    pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
 
     pub(crate) use io::File;
 
