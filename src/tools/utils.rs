@@ -138,7 +138,9 @@ where
 {
     let headers = match header.version() {
         HEADER_VERSION => {
-            let index = BPTreeFileIndex::<K>::from_file(FileName::from_path(path)?, None).await?;
+            let index =
+                BPTreeFileIndex::<K>::from_file(FileName::from_path(path)?, IODriver::default())
+                    .await?;
             let res = index.get_records_headers(index.blob_size()).await?;
             AnyResult::<_>::Ok(res.0)
         }

@@ -979,12 +979,6 @@ async fn test_blob_header_validation() {
         .max_data_in_blob(100_000)
         .set_filter_config(Default::default())
         .allow_duplicates();
-    let builder = if let Ok(ioring) = rio::new() {
-        builder.enable_aio(ioring)
-    } else {
-        println!("current OS doesn't support AIO");
-        builder
-    };
     let mut storage: Storage<KeyTest> = builder.build().unwrap();
     let err = storage
         .init()

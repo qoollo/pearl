@@ -20,13 +20,6 @@ pub struct File {
     size: Arc<AtomicU64>,
 }
 
-#[derive(PartialEq, Eq)]
-enum LockAcquisitionResult {
-    Acquired,
-    AlreadyLocked,
-    Error(Errno),
-}
-
 impl File {
     pub(crate) async fn open(path: impl AsRef<Path>, ioring: Option<Rio>) -> IOResult<Self> {
         Self::from_file(path, |f| f.create(false).append(true).read(true), ioring).await

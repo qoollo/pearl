@@ -32,7 +32,7 @@ use super::prelude::*;
 #[derive(Default, Debug)]
 pub struct Builder {
     config: Config,
-    ioring: Option<Rio>,
+    iodriver: IODriver,
 }
 
 const MAX_POSSIBLE_DATA_IN_BLOB: u64 = u32::MAX as u64;
@@ -68,7 +68,7 @@ impl Builder {
             error_params.push_str("> blob_file_name_prefix\n");
         }
         if error_params.is_empty() {
-            Ok(Storage::new(self.config, self.ioring))
+            Ok(Storage::new(self.config, self.iodriver))
         } else {
             error!("{}", error_params);
             Err(Error::uninitialized().into())
@@ -164,13 +164,6 @@ impl Builder {
     #[must_use]
     pub fn set_validate_data_during_index_regen(mut self, value: bool) -> Self {
         self.config.set_validate_data_during_index_regen(value);
-        self
-    }
-
-    /// Enables linux AIO with provided io_uring.
-    #[must_use]
-    pub fn enable_aio(mut self, ioring: Rio) -> Self {
-        self.ioring = Some(ioring);
         self
     }
 

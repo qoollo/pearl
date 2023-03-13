@@ -127,12 +127,6 @@ pub async fn create_test_storage(
         .set_filter_config(Default::default())
         .set_deferred_index_dump_times(MIN_DEFER_TIME, MAX_DEFER_TIME)
         .allow_duplicates();
-    let builder = if let Ok(ioring) = rio::new() {
-        builder.enable_aio(ioring)
-    } else {
-        println!("current OS doesn't support AIO");
-        builder
-    };
     let mut storage = builder.build().unwrap();
     storage.init().await.map_err(|e| e.to_string())?;
     Ok(storage)
