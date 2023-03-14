@@ -229,7 +229,7 @@ async fn test_on_disk_index() -> Result<()> {
 }
 
 #[cfg(target_os = "linux")]
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 async fn test_work_dir_lock() {
     use nix::sys::wait::{waitpid, WaitStatus};
     use nix::unistd::{fork, ForkResult};
