@@ -67,8 +67,6 @@ pub mod tools;
 pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
-#[cfg(all(feature = "async-io-rio", target_os = "linux"))]
-pub use rio;
 pub use storage::{ArrayKey, BlobRecordTimestamp, Builder, Key, ReadResult, RefKey, Storage};
 
 mod prelude {
