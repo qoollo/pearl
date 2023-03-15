@@ -5,7 +5,7 @@ use rio::Rio;
 use std::time::SystemTime;
 
 /// IO driver for file operations with optional async support
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct IODriver {
     rio: Option<Rio>,
     sync_driver: SyncDriver,
@@ -28,6 +28,13 @@ impl IODriver {
     pub(crate) async fn create(&self, path: impl AsRef<Path>) -> IOResult<File> {
         let sync = self.sync_driver.create(path).await?;
         File::from_file(sync, self.rio.clone()).await
+    }
+}
+
+impl Default for IODriver {
+    fn default() -> Self {
+        let rio = rio::new().ok();
+        Self::new(rio)
     }
 }
 
