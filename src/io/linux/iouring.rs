@@ -1,6 +1,10 @@
 use super::sync::{File as SyncFile, IODriver as SyncDriver};
-use rio;
+use crate::prelude::*;
+use bytes::{Bytes, BytesMut};
+use rio::Rio;
+use std::time::SystemTime;
 
+/// IO driver for file operations with optional async support
 #[derive(Debug, Clone, Default)]
 pub struct IODriver {
     rio: Option<Rio>,
@@ -8,6 +12,7 @@ pub struct IODriver {
 }
 
 impl IODriver {
+    /// Create new iodriver with optional async support
     pub fn new(rio: Option<Rio>) -> Self {
         Self {
             rio,
@@ -17,13 +22,19 @@ impl IODriver {
 
     pub(crate) async fn open(&self, path: impl AsRef<Path>) -> IOResult<File> {
         let sync = self.sync_driver.open(path).await?;
-        File::from_file(sync, rio);
+        File::from_file(sync, self.rio.clone()).await
     }
 
     pub(crate) async fn create(&self, path: impl AsRef<Path>) -> IOResult<File> {
         let sync = self.sync_driver.create(path).await?;
-        File::from_file(sync, rio);
+        File::from_file(sync, self.rio.clone()).await
     }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct File {
+    sync: SyncFile,
+    rio: Option<Rio>,
 }
 
 impl File {
@@ -32,8 +43,12 @@ impl File {
     }
 
     pub(crate) async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
-        let offset = self.sync.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
-        self.write_all_at_aio(offset, buf, rio).await
+        if let Some(ref rio) = self.rio {
+            let offset = self.sync.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
+            self.write_all_at_aio(offset, buf, rio).await
+        } else {
+            self.sync.write_append_all(buf).await
+        }
     }
 
     pub(crate) async fn write_append_all_buffers(
@@ -41,7 +56,7 @@ impl File {
         first_buf: Bytes,
         second_buf: Bytes,
     ) -> IOResult<()> {
-        if let Some(rio) = self.rio {
+        if let Some(ref rio) = self.rio {
             let first_len = first_buf.len() as u64;
             let second_len = second_buf.len() as u64;
             let mut offset = self
@@ -52,12 +67,14 @@ impl File {
             offset = offset + first_len;
             self.write_all_at_aio(offset, second_buf, rio).await
         } else {
-            self.sync.write_append_all_buffers(first_buf, second_buf)
+            self.sync
+                .write_append_all_buffers(first_buf, second_buf)
+                .await
         }
     }
 
     pub(crate) async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
-        if let Some(rio) = rio {
+        if let Some(ref rio) = self.rio {
             self.write_all_at_aio(offset, buf, rio).await
         } else {
             self.sync.write_all_at(offset, buf).await
@@ -88,8 +105,8 @@ impl File {
             buf.len(),
             offset
         );
-        if let Some(rio) = self.rio {
-            let compl = ioring.read_at(&*self.no_lock_fd, &buf, offset);
+        if let Some(ref rio) = self.rio {
+            let compl = rio.read_at(&*self.sync.no_lock_fd, &buf, offset);
             let mut size = compl.await.with_context(|| "read at failed")?;
             while size < buf.len() {
                 debug!(
@@ -99,7 +116,7 @@ impl File {
                 );
                 let slice = buf.split_at_mut(size).1;
                 debug!("blob file read at buf to fill up: {}b", slice.len());
-                let compl = ioring.read_at(&*self.no_lock_fd, &slice, offset + size as u64);
+                let compl = rio.read_at(&*self.sync.no_lock_fd, &slice, offset + size as u64);
                 let remainder_size = compl.await.with_context(|| "second read at failed")?;
                 debug!(
                     "blob file read at second read, completed {}/{} of remains bytes",
@@ -122,7 +139,7 @@ impl File {
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
         if let Some(ref rio) = self.rio {
-            rio.fsync(&*self.sync.no_lock_fd).await;
+            rio.fsync(&*self.sync.no_lock_fd).await
         } else {
             self.sync.fsyncdata().await
         }

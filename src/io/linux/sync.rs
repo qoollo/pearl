@@ -32,8 +32,8 @@ const MAX_SYNC_OPERATION_SIZE: usize = 81_920;
 
 #[derive(Debug, Clone)]
 pub(crate) struct File {
-    no_lock_fd: Arc<StdFile>,
-    size: Arc<AtomicU64>,
+    pub(super) no_lock_fd: Arc<StdFile>,
+    pub(super) size: Arc<AtomicU64>,
 }
 
 #[derive(PartialEq, Eq)]
@@ -90,11 +90,13 @@ impl File {
         }
     }
 
+    #[cfg(not(feature = "async-io-rio"))]
     pub(crate) async fn read_all(&self) -> Result<BytesMut> {
         self.read_exact_at_allocate(self.size().try_into()?, 0)
             .await
     }
 
+    #[cfg(not(feature = "async-io-rio"))]
     pub(crate) async fn read_exact_at_allocate(
         &self,
         size: usize,
