@@ -162,7 +162,10 @@ impl File {
         F: FnOnce() -> R + Send + 'static,
         R: Send + 'static,
     {
-        tokio::task::block_in_place(move || f())
+        match tokio::runtime::Handle::current().runtime_flavor() {
+            tokio::runtime::RuntimeFlavor::CurrentThread => f(),
+            _ => tokio::task::block_in_place(move || f()),
+        }
     }
 
     async fn from_file(
