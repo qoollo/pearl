@@ -7,7 +7,7 @@ use std::time::SystemTime;
 /// IO driver for file operations with optional async support
 #[derive(Debug, Clone)]
 pub struct IODriver {
-    rio: Option<Rio>,
+    rio: Option<Arc<Rio>>,
     sync_driver: SyncDriver,
 }
 
@@ -15,7 +15,7 @@ impl IODriver {
     /// Create new iodriver with optional async support
     pub fn new(rio: Option<Rio>) -> Self {
         Self {
-            rio,
+            rio: rio.map(Arc::new),
             sync_driver: SyncDriver::default(),
         }
     }
@@ -41,7 +41,7 @@ impl Default for IODriver {
 #[derive(Debug, Clone)]
 pub(crate) struct File {
     sync: SyncFile,
-    rio: Option<Rio>,
+    rio: Option<Arc<Rio>>,
 }
 
 impl File {
@@ -170,7 +170,7 @@ impl File {
         Ok(())
     }
 
-    async fn from_file(sync: SyncFile, rio: Option<Rio>) -> IOResult<Self> {
+    async fn from_file(sync: SyncFile, rio: Option<Arc<Rio>>) -> IOResult<Self> {
         Ok(Self { sync, rio })
     }
 }
