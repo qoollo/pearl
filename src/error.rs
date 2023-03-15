@@ -42,6 +42,7 @@ impl Error {
         Self::new(Kind::ActiveBlobExists)
     }
 
+    #[cfg(feature = "async-io-rio")]
     pub(crate) fn io(s: String) -> Self {
         Self::new(Kind::IO(s))
     }
