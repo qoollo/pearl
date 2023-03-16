@@ -74,7 +74,7 @@ impl File {
         let len = first_len + second_len;
         let mut offset = self.size.fetch_add(len, Ordering::SeqCst);
         let file = self.no_lock_fd.clone();
-        if len <= MAX_SYNC_OPERATION_SIZE as u64 {
+        if Self::can_run_inplace(len) {
             Self::inplace_sync_call(move || {
                 file.write_all_at(&first_buf, offset)?;
                 offset = offset + first_len;
@@ -94,7 +94,7 @@ impl File {
 
     pub(crate) async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
         let file = self.no_lock_fd.clone();
-        if buf.len() <= MAX_SYNC_OPERATION_SIZE {
+        if Self::can_run_inplace(buf.len() as u64) {
             Self::inplace_sync_call(move || file.write_all_at(&buf, offset))
         } else {
             Self::background_sync_call(move || file.write_all_at(&buf, offset)).await
@@ -120,7 +120,7 @@ impl File {
     pub(crate) async fn read_exact_at(&self, mut buf: BytesMut, offset: u64) -> Result<BytesMut> {
         let file = self.no_lock_fd.clone();
 
-        Ok(if buf.len() <= MAX_SYNC_OPERATION_SIZE {
+        Ok(if Self::can_run_inplace(buf.len() as u64) {
             Self::inplace_sync_call(move || file.read_exact_at(&mut buf, offset).map(|_| buf))
         } else {
             Self::background_sync_call(move || file.read_exact_at(&mut buf, offset).map(|_| buf))
@@ -173,10 +173,13 @@ impl File {
         F: FnOnce() -> R + Send + 'static,
         R: Send + 'static,
     {
-        match tokio::runtime::Handle::current().runtime_flavor() {
-            tokio::runtime::RuntimeFlavor::CurrentThread => f(),
-            _ => tokio::task::block_in_place(move || f()),
-        }
+        tokio::task::block_in_place(move || f())
+    }
+
+    fn can_run_inplace(len: u64) -> bool {
+        use tokio::runtime::{Handle, RuntimeFlavor};
+        Handle::current().runtime_flavor() != RuntimeFlavor::CurrentThread
+            && len <= MAX_SYNC_OPERATION_SIZE as u64
     }
 
     async fn from_file(
