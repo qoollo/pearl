@@ -119,8 +119,10 @@ pub async fn create_test_storage(
     max_blob_size: u64,
 ) -> Result<Storage<KeyTest>, String> {
     let path = env::temp_dir().join(dir_name);
+    let iodriver = pearl::IoDriver::new();
     let builder = Builder::new()
         .work_dir(&path)
+        .set_io_driver(iodriver)
         .blob_file_name_prefix("test")
         .max_blob_size(max_blob_size)
         .max_data_in_blob(100_000)

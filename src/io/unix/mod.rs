@@ -7,7 +7,7 @@ pub use sync::IoDriver;
 
 #[cfg(feature = "async-io-rio")]
 mod iouring;
-#[cfg(feature = "async-io-rio")]
+#[cfg(feature = "async-io-rio")] // Needed as base layer for async
 mod sync;
 #[cfg(feature = "async-io-rio")]
 pub(crate) use iouring::File;

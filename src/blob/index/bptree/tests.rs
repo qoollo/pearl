@@ -65,6 +65,10 @@ impl Into<usize> for KeyType {
     }
 }
 
+fn create_io_driver() -> IoDriver {
+    IoDriver::new_sync()
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn serialize_deserialize_file() {
     let mut inmem = InMemoryIndex::<KeyType>::new();
@@ -75,7 +79,7 @@ async fn serialize_deserialize_file() {
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/bptree_index.b"),
-        IoDriver::default(),
+        create_io_driver(),
         &inmem,
         meta,
         true,
@@ -101,7 +105,7 @@ async fn blob_size_invalidation() {
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new(filename),
-        IoDriver::default(),
+        create_io_driver(),
         &inmem,
         meta,
         true,
@@ -133,9 +137,10 @@ async fn magic_byte_corruption() {
         inmem.insert(key, vec![rh]);
     });
     let meta = vec![META_VALUE; META_SIZE];
+    let iodriver = create_io_driver();
     let _ = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new(filename),
-        IoDriver::default(),
+        iodriver.clone(),
         &inmem,
         meta,
         true,
@@ -154,7 +159,7 @@ async fn magic_byte_corruption() {
 
     let findex = BPTreeFileIndex::<KeyType>::from_file(
         FileName::from_path(&Path::new(filename)).expect("failed to create filename"),
-        IoDriver::default(),
+        iodriver,
     )
     .await
     .expect("can't read file index");
@@ -189,7 +194,7 @@ async fn check_get_any() {
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/any_bptree_index.b"),
-        IoDriver::default(),
+        create_io_driver(),
         &inmem,
         meta,
         true,
@@ -238,7 +243,7 @@ async fn preserves_records_order() {
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/latest_bptree_index.b"),
-        IoDriver::default(),
+        create_io_driver(),
         &inmem,
         meta,
         true,
@@ -277,7 +282,7 @@ async fn check_get() {
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/all_bptree_index.b"),
-        IoDriver::default(),
+        create_io_driver(),
         &inmem,
         meta,
         true,

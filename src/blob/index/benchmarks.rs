@@ -69,6 +69,10 @@ fn generate_headers(records_amount: usize, key_mapper: fn(u32) -> u32) -> InMemo
     inmem
 }
 
+fn create_io_driver() -> IoDriver {
+    IoDriver::new_sync()
+}
+
 fn generate_meta(meta_size: usize) -> Vec<u8> {
     vec![0; meta_size]
 }
@@ -88,11 +92,12 @@ async fn benchmark_from_records() {
 
     let time = Instant::now();
     println!("Running serialization benches...");
+    let iodriver = create_io_driver();
     for i in 0..TESTS_AMOUNT {
         println!("Test {}...", i + 1);
         let _ = FileIndexStruct::from_records(
             Path::new(FILEPATH),
-            IoDriver::default(),
+            iodriver.clone(),
             &headers,
             meta.clone(),
             true,
@@ -124,11 +129,13 @@ async fn benchmark_from_file() {
     let headers = generate_headers(RECORDS_AMOUNT, KEY_MAPPER);
     let meta = generate_meta(META_SIZE);
 
+    let iodriver = create_io_driver();
+
     println!("Creating index file...");
     {
         let _ = FileIndexStruct::from_records(
             Path::new(&filepath),
-            IoDriver::default(),
+            iodriver.clone(),
             &headers,
             meta,
             true,
@@ -147,7 +154,7 @@ async fn benchmark_from_file() {
                 EXTENSION.to_owned(),
                 PathBuf::from(DIR),
             ),
-            IoDriver::default(),
+            iodriver.clone(),
         )
         .await
         .unwrap();
@@ -176,7 +183,7 @@ async fn benchmark_get_any() {
     println!("Creating file index from headers...");
     let findex = FileIndexStruct::from_records(
         Path::new(FILEPATH),
-        IoDriver::default(),
+        create_io_driver(),
         &headers,
         meta.clone(),
         true,
@@ -225,7 +232,7 @@ async fn benchmark_get_all() {
     println!("Creating file index from headers...");
     let findex = FileIndexStruct::from_records(
         Path::new(FILEPATH),
-        IoDriver::default(),
+        create_io_driver(),
         &headers,
         meta.clone(),
         true,

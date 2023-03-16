@@ -12,10 +12,21 @@ use std::{
 use tokio::fs::OpenOptions;
 
 /// IO driver for file operations
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct IoDriver;
 
 impl IoDriver {
+    #[cfg(not(feature = "async-io-rio"))]
+    /// Create new sync io driver
+    pub fn new() -> Self {
+        Self::new_sync()
+    }
+
+    /// Create new sync io driver
+    pub fn new_sync() -> Self {
+        Self {}
+    }
+
     pub(crate) async fn open(&self, path: impl AsRef<Path>) -> IOResult<File> {
         File::from_file(path, |f| f.create(false).append(true).read(true)).await
     }

@@ -197,9 +197,10 @@ async fn test_on_disk_index() -> Result<()> {
     let max_blob_size = 1500;
     let num_records_to_write = 5u32;
     let read_key = 3u32;
-
+    let iodriver = pearl::IoDriver::new();
     let mut storage = Builder::new()
         .work_dir(&path)
+        .set_io_driver(iodriver)
         .blob_file_name_prefix("test")
         .max_blob_size(max_blob_size)
         .max_data_in_blob(1_000)

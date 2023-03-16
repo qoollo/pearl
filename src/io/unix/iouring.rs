@@ -7,16 +7,43 @@ use std::time::SystemTime;
 /// IO driver for file operations with optional async support
 #[derive(Debug, Clone)]
 pub struct IoDriver {
-    rio: Option<Arc<Rio>>,
+    rio: Option<Rio>,
     sync_driver: SyncDriver,
 }
 
 impl IoDriver {
-    /// Create new iodriver with optional async support
-    pub fn new(rio: Option<Rio>) -> Self {
+    /// Create new iodriver with async if available
+    pub fn new() -> Self {
+        Self::new_async_fallback_sync()
+    }
+
+    /// Create new sync iodriver
+    pub fn new_sync() -> Self {
         Self {
-            rio: rio.map(Arc::new),
-            sync_driver: SyncDriver::default(),
+            rio: None,
+            sync_driver: SyncDriver::new_sync(),
+        }
+    }
+
+    /// Create new async iodriver
+    pub fn new_async() -> Result<Self> {
+        rio::new().map(Self::new_async_rio).map_err(|e| e.into())
+    }
+
+    /// Create new async iodriver from existing rio instance
+    pub fn new_async_rio(rio: Rio) -> Self {
+        Self {
+            rio: Some(rio),
+            sync_driver: SyncDriver::new_sync(),
+        }
+    }
+
+    /// Create new iodriver with async if available    
+    pub fn new_async_fallback_sync() -> Self {
+        if let Ok(rio) = rio::new() {
+            Self::new_async_rio(rio)
+        } else {
+            Self::new_sync()
         }
     }
 
@@ -31,17 +58,10 @@ impl IoDriver {
     }
 }
 
-impl Default for IoDriver {
-    fn default() -> Self {
-        let rio = rio::new().ok();
-        Self::new(rio)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub(crate) struct File {
     sync: SyncFile,
-    rio: Option<Arc<Rio>>,
+    rio: Option<Rio>,
 }
 
 impl File {
@@ -170,7 +190,7 @@ impl File {
         Ok(())
     }
 
-    async fn from_file(sync: SyncFile, rio: Option<Arc<Rio>>) -> IOResult<Self> {
+    async fn from_file(sync: SyncFile, rio: Option<Rio>) -> IOResult<Self> {
         Ok(Self { sync, rio })
     }
 }

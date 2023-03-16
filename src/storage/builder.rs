@@ -29,10 +29,19 @@ use super::prelude::*;
 /// [`max_data_in_blob`]: struct.Builder.html#method.max_data_in_blob
 /// [`blob_file_name_prefix`]: struct.Builder.html#method.blob_file_name_prefix
 /// [`key_size`]: struct.Builder.html#method.key_size
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Builder {
     config: Config,
     iodriver: IoDriver,
+}
+
+impl Default for Builder {
+    fn default() -> Self {
+        Self {
+            config: Config::default(),
+            iodriver: IoDriver::new_sync(),
+        }
+    }
 }
 
 const MAX_POSSIBLE_DATA_IN_BLOB: u64 = u32::MAX as u64;
@@ -173,6 +182,12 @@ impl Builder {
     #[must_use]
     pub fn create_work_dir(mut self, create: bool) -> Self {
         self.config.set_create_work_dir(create);
+        self
+    }
+
+    /// Set io driver to be used during file io operations
+    pub fn set_io_driver(mut self, iodriver: IoDriver) -> Self {
+        self.iodriver = iodriver;
         self
     }
 
