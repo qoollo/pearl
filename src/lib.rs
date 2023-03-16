@@ -53,7 +53,7 @@ mod blob;
 /// Types representing various errors that can occur in pearl.
 pub mod error;
 mod io;
-pub use io::IODriver;
+pub use io::IoDriver;
 mod record;
 mod storage;
 

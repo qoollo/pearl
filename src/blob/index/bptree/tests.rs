@@ -75,7 +75,7 @@ async fn serialize_deserialize_file() {
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/bptree_index.b"),
-        IODriver::default(),
+        IoDriver::default(),
         &inmem,
         meta,
         true,
@@ -101,7 +101,7 @@ async fn blob_size_invalidation() {
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new(filename),
-        IODriver::default(),
+        IoDriver::default(),
         &inmem,
         meta,
         true,
@@ -135,7 +135,7 @@ async fn magic_byte_corruption() {
     let meta = vec![META_VALUE; META_SIZE];
     let _ = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new(filename),
-        IODriver::default(),
+        IoDriver::default(),
         &inmem,
         meta,
         true,
@@ -154,7 +154,7 @@ async fn magic_byte_corruption() {
 
     let findex = BPTreeFileIndex::<KeyType>::from_file(
         FileName::from_path(&Path::new(filename)).expect("failed to create filename"),
-        IODriver::default(),
+        IoDriver::default(),
     )
     .await
     .expect("can't read file index");
@@ -189,7 +189,7 @@ async fn check_get_any() {
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/any_bptree_index.b"),
-        IODriver::default(),
+        IoDriver::default(),
         &inmem,
         meta,
         true,
@@ -238,7 +238,7 @@ async fn preserves_records_order() {
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/latest_bptree_index.b"),
-        IODriver::default(),
+        IoDriver::default(),
         &inmem,
         meta,
         true,
@@ -277,7 +277,7 @@ async fn check_get() {
     let meta = vec![META_VALUE; META_SIZE];
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/all_bptree_index.b"),
-        IODriver::default(),
+        IoDriver::default(),
         &inmem,
         meta,
         true,

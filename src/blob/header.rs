@@ -25,7 +25,7 @@ impl Header {
         }
     }
 
-    pub(crate) async fn from_file(name: &FileName, iodriver: IODriver) -> Result<Self> {
+    pub(crate) async fn from_file(name: &FileName, iodriver: IoDriver) -> Result<Self> {
         let file = iodriver
             .open(name.to_path())
             .await

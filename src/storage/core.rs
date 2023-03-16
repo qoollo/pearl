@@ -53,7 +53,7 @@ where
     pub(crate) config: Config,
     pub(crate) safe: Arc<RwLock<Safe<K>>>,
     next_blob_id: Arc<AtomicUsize>,
-    pub(crate) iodriver: IODriver,
+    pub(crate) iodriver: IoDriver,
     pub(crate) corrupted_blobs: Arc<AtomicUsize>,
 }
 
@@ -93,7 +93,7 @@ impl<K> Storage<K>
 where
     for<'a> K: Key<'a> + 'static,
 {
-    pub(crate) fn new(config: Config, iodriver: IODriver) -> Self {
+    pub(crate) fn new(config: Config, iodriver: IoDriver) -> Self {
         let dump_sem = config.dump_sem();
         let inner = Inner::new(config, iodriver);
         let observer = Observer::new(inner.clone(), dump_sem);
@@ -714,7 +714,7 @@ where
 
     async fn read_blobs(
         files: &[DirEntry],
-        iodriver: IODriver,
+        iodriver: IoDriver,
         disk_access_sem: Arc<Semaphore>,
         config: &Config,
     ) -> Result<(Vec<Blob<K>>, usize)> {
@@ -1050,7 +1050,7 @@ impl<K> Inner<K>
 where
     for<'a> K: Key<'a> + 'static,
 {
-    fn new(config: Config, iodriver: IODriver) -> Self {
+    fn new(config: Config, iodriver: IoDriver) -> Self {
         Self {
             safe: Arc::new(RwLock::new(Safe::new(config.bloom_filter_group_size()))),
             config,

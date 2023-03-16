@@ -37,7 +37,7 @@ where
     } else if header.version() == HEADER_VERSION {
         block_on(async {
             let index =
-                BPTreeFileIndex::<K>::from_file(FileName::from_path(path)?, IODriver::default())
+                BPTreeFileIndex::<K>::from_file(FileName::from_path(path)?, IoDriver::default())
                     .await?;
             let res = index.get_records_headers(blob_size).await?;
             AnyResult::<_>::Ok(res.0)

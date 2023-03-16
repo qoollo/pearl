@@ -50,7 +50,7 @@ where
     params: IndexParams,
     inner: State<FileIndex, K>,
     name: FileName,
-    iodriver: IODriver,
+    iodriver: IoDriver,
 }
 
 #[derive(Debug, Default)] // Default can be used to initialize structure with 0
@@ -77,7 +77,7 @@ where
     FileIndex: FileIndexTrait<K>,
     for<'a> K: Key<'a>,
 {
-    pub(crate) fn new(name: FileName, iodriver: IODriver, config: IndexConfig) -> Self {
+    pub(crate) fn new(name: FileName, iodriver: IoDriver, config: IndexConfig) -> Self {
         let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
         let bloom_filter = config.bloom_config.map(|cfg| Bloom::new(cfg));
         let mem = Some(Default::default());
@@ -117,7 +117,7 @@ where
     pub(crate) async fn from_file(
         name: FileName,
         config: IndexConfig,
-        iodriver: IODriver,
+        iodriver: IoDriver,
         blob_size: u64,
     ) -> Result<Self> {
         let findex = FileIndex::from_file(name.clone(), iodriver.clone()).await?;
@@ -379,10 +379,10 @@ where
 
 #[async_trait::async_trait]
 pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
-    async fn from_file(name: FileName, iodriver: IODriver) -> Result<Self>;
+    async fn from_file(name: FileName, iodriver: IoDriver) -> Result<Self>;
     async fn from_records(
         path: &Path,
-        iodriver: IODriver,
+        iodriver: IoDriver,
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,

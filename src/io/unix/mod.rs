@@ -3,7 +3,7 @@ mod sync;
 #[cfg(not(feature = "async-io-rio"))]
 pub(crate) use sync::File;
 #[cfg(not(feature = "async-io-rio"))]
-pub use sync::IODriver;
+pub use sync::IoDriver;
 
 #[cfg(feature = "async-io-rio")]
 mod iouring;
@@ -12,4 +12,4 @@ mod sync;
 #[cfg(feature = "async-io-rio")]
 pub(crate) use iouring::File;
 #[cfg(feature = "async-io-rio")]
-pub use iouring::IODriver;
+pub use iouring::IoDriver;

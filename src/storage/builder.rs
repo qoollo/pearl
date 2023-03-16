@@ -32,7 +32,7 @@ use super::prelude::*;
 #[derive(Default, Debug)]
 pub struct Builder {
     config: Config,
-    iodriver: IODriver,
+    iodriver: IoDriver,
 }
 
 const MAX_POSSIBLE_DATA_IN_BLOB: u64 = u32::MAX as u64;

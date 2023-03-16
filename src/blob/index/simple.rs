@@ -15,7 +15,7 @@ impl<K> FileIndexTrait<K> for SimpleFileIndex
 where
     for<'a> K: Key<'a>,
 {
-    async fn from_file(name: FileName, iodriver: IODriver) -> Result<Self> {
+    async fn from_file(name: FileName, iodriver: IoDriver) -> Result<Self> {
         trace!("open index file");
         let file = iodriver
             .open(name.to_path())
@@ -64,7 +64,7 @@ where
 
     async fn from_records(
         path: &Path,
-        iodriver: IODriver,
+        iodriver: IoDriver,
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,

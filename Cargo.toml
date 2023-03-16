@@ -56,7 +56,7 @@ version = "1.21"
 features = ["fs", "io-util", "sync", "time", "rt", "macros", "rt-multi-thread"]
 
 [features]
-# default = ["benchmark"]
+default = ["async-io-rio"]
 benchmark = ["clap", "env_logger"]
 async-io-rio = ["rio"]
 

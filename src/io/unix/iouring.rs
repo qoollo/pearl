@@ -1,4 +1,4 @@
-use super::sync::{File as SyncFile, IODriver as SyncDriver};
+use super::sync::{File as SyncFile, IoDriver as SyncDriver};
 use crate::prelude::*;
 use bytes::{Bytes, BytesMut};
 use rio::Rio;
@@ -6,12 +6,12 @@ use std::time::SystemTime;
 
 /// IO driver for file operations with optional async support
 #[derive(Debug, Clone)]
-pub struct IODriver {
+pub struct IoDriver {
     rio: Option<Arc<Rio>>,
     sync_driver: SyncDriver,
 }
 
-impl IODriver {
+impl IoDriver {
     /// Create new iodriver with optional async support
     pub fn new(rio: Option<Rio>) -> Self {
         Self {
@@ -31,7 +31,7 @@ impl IODriver {
     }
 }
 
-impl Default for IODriver {
+impl Default for IoDriver {
     fn default() -> Self {
         let rio = rio::new().ok();
         Self::new(rio)

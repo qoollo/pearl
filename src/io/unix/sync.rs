@@ -13,9 +13,9 @@ use tokio::fs::OpenOptions;
 
 /// IO driver for file operations
 #[derive(Debug, Clone, Default)]
-pub struct IODriver;
+pub struct IoDriver;
 
-impl IODriver {
+impl IoDriver {
     pub(crate) async fn open(&self, path: impl AsRef<Path>) -> IOResult<File> {
         File::from_file(path, |f| f.create(false).append(true).read(true)).await
     }

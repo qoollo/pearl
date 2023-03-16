@@ -46,7 +46,7 @@ where
     /// [`FileName`]: struct.FileName.html
     pub(crate) async fn open_new(
         name: FileName,
-        iodriver: IODriver,
+        iodriver: IoDriver,
         config: BlobConfig,
     ) -> Result<Self> {
         let BlobConfig {
@@ -88,7 +88,7 @@ where
     }
 
     #[inline]
-    fn create_index(mut name: FileName, iodriver: IODriver, index_config: IndexConfig) -> Index<K> {
+    fn create_index(mut name: FileName, iodriver: IoDriver, index_config: IndexConfig) -> Index<K> {
         name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         Index::new(name, iodriver, index_config)
     }
@@ -125,7 +125,7 @@ where
 
     pub(crate) async fn from_file(
         path: PathBuf,
-        iodriver: IODriver,
+        iodriver: IoDriver,
         config: BlobConfig,
     ) -> Result<Self> {
         let now = Instant::now();

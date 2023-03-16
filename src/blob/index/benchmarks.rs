@@ -92,7 +92,7 @@ async fn benchmark_from_records() {
         println!("Test {}...", i + 1);
         let _ = FileIndexStruct::from_records(
             Path::new(FILEPATH),
-            IODriver::default(),
+            IoDriver::default(),
             &headers,
             meta.clone(),
             true,
@@ -128,7 +128,7 @@ async fn benchmark_from_file() {
     {
         let _ = FileIndexStruct::from_records(
             Path::new(&filepath),
-            IODriver::default(),
+            IoDriver::default(),
             &headers,
             meta,
             true,
@@ -147,7 +147,7 @@ async fn benchmark_from_file() {
                 EXTENSION.to_owned(),
                 PathBuf::from(DIR),
             ),
-            IODriver::default(),
+            IoDriver::default(),
         )
         .await
         .unwrap();
@@ -176,7 +176,7 @@ async fn benchmark_get_any() {
     println!("Creating file index from headers...");
     let findex = FileIndexStruct::from_records(
         Path::new(FILEPATH),
-        IODriver::default(),
+        IoDriver::default(),
         &headers,
         meta.clone(),
         true,
@@ -225,7 +225,7 @@ async fn benchmark_get_all() {
     println!("Creating file index from headers...");
     let findex = FileIndexStruct::from_records(
         Path::new(FILEPATH),
-        IODriver::default(),
+        IoDriver::default(),
         &headers,
         meta.clone(),
         true,
