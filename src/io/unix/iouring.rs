@@ -71,7 +71,7 @@ impl File {
 
     pub(crate) async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
         if let Some(ref rio) = self.rio {
-            let offset = self.sync.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
+            let offset = self.sync.file_size_append(buf.len() as u64);
             self.write_all_at_aio(offset, buf, rio).await
         } else {
             self.sync.write_append_all(buf).await
@@ -86,10 +86,7 @@ impl File {
         if let Some(ref rio) = self.rio {
             let first_len = first_buf.len() as u64;
             let second_len = second_buf.len() as u64;
-            let mut offset = self
-                .sync
-                .size
-                .fetch_add(first_len + second_len, Ordering::SeqCst);
+            let mut offset = self.sync.file_size_append(first_len + second_len);
             self.write_all_at_aio(offset, first_buf, rio).await?;
             offset = offset + first_len;
             self.write_all_at_aio(offset, second_buf, rio).await
@@ -101,6 +98,7 @@ impl File {
     }
 
     pub(crate) async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
+        debug_assert!(offset + buf.len() as u64 <= self.size());
         if let Some(ref rio) = self.rio {
             self.write_all_at_aio(offset, buf, rio).await
         } else {
@@ -133,7 +131,7 @@ impl File {
             offset
         );
         if let Some(ref rio) = self.rio {
-            let compl = rio.read_at(&*self.sync.no_lock_fd, &buf, offset);
+            let compl = rio.read_at(self.sync.std_file_ref(), &buf, offset);
             let mut size = compl.await.with_context(|| "read at failed")?;
             while size < buf.len() {
                 debug!(
@@ -143,7 +141,7 @@ impl File {
                 );
                 let slice = buf.split_at_mut(size).1;
                 debug!("blob file read at buf to fill up: {}b", slice.len());
-                let compl = rio.read_at(&*self.sync.no_lock_fd, &slice, offset + size as u64);
+                let compl = rio.read_at(self.sync.std_file_ref(), &slice, offset + size as u64);
                 let remainder_size = compl.await.with_context(|| "second read at failed")?;
                 debug!(
                     "blob file read at second read, completed {}/{} of remains bytes",
@@ -166,7 +164,7 @@ impl File {
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
         if let Some(ref rio) = self.rio {
-            rio.fsync(&*self.sync.no_lock_fd).await
+            rio.fsync(self.sync.std_file_ref()).await
         } else {
             self.sync.fsyncdata().await
         }
@@ -177,7 +175,7 @@ impl File {
     }
 
     async fn write_all_at_aio(&self, offset: u64, buf: Bytes, rio: &Rio) -> IOResult<()> {
-        let compl = rio.write_at(&*self.sync.no_lock_fd, &buf, offset);
+        let compl = rio.write_at(self.sync.std_file_ref(), &buf, offset);
         let count = compl.await?;
         // on blob level this error will be treated as unavailable file (rio doesn't return error
         // in explicit format so we do that for it)

@@ -43,8 +43,8 @@ const MAX_SYNC_OPERATION_SIZE: usize = 81_920;
 
 #[derive(Debug, Clone)]
 pub(crate) struct File {
-    pub(super) no_lock_fd: Arc<StdFile>,
-    pub(super) size: Arc<AtomicU64>,
+    no_lock_fd: Arc<StdFile>,
+    size: Arc<AtomicU64>,
 }
 
 #[derive(PartialEq, Eq)]
@@ -56,7 +56,7 @@ enum LockAcquisitionResult {
 
 impl File {
     pub(crate) fn size(&self) -> u64 {
-        self.size.load(ORD)
+        self.size.load(Ordering::SeqCst)
     }
 
     pub(crate) async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
@@ -93,6 +93,7 @@ impl File {
     }
 
     pub(crate) async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
+        debug_assert!(offset + buf.len() as u64 <= self.size());
         let file = self.no_lock_fd.clone();
         if Self::can_run_inplace(buf.len() as u64) {
             Self::inplace_sync_call(move || file.write_all_at(&buf, offset))
@@ -136,6 +137,16 @@ impl File {
     pub(crate) fn created_at(&self) -> Result<SystemTime> {
         let metadata = self.no_lock_fd.metadata()?;
         Ok(metadata.created().unwrap_or(SystemTime::now()))
+    }
+
+    #[cfg(feature = "async-io-rio")]
+    pub(super) fn std_file_ref(&self) -> &StdFile {
+        &*self.no_lock_fd
+    }
+
+    #[cfg(feature = "async-io-rio")]
+    pub(super) fn file_size_append(&self, len: u64) -> u64 {
+        self.size.fetch_add(len, Ordering::SeqCst)
     }
 
     fn advisory_write_lock_file(fd: i32) -> LockAcquisitionResult {
