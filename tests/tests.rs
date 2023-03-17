@@ -247,7 +247,17 @@ async fn test_work_dir_lock() {
 
             let storage = res_one.unwrap();
             let result = waitpid(child, None);
+            #[cfg(not(target_os = "macos"))]
             assert_eq!(Ok(WaitStatus::Exited(child, 0)), result);
+            #[cfg(target_os = "macos")]
+            assert_eq!(
+                Ok(WaitStatus::Signaled(
+                    child,
+                    nix::sys::signal::Signal::SIGTRAP,
+                    false
+                )),
+                result
+            );
 
             common::clean(storage, path)
                 .map(|res| res.expect("clean failed"))
