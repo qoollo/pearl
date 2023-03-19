@@ -32,14 +32,14 @@ use super::prelude::*;
 #[derive(Debug)]
 pub struct Builder {
     config: Config,
-    iodriver: IoDriver,
+    iodriver: Option<IoDriver>,
 }
 
 impl Default for Builder {
     fn default() -> Self {
         Self {
             config: Config::default(),
-            iodriver: IoDriver::new_sync(),
+            iodriver: None,
         }
     }
 }
@@ -77,7 +77,10 @@ impl Builder {
             error_params.push_str("> blob_file_name_prefix\n");
         }
         if error_params.is_empty() {
-            Ok(Storage::new(self.config, self.iodriver))
+            Ok(Storage::new(
+                self.config,
+                self.iodriver.unwrap_or_else(|| IoDriver::new_sync()),
+            ))
         } else {
             error!("{}", error_params);
             Err(Error::uninitialized().into())
@@ -187,7 +190,7 @@ impl Builder {
 
     /// Set io driver to be used during file io operations
     pub fn set_io_driver(mut self, iodriver: IoDriver) -> Self {
-        self.iodriver = iodriver;
+        self.iodriver = Some(iodriver);
         self
     }
 
