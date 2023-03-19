@@ -141,7 +141,7 @@ impl File {
 
     #[cfg(feature = "async-io-rio")]
     pub(super) fn std_file_ref(&self) -> &StdFile {
-        &*self.no_lock_fd
+        self.no_lock_fd.as_ref()
     }
 
     #[cfg(feature = "async-io-rio")]
