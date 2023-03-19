@@ -70,7 +70,7 @@ fn generate_headers(records_amount: usize, key_mapper: fn(u32) -> u32) -> InMemo
 }
 
 fn create_io_driver() -> IoDriver {
-    IoDriver::new_sync()
+    IoDriver::new()
 }
 
 fn generate_meta(meta_size: usize) -> Vec<u8> {
@@ -179,11 +179,11 @@ async fn benchmark_get_any() {
     println!("Generating headers...");
     let headers = generate_headers(RECORDS_AMOUNT, KEY_MAPPER);
     let meta = generate_meta(META_SIZE);
-
+    let iodriver = create_io_driver();
     println!("Creating file index from headers...");
     let findex = FileIndexStruct::from_records(
         Path::new(FILEPATH),
-        create_io_driver(),
+        iodriver,
         &headers,
         meta.clone(),
         true,
@@ -228,11 +228,11 @@ async fn benchmark_get_all() {
     println!("Generating headers...");
     let headers = generate_headers(RECORDS_AMOUNT, KEY_MAPPER);
     let meta = generate_meta(META_SIZE);
-
+    let iodriver = create_io_driver();
     println!("Creating file index from headers...");
     let findex = FileIndexStruct::from_records(
         Path::new(FILEPATH),
-        create_io_driver(),
+        iodriver,
         &headers,
         meta.clone(),
         true,
