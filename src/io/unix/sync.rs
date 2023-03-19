@@ -189,8 +189,8 @@ impl File {
 
     fn can_run_inplace(len: u64) -> bool {
         use tokio::runtime::{Handle, RuntimeFlavor};
-        Handle::current().runtime_flavor() != RuntimeFlavor::CurrentThread
-            && len <= MAX_SYNC_OPERATION_SIZE as u64
+        len <= MAX_SYNC_OPERATION_SIZE as u64
+            && Handle::current().runtime_flavor() != RuntimeFlavor::CurrentThread
     }
 
     async fn from_file(
