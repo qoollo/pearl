@@ -982,9 +982,10 @@ async fn test_blob_header_validation() {
     let buf = bincode::serialize(&0_u32).expect("failed to serialize u32");
     file.write_at(&buf, 8)
         .expect("failed to overwrite blob version");
-
+    let iodriver = pearl::IoDriver::new();
     let builder = Builder::new()
         .work_dir(&path)
+        .set_io_driver(iodriver)
         .blob_file_name_prefix("test")
         .max_blob_size(10_000)
         .max_data_in_blob(100_000)
