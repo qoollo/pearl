@@ -188,7 +188,7 @@ impl Builder {
         self
     }
 
-    /// Set io driver to be used during file io operations
+    /// Set io driver to be used during file io operations. If the driver is not set, then `sync` is used as the default
     pub fn set_io_driver(mut self, iodriver: IoDriver) -> Self {
         self.iodriver = Some(iodriver);
         self
