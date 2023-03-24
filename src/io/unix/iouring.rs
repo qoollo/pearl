@@ -120,13 +120,9 @@ impl File {
         self.read_exact_at(buf, offset).await
     }
 
-    pub(crate) async fn read_exact_at(&self, mut buf: BytesMut, offset: u64) -> Result<BytesMut> {
-        debug!("blob file read at");
-        if buf.is_empty() {
-            warn!("file read_at empty buf");
-        }
+    pub(crate) async fn read_exact_at(&self, buf: BytesMut, offset: u64) -> Result<BytesMut> {
         debug!(
-            "blob file read at buf len: {}, offset: {}",
+            "File read at buf len: {}, offset: {}",
             buf.len(),
             offset
         );
