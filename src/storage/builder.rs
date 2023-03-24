@@ -29,19 +29,10 @@ use super::prelude::*;
 /// [`max_data_in_blob`]: struct.Builder.html#method.max_data_in_blob
 /// [`blob_file_name_prefix`]: struct.Builder.html#method.blob_file_name_prefix
 /// [`key_size`]: struct.Builder.html#method.key_size
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Builder {
     config: Config,
     iodriver: Option<IoDriver>,
-}
-
-impl Default for Builder {
-    fn default() -> Self {
-        Self {
-            config: Config::default(),
-            iodriver: None,
-        }
-    }
 }
 
 const MAX_POSSIBLE_DATA_IN_BLOB: u64 = u32::MAX as u64;

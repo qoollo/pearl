@@ -131,32 +131,7 @@ impl File {
             offset
         );
         if let Some(ref rio) = self.rio {
-            let compl = rio.read_at(self.sync.std_file_ref(), &buf, offset);
-            let mut size = compl.await.with_context(|| "read at failed")?;
-            while size < buf.len() {
-                debug!(
-                    "io uring read partial block, trying to read the rest, completed {}/{} bytes",
-                    size,
-                    buf.len()
-                );
-                let slice = buf.split_at_mut(size).1;
-                debug!("blob file read at buf to fill up: {}b", slice.len());
-                let compl = rio.read_at(self.sync.std_file_ref(), &slice, offset + size as u64);
-                let remainder_size = compl.await.with_context(|| "second read at failed")?;
-                debug!(
-                    "blob file read at second read, completed {}/{} of remains bytes",
-                    remainder_size,
-                    slice.len()
-                );
-                if remainder_size == 0 {
-                    let msg = "blob file read failed, second read returns zero bytes".to_string();
-                    return Err(Error::io(msg).into());
-                }
-                size += remainder_size;
-                debug!("blob file read at proggress {}/{}", size, buf.len());
-            }
-            debug!("blob file read at complited: {}", size);
-            Ok(buf)
+            self.read_exact_at_aio(buf, offset, rio).await
         } else {
             self.sync.read_exact_at(buf, offset).await
         }
@@ -186,6 +161,35 @@ impl File {
             return Err(IOError::from_raw_os_error(5));
         }
         Ok(())
+    }
+
+    async fn read_exact_at_aio(&self, mut buf: BytesMut, offset: u64, rio: &Rio) -> Result<BytesMut> {
+        let compl = rio.read_at(self.sync.std_file_ref(), &buf, offset);
+        let mut size = compl.await.with_context(|| "read at failed")?;
+        while size < buf.len() {
+            debug!(
+                "io uring read partial block, trying to read the rest, completed {}/{} bytes",
+                size,
+                buf.len()
+            );
+            let slice = buf.split_at_mut(size).1;
+            debug!("blob file read at buf to fill up: {}b", slice.len());
+            let compl = rio.read_at(self.sync.std_file_ref(), &slice, offset + size as u64);
+            let remainder_size = compl.await.with_context(|| "second read at failed")?;
+            debug!(
+                "blob file read at second read, completed {}/{} of remains bytes",
+                remainder_size,
+                slice.len()
+            );
+            if remainder_size == 0 {
+                let msg = "blob file read failed, second read returns zero bytes".to_string();
+                return Err(Error::io(msg).into());
+            }
+            size += remainder_size;
+            debug!("blob file read at proggress {}/{}", size, buf.len());
+        }
+        debug!("blob file read at complited: {}", size);
+        Ok(buf)
     }
 
     async fn from_file(sync: SyncFile, rio: Option<Rio>) -> IOResult<Self> {
