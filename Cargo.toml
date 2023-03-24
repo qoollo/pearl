@@ -37,7 +37,7 @@ crc = "=3.0.0"
 futures = "0.3"
 log = "0.4"
 sha2 = "0.10"
-rio = "0.9.4"
+rio =  { version = "0.9.4", optional = true}
 serde = "1.0"
 serde_derive = "1.0"
 thiserror = "1.0"
@@ -58,6 +58,7 @@ features = ["fs", "io-util", "sync", "time", "rt", "macros", "rt-multi-thread"]
 [features]
 # default = ["benchmark"]
 benchmark = ["clap", "env_logger"]
+async-io-rio = ["rio"]
 
 [lib]
 name = "pearl"

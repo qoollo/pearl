@@ -7,7 +7,7 @@ Pearl changelog
 
 
 #### Changed
-
+- Remove hard dependency on io uring (#230)
 
 #### Fixed
 

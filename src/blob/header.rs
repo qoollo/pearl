@@ -1,8 +1,8 @@
+use crate::prelude::*;
 use anyhow::{Context, Result};
 use bincode::{deserialize, serialized_size};
-use rio::Rio;
 
-use crate::{blob::File, error::ValidationErrorKind, Error};
+use crate::{error::ValidationErrorKind, Error};
 
 use super::FileName;
 
@@ -25,8 +25,9 @@ impl Header {
         }
     }
 
-    pub(crate) async fn from_file(name: &FileName, ioring: Option<Rio>) -> Result<Self> {
-        let file = File::open(name.to_path(), ioring)
+    pub(crate) async fn from_file(name: &FileName, iodriver: IoDriver) -> Result<Self> {
+        let file = iodriver
+            .open(name.to_path())
             .await
             .with_context(|| format!("failed to open blob file: {}", name))?;
         let size = serialized_size(&Header::new()).expect("failed to serialize default header");

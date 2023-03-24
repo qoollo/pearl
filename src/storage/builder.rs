@@ -29,10 +29,10 @@ use super::prelude::*;
 /// [`max_data_in_blob`]: struct.Builder.html#method.max_data_in_blob
 /// [`blob_file_name_prefix`]: struct.Builder.html#method.blob_file_name_prefix
 /// [`key_size`]: struct.Builder.html#method.key_size
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 pub struct Builder {
     config: Config,
-    ioring: Option<Rio>,
+    iodriver: Option<IoDriver>,
 }
 
 const MAX_POSSIBLE_DATA_IN_BLOB: u64 = u32::MAX as u64;
@@ -68,7 +68,10 @@ impl Builder {
             error_params.push_str("> blob_file_name_prefix\n");
         }
         if error_params.is_empty() {
-            Ok(Storage::new(self.config, self.ioring))
+            Ok(Storage::new(
+                self.config,
+                self.iodriver.unwrap_or_else(|| IoDriver::new_sync()),
+            ))
         } else {
             error!("{}", error_params);
             Err(Error::uninitialized().into())
@@ -167,19 +170,18 @@ impl Builder {
         self
     }
 
-    /// Enables linux AIO with provided io_uring.
-    #[must_use]
-    pub fn enable_aio(mut self, ioring: Rio) -> Self {
-        self.ioring = Some(ioring);
-        self
-    }
-
     /// [Optional]
     /// Sets whether to create work directory if its missing on storage initialization.
     /// Default value is `true`
     #[must_use]
     pub fn create_work_dir(mut self, create: bool) -> Self {
         self.config.set_create_work_dir(create);
+        self
+    }
+
+    /// Set io driver to be used during file io operations. If the driver is not set, then `sync` is used as the default
+    pub fn set_io_driver(mut self, iodriver: IoDriver) -> Self {
+        self.iodriver = Some(iodriver);
         self
     }
 

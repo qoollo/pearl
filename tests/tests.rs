@@ -189,7 +189,7 @@ async fn test_storage_close() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 async fn test_on_disk_index() -> Result<()> {
     let now = Instant::now();
     let path = common::init("index");
@@ -197,9 +197,10 @@ async fn test_on_disk_index() -> Result<()> {
     let max_blob_size = 1500;
     let num_records_to_write = 5u32;
     let read_key = 3u32;
-
+    let iodriver = pearl::IoDriver::new();
     let mut storage = Builder::new()
         .work_dir(&path)
+        .set_io_driver(iodriver)
         .blob_file_name_prefix("test")
         .max_blob_size(max_blob_size)
         .max_data_in_blob(1_000)
@@ -246,7 +247,17 @@ async fn test_work_dir_lock() {
 
             let storage = res_one.unwrap();
             let result = waitpid(child, None);
+            #[cfg(not(target_os = "macos"))]
             assert_eq!(Ok(WaitStatus::Exited(child, 0)), result);
+            #[cfg(target_os = "macos")]
+            assert_eq!(
+                Ok(WaitStatus::Signaled(
+                    child,
+                    nix::sys::signal::Signal::SIGTRAP,
+                    false
+                )),
+                result
+            );
 
             common::clean(storage, path)
                 .map(|res| res.expect("clean failed"))
@@ -971,20 +982,15 @@ async fn test_blob_header_validation() {
     let buf = bincode::serialize(&0_u32).expect("failed to serialize u32");
     file.write_at(&buf, 8)
         .expect("failed to overwrite blob version");
-
+    let iodriver = pearl::IoDriver::new();
     let builder = Builder::new()
         .work_dir(&path)
+        .set_io_driver(iodriver)
         .blob_file_name_prefix("test")
         .max_blob_size(10_000)
         .max_data_in_blob(100_000)
         .set_filter_config(Default::default())
         .allow_duplicates();
-    let builder = if let Ok(ioring) = rio::new() {
-        builder.enable_aio(ioring)
-    } else {
-        println!("current OS doesn't support AIO");
-        builder
-    };
     let mut storage: Storage<KeyTest> = builder.build().unwrap();
     let err = storage
         .init()
@@ -1005,7 +1011,7 @@ async fn test_blob_header_validation() {
     common::clean(storage, path).await.unwrap();
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 async fn test_in_memory_and_disk_records_retrieval() -> Result<()> {
     let path = common::init("in_memory_and_disk_records_retrieval");
     let max_blob_size = 1_000_000;
