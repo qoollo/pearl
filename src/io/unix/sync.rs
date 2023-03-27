@@ -59,6 +59,44 @@ impl File {
         self.size.load(Ordering::SeqCst)
     }
 
+    pub(crate) async fn write_append_new(&self, gen: impl FnOnce(u64) -> Result<Bytes, (Bytes, Bytes)> + Send + 'static, len: u64) -> IOResult<u64> {
+        let mut offset = self.size.fetch_add(len, Ordering::SeqCst);
+        let file = self.no_lock_fd.clone();
+        if Self::can_run_inplace(len) {
+            Self::inplace_sync_call(move || {
+                let res = gen(offset);
+                match res {
+                    Ok(bytes) => {
+                        file.write_all_at(&bytes, offset)?;
+                        Ok(bytes.len() as u64)
+                    },
+                    Err((b1, b2)) => {
+                        file.write_all_at(&b1, offset)?;
+                        offset = offset + b1.len() as u64;
+                        file.write_all_at(&b2, offset)?;
+                        Ok(b1.len() as u64 + b2.len() as u64)
+                    },
+                }
+            })
+        } else {
+            Self::background_sync_call(move || {
+                let res = gen(offset);
+                match res {
+                    Ok(bytes) => {
+                        file.write_all_at(&bytes, offset)?;
+                        Ok(bytes.len() as u64)
+                    },
+                    Err((b1, b2)) => {
+                        file.write_all_at(&b1, offset)?;
+                        offset = offset + b1.len() as u64;
+                        file.write_all_at(&b2, offset)?;
+                        Ok(b1.len() as u64 + b2.len() as u64)
+                    },
+                }
+            }).await
+        }
+    }
+
     pub(crate) async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
         let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
         self.write_all_at(offset, buf).await
