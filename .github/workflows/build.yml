@@ -2,16 +2,15 @@ name: build
 
 on:
   pull_request:
-      types: [ opened, synchronize, reopened, ready_for_review ]
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
-    branches: [ master ]
-    
-jobs:
+    branches: [master]
 
+jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checks-out repository 
+      - name: Checks-out repository
         uses: actions/checkout@v2
       - name: Set env variable
         run: export PEARL_COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)
@@ -20,8 +19,13 @@ jobs:
         with:
           toolchain: stable
           default: true
-      - name: Build   
+      - name: Build
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --all
+      - name: Build async rio
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --features async-io-rio

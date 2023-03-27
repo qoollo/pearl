@@ -46,12 +46,15 @@ where
     /// [`FileName`]: struct.FileName.html
     pub(crate) async fn open_new(
         name: FileName,
-        ioring: Option<Rio>,
+        iodriver: IoDriver,
         config: BlobConfig,
     ) -> Result<Self> {
-        let BlobConfig { index: index_config, validate_data_during_index_regen} = config;
-        let file = File::create(name.to_path(), ioring.clone()).await?;
-        let index = Self::create_index(name.clone(), ioring, index_config);
+        let BlobConfig {
+            index: index_config,
+            validate_data_during_index_regen,
+        } = config;
+        let file = iodriver.create(name.to_path()).await?;
+        let index = Self::create_index(name.clone(), iodriver, index_config);
         let header = Header::new();
         let mut blob = Self {
             header,
@@ -85,13 +88,9 @@ where
     }
 
     #[inline]
-    fn create_index(
-        mut name: FileName,
-        ioring: Option<Rio>,
-        index_config: IndexConfig,
-    ) -> Index<K> {
+    fn create_index(mut name: FileName, iodriver: IoDriver, index_config: IndexConfig) -> Index<K> {
         name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        Index::new(name, ioring, index_config)
+        Index::new(name, iodriver, index_config)
     }
 
     pub(crate) async fn dump(&mut self) -> Result<usize> {
@@ -126,21 +125,24 @@ where
 
     pub(crate) async fn from_file(
         path: PathBuf,
-        ioring: Option<Rio>,
+        iodriver: IoDriver,
         config: BlobConfig,
     ) -> Result<Self> {
         let now = Instant::now();
-        let file = File::open(&path, ioring.clone()).await?;
+        let file = iodriver.open(&path).await?;
         let name = FileName::from_path(&path)?;
         info!("{} blob init started", name);
         let size = file.size();
 
-        let header = Header::from_file(&name, ioring.clone())
+        let header = Header::from_file(&name, iodriver.clone())
             .await
             .with_context(|| format!("failed to read blob header. Blob file: {:?}", path))?;
 
         let mut index_name = name.clone();
-        let BlobConfig { index: index_config, validate_data_during_index_regen} = config;
+        let BlobConfig {
+            index: index_config,
+            validate_data_during_index_regen,
+        } = config;
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         trace!("looking for index file: [{}]", index_name);
         let mut is_index_corrupted = false;
@@ -149,7 +151,7 @@ where
             Index::from_file(
                 index_name.clone(),
                 index_config.clone(),
-                ioring.clone(),
+                iodriver.clone(),
                 size,
             )
             .await
@@ -167,11 +169,11 @@ where
                     }
                 }
                 is_index_corrupted = true;
-                Ok(Index::new(index_name, ioring, index_config))
+                Ok(Index::new(index_name, iodriver, index_config))
             })?
         } else {
             trace!("file not found, create new");
-            Index::new(index_name, ioring, index_config)
+            Index::new(index_name, iodriver, index_config)
         };
         trace!("index initialized");
         let header_size = bincode::serialized_size(&header)?;
@@ -221,12 +223,15 @@ where
             return Ok(());
         }
         debug!("index file missed");
-        let raw_r = self.raw_records(self.validate_data_during_index_regen).await.with_context(|| {
-            format!(
-                "failed to read raw records from blob {:?}",
-                self.name.to_path()
-            )
-        })?;
+        let raw_r = self
+            .raw_records(self.validate_data_during_index_regen)
+            .await
+            .with_context(|| {
+                format!(
+                    "failed to read raw records from blob {:?}",
+                    self.name.to_path()
+                )
+            })?;
         debug!("raw records loaded");
         if let Some(headers) = raw_r.load().await.with_context(|| {
             format!(
@@ -534,7 +539,12 @@ struct RawRecords {
 }
 
 impl RawRecords {
-    async fn start(file: File, blob_header_size: u64, key_size: usize, validate_data: bool) -> Result<Self> {
+    async fn start(
+        file: File,
+        blob_header_size: u64,
+        key_size: usize,
+        validate_data: bool,
+    ) -> Result<Self> {
         let current_offset = blob_header_size;
         debug!("blob raw records start, current offset: {}", current_offset);
         let size_of_len = bincode::serialized_size(&(0_usize))? as usize;
@@ -586,13 +596,18 @@ impl RawRecords {
         debug!("blob raw records load");
         let mut headers = Vec::new();
         while self.current_offset < self.file.size() {
-            let (header, data) = self.read_current_record(self.validate_data).await.with_context(|| {
-                format!("read record header or data failed, at {}", self.current_offset)
-            })?;
-            if let Some(data) = data {
-                Record::data_checksum_audit(&header, &data).with_context(|| {
-                    format!("bad data checksum, at {}", self.current_offset)
+            let (header, data) = self
+                .read_current_record(self.validate_data)
+                .await
+                .with_context(|| {
+                    format!(
+                        "read record header or data failed, at {}",
+                        self.current_offset
+                    )
                 })?;
+            if let Some(data) = data {
+                Record::data_checksum_audit(&header, &data)
+                    .with_context(|| format!("bad data checksum, at {}", self.current_offset))?;
             }
             headers.push(header);
         }
@@ -603,7 +618,10 @@ impl RawRecords {
         }
     }
 
-    async fn read_current_record(&mut self, read_data: bool) -> Result<(RecordHeader, Option<BytesMut>)> {
+    async fn read_current_record(
+        &mut self,
+        read_data: bool,
+    ) -> Result<(RecordHeader, Option<BytesMut>)> {
         let mut buf = self
             .file
             .read_exact_at_allocate(self.record_header_size as usize, self.current_offset)
@@ -619,17 +637,17 @@ impl RawRecords {
             })?;
         self.current_offset += self.record_header_size;
         self.current_offset += header.meta_size();
-        let data =
-            if read_data {
-                buf.resize(header.data_size() as usize, 0);
-                buf = self.file
-                    .read_exact_at(buf, self.current_offset)
-                    .await
-                    .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
-                Some(buf)
-            } else {
-                None
-            };
+        let data = if read_data {
+            buf.resize(header.data_size() as usize, 0);
+            buf = self
+                .file
+                .read_exact_at(buf, self.current_offset)
+                .await
+                .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
+            Some(buf)
+        } else {
+            None
+        };
         self.current_offset += header.data_size();
         Ok((header, data))
     }

@@ -65,6 +65,10 @@ impl Into<usize> for KeyType {
     }
 }
 
+fn create_io_driver() -> IoDriver {
+    IoDriver::new()
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn serialize_deserialize_file() {
     let mut inmem = InMemoryIndex::<KeyType>::new();
@@ -73,9 +77,10 @@ async fn serialize_deserialize_file() {
         inmem.insert(key, vec![rh]);
     });
     let meta = vec![META_VALUE; META_SIZE];
+    let iodriver = create_io_driver();
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/bptree_index.b"),
-        None,
+        iodriver,
         &inmem,
         meta,
         true,
@@ -99,9 +104,10 @@ async fn blob_size_invalidation() {
         inmem.insert(key, vec![rh]);
     });
     let meta = vec![META_VALUE; META_SIZE];
+    let iodriver = create_io_driver();
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new(filename),
-        None,
+        iodriver,
         &inmem,
         meta,
         true,
@@ -133,9 +139,10 @@ async fn magic_byte_corruption() {
         inmem.insert(key, vec![rh]);
     });
     let meta = vec![META_VALUE; META_SIZE];
+    let iodriver = create_io_driver();
     let _ = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new(filename),
-        None,
+        iodriver.clone(),
         &inmem,
         meta,
         true,
@@ -154,7 +161,7 @@ async fn magic_byte_corruption() {
 
     let findex = BPTreeFileIndex::<KeyType>::from_file(
         FileName::from_path(&Path::new(filename)).expect("failed to create filename"),
-        None,
+        iodriver,
     )
     .await
     .expect("can't read file index");
@@ -187,9 +194,10 @@ async fn check_get_any() {
             inmem.insert(key, vec![rh]);
         });
     let meta = vec![META_VALUE; META_SIZE];
+    let iodriver = create_io_driver();
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/any_bptree_index.b"),
-        None,
+        iodriver,
         &inmem,
         meta,
         true,
@@ -236,9 +244,10 @@ async fn preserves_records_order() {
             inmem.insert(key, vec![rh1, rh2]);
         });
     let meta = vec![META_VALUE; META_SIZE];
+    let iodriver = create_io_driver();
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/latest_bptree_index.b"),
-        None,
+        iodriver,
         &inmem,
         meta,
         true,
@@ -275,9 +284,10 @@ async fn check_get() {
             inmem.insert(key, recs);
         });
     let meta = vec![META_VALUE; META_SIZE];
+    let iodriver = create_io_driver();
     let findex = BPTreeFileIndex::<KeyType>::from_records(
         &Path::new("/tmp/all_bptree_index.b"),
-        None,
+        iodriver,
         &inmem,
         meta,
         true,

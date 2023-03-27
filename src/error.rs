@@ -42,6 +42,7 @@ impl Error {
         Self::new(Kind::ActiveBlobExists)
     }
 
+    #[allow(dead_code)]
     pub(crate) fn io(s: String) -> Self {
         Self::new(Kind::IO(s))
     }

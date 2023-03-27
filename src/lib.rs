@@ -52,6 +52,8 @@ pub mod build_info;
 mod blob;
 /// Types representing various errors that can occur in pearl.
 pub mod error;
+mod io;
+pub use io::IoDriver;
 mod record;
 mod storage;
 
@@ -65,7 +67,6 @@ pub mod tools;
 pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
-pub use rio;
 pub use storage::{ArrayKey, BlobRecordTimestamp, Builder, Key, ReadResult, RefKey, Storage};
 
 mod prelude {
@@ -82,7 +83,9 @@ mod prelude {
     pub(crate) use filter::{Bloom, BloomProvider, Config as BloomConfig, HierarchicalFilters};
     pub(crate) use futures::{lock::Mutex, stream::futures_unordered::FuturesUnordered};
     pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
-    pub(crate) use rio::Rio;
+
+    pub(crate) use io::File;
+
     pub(crate) use std::{
         cmp::Ordering as CmpOrdering,
         collections::HashMap,
@@ -101,7 +104,7 @@ mod prelude {
     };
     pub(crate) use thiserror::Error;
     pub(crate) use tokio::{
-        fs::{read_dir, DirEntry, File as TokioFile, OpenOptions},
+        fs::{read_dir, DirEntry, File as TokioFile},
         sync::{RwLock, Semaphore},
     };
     pub(crate) use tokio_stream::StreamExt;

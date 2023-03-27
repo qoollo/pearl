@@ -7,7 +7,7 @@ Pearl changelog
 
 
 #### Changed
-- Change offset position to prevent data corruption (#228)
+- Remove hard dependency on io uring (#230)
 
 #### Fixed
 
