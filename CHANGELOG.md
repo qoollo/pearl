@@ -13,6 +13,7 @@ Pearl changelog
 
 
 #### Updated
+- Update offset only when write is imminent (#228)
 
 
 
