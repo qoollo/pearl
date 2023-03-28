@@ -80,8 +80,9 @@ impl File {
             match res {
                 Ok(bytes) => self.write_all_at_aio(offset, bytes, rio).await?,
                 Err((b1, b2)) => {
+                    let first_len = b1.len() as u64;
                     self.write_all_at_aio(offset, b1, rio).await?;
-                    offset = offset + b1.len() as u64;
+                    offset = offset + first_len;
                     self.write_all_at_aio(offset, b2, rio).await?;
                 }
             }
