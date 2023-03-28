@@ -70,9 +70,7 @@ impl File {
             Self::inplace_sync_call(move || {
                 let (res, data) = bc(offset)?;
                 match res {
-                    Ok(bytes) => {
-                        file.write_all_at(&bytes, offset)?;
-                    }
+                    Ok(bytes) => file.write_all_at(&bytes, offset)?,
                     Err((b1, b2)) => {
                         file.write_all_at(&b1, offset)?;
                         offset = offset + b1.len() as u64;
