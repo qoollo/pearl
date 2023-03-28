@@ -54,16 +54,6 @@ enum LockAcquisitionResult {
     Error(Errno),
 }
 
-pub(crate) trait BytesCreator<R>:
-    FnOnce(u64) -> Result<(Result<Bytes, (Bytes, Bytes)>, R)> + Send + 'static
-{
-}
-
-pub(crate) struct BytesCreatorWriteResult<R> {
-    offset: u64,
-    data: R,
-}
-
 impl File {
     pub(crate) fn size(&self) -> u64 {
         self.size.load(Ordering::SeqCst)
@@ -73,7 +63,7 @@ impl File {
         &self,
         bc: impl BytesCreator<R>,
         len: u64,
-    ) -> Result<BytesCreatorWriteResult<R>> {
+    ) -> Result<R> {
         let mut offset = self.size.fetch_add(len, Ordering::SeqCst);
         let file = self.no_lock_fd.clone();
         if Self::can_run_inplace(len) {
@@ -89,7 +79,7 @@ impl File {
                         file.write_all_at(&b2, offset)?;
                     }
                 };
-                Ok(BytesCreatorWriteResult { offset, data })
+                Ok(data)
             })
         } else {
             Self::background_sync_call(move || {
@@ -104,7 +94,7 @@ impl File {
                         file.write_all_at(&b2, offset)?;
                     }
                 };
-                Ok(BytesCreatorWriteResult { offset, data })
+                Ok(data)
             })
             .await
         }

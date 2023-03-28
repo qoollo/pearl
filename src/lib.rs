@@ -84,7 +84,7 @@ mod prelude {
     pub(crate) use futures::{lock::Mutex, stream::futures_unordered::FuturesUnordered};
     pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
 
-    pub(crate) use io::File;
+    pub(crate) use io::{BytesCreator, File};
 
     pub(crate) use std::{
         cmp::Ordering as CmpOrdering,
