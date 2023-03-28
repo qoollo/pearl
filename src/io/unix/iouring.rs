@@ -101,25 +101,6 @@ impl File {
         }
     }
 
-    pub(crate) async fn write_append_all_buffers(
-        &self,
-        first_buf: Bytes,
-        second_buf: Bytes,
-    ) -> IOResult<()> {
-        if let Some(ref rio) = self.rio {
-            let first_len = first_buf.len() as u64;
-            let second_len = second_buf.len() as u64;
-            let mut offset = self.sync.file_size_append(first_len + second_len);
-            self.write_all_at_aio(offset, first_buf, rio).await?;
-            offset = offset + first_len;
-            self.write_all_at_aio(offset, second_buf, rio).await
-        } else {
-            self.sync
-                .write_append_all_buffers(first_buf, second_buf)
-                .await
-        }
-    }
-
     pub(crate) async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
         debug_assert!(offset + buf.len() as u64 <= self.size());
         if let Some(ref rio) = self.rio {

@@ -103,34 +103,6 @@ impl File {
         self.write_all_at(offset, buf).await
     }
 
-    pub(crate) async fn write_append_all_buffers(
-        &self,
-        first_buf: Bytes,
-        second_buf: Bytes,
-    ) -> IOResult<()> {
-        let first_len = first_buf.len() as u64;
-        let second_len = second_buf.len() as u64;
-        let len = first_len + second_len;
-        let mut offset = self.size.fetch_add(len, Ordering::SeqCst);
-        let file = self.no_lock_fd.clone();
-        if Self::can_run_inplace(len) {
-            Self::inplace_sync_call(move || {
-                file.write_all_at(&first_buf, offset)?;
-                offset = offset + first_len;
-                file.write_all_at(&second_buf, offset)?;
-                Ok(())
-            })
-        } else {
-            Self::background_sync_call(move || {
-                file.write_all_at(&first_buf, offset)?;
-                offset = offset + first_len;
-                file.write_all_at(&second_buf, offset)?;
-                Ok(())
-            })
-            .await
-        }
-    }
-
     pub(crate) async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
         debug_assert!(offset + buf.len() as u64 <= self.size());
         let file = self.no_lock_fd.clone();
