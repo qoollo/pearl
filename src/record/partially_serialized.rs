@@ -54,7 +54,7 @@ impl PartiallySerializedRecord {
             header_len,
             data,
         } = self;
-        let len = header_len as u64 + data.as_ref().map(|v| v.len()).unwrap_or(0) as u64;
+        let len = head_with_data.len() as u64 + data.as_ref().map(|v| v.len()).unwrap_or(0) as u64;
         return (
             move |offset| {
                 let (head, checksum) =
