@@ -78,11 +78,11 @@ impl File {
             let mut offset = self.sync.file_size_append(len);
             let (res, data) = bc(offset)?;
             match res {
-                Ok(bytes) => self.write_all_at_aio(bytes, offset, rio).await,
-                Error((b1, b2)) => {
-                    self.write_all_at_aio(b1, offset, rio).await?;
+                Ok(bytes) => self.write_all_at_aio(offset, bytes, rio).await?,
+                Err((b1, b2)) => {
+                    self.write_all_at_aio(offset, b1, rio).await?;
                     offset = offset + b1.len() as u64;
-                    self.write_all_at_aio(b2, offset, rio).await
+                    self.write_all_at_aio(offset, b2, rio).await?;
                 }
             }
             Ok(data)
