@@ -54,46 +54,59 @@ enum LockAcquisitionResult {
     Error(Errno),
 }
 
+pub(crate) trait BytesCreator<R>:
+    FnOnce(u64) -> Result<(Result<Bytes, (Bytes, Bytes)>, R)> + Send + 'static
+{
+}
+
+pub(crate) struct BytesCreatorWriteResult<R> {
+    offset: u64,
+    data: R,
+}
+
 impl File {
     pub(crate) fn size(&self) -> u64 {
         self.size.load(Ordering::SeqCst)
     }
 
-    pub(crate) async fn write_append_new(&self, gen: impl FnOnce(u64) -> Result<Bytes, (Bytes, Bytes)> + Send + 'static, len: u64) -> IOResult<u64> {
+    pub(crate) async fn write_append_bytes_creator<R: Send + 'static>(
+        &self,
+        bc: impl BytesCreator<R>,
+        len: u64,
+    ) -> Result<BytesCreatorWriteResult<R>> {
         let mut offset = self.size.fetch_add(len, Ordering::SeqCst);
         let file = self.no_lock_fd.clone();
         if Self::can_run_inplace(len) {
             Self::inplace_sync_call(move || {
-                let res = gen(offset);
+                let (res, data) = bc(offset)?;
                 match res {
                     Ok(bytes) => {
                         file.write_all_at(&bytes, offset)?;
-                        Ok(bytes.len() as u64)
-                    },
+                    }
                     Err((b1, b2)) => {
                         file.write_all_at(&b1, offset)?;
                         offset = offset + b1.len() as u64;
                         file.write_all_at(&b2, offset)?;
-                        Ok(b1.len() as u64 + b2.len() as u64)
-                    },
-                }
+                    }
+                };
+                Ok(BytesCreatorWriteResult { offset, data })
             })
         } else {
             Self::background_sync_call(move || {
-                let res = gen(offset);
+                let (res, data) = bc(offset)?;
                 match res {
                     Ok(bytes) => {
                         file.write_all_at(&bytes, offset)?;
-                        Ok(bytes.len() as u64)
-                    },
+                    }
                     Err((b1, b2)) => {
                         file.write_all_at(&b1, offset)?;
                         offset = offset + b1.len() as u64;
                         file.write_all_at(&b2, offset)?;
-                        Ok(b1.len() as u64 + b2.len() as u64)
-                    },
-                }
-            }).await
+                    }
+                };
+                Ok(BytesCreatorWriteResult { offset, data })
+            })
+            .await
         }
     }
 
