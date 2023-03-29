@@ -48,7 +48,7 @@ impl PartiallySerializedRecord {
         Ok((head.freeze(), data, checksum))
     }
 
-    fn to_bytes_creator(self) -> (impl BytesCreator<(u64, u32)>, u64) {
+    fn to_bytes_creator(self) -> (impl WritableDataCreator<(u64, u32)>, u64) {
         let Self {
             head_with_data,
             header_len,
@@ -60,9 +60,9 @@ impl PartiallySerializedRecord {
                 let (head, checksum) =
                     Self::finalize_with_checksum(head_with_data, header_len, offset)?;
                 let bytes_data = if let Some(data) = data {
-                    Err((head.freeze(), data))
+                    WritableData::Double(head.freeze(), data)
                 } else {
-                    Ok(head.freeze())
+                    WritableData::Single(head.freeze())
                 };
                 let ret_data = (offset, checksum);
                 Ok((bytes_data, ret_data))
@@ -73,7 +73,7 @@ impl PartiallySerializedRecord {
 
     pub(crate) async fn write_to_file(self, file: &File) -> Result<PartiallySerializedWriteResult> {
         let (creator, len) = self.to_bytes_creator();
-        let (offset, checksum) = file.write_append_bytes_creator(creator, len).await?;
+        let (offset, checksum) = file.write_append_writable_data(creator, len).await?;
 
         Ok(PartiallySerializedWriteResult {
             blob_offset: offset,

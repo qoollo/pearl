@@ -59,19 +59,19 @@ impl File {
         self.size.load(Ordering::SeqCst)
     }
 
-    pub(crate) async fn write_append_bytes_creator<R: Send + 'static>(
+    pub(crate) async fn write_append_writable_data<R: Send + 'static>(
         &self,
-        bc: impl BytesCreator<R>,
+        c: impl WritableDataCreator<R>,
         len: u64,
     ) -> Result<R> {
         let mut offset = self.size.fetch_add(len, Ordering::SeqCst);
         let file = self.no_lock_fd.clone();
         if Self::can_run_inplace(len) {
             Self::inplace_sync_call(move || {
-                let (res, data) = bc(offset)?;
+                let (res, data) = c(offset)?;
                 match res {
-                    Ok(bytes) => file.write_all_at(&bytes, offset)?,
-                    Err((b1, b2)) => {
+                    WritableData::Single(bytes) => file.write_all_at(&bytes, offset)?,
+                    WritableData::Double(b1, b2) => {
                         file.write_all_at(&b1, offset)?;
                         offset = offset + b1.len() as u64;
                         file.write_all_at(&b2, offset)?;
@@ -81,12 +81,12 @@ impl File {
             })
         } else {
             Self::background_sync_call(move || {
-                let (res, data) = bc(offset)?;
+                let (res, data) = c(offset)?;
                 match res {
-                    Ok(bytes) => {
+                    WritableData::Single(bytes) => {
                         file.write_all_at(&bytes, offset)?;
                     }
-                    Err((b1, b2)) => {
+                    WritableData::Double(b1, b2) => {
                         file.write_all_at(&b1, offset)?;
                         offset = offset + b1.len() as u64;
                         file.write_all_at(&b2, offset)?;

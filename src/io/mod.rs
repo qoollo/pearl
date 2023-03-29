@@ -11,12 +11,17 @@ pub use unix::IoDriver;
 #[cfg(not(target_family = "unix"))]
 compile_error!("Specified target platform is not supported (only unix family supported)");
 
-pub(crate) trait BytesCreator<R>:
-    FnOnce(u64) -> Result<(Result<Bytes, (Bytes, Bytes)>, R)> + Send + 'static
+pub(crate) enum WritableData {
+    Single(Bytes),
+    Double(Bytes, Bytes),
+}
+
+pub(crate) trait WritableDataCreator<R>:
+    FnOnce(u64) -> Result<(WritableData, R)> + Send + 'static
 {
 }
 
-impl<T, R> BytesCreator<R> for T where
-    T: FnOnce(u64) -> Result<(Result<Bytes, (Bytes, Bytes)>, R)> + Send + 'static
+impl<T, R> WritableDataCreator<R> for T where
+    T: FnOnce(u64) -> Result<(WritableData, R)> + Send + 'static
 {
 }
