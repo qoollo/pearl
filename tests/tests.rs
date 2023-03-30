@@ -229,50 +229,49 @@ async fn test_on_disk_index() -> Result<()> {
     common::clean(storage, path).await
 }
 
-#[tokio::test]
-async fn test_work_dir_lock() {
-    use nix::sys::wait::{waitpid, WaitStatus};
-    use nix::unistd::{fork, ForkResult};
+#[test]
+fn test_work_dir_lock() {
+    use rusty_fork::{fork, rusty_fork_id};
+    use std::sync::Arc;
+    use tokio::runtime::Builder;
 
-    let path = common::init("work_dir_lock");
-
+    let path = Arc::new(common::init("work_dir_lock"));
+    let child_path = path.clone();
     // We need separate processes because locks do not work within the same process
-    match unsafe { fork() } {
-        Ok(ForkResult::Parent { child }) => {
+    fork(
+        "test_work_dir_lock",
+        rusty_fork_id!(),
+        |_| {},
+        move |c, _| {
+            let runtime = Builder::new_current_thread()
+                .build()
+                .expect("failed to create runtime in parent");
             let now = Instant::now();
 
-            let storage_one = common::create_test_storage(&path, 1_000_000);
-            let res_one = storage_one.await;
+            let storage_one = common::create_test_storage(path.as_ref(), 1_000_000);
+            let res_one = runtime.block_on(storage_one);
             assert!(res_one.is_ok());
 
             let storage = res_one.unwrap();
-            let result = waitpid(child, None);
-            #[cfg(not(target_os = "macos"))]
-            assert_eq!(Ok(WaitStatus::Exited(child, 0)), result);
-            #[cfg(target_os = "macos")]
-            assert_eq!(
-                Ok(WaitStatus::Signaled(
-                    child,
-                    nix::sys::signal::Signal::SIGTRAP,
-                    false
-                )),
-                result
+            let exit = c.wait().expect("failed to wait for child");
+            assert!(!exit.success());
+            runtime.block_on(
+                common::clean(storage, path.as_ref()).map(|res| res.expect("clean failed")),
             );
 
-            common::clean(storage, path)
-                .map(|res| res.expect("clean failed"))
-                .await;
-
             warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
-        }
-        Ok(ForkResult::Child) => {
-            sleep(Duration::from_secs(1)).await;
-            let storage_two = common::create_test_storage(&path, 1_000_000);
-            let _ = storage_two.await;
+        },
+        move || {
+            let runtime = Builder::new_current_thread()
+                .build()
+                .expect("failed to create runtime in child");
+            std::thread::sleep(Duration::from_secs(1));
+            let storage_two = common::create_test_storage(child_path.as_ref(), 1_000_000);
+            let _ = runtime.block_on(storage_two);
             unreachable!("Second storage process must panic")
-        }
-        Err(_) => unreachable!("Fork must not fail"),
-    }
+        },
+    )
+    .expect("failed fork");
 }
 
 #[tokio::test]
