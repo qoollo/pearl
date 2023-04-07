@@ -47,6 +47,10 @@ impl Error {
         Self::new(Kind::IO(s))
     }
 
+    pub(crate) fn file_unavailable(kind: IOErrorKind) -> Self {
+        Self::new(Kind::FileUnavailable(kind))
+    }
+
     pub(crate) fn work_dir_unavailable(
         path: impl AsRef<Path>,
         msg: String,

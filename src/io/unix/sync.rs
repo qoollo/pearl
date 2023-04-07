@@ -62,45 +62,56 @@ impl File {
     pub(crate) async fn write_append_writable_data<R: Send + 'static>(
         &self,
         c: impl WritableDataCreator<R>,
-        len: u64,
     ) -> Result<R> {
-        let mut offset = self.size.fetch_add(len, Ordering::SeqCst);
+        let len = c.len();
+        let size = self.size.clone();
         let file = self.no_lock_fd.clone();
         if Self::can_run_inplace(len) {
             Self::inplace_sync_call(move || {
-                let (res, data) = c(offset)?;
-                match res {
-                    WritableData::Single(bytes) => file.write_all_at(&bytes, offset)?,
-                    WritableData::Double(b1, b2) => {
-                        file.write_all_at(&b1, offset)?;
-                        offset = offset + b1.len() as u64;
-                        file.write_all_at(&b2, offset)?;
-                    }
-                };
+                let offset = size.fetch_add(len, Ordering::SeqCst);
+                let (res, data) = c.create(offset)?;
+                Self::write_data(file.as_ref(), offset, res)?;
                 Ok(data)
             })
         } else {
             Self::background_sync_call(move || {
-                let (res, data) = c(offset)?;
-                match res {
-                    WritableData::Single(bytes) => {
-                        file.write_all_at(&bytes, offset)?;
-                    }
-                    WritableData::Double(b1, b2) => {
-                        file.write_all_at(&b1, offset)?;
-                        offset = offset + b1.len() as u64;
-                        file.write_all_at(&b2, offset)?;
-                    }
-                };
+                let offset = size.fetch_add(len, Ordering::SeqCst);
+                let (res, data) = c.create(offset)?;
+                Self::write_data(file.as_ref(), offset, res)?;
                 Ok(data)
             })
             .await
         }
     }
 
+    fn write_data(file: &StdFile, mut offset: u64, writable_data: WritableData) -> Result<()> {
+        let file_result: IOResult<()> = match writable_data {
+            WritableData::Single(bytes) => file.write_all_at(&bytes, offset),
+            WritableData::Double(b1, b2) => file.write_all_at(&b1, offset).and_then(|_| {
+                offset = offset + b1.len() as u64;
+                file.write_all_at(&b2, offset)
+            }),
+        };
+        file_result.map_err(|e| match e.kind() {
+            kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
+                Error::file_unavailable(kind).into()
+            }
+            _ => e.into(),
+        })
+    }
+
     pub(crate) async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
-        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
-        self.write_all_at(offset, buf).await
+        let file = self.no_lock_fd.clone();
+        let size = self.size.clone();
+        if Self::can_run_inplace(buf.len() as u64) {
+            let offset = size.fetch_add(buf.len() as u64, Ordering::SeqCst);
+            debug_assert!(offset + buf.len() as u64 <= self.size());
+            Self::inplace_sync_call(move || file.write_all_at(&buf, offset))
+        } else {
+            let offset = size.fetch_add(buf.len() as u64, Ordering::SeqCst);
+            debug_assert!(offset + buf.len() as u64 <= self.size());
+            Self::background_sync_call(move || file.write_all_at(&buf, offset)).await
+        }
     }
 
     pub(crate) async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {

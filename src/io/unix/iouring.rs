@@ -72,9 +72,9 @@ impl File {
     pub(crate) async fn write_append_writable_data<R: Send + 'static>(
         &self,
         c: impl WritableDataCreator<R>,
-        len: u64,
     ) -> Result<R> {
         if let Some(ref rio) = self.rio {
+            let len = c.len();
             let mut offset = self.sync.file_size_append(len);
             let (res, data) = c(offset)?;
             match res {
@@ -88,7 +88,7 @@ impl File {
             }
             Ok(data)
         } else {
-            self.sync.write_append_writable_data(c, len).await
+            self.sync.write_append_writable_data(c).await
         }
     }
 

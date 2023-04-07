@@ -16,12 +16,7 @@ pub(crate) enum WritableData {
     Double(Bytes, Bytes),
 }
 
-pub(crate) trait WritableDataCreator<R>:
-    FnOnce(u64) -> Result<(WritableData, R)> + Send + 'static
-{
-}
-
-impl<T, R> WritableDataCreator<R> for T where
-    T: FnOnce(u64) -> Result<(WritableData, R)> + Send + 'static
-{
+pub(crate) trait WritableDataCreator<R>: Send + 'static {
+    fn create(self, offset: u64) -> Result<(WritableData, R)>;
+    fn len(&self) -> u64;
 }
