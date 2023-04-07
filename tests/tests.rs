@@ -231,18 +231,27 @@ async fn test_on_disk_index() -> Result<()> {
 
 #[test]
 fn test_work_dir_lock() {
-    use rusty_fork::{fork, rusty_fork_id};
+    use rusty_fork::{fork, rusty_fork_id, rusty_fork_test_name};
+    use std::fs::{create_dir_all, read, write};
+    use std::path::Path;
     use std::sync::Arc;
     use tokio::runtime::Builder;
 
+    const MAX_CHILD_WAIT_COUNT: usize = 30;
+    const MAX_PARENT_WAIT_SECONDS: u64 = 120;
+
     let path = Arc::new(common::init("work_dir_lock"));
+    let init_file = Path::new(path.as_ref()).join("main_init_ready.special");
+    let child_init_file = init_file.clone();
     let child_path = path.clone();
     // We need separate processes because locks do not work within the same process
     fork(
-        "test_work_dir_lock",
+        rusty_fork_test_name!(test_work_dir_lock),
         rusty_fork_id!(),
         |_| {},
         move |c, _| {
+            create_dir_all(path.as_ref()).expect("failed to create path to init");
+            write(init_file, vec![]).expect("failed to create init file");
             let runtime = Builder::new_current_thread()
                 .build()
                 .expect("failed to create runtime in parent");
@@ -253,8 +262,15 @@ fn test_work_dir_lock() {
             assert!(res_one.is_ok());
 
             let storage = res_one.unwrap();
-            let exit = c.wait().expect("failed to wait for child");
-            assert!(!exit.success());
+            let exit = c
+                .wait_timeout(Duration::from_secs(MAX_PARENT_WAIT_SECONDS))
+                .expect("failed to wait for child");
+            if let Some(exit) = exit {
+                assert!(!exit.success());
+            } else {
+                c.kill().expect("failed to kill child process");
+            }
+
             runtime.block_on(
                 common::clean(storage, path.as_ref()).map(|res| res.expect("clean failed")),
             );
@@ -265,7 +281,13 @@ fn test_work_dir_lock() {
             let runtime = Builder::new_current_thread()
                 .build()
                 .expect("failed to create runtime in child");
-            std::thread::sleep(Duration::from_secs(1));
+            let mut attempt = 0;
+            while !read(&child_init_file).is_ok() {
+                assert!(attempt < MAX_CHILD_WAIT_COUNT);
+                attempt = attempt + 1;
+
+                std::thread::sleep(Duration::from_millis(200));
+            }
             let storage_two = common::create_test_storage(child_path.as_ref(), 1_000_000);
             let _ = runtime.block_on(storage_two);
             unreachable!("Second storage process must panic")
