@@ -17,42 +17,6 @@ impl PartiallySerializedWriteResult {
     }
 }
 
-struct RecordWritableDataCreator {
-    record: PartiallySerializedRecord,
-    len: u64,
-}
-
-impl From<PartiallySerializedRecord> for RecordWritableDataCreator {
-    fn from(record: PartiallySerializedRecord) -> Self {
-        let len = record.head_with_data.len() as u64
-            + record.data.as_ref().map(|v| v.len()).unwrap_or(0) as u64;
-        Self { record, len }
-    }
-}
-
-impl WritableDataCreator<(u64, u32)> for RecordWritableDataCreator {
-    fn create(self, offset: u64) -> Result<(WritableData, (u64, u32))> {
-        let PartiallySerializedRecord {
-            head_with_data,
-            header_len,
-            data,
-        } = self.record;
-        let (head, checksum) =
-            PartiallySerializedRecord::finalize_with_checksum(head_with_data, header_len, offset)?;
-        let bytes_data = if let Some(data) = data {
-            WritableData::Double(head.freeze(), data)
-        } else {
-            WritableData::Single(head.freeze())
-        };
-        let ret_data = (offset, checksum);
-        Ok((bytes_data, ret_data))
-    }
-
-    fn len(&self) -> u64 {
-        self.len
-    }
-}
-
 pub(crate) struct PartiallySerializedRecord {
     head_with_data: BytesMut,
     header_len: usize,
@@ -80,25 +44,26 @@ impl PartiallySerializedRecord {
             data,
         } = self;
         let (head, checksum) =
-            Self::finalize_with_checksum(head_with_data, header_len, blob_offset)?;
+            Self::finalize_with_checksum(head_with_data, header_len, blob_offset);
         Ok((head.freeze(), data, checksum))
     }
 
     pub(crate) async fn write_to_file(self, file: &File) -> Result<PartiallySerializedWriteResult> {
-        let creator: RecordWritableDataCreator = self.into();
-        let (offset, checksum) = file.write_append_writable_data(creator).await?;
-
-        Ok(PartiallySerializedWriteResult {
-            blob_offset: offset,
-            header_checksum: checksum,
-        })
+        file.write_append_writable_data(self)
+            .await
+            .map_err(|e| match e.kind() {
+                kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
+                    Error::file_unavailable(kind).into()
+                }
+                _ => e.into(),
+            })
     }
 
     fn finalize_with_checksum(
         mut buf: BytesMut,
         header_len: usize,
         blob_offset: u64,
-    ) -> Result<(BytesMut, u32)> {
+    ) -> (BytesMut, u32) {
         use std::mem::size_of;
 
         let offset_pos = RecordHeader::blob_offset_offset(header_len);
@@ -114,6 +79,35 @@ impl PartiallySerializedRecord {
         let checksum_slice = &mut buf[checksum_pos..(checksum_pos + size_of::<u32>())];
         checksum_slice.copy_from_slice(&checksum.to_le_bytes());
 
-        Ok((buf, checksum))
+        (buf, checksum)
+    }
+}
+
+impl WritableDataCreator<PartiallySerializedWriteResult> for PartiallySerializedRecord {
+    fn create(self, blob_offset: u64) -> (WritableData, PartiallySerializedWriteResult) {
+        let PartiallySerializedRecord {
+            head_with_data,
+            header_len,
+            data,
+        } = self;
+        let (head, header_checksum) = PartiallySerializedRecord::finalize_with_checksum(
+            head_with_data,
+            header_len,
+            blob_offset,
+        );
+        let bytes_data = if let Some(data) = data {
+            WritableData::Double(head.freeze(), data)
+        } else {
+            WritableData::Single(head.freeze())
+        };
+        let ret_data = PartiallySerializedWriteResult {
+            blob_offset,
+            header_checksum,
+        };
+        (bytes_data, ret_data)
+    }
+
+    fn len(&self) -> u64 {
+        self.head_with_data.len() as u64 + self.data.as_ref().map(|v| v.len()).unwrap_or(0) as u64
     }
 }

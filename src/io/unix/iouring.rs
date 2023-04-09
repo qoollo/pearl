@@ -72,11 +72,11 @@ impl File {
     pub(crate) async fn write_append_writable_data<R: Send + 'static>(
         &self,
         c: impl WritableDataCreator<R>,
-    ) -> Result<R> {
+    ) -> IOResult<R> {
         if let Some(ref rio) = self.rio {
             let len = c.len();
             let mut offset = self.sync.file_size_append(len);
-            let (res, data) = c(offset)?;
+            let (res, data) = c.create(offset);
             match res {
                 WritableData::Single(bytes) => self.write_all_at_aio(offset, bytes, rio).await?,
                 WritableData::Double(b1, b2) => {

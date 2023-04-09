@@ -17,6 +17,6 @@ pub(crate) enum WritableData {
 }
 
 pub(crate) trait WritableDataCreator<R>: Send + 'static {
-    fn create(self, offset: u64) -> Result<(WritableData, R)>;
+    fn create(self, offset: u64) -> (WritableData, R);
     fn len(&self) -> u64;
 }
