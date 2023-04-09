@@ -119,20 +119,16 @@ pub async fn create_test_storage(
     max_blob_size: u64,
 ) -> Result<Storage<KeyTest>, String> {
     let path = env::temp_dir().join(dir_name);
+    let iodriver = pearl::IoDriver::new();
     let builder = Builder::new()
         .work_dir(&path)
+        .set_io_driver(iodriver)
         .blob_file_name_prefix("test")
         .max_blob_size(max_blob_size)
         .max_data_in_blob(100_000)
         .set_filter_config(Default::default())
         .set_deferred_index_dump_times(MIN_DEFER_TIME, MAX_DEFER_TIME)
         .allow_duplicates();
-    let builder = if let Ok(ioring) = rio::new() {
-        builder.enable_aio(ioring)
-    } else {
-        println!("current OS doesn't support AIO");
-        builder
-    };
     let mut storage = builder.build().unwrap();
     storage.init().await.map_err(|e| e.to_string())?;
     Ok(storage)

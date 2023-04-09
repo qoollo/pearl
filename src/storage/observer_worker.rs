@@ -190,7 +190,9 @@ where
         }
         if replace {
             let new_active = get_new_active_blob(&self.inner).await?;
-            write.replace_active_blob(Box::new(ASRwLock::new(*new_active))).await?;
+            write
+                .replace_active_blob(Box::new(ASRwLock::new(*new_active)))
+                .await?;
             return Ok(true);
         }
         Ok(false)
@@ -217,7 +219,7 @@ where
 {
     let next_name = inner.next_blob_name()?;
     trace!("obtaining new active blob");
-    let new_active = Blob::open_new(next_name, inner.ioring.clone(), inner.config.index())
+    let new_active = Blob::open_new(next_name, inner.iodriver.clone(), inner.config.blob())
         .await?
         .boxed();
     Ok(new_active)

@@ -30,9 +30,10 @@ impl<K> FileIndexTrait<K> for BPTreeFileIndex<K>
 where
     for<'a> K: Key<'a> + 'static,
 {
-    async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self> {
+    async fn from_file(name: FileName, iodriver: IoDriver) -> Result<Self> {
         trace!("open index file");
-        let file = File::open(name.to_path(), ioring)
+        let file = iodriver
+            .open(name.to_path())
             .await
             .context(format!("failed to open index file: {}", name))?;
         let header = Self::read_index_header(&file).await?;
@@ -50,7 +51,7 @@ where
 
     async fn from_records(
         path: &Path,
-        ioring: Option<Rio>,
+        iodriver: IoDriver,
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,
@@ -59,7 +60,8 @@ where
         clean_file(path, recreate_index_file)?;
         let res = Self::serialize(headers, meta, blob_size)?;
         let (mut header, metadata, buf) = res;
-        let file = File::create(path, ioring)
+        let file = iodriver
+            .create(path)
             .await
             .with_context(|| format!("file open failed {:?}", path))?;
         file.write_append_all(buf.freeze()).await?;
@@ -397,13 +399,13 @@ where
     }
 
     fn hash_valid(header: &IndexHeader, buf: &mut [u8]) -> Result<bool> {
-        let hash = header.hash.clone();
+        let hash = &header.hash;
         let mut header = header.clone();
-        header.hash = vec![0; ring::digest::SHA256.output_len];
+        header.reset_hash();
         header.set_written(false);
         serialize_into(&mut buf[..], &header)?;
-        let new_hash = get_hash(&buf);
-        Ok(hash == new_hash)
+        let new_hash = IndexHashCalculator::get_hash(&buf);
+        Ok(*hash == new_hash)
     }
 
     async fn read_index_header(file: &File) -> Result<IndexHeader> {

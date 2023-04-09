@@ -230,7 +230,7 @@ where
         buf.extend_from_slice(&self.meta_buf);
         buf.extend_from_slice(&self.tree_buf);
         Self::append_headers(self.headers_btree, &mut buf)?;
-        let hash = get_hash(&buf);
+        let hash = IndexHashCalculator::get_hash(&buf);
         let header = IndexHeader::with_hash(
             self.header.record_header_size,
             self.header.records_count,

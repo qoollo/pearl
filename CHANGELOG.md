@@ -7,7 +7,26 @@ Pearl changelog
 - Use InMemoryIndex as an additional filter on Blob level (#238)
 
 #### Changed
+- Remove hard dependency on io uring (#230)
 
+#### Fixed
+
+
+#### Updated
+
+
+
+## [0.18.0] - 2023-02-25
+#### Added
+- Index regeneration checks record data checksum (#215)
+
+#### Changed
+- `ring` crate replaced with `sha2` crate (#246)
+- `async-std` replaced with `async-lock` to avoid redundant dependencies (#247)
+- Change locks for filters update (#218)
+- Serialization moved out of critical section (#188)
+- Removed multiple header checksum calculations (#206)
+- Rename functions to show that it returns last entry (#199)
 
 #### Fixed
 

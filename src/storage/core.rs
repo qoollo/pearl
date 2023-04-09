@@ -53,7 +53,7 @@ where
     pub(crate) config: Config,
     pub(crate) safe: Arc<RwLock<Safe<K>>>,
     next_blob_id: Arc<AtomicUsize>,
-    pub(crate) ioring: Option<Rio>,
+    pub(crate) iodriver: IoDriver,
     pub(crate) corrupted_blobs: Arc<AtomicUsize>,
 }
 
@@ -93,9 +93,9 @@ impl<K> Storage<K>
 where
     for<'a> K: Key<'a> + 'static,
 {
-    pub(crate) fn new(config: Config, ioring: Option<Rio>) -> Self {
+    pub(crate) fn new(config: Config, iodriver: IoDriver) -> Self {
         let dump_sem = config.dump_sem();
-        let inner = Inner::new(config, ioring);
+        let inner = Inner::new(config, iodriver);
         let observer = Observer::new(inner.clone(), dump_sem);
         Self { inner, observer }
     }
@@ -486,7 +486,7 @@ where
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
         if let Some(ablob) = safe.active_blob.as_ref() {
-            match ablob.read().await.read_any(key, meta, true).await {
+            match ablob.read().await.read_last(key, meta, true).await {
                 Ok(data) => {
                     if data.is_presented() {
                         debug!("storage read with optional meta active blob returned data");
@@ -526,10 +526,10 @@ where
         let stream: FuturesOrdered<_> = possible_blobs
             .into_iter()
             .filter_map(|id| blobs.get_child(id))
-            .map(|blob| blob.data.read_any(key, meta, false))
+            .map(|blob| blob.data.read_last(key, meta, false))
             .collect();
         debug!("read with optional meta {} closed blobs", stream.len());
-        
+
         let mut task = stream.skip_while(|read_res| {
             match read_res {
                 Ok(inner_res) => inner_res.is_not_found(), // Skip not found
@@ -651,7 +651,7 @@ where
         let next = self.inner.next_blob_name()?;
         let mut safe = self.inner.safe.write().await;
         let blob =
-            Blob::open_new(next, self.inner.ioring.clone(), self.inner.config.index()).await?;
+            Blob::open_new(next, self.inner.iodriver.clone(), self.inner.config.blob()).await?;
         safe.active_blob = Some(Box::new(ASRwLock::new(blob)));
         Ok(())
     }
@@ -661,7 +661,7 @@ where
         let disk_access_sem = self.observer.get_dump_sem();
         let (mut blobs, corrupted_count) = Self::read_blobs(
             &files,
-            self.inner.ioring.clone(),
+            self.inner.iodriver.clone(),
             disk_access_sem,
             &self.inner.config,
         )
@@ -714,7 +714,7 @@ where
 
     async fn read_blobs(
         files: &[DirEntry],
-        ioring: Option<Rio>,
+        iodriver: IoDriver,
         disk_access_sem: Arc<Semaphore>,
         config: &Config,
     ) -> Result<(Vec<Blob<K>>, usize)> {
@@ -738,7 +738,7 @@ where
             .map(|file| async {
                 let sem = disk_access_sem.clone();
                 let _sem = sem.acquire().await.expect("sem is closed");
-                Blob::from_file(file.clone(), ioring.clone(), config.index())
+                Blob::from_file(file.clone(), iodriver.clone(), config.blob())
                     .await
                     .map_err(|e| (e, file))
             })
@@ -1050,12 +1050,12 @@ impl<K> Inner<K>
 where
     for<'a> K: Key<'a> + 'static,
 {
-    fn new(config: Config, ioring: Option<Rio>) -> Self {
+    fn new(config: Config, iodriver: IoDriver) -> Self {
         Self {
             safe: Arc::new(RwLock::new(Safe::new(config.bloom_filter_group_size()))),
             config,
             next_blob_id: Arc::new(AtomicUsize::new(0)),
-            ioring,
+            iodriver,
             corrupted_blobs: Arc::new(AtomicUsize::new(0)),
         }
     }
@@ -1089,8 +1089,7 @@ where
     async fn ensure_active_blob_exists(&self, safe: &mut Safe<K>) -> Result<()> {
         if let None = safe.active_blob {
             let next = self.next_blob_name()?;
-            let config = self.config.index();
-            let blob = Blob::open_new(next, self.ioring.clone(), config).await?;
+            let blob = Blob::open_new(next, self.iodriver.clone(), self.config.blob()).await?;
             safe.active_blob = Some(Box::new(ASRwLock::new(blob)));
             Ok(())
         } else {

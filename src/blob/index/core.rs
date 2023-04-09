@@ -50,7 +50,7 @@ where
     params: IndexParams,
     inner: State<FileIndex, K>,
     name: FileName,
-    ioring: Option<Rio>,
+    iodriver: IoDriver,
 }
 
 #[derive(Debug, Default)] // Default can be used to initialize structure with 0
@@ -77,13 +77,9 @@ where
     FileIndex: FileIndexTrait<K>,
     for<'a> K: Key<'a>,
 {
-    pub(crate) fn new(name: FileName, ioring: Option<Rio>, config: IndexConfig) -> Self {
+    pub(crate) fn new(name: FileName, iodriver: IoDriver, config: IndexConfig) -> Self {
         let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
-        let bloom_filter = if params.bloom_is_on {
-            Some(config.bloom_config.map(Bloom::new).unwrap_or_default())
-        } else {
-            None
-        };
+        let bloom_filter = config.bloom_config.map(|cfg| Bloom::new(cfg));
         let mem = Some(Default::default());
         Self {
             params,
@@ -92,7 +88,7 @@ where
             inner: State::InMemory(BTreeMap::new()),
             mem,
             name,
-            ioring,
+            iodriver,
         }
     }
 
@@ -129,10 +125,10 @@ where
     pub(crate) async fn from_file(
         name: FileName,
         config: IndexConfig,
-        ioring: Option<Rio>,
+        iodriver: IoDriver,
         blob_size: u64,
     ) -> Result<Self> {
-        let findex = FileIndex::from_file(name.clone(), ioring.clone()).await?;
+        let findex = FileIndex::from_file(name.clone(), iodriver.clone()).await?;
         findex
             .validate(blob_size)
             .with_context(|| "Header is corrupt")?;
@@ -152,7 +148,7 @@ where
             filter: CombinedFilter::new(bloom_filter, range_filter),
             bloom_offset: Some(bloom_offset as u64),
             params,
-            ioring,
+            iodriver,
         };
         Ok(index)
     }
@@ -171,7 +167,7 @@ where
             self.bloom_offset = Some(bloom_offset as u64);
             let findex = FileIndex::from_records(
                 &self.name.to_path(),
-                self.ioring.clone(),
+                self.iodriver.clone(),
                 headers,
                 meta_buf,
                 self.params.recreate_file,
@@ -194,7 +190,8 @@ where
             .filter
             .bloom()
             .as_ref()
-            .map_or(Bloom::default().to_raw(), |bloom| bloom.to_raw())?;
+            .unwrap_or(&Bloom::empty())
+            .to_raw()?;
         let mut buf = Vec::with_capacity(size_of::<u64>() + range_buf.len() + bloom_buf.len());
         let bloom_offset = size_of::<u64>() + range_buf.len();
         buf.extend_from_slice(&serialize(&range_buf_size)?);
@@ -390,10 +387,10 @@ where
 
 #[async_trait::async_trait]
 pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
-    async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self>;
+    async fn from_file(name: FileName, iodriver: IoDriver) -> Result<Self>;
     async fn from_records(
         path: &Path,
-        rio: Option<Rio>,
+        iodriver: IoDriver,
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,

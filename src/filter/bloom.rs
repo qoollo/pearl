@@ -1,22 +1,24 @@
 use super::*;
 use ahash::AHasher;
-use bitvec::order::Lsb0;
-use bitvec::prelude::*;
+use atomic_bitvec::*;
 use std::hash::Hasher;
+use std::sync::RwLock;
 
 // All usizes in structures are serialized as u64 in binary
-#[derive(Clone)]
 /// Bloom filter
 pub struct Bloom {
-    inner: Option<BitVec<u64, Lsb0>>,
+    /// Bit vector. None - means offloaded
+    inner: Option<AtomicBitVec>,
+    /// Protects `save` and `checked_add_assign` from seeing partial updates
+    snapshot_protector: RwLock<()>,
     bits_count: usize,
-    hashers: Vec<AHasher>,
-    config: Config,
+    hashers: Box<[AHasher]>,
+    config: Arc<Config>
 }
 
 impl Debug for Bloom {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        struct InnerDebug(usize, usize);
+        struct InnerDebug(u64, usize);
         impl Debug for InnerDebug {
             fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
                 f.write_fmt(format_args!("{} ones from {}", self.0, self.1))
@@ -25,23 +27,23 @@ impl Debug for Bloom {
         f.debug_struct("Bloom")
             .field(
                 "inner",
-                &self
-                    .inner
-                    .as_ref()
-                    .map(|x| InnerDebug(x.count_ones(), x.len())),
+                &self.inner.as_ref().map(|x| {
+                    InnerDebug(x.count_ones(), x.len())
+                }),
             )
             .field("bits_count", &self.bits_count)
             .finish()
     }
 }
 
-impl Default for Bloom {
-    fn default() -> Self {
+impl Clone for Bloom {
+    fn clone(&self) -> Self {
         Self {
-            inner: Some(Default::default()),
-            bits_count: 0,
-            hashers: vec![],
-            config: Default::default(),
+            inner: self.inner.clone(),
+            snapshot_protector: RwLock::new(()),
+            bits_count: self.bits_count,
+            hashers: self.hashers.clone(),
+            config: self.config.clone()
         }
     }
 }
@@ -51,7 +53,7 @@ impl<K> FilterTrait<K> for Bloom
 where
     K: AsRef<[u8]> + Sync + Send + Debug,
 {
-    fn add(&mut self, key: &K) {
+    fn add(&self, key: &K) {
         let _ = self.add(key);
     }
 
@@ -104,7 +106,7 @@ pub struct Config {
     pub hashers_count: usize,
     /// number of bits in the inner buffer.
     pub max_buf_bits_count: usize,
-    /// filter buf increase value.
+    /// filter buf increase value. Not used anymore
     pub buf_increase_step: usize,
     /// filter incrementally increases buffer
     /// size by step and checks result false positive rate to be less than param.
@@ -131,11 +133,31 @@ impl Default for Config {
     }
 }
 
+impl Config {
+    /// Config to create empty bloom filter
+    pub fn empty() -> Self {
+        Self {
+            elements: 0,
+            hashers_count: 0,
+            max_buf_bits_count: 0,
+            buf_increase_step: 0,
+            preferred_false_positive_rate: 0.0
+        }
+    }
+}
+
 fn m_from_fpr(fpr: f64, k: f64, n: f64) -> f64 {
     -k * n / (1_f64 - fpr.powf(1_f64 / k)).ln()
 }
 
 fn bits_count_from_formula(config: &Config) -> usize {
+    if config.hashers_count == 0 {
+        return 0;
+    }
+    if config.max_buf_bits_count == 0 {
+        return 64;
+    }
+
     let max_bit_count = config.max_buf_bits_count; // 1Mb
     trace!("max bit count: {}", max_bit_count);
     let k = config.hashers_count;
@@ -174,27 +196,68 @@ fn bits_count_via_iterations(config: &Config) -> usize {
 }
 
 impl Bloom {
-    /// Create new bloom filter
-    pub fn new(config: Config) -> Self {
+    /// Create bloom filter with shared config
+    pub(crate) fn new_from_shared_config(config: Arc<Config>) -> Self {
         let bits_count = bits_count_from_formula(&config);
         Self {
-            inner: Some(bitvec![u64, Lsb0; 0; bits_count]),
+            inner: Some(AtomicBitVec::new(bits_count)),
+            snapshot_protector: RwLock::new(()),
+            bits_count: bits_count,
             hashers: Self::hashers(config.hashers_count),
-            config,
-            bits_count,
+            config: config
+        }
+    }
+    /// Create new bloom filter
+    pub fn new(config: Config) -> Self {
+        Self::new_from_shared_config(Arc::new(config))
+    }
+
+    /// Creates empty bloom filter
+    pub fn empty() -> Self {
+        Self {
+            inner: Some(AtomicBitVec::new(0)),
+            snapshot_protector: RwLock::new(()),
+            bits_count: 0,
+            hashers: Self::hashers(0),
+            config: Arc::new(Config::empty())
+        }
+    }
+
+    /// Acquired write lock on RwLock pair.
+    /// Preserve ordering by address comparison. This prevents deadlocks on cycle updates
+    fn acquire_snapshot_protection_ordered<'rw>(a: &'rw RwLock<()>, b: &'rw RwLock<()>) -> (std::sync::RwLockWriteGuard<'rw, ()>, Option<std::sync::RwLockWriteGuard<'rw, ()>>) {
+        let a_ptr: *const RwLock<()> = a;
+        let b_ptr: *const RwLock<()> = b;
+
+        // First lock on RwLock with lower memory address. This preserved order and prevents deadlock on cycle updates
+        if a_ptr < b_ptr {
+            let g1 = a.write().expect("write lock acquired");
+            let g2 = b.write().expect("write lock acquired");
+            (g1, Some(g2))
+        } else if a_ptr > b_ptr {
+            let g2 = b.write().expect("write lock acquired");
+            let g1 = a.write().expect("write lock acquired");
+            (g1, Some(g2))
+        } else {
+            // Identical references
+            let g1 = a.write().expect("write lock acquired");
+            (g1, None)
         }
     }
 
     /// Merge filters
     #[must_use]
     pub fn checked_add_assign(&mut self, other: &Bloom) -> bool {
+        if self.hashers.len() != other.hashers.len() {
+            // Hashers should be identical
+            return false;
+        }
+
         match (&mut self.inner, &other.inner) {
             (Some(inner), Some(other_inner)) if inner.len() == other_inner.len() => {
-                inner
-                    .as_raw_mut_slice()
-                    .iter_mut()
-                    .zip(other_inner.as_raw_slice())
-                    .for_each(|(a, b)| *a |= *b);
+                let _guard_pair = Self::acquire_snapshot_protection_ordered(&self.snapshot_protector, &other.snapshot_protector);
+
+                inner.or_with(other_inner).expect("AtomicBitVec::or_with expects to be successful");
                 true
             }
             _ => false,
@@ -203,7 +266,7 @@ impl Bloom {
 
     /// Set in-memory filter buffer to zeroed array
     pub fn clear(&mut self) {
-        self.inner = Some(bitvec![u64, Lsb0; 0; self.bits_count]);
+        self.inner = Some(AtomicBitVec::new(self.bits_count));
     }
 
     /// Check if filter offloaded
@@ -213,23 +276,29 @@ impl Bloom {
 
     /// Clear in-memory filter buffer
     pub fn offload_from_memory(&mut self) -> usize {
-        let freed = self.inner.as_ref().map(|x| x.capacity() / 8).unwrap_or(0);
+        let freed = self.inner.as_ref().map(|x| x.size_in_mem()).unwrap_or(0);
         self.inner = None;
         freed
     }
 
-    fn hashers(k: usize) -> Vec<AHasher> {
-        trace!("@TODO create configurable hashers???");
-        (0..k)
-            .map(|i| AHasher::new_with_keys((i + 1) as u128, (i + 2) as u128))
-            .collect()
+    fn hashers(k: usize) -> Box<[AHasher]> {
+        // TODO create configurable hashers???
+        let mut result = Vec::with_capacity(k);
+        for i in 0..k {
+            result.push(AHasher::new_with_keys((i + 1) as u128, (i + 2) as u128));
+        }
+
+        return result.into_boxed_slice();
     }
 
     fn save(&self) -> Option<Save> {
         if let Some(inner) = &self.inner {
+            // Protect from modification while `inner.to_raw_vec()` executing
+            let _guard = self.snapshot_protector.write().expect("write lock acquired");
+
             Some(Save {
-                config: self.config.clone(),
-                buf: inner.as_raw_slice().to_vec(),
+                config: self.config.as_ref().clone(),
+                buf: inner.to_raw_vec(),
                 bits_count: inner.len(),
             })
         } else {
@@ -237,15 +306,20 @@ impl Bloom {
         }
     }
 
-    fn from(save: Save) -> Self {
-        let mut inner = BitVec::from_vec(save.buf);
-        inner.truncate(save.bits_count);
-        Self {
-            hashers: Self::hashers(save.config.hashers_count),
-            config: save.config,
+    fn from(save: Save) -> Result<Self> {
+        use serde::de::Error;
+        
+        let inner = 
+            AtomicBitVec::from_raw_slice(&save.buf, save.bits_count)
+                .map_err(|e| bincode::Error::custom(e))?;
+
+        Ok(Self {
             inner: Some(inner),
+            snapshot_protector: RwLock::new(()),
             bits_count: save.bits_count,
-        }
+            hashers: Self::hashers(save.config.hashers_count),
+            config: Arc::new(save.config),
+        })
     }
 
     /// Serialize filter to bytes
@@ -259,19 +333,24 @@ impl Bloom {
     /// Deserialize filter from bytes
     pub fn from_raw(buf: &[u8]) -> Result<Self> {
         let save: Save = bincode::deserialize(buf)?;
-        Ok(Self::from(save))
+        Ok(Self::from(save)?)
     }
 
     /// Add value to filter
-    pub fn add(&mut self, item: impl AsRef<[u8]>) -> Result<()> {
-        if let Some(inner) = &mut self.inner {
+    pub fn add(&self, item: impl AsRef<[u8]>) -> Result<()> {
+        if let Some(inner) = &self.inner {
             let len = inner.len() as u64;
+            if len == 0 {
+                return Ok(());
+            }
+
+            // snapshot_protector prevents partial modifications to be observable in other functions
+            let _guard = self.snapshot_protector.read().expect("read lock acquired");
+
             for mut hasher in self.hashers.iter().cloned() {
                 hasher.write(item.as_ref());
                 if let Some(i) = hasher.finish().checked_rem(len) {
-                    *inner
-                        .get_mut(i as usize)
-                        .expect("impossible due to mod by len") = true;
+                    inner.set(i as usize, true);
                 }
             }
             Ok(())
@@ -291,7 +370,7 @@ impl Bloom {
             for mut hasher in self.hashers.iter().cloned() {
                 hasher.write(item.as_ref());
                 if let Some(i) = hasher.finish().checked_rem(len) {
-                    if !*inner.get(i as usize).expect("unreachable") {
+                    if !inner.get(i as usize) {
                         return Some(FilterResult::NotContains);
                     }
                 }
@@ -317,13 +396,10 @@ impl Bloom {
             hasher.write(item.as_ref());
             hasher.finish() % self.bits_count as u64
         }) {
-            let byte = provider.read_byte(start_pos + index / 8).await?;
+            let (offset, bit_mask) = OffsetAndMaskCalculator::offset_and_mask_u8(index);
+            let byte = provider.read_byte(start_pos + offset).await?;
 
-            if !byte
-                .view_bits::<Lsb0>()
-                .get(index as usize % 8)
-                .expect("unreachable")
-            {
+            if !OffsetAndMaskCalculator::get_bit_u8(byte, bit_mask) {
                 return Ok(FilterResult::NotContains);
             }
         }
@@ -332,16 +408,23 @@ impl Bloom {
 
     // bincode write len as u64 before Vec elements. sizeof(config) + sizeof(u64)
     fn buffer_start_position(&self) -> Result<u64> {
-        Ok(bincode::serialized_size(&self.config)? + std::mem::size_of::<u64>() as u64)
+        Ok(bincode::serialized_size(self.config.as_ref())? + std::mem::size_of::<u64>() as u64)
     }
 
     /// Get amount of memory allocated for filter
     pub fn memory_allocated(&self) -> usize {
-        self.inner.as_ref().map_or(0, |buf| buf.capacity() / 8)
+        self.inner
+            .as_ref()
+            .map_or(0, |buf| buf.size_in_mem())
     }
 }
 
+
+#[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::ArrayKey;
+
     #[test]
     fn check_inversed_formula() {
         use super::Config;
@@ -386,5 +469,156 @@ mod tests {
             iterations_method_fpr,
             diff
         );
+    }
+
+    #[test]
+    fn test_simple_operations() {
+        let bloom = Bloom::new(Config {
+            elements: 1000,
+            hashers_count: 2,
+            max_buf_bits_count: 1000,
+            preferred_false_positive_rate: 0.01,
+            buf_increase_step: 1
+        });
+
+        assert_eq!(false, bloom.is_offloaded());
+
+        let k1 = ArrayKey::from([1u8; 1]);
+        let k2 = ArrayKey::from([50u8; 1]);
+        let k3 = ArrayKey::from([255u8; 1]);
+
+        bloom.add(k1.clone()).expect("add");
+        bloom.add(k2.clone()).expect("add2");
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k2));
+        assert_eq!(FilterResult::NotContains, bloom.contains_fast(&k3));
+    }
+
+    #[test]
+    fn test_empty_not_fails() {
+        let bloom = Bloom::empty();
+
+        assert_eq!(false, bloom.is_offloaded());
+
+        let k1 = ArrayKey::from([1u8; 1]);
+        let k2 = ArrayKey::from([50u8; 1]);
+        let k3 = ArrayKey::from([255u8; 1]);
+
+        bloom.add(k1.clone()).expect("add");
+        bloom.add(k2.clone()).expect("add2");
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k2));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k3));
+    }
+
+    #[test]
+    fn test_merge() {
+        let cfg = Config {
+            elements: 1000,
+            hashers_count: 2,
+            max_buf_bits_count: 1000,
+            preferred_false_positive_rate: 0.01,
+            buf_increase_step: 1
+        };
+
+        let mut bloom_a = Bloom::new(cfg.clone());
+        let bloom_b = Bloom::new(cfg);
+
+        let k1 = ArrayKey::from([1u8; 1]);
+        let k2 = ArrayKey::from([50u8; 1]);
+
+        bloom_a.add(k1.clone()).expect("add");
+        bloom_b.add(k2.clone()).expect("add2");
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_a.contains_fast(&k1));
+        assert_eq!(FilterResult::NotContains, bloom_a.contains_fast(&k2));
+
+        assert_eq!(FilterResult::NotContains, bloom_b.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_b.contains_fast(&k2));
+
+        assert_eq!(true, bloom_a.checked_add_assign(&bloom_b));
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_a.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_a.contains_fast(&k2));
+    }
+
+    #[test]
+    fn test_clone() {
+        let cfg = Config {
+            elements: 1000,
+            hashers_count: 2,
+            max_buf_bits_count: 1000,
+            preferred_false_positive_rate: 0.01,
+            buf_increase_step: 1
+        };
+
+        let bloom_a = Bloom::new(cfg.clone());
+
+        let k1 = ArrayKey::from([1u8; 1]);
+        let k2 = ArrayKey::from([50u8; 1]);
+
+        bloom_a.add(k1.clone()).expect("add");
+        
+        let bloom_b = bloom_a.clone();
+        bloom_b.add(k2.clone()).expect("add2");
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_a.contains_fast(&k1));
+        assert_eq!(FilterResult::NotContains, bloom_a.contains_fast(&k2));
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_b.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom_b.contains_fast(&k2));
+    }
+
+
+    #[test]
+    fn test_backward_compat() {
+        let raw_buf: Vec<u64> = vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16384, 0, 0, 0, 0, 0, 0, 524288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4398046511104, 0, 0, 0, 0, 0, 0, 1073741824, 0];
+
+        let cfg = Config {
+            elements: 1000,
+            hashers_count: 2,
+            max_buf_bits_count: 1000,
+            preferred_false_positive_rate: 0.01,
+            buf_increase_step: 1
+        };
+
+        let sv = Save {
+            bits_count: 2885,
+            buf: raw_buf.clone(),
+            config: cfg
+        };
+
+        let bloom = Bloom::from(sv).expect("success");
+
+        let k1 = ArrayKey::from([1u8; 1]);
+        let k2 = ArrayKey::from([50u8; 1]);
+        let k3 = ArrayKey::from([255u8; 1]);
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k2));
+        assert_eq!(FilterResult::NotContains, bloom.contains_fast(&k3));
+
+        let sv2 = bloom.save().unwrap();
+        assert_eq!(raw_buf, sv2.buf);
+    }
+
+    #[test]
+    fn test_backward_compat_serialization() {
+        let serialized: Vec<u8> = vec![232, 3, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 232, 3, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 123, 20, 174, 71, 225, 122, 132, 63, 46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 69, 11, 0, 0, 0, 0, 0, 0];
+
+        let bloom = Bloom::from_raw(&serialized[..]).expect("success");
+
+        let k1 = ArrayKey::from([1u8; 1]);
+        let k2 = ArrayKey::from([50u8; 1]);
+        let k3 = ArrayKey::from([255u8; 1]);
+
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k1));
+        assert_eq!(FilterResult::NeedAdditionalCheck, bloom.contains_fast(&k2));
+        assert_eq!(FilterResult::NotContains, bloom.contains_fast(&k3));
+
+        let serialized2 = bloom.to_raw().unwrap();
+        assert_eq!(serialized, serialized2);
     }
 }
