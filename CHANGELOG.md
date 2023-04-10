@@ -13,7 +13,7 @@ Pearl changelog
 
 
 #### Updated
-- Update offset only when write is imminent (#228)
+- Update offset only when write is imminent to prevent data corruption due to async Future cancellation (#228)
 
 
 
