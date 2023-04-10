@@ -28,7 +28,6 @@ where
     index: Index<K>,
     name: FileName,
     file: File,
-    current_offset: u64,
     created_at: SystemTime,
     validate_data_during_index_regen: bool,
 }
@@ -61,7 +60,6 @@ where
             index,
             name,
             file,
-            current_offset: 0,
             created_at: SystemTime::now(),
             validate_data_during_index_regen,
         };
@@ -81,9 +79,7 @@ where
         let size = self.header.serialized_size();
         let mut buf = BytesMut::with_capacity(size as usize);
         serialize_into((&mut buf).writer(), &self.header)?;
-        let len = buf.len() as u64;
         self.file.write_append_all(buf.freeze()).await?;
-        self.current_offset = len;
         Ok(())
     }
 
@@ -183,7 +179,6 @@ where
             file,
             name,
             index,
-            current_offset: size,
             created_at,
             validate_data_during_index_regen,
         };
@@ -262,14 +257,10 @@ where
 
     async fn write_mut(&mut self, key: &K, record: Record) -> Result<RecordHeader> {
         debug!("blob write");
-        debug!("blob write record offset: {}", self.current_offset);
         let (record, mut header) = record.to_partially_serialized_and_header()?;
-        let write_result = record
-            .write_to_file(&self.file, self.current_offset)
-            .await?;
-        header.set_offset_checksum(self.current_offset, write_result.header_checksum());
+        let write_result = record.write_to_file(&self.file).await?;
+        header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
         self.index.push(key, header.clone())?;
-        self.current_offset += write_result.bytes_written();
         Ok(header)
     }
 
@@ -279,14 +270,10 @@ where
         record: PartiallySerializedRecord,
         mut header: RecordHeader,
     ) -> Result<()> {
-        debug!("blob write record offset: {}", blob.current_offset);
-        let write_result = record
-            .write_to_file(&blob.file, blob.current_offset)
-            .await?;
-        header.set_offset_checksum(blob.current_offset, write_result.header_checksum());
+        let write_result = record.write_to_file(&blob.file).await?;
+        header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
         let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
         blob.index.push(key, header)?;
-        blob.current_offset += write_result.bytes_written();
         Ok(())
     }
 

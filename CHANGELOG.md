@@ -13,6 +13,7 @@ Pearl changelog
 - Fix fork in test duplicating test environment (#254)
 
 #### Updated
+- Update offset only when write is imminent to prevent data corruption due to async Future cancellation (#228)
 
 
 
