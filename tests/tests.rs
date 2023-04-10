@@ -242,16 +242,18 @@ fn test_work_dir_lock() {
     const MAX_PARENT_WAIT_SECONDS: u64 = 120;
 
     let path = Arc::new(common::init("test_work_dir_lock"));
-    let init_file = Path::new(path.as_ref()).join("main_init_ready.special");
-    let child_init_file = init_file.clone();
+    let parent_init_file = Path::new(path.as_ref()).join("main_init_ready.special");
+    let parent_init_file_c = parent_init_file.clone();
+    let child_init_file = Path::new(path.as_ref()).join("child_init_ready.special");
+    let child_init_file_c = child_init_file.clone();
     let child_path = path.clone();
+    create_dir_all(path.as_ref()).expect("failed to create path to init");
     // We need separate processes because locks do not work within the same process
     fork(
         rusty_fork_test_name!(test_work_dir_lock),
         rusty_fork_id!(),
         |_| {},
         move |c, _| {
-            create_dir_all(path.as_ref()).expect("failed to create path to init");
             let runtime = Builder::new_current_thread()
                 .build()
                 .expect("failed to create runtime in parent");
@@ -259,7 +261,7 @@ fn test_work_dir_lock() {
 
             let storage_one = common::create_test_storage(path.as_ref(), 1_000_000);
             let res_one = runtime.block_on(storage_one);
-            write(init_file, vec![]).expect("failed to create init file");
+            write(parent_init_file, vec![]).expect("failed to create init file");
             assert!(res_one.is_ok());
 
             let storage = res_one.unwrap();
@@ -273,6 +275,11 @@ fn test_work_dir_lock() {
                 assert!(false, "child didn't exit on time")
             }
 
+            assert!(
+                read(&child_init_file_c).is_ok(),
+                "child didn't spawn, please check test name passed to fork"
+            );
+
             runtime.block_on(
                 common::clean(storage, path.as_ref()).map(|res| res.expect("clean failed")),
             );
@@ -280,8 +287,9 @@ fn test_work_dir_lock() {
             warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
         },
         move || {
+            write(child_init_file, vec![]).expect("failed to create init file");
             let mut attempt = 0;
-            while !read(&child_init_file).is_ok() {
+            while !read(&parent_init_file_c).is_ok() {
                 assert!(attempt < MAX_CHILD_WAIT_COUNT);
                 attempt = attempt + 1;
 
