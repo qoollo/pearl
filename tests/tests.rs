@@ -250,7 +250,7 @@ fn test_work_dir_lock() {
     create_dir_all(path.as_ref()).expect("failed to create path to init");
     // We need separate processes because locks do not work within the same process
     fork(
-        rusty_fork_test_name!(test_work_dir_lock),
+        rusty_fork_test_name!(test_work_dir_lock_no_such_test),
         rusty_fork_id!(),
         |_| {},
         move |c, _| {
