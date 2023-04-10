@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate log;
 
-use ::function_name::named;
 use anyhow::Result;
 use bytes::Bytes;
 use futures::{
@@ -231,7 +230,6 @@ async fn test_on_disk_index() -> Result<()> {
 }
 
 #[test]
-#[named]
 fn test_work_dir_lock() {
     use rusty_fork::{fork, rusty_fork_id, rusty_fork_test_name};
     use std::fs::{create_dir_all, read, write};
@@ -243,13 +241,13 @@ fn test_work_dir_lock() {
     const MAX_CHILD_WAIT_COUNT: usize = 30;
     const MAX_PARENT_WAIT_SECONDS: u64 = 120;
 
-    let path = Arc::new(common::init(function_name!()));
+    let path = Arc::new(common::init("test_work_dir_lock"));
     let init_file = Path::new(path.as_ref()).join("main_init_ready.special");
     let child_init_file = init_file.clone();
     let child_path = path.clone();
     // We need separate processes because locks do not work within the same process
     fork(
-       rusty_fork_test_name!(function_name!()),
+       rusty_fork_test_name!(test_work_dir_lock),
         rusty_fork_id!(),
         |_| {},
         move |c, _| {
