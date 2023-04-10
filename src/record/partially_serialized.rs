@@ -108,6 +108,6 @@ impl WritableDataCreator<PartiallySerializedWriteResult> for PartiallySerialized
     }
 
     fn len(&self) -> u64 {
-        self.head_with_data.len() as u64 + self.data.as_ref().map(|v| v.len()).unwrap_or(0) as u64
+        self.head_with_data.len() as u64 + self.data.as_ref().map_or(0, |v| v.len()) as u64
     }
 }
