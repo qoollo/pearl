@@ -233,7 +233,7 @@ async fn test_on_disk_index() -> Result<()> {
 #[test]
 #[named]
 fn test_work_dir_lock() {
-    use rusty_fork::{fork, rusty_fork_id};
+    use rusty_fork::{fork, rusty_fork_id, rusty_fork_test_name};
     use std::fs::{create_dir_all, read, write};
     use std::panic;
     use std::path::Path;
