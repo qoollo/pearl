@@ -3,13 +3,13 @@ use crate::prelude::*;
 use bytes::{Bytes, BytesMut};
 
 pub(crate) struct PartiallySerializedWriteResult {
-    bytes_written: u64,
+    blob_offset: u64,
     header_checksum: u32,
 }
 
 impl PartiallySerializedWriteResult {
-    pub(crate) fn bytes_written(&self) -> u64 {
-        self.bytes_written
+    pub(crate) fn blob_offset(&self) -> u64 {
+        self.blob_offset
     }
 
     pub(crate) fn header_checksum(&self) -> u32 {
@@ -32,6 +32,8 @@ impl PartiallySerializedRecord {
         }
     }
 
+    // Only needed for tests
+    #[allow(dead_code)]
     pub(super) fn serialize_with_checksum(
         self,
         blob_offset: u64,
@@ -42,34 +44,26 @@ impl PartiallySerializedRecord {
             data,
         } = self;
         let (head, checksum) =
-            Self::finalize_with_checksum(head_with_data, header_len, blob_offset)?;
+            Self::finalize_with_checksum(head_with_data, header_len, blob_offset);
         Ok((head.freeze(), data, checksum))
     }
 
-    pub(crate) async fn write_to_file(
-        self,
-        file: &File,
-        offset: u64,
-    ) -> Result<PartiallySerializedWriteResult> {
-        let (head, data, checksum) = self.serialize_with_checksum(offset)?;
-
-        let res = if let Some(data) = data {
-            Self::write_double_pass(head, data, file).await
-        } else {
-            Self::write_single_pass(head, file).await
-        };
-
-        res.map(|l| PartiallySerializedWriteResult {
-            bytes_written: l,
-            header_checksum: checksum,
-        })
+    pub(crate) async fn write_to_file(self, file: &File) -> Result<PartiallySerializedWriteResult> {
+        file.write_append_writable_data(self)
+            .await
+            .map_err(|e| match e.kind() {
+                kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
+                    Error::file_unavailable(kind).into()
+                }
+                _ => e.into(),
+            })
     }
 
     fn finalize_with_checksum(
         mut buf: BytesMut,
         header_len: usize,
         blob_offset: u64,
-    ) -> Result<(BytesMut, u32)> {
+    ) -> (BytesMut, u32) {
         use std::mem::size_of;
 
         let offset_pos = RecordHeader::blob_offset_offset(header_len);
@@ -85,27 +79,35 @@ impl PartiallySerializedRecord {
         let checksum_slice = &mut buf[checksum_pos..(checksum_pos + size_of::<u32>())];
         checksum_slice.copy_from_slice(&checksum.to_le_bytes());
 
-        Ok((buf, checksum))
+        (buf, checksum)
+    }
+}
+
+impl WritableDataCreator<PartiallySerializedWriteResult> for PartiallySerializedRecord {
+    fn create(self, blob_offset: u64) -> (WritableData, PartiallySerializedWriteResult) {
+        let PartiallySerializedRecord {
+            head_with_data,
+            header_len,
+            data,
+        } = self;
+        let (head, header_checksum) = PartiallySerializedRecord::finalize_with_checksum(
+            head_with_data,
+            header_len,
+            blob_offset,
+        );
+        let bytes_data = if let Some(data) = data {
+            WritableData::Double(head.freeze(), data)
+        } else {
+            WritableData::Single(head.freeze())
+        };
+        let ret_data = PartiallySerializedWriteResult {
+            blob_offset,
+            header_checksum,
+        };
+        (bytes_data, ret_data)
     }
 
-    async fn write_single_pass(buf: Bytes, file: &File) -> Result<u64> {
-        let len = buf.len() as u64;
-        Self::process_file_result(file.write_append_all(buf).await).map(|_| len)
-    }
-
-    async fn write_double_pass(head: Bytes, data: Bytes, file: &File) -> Result<u64> {
-        let len = (head.len() + data.len()) as u64;
-        Self::process_file_result(file.write_append_all_buffers(head, data).await).map(|_| len)
-    }
-
-    fn process_file_result(result: std::result::Result<(), std::io::Error>) -> Result<()> {
-        result.map_err(|e| -> anyhow::Error {
-            match e.kind() {
-                kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
-                    Error::file_unavailable(kind).into()
-                }
-                _ => e.into(),
-            }
-        })
+    fn len(&self) -> u64 {
+        self.head_with_data.len() as u64 + self.data.as_ref().map_or(0, |v| v.len()) as u64
     }
 }

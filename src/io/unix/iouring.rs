@@ -69,31 +69,35 @@ impl File {
         self.sync.size()
     }
 
+    pub(crate) async fn write_append_writable_data<R: Send + 'static>(
+        &self,
+        c: impl WritableDataCreator<R>,
+    ) -> IOResult<R> {
+        if let Some(ref rio) = self.rio {
+            let len = c.len();
+            let mut offset = self.sync.file_size_append(len);
+            let (res, data) = c.create(offset);
+            match res {
+                WritableData::Single(bytes) => self.write_all_at_aio(offset, bytes, rio).await?,
+                WritableData::Double(b1, b2) => {
+                    let first_len = b1.len() as u64;
+                    self.write_all_at_aio(offset, b1, rio).await?;
+                    offset = offset + first_len;
+                    self.write_all_at_aio(offset, b2, rio).await?;
+                }
+            }
+            Ok(data)
+        } else {
+            self.sync.write_append_writable_data(c).await
+        }
+    }
+
     pub(crate) async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
         if let Some(ref rio) = self.rio {
             let offset = self.sync.file_size_append(buf.len() as u64);
             self.write_all_at_aio(offset, buf, rio).await
         } else {
             self.sync.write_append_all(buf).await
-        }
-    }
-
-    pub(crate) async fn write_append_all_buffers(
-        &self,
-        first_buf: Bytes,
-        second_buf: Bytes,
-    ) -> IOResult<()> {
-        if let Some(ref rio) = self.rio {
-            let first_len = first_buf.len() as u64;
-            let second_len = second_buf.len() as u64;
-            let mut offset = self.sync.file_size_append(first_len + second_len);
-            self.write_all_at_aio(offset, first_buf, rio).await?;
-            offset = offset + first_len;
-            self.write_all_at_aio(offset, second_buf, rio).await
-        } else {
-            self.sync
-                .write_append_all_buffers(first_buf, second_buf)
-                .await
         }
     }
 
@@ -121,11 +125,7 @@ impl File {
     }
 
     pub(crate) async fn read_exact_at(&self, buf: BytesMut, offset: u64) -> Result<BytesMut> {
-        debug!(
-            "File read at buf len: {}, offset: {}",
-            buf.len(),
-            offset
-        );
+        debug!("File read at buf len: {}, offset: {}", buf.len(), offset);
         if let Some(ref rio) = self.rio {
             self.read_exact_at_aio(buf, offset, rio).await
         } else {
@@ -159,7 +159,12 @@ impl File {
         Ok(())
     }
 
-    async fn read_exact_at_aio(&self, mut buf: BytesMut, offset: u64, rio: &Rio) -> Result<BytesMut> {
+    async fn read_exact_at_aio(
+        &self,
+        mut buf: BytesMut,
+        offset: u64,
+        rio: &Rio,
+    ) -> Result<BytesMut> {
         let compl = rio.read_at(self.sync.std_file_ref(), &buf, offset);
         let mut size = compl.await.with_context(|| "read at failed")?;
         while size < buf.len() {
