@@ -10,7 +10,7 @@ Pearl changelog
 - Remove hard dependency on io uring (#230)
 
 #### Fixed
-
+- Fix fork in test duplicating test environment (#254)
 
 #### Updated
 - Update offset only when write is imminent to prevent data corruption due to async Future cancellation (#228)

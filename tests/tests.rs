@@ -229,50 +229,87 @@ async fn test_on_disk_index() -> Result<()> {
     common::clean(storage, path).await
 }
 
-#[tokio::test]
-async fn test_work_dir_lock() {
-    use nix::sys::wait::{waitpid, WaitStatus};
-    use nix::unistd::{fork, ForkResult};
+#[test]
+fn test_work_dir_lock() {
+    use rusty_fork::{fork, rusty_fork_id, rusty_fork_test_name};
+    use std::fs::{create_dir_all, read, write};
+    use std::panic;
+    use std::path::Path;
+    use std::sync::Arc;
+    use tokio::runtime::Builder;
 
-    let path = common::init("work_dir_lock");
+    const MAX_CHILD_WAIT_COUNT: usize = 30;
+    const MAX_PARENT_WAIT_SECONDS: u64 = 120;
 
+    let path = Arc::new(common::init("test_work_dir_lock"));
+    let parent_init_file = Path::new(path.as_ref()).join("main_init_ready.special");
+    let parent_init_file_c = parent_init_file.clone();
+    let child_init_file = Path::new(path.as_ref()).join("child_init_ready.special");
+    let child_init_file_c = child_init_file.clone();
+    let child_path = path.clone();
+    create_dir_all(path.as_ref()).expect("failed to create path to init");
     // We need separate processes because locks do not work within the same process
-    match unsafe { fork() } {
-        Ok(ForkResult::Parent { child }) => {
+    fork(
+        rusty_fork_test_name!(test_work_dir_lock),
+        rusty_fork_id!(),
+        |_| {},
+        move |c, _| {
+            let runtime = Builder::new_current_thread()
+                .build()
+                .expect("failed to create runtime in parent");
             let now = Instant::now();
 
-            let storage_one = common::create_test_storage(&path, 1_000_000);
-            let res_one = storage_one.await;
+            let storage_one = common::create_test_storage(path.as_ref(), 1_000_000);
+            let res_one = runtime.block_on(storage_one);
+            write(parent_init_file, vec![]).expect("failed to create init file");
             assert!(res_one.is_ok());
 
             let storage = res_one.unwrap();
-            let result = waitpid(child, None);
-            #[cfg(not(target_os = "macos"))]
-            assert_eq!(Ok(WaitStatus::Exited(child, 0)), result);
-            #[cfg(target_os = "macos")]
-            assert_eq!(
-                Ok(WaitStatus::Signaled(
-                    child,
-                    nix::sys::signal::Signal::SIGTRAP,
-                    false
-                )),
-                result
+            let exit = c
+                .wait_timeout(Duration::from_secs(MAX_PARENT_WAIT_SECONDS))
+                .expect("failed to wait for child");
+            if let Some(exit) = exit {
+                assert!(exit.success());
+            } else {
+                c.kill().expect("failed to kill child process");
+                assert!(false, "child didn't exit on time")
+            }
+
+            assert!(
+                read(&child_init_file_c).is_ok(),
+                "child didn't spawn, please check test name passed to fork"
             );
 
-            common::clean(storage, path)
-                .map(|res| res.expect("clean failed"))
-                .await;
+            runtime.block_on(
+                common::clean(storage, path.as_ref()).map(|res| res.expect("clean failed")),
+            );
 
             warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
-        }
-        Ok(ForkResult::Child) => {
-            sleep(Duration::from_secs(1)).await;
-            let storage_two = common::create_test_storage(&path, 1_000_000);
-            let _ = storage_two.await;
-            unreachable!("Second storage process must panic")
-        }
-        Err(_) => unreachable!("Fork must not fail"),
-    }
+        },
+        move || {
+            write(child_init_file, vec![]).expect("failed to create init file");
+            let mut attempt = 0;
+            while !read(&parent_init_file_c).is_ok() {
+                assert!(attempt < MAX_CHILD_WAIT_COUNT);
+                attempt = attempt + 1;
+
+                std::thread::sleep(Duration::from_millis(200));
+            }
+
+            if let Err(_) = panic::catch_unwind(|| {
+                let runtime = Builder::new_current_thread()
+                    .build()
+                    .expect("failed to create runtime in child");
+                let storage_two = common::create_test_storage(child_path.as_ref(), 1_000_000);
+                let _ = runtime.block_on(storage_two);
+            }) {
+                return;
+            } else {
+                unreachable!("Second storage process must panic")
+            }
+        },
+    )
+    .expect("failed fork");
 }
 
 #[tokio::test]
