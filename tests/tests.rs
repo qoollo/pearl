@@ -247,7 +247,7 @@ fn test_work_dir_lock() {
     let child_path = path.clone();
     // We need separate processes because locks do not work within the same process
     fork(
-       rusty_fork_test_name!(test_work_dir_lock),
+        rusty_fork_test_name!(test_work_dir_lock),
         rusty_fork_id!(),
         |_| {},
         move |c, _| {
@@ -287,7 +287,6 @@ fn test_work_dir_lock() {
 
                 std::thread::sleep(Duration::from_millis(200));
             }
-            panic!("test panic");
 
             if let Err(_) = panic::catch_unwind(|| {
                 let runtime = Builder::new_current_thread()
