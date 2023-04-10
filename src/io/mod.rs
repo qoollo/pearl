@@ -1,4 +1,3 @@
-use anyhow::Result;
 use bytes::Bytes;
 
 #[cfg(target_family = "unix")]
