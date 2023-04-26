@@ -68,7 +68,7 @@ pub type InMemoryIndex<K> = BTreeMap<K, Vec<RecordHeader>>;
 
 #[derive(Debug, Clone)]
 pub(crate) enum State<FileIndex, K> {
-    InMemory(InMemoryIndex<K>),
+    InMemory(Arc<std::sync::RwLock<Option<InMemoryIndex<K>>>>),
     OnDisk(FileIndex),
 }
 
@@ -85,7 +85,7 @@ where
             params,
             filter: CombinedFilter::new(bloom_filter, RangeFilter::new()),
             bloom_offset: None,
-            inner: State::InMemory(BTreeMap::new()),
+            inner: State::InMemory(Arc::new(std::sync::RwLock::new(Some(BTreeMap::new())))),
             mem,
             name,
             iodriver,
@@ -93,7 +93,7 @@ where
     }
 
     pub(crate) fn clear(&mut self) {
-        self.inner = State::InMemory(BTreeMap::new());
+        self.inner = State::InMemory(Arc::new(std::sync::RwLock::new(Some(BTreeMap::new()))));
         self.mem = Some(Default::default());
         self.filter.clear_filter();
     }
@@ -151,25 +151,33 @@ where
 
     async fn dump_in_memory(&mut self, blob_size: u64) -> Result<usize> {
         if let State::InMemory(headers) = &self.inner {
-            if headers.len() == 0 {
-                return Ok(0);
+            let headers = {
+                let mut headers = headers.write().expect("rwlock");
+                headers.take()
+            };
+            if let Some(headers) = headers {
+                if headers.len() == 0 {
+                    return Ok(0);
+                }
+                debug!("blob index simple in memory headers {}", headers.len());
+                let (meta_buf, bloom_offset) = self.serialize_filters()?;
+                self.bloom_offset = Some(bloom_offset as u64);
+                let findex = FileIndex::from_records(
+                    &self.name.to_path(),
+                    self.iodriver.clone(),
+                    &headers,
+                    meta_buf,
+                    self.params.recreate_file,
+                    blob_size,
+                )
+                .await?;
+                let size = findex.file_size() as usize;
+                self.inner = State::OnDisk(findex);
+                self.mem = None;
+                Ok(size)
+            } else {
+                Ok(0)
             }
-            debug!("blob index simple in memory headers {}", headers.len());
-            let (meta_buf, bloom_offset) = self.serialize_filters()?;
-            self.bloom_offset = Some(bloom_offset as u64);
-            let findex = FileIndex::from_records(
-                &self.name.to_path(),
-                self.iodriver.clone(),
-                headers,
-                meta_buf,
-                self.params.recreate_file,
-                blob_size,
-            )
-            .await?;
-            let size = findex.file_size() as usize;
-            self.inner = State::OnDisk(findex);
-            self.mem = None;
-            Ok(size)
         } else {
             Ok(0)
         }
@@ -204,7 +212,7 @@ where
     async fn load_in_memory(&mut self, findex: FileIndex, blob_size: u64) -> Result<()> {
         let (record_headers, records_count) = findex.get_records_headers(blob_size).await?;
         self.mem = Some(compute_mem_attrs(&record_headers, records_count));
-        self.inner = State::InMemory(record_headers);
+        self.inner = State::InMemory(Arc::new(std::sync::RwLock::new(Some(record_headers))));
         let meta_buf = findex.read_meta().await?;
         let (bloom_filter, range_filter, _) = Self::deserialize_filters(&meta_buf)?;
         let bloom_filter = if self.params.bloom_is_on {
@@ -219,17 +227,22 @@ where
 
     pub(crate) fn memory_used(&self) -> usize {
         if let State::InMemory(data) = &self.inner {
-            let mem = self
-                .mem
-                .as_ref()
-                .expect("No memory info in `InMemory` State");
-            trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
+            let data = data.read().expect("rwloc");
+            if let Some(data) = data.as_ref() {
+                let mem = self
+                    .mem
+                    .as_ref()
+                    .expect("No memory info in `InMemory` State");
+                trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
             mem.record_header_size, mem.records_allocated, data.len(), mem.btree_entry_size
             );
-            // last minus is neccessary, because allocated but not initialized record headers don't
-            // have key allocated on heap
-            mem.record_header_size * mem.records_allocated + data.len() * mem.btree_entry_size
-                - (mem.records_allocated - mem.records_count) * mem.key_size
+                // last minus is neccessary, because allocated but not initialized record headers don't
+                // have key allocated on heap
+                mem.record_header_size * mem.records_allocated + data.len() * mem.btree_entry_size
+                    - (mem.records_allocated - mem.records_count) * mem.key_size
+            } else {
+                0
+            }
         } else {
             0
         }
@@ -260,28 +273,36 @@ where
         debug!("blob index simple push");
         match &mut self.inner {
             State::InMemory(headers) => {
-                debug!("blob index simple push bloom filter add");
-                self.filter.add(key);
-                debug!("blob index simple push key: {:?}", h.key());
-                let mem = self
-                    .mem
-                    .as_mut()
-                    .expect("No memory info in `InMemory` State");
-                if let Some(v) = headers.get_mut(key) {
-                    let old_capacity = v.capacity();
-                    v.push(h);
-                    trace!("capacity growth: {}", v.capacity() - old_capacity);
-                    mem.records_allocated += v.capacity() - old_capacity;
-                } else {
-                    if mem.records_count == 0 {
-                        set_key_related_fields::<K>(mem);
+                let mut headers = headers.write().expect("rwlock");
+                if let Some(headers) = headers.as_mut() {
+                    debug!("blob index simple push bloom filter add");
+                    self.filter.add(key);
+                    debug!("blob index simple push key: {:?}", h.key());
+                    let mem = self
+                        .mem
+                        .as_mut()
+                        .expect("No memory info in `InMemory` State");
+                    if let Some(v) = headers.get_mut(key) {
+                        let old_capacity = v.capacity();
+                        v.push(h);
+                        trace!("capacity growth: {}", v.capacity() - old_capacity);
+                        mem.records_allocated += v.capacity() - old_capacity;
+                    } else {
+                        if mem.records_count == 0 {
+                            set_key_related_fields::<K>(mem);
+                        }
+                        let v = vec![h];
+                        mem.records_allocated += v.capacity(); // capacity == 1
+                        headers.insert(key.clone(), v);
                     }
-                    let v = vec![h];
-                    mem.records_allocated += v.capacity(); // capacity == 1
-                    headers.insert(key.clone(), v);
+                    mem.records_count += 1;
+                    Ok(())
+                } else {
+                    Err(Error::from(ErrorKind::Index(
+                        "Index is in the process of closing, push is unavailable".to_string(),
+                    ))
+                    .into())
                 }
-                mem.records_count += 1;
-                Ok(())
             }
             State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
                 "Index is closed, push is unavalaible".to_string(),
@@ -302,12 +323,16 @@ where
 
     async fn get_all_with_deletion_marker(&self, key: &K) -> Result<Vec<RecordHeader>> {
         let headers = match &self.inner {
-            State::InMemory(headers) => Ok(headers.get(key).cloned().map(|mut hs| {
-                if hs.len() > 1 {
-                    hs.reverse();
-                }
-                hs
-            })),
+            State::InMemory(headers) => {
+                Ok(headers.read().expect("rwlock").as_ref().and_then(|h| {
+                    h.get(key).cloned().map(|mut hs| {
+                        if hs.len() > 1 {
+                            hs.reverse();
+                        }
+                        hs
+                    })
+                }))
+            }
             State::OnDisk(findex) => findex.find_by_key(key).await,
         }?;
         if let Some(mut hs) = headers {
@@ -325,10 +350,13 @@ where
         debug!("index get any");
         let result = match &self.inner {
             State::InMemory(headers) => {
-                debug!("index get any in memory headers: {}", headers.len());
-                // in memory indexes with same key are stored in ascending order, so the last
-                // by adding time record is last in list (in b+tree disk index it's first)
-                headers.get(key).and_then(|h| h.last()).cloned()
+                let headers = headers.read().expect("rwlock");
+                headers.as_ref().and_then(|headers| {
+                    debug!("index get any in memory headers: {}", headers.len());
+                    // in memory indexes with same key are stored in ascending order, so the last
+                    // by adding time record is last in list (in b+tree disk index it's first)
+                    headers.get(key).and_then(|h| h.last()).cloned()
+                })
             }
             State::OnDisk(findex) => {
                 debug!("index get any on disk");
