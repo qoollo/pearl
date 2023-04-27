@@ -1,5 +1,5 @@
-pub(crate) mod config;
 mod core;
+pub(crate) mod config;
 mod entry;
 pub(crate) mod header;
 pub(crate) mod index;

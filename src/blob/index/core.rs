@@ -151,10 +151,7 @@ where
 
     async fn dump_in_memory(&mut self, blob_size: u64) -> Result<usize> {
         if let State::InMemory(headers) = &self.inner {
-            let headers = {
-                let mut headers = headers.write().expect("rwlock");
-                headers.take()
-            };
+            let headers = headers.write().expect("rwlock").take();
             if let Some(headers) = headers {
                 if headers.len() == 0 {
                     return Ok(0);
@@ -174,13 +171,10 @@ where
                 let size = findex.file_size() as usize;
                 self.inner = State::OnDisk(findex);
                 self.mem = None;
-                Ok(size)
-            } else {
-                Ok(0)
+                return Ok(size);
             }
-        } else {
-            Ok(0)
         }
+        Ok(0)
     }
 
     fn serialize_filters(&self) -> Result<(Vec<u8>, usize)> {
@@ -243,14 +237,11 @@ where
                 );
                 // last minus is neccessary, because allocated but not initialized record headers don't
                 // have key allocated on heap
-                record_header_size * records_allocated + data.len() * btree_entry_size
-                    - (records_allocated - records_count) * key_size
-            } else {
-                0
+                return record_header_size * records_allocated + data.len() * btree_entry_size
+                    - (records_allocated - records_count) * key_size;
             }
-        } else {
-            0
         }
+        0
     }
 
     pub(crate) fn disk_used(&self) -> u64 {

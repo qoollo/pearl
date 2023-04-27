@@ -60,6 +60,7 @@ pub(crate) fn clean_file(path: impl AsRef<Path>, recreate_index_file: bool) -> R
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::IndexHashCalculator;
@@ -68,10 +69,7 @@ mod tests {
     pub fn test_hash_compatibility() {
         let data_vec: Vec<u8> = (0..1024).into_iter().map(|i| (i % 256) as u8).collect();
         // SHA256 hash calculated with ring crate
-        let expected_hash = vec![
-            120, 91, 7, 81, 252, 44, 83, 220, 20, 164, 206, 61, 128, 14, 105, 239, 156, 225, 0,
-            158, 179, 39, 204, 244, 88, 175, 224, 156, 36, 44, 38, 201,
-        ];
+        let expected_hash = vec![120, 91, 7, 81, 252, 44, 83, 220, 20, 164, 206, 61, 128, 14, 105, 239, 156, 225, 0, 158, 179, 39, 204, 244, 88, 175, 224, 156, 36, 44, 38, 201];
         let actual_hash = IndexHashCalculator::get_hash(&data_vec);
 
         assert_eq!(expected_hash, actual_hash);
