@@ -68,7 +68,7 @@ pub type InMemoryIndex<K> = BTreeMap<K, Vec<RecordHeader>>;
 
 #[derive(Debug, Clone)]
 pub(crate) enum State<FileIndex, K> {
-    InMemory(Arc<std::sync::RwLock<Option<InMemoryIndex<K>>>>),
+    InMemory(Arc<SRwLock<Option<InMemoryIndex<K>>>>),
     OnDisk(FileIndex),
 }
 
@@ -85,7 +85,7 @@ where
             params,
             filter: CombinedFilter::new(bloom_filter, RangeFilter::new()),
             bloom_offset: None,
-            inner: State::InMemory(Arc::new(std::sync::RwLock::new(Some(BTreeMap::new())))),
+            inner: State::InMemory(Arc::new(SRwLock::new(Some(BTreeMap::new())))),
             mem,
             name,
             iodriver,
@@ -93,7 +93,7 @@ where
     }
 
     pub(crate) fn clear(&mut self) {
-        self.inner = State::InMemory(Arc::new(std::sync::RwLock::new(Some(BTreeMap::new()))));
+        self.inner = State::InMemory(Arc::new(SRwLock::new(Some(BTreeMap::new()))));
         self.mem = Some(Default::default());
         self.filter.clear_filter();
     }
@@ -212,7 +212,7 @@ where
     async fn load_in_memory(&mut self, findex: FileIndex, blob_size: u64) -> Result<()> {
         let (record_headers, records_count) = findex.get_records_headers(blob_size).await?;
         self.mem = Some(compute_mem_attrs(&record_headers, records_count));
-        self.inner = State::InMemory(Arc::new(std::sync::RwLock::new(Some(record_headers))));
+        self.inner = State::InMemory(Arc::new(SRwLock::new(Some(record_headers))));
         let meta_buf = findex.read_meta().await?;
         let (bloom_filter, range_filter, _) = Self::deserialize_filters(&meta_buf)?;
         let bloom_filter = if self.params.bloom_is_on {
