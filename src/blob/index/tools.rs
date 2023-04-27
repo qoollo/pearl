@@ -5,10 +5,10 @@ use std::mem::size_of;
 pub(crate) struct IndexHashCalculator;
 
 impl IndexHashCalculator {
-    pub(crate) const HASH_LENGTH: usize = 32;
+    pub(crate) const HASH_LENGTH: usize = 32; 
 
     pub(crate) fn get_hash(buf: &[u8]) -> Vec<u8> {
-        use sha2::{Digest, Sha256};
+        use sha2::{Sha256, Digest};
         let digest = Sha256::digest(buf);
         digest.to_vec()
     }
