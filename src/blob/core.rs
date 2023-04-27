@@ -251,7 +251,7 @@ where
         // Only one upgradable_read lock is allowed at a time
         let (partially_serialized, header) = record.to_partially_serialized_and_header()?;
         let blob = blob.read().await;
-        Self::write_lock_taken(blob, key, partially_serialized, header).await
+        Self::write_with_lock(blob, key, partially_serialized, header).await
     }
 
     async fn write_mut(&mut self, key: &K, record: Record) -> Result<RecordHeader> {
@@ -263,7 +263,7 @@ where
         Ok(header)
     }
 
-    async fn write_lock_taken(
+    async fn write_with_lock(
         blob: ASRwLockReadGuard<'_, Blob<K>>,
         key: &K,
         record: PartiallySerializedRecord,
