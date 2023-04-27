@@ -55,11 +55,11 @@ where
 
 #[derive(Debug, Default)] // Default can be used to initialize structure with 0
 pub(crate) struct MemoryAttrs {
-    pub(crate) key_size: usize,
-    pub(crate) btree_entry_size: usize,
+    pub(crate) key_size: AtomicUsize,
+    pub(crate) btree_entry_size: AtomicUsize,
     // contains actual size occupied by record header in RAM (which helps
     // to compute actual size of indices in RAM in `InMemory` state)
-    pub(crate) record_header_size: usize,
+    pub(crate) record_header_size: AtomicUsize,
     pub(crate) records_count: AtomicUsize,
     pub(crate) records_allocated: AtomicUsize,
 }
@@ -233,15 +233,18 @@ where
                     .mem
                     .as_ref()
                     .expect("No memory info in `InMemory` State");
+                let record_header_size = mem.record_header_size.load(Ordering::Acquire);
                 let records_allocated = mem.records_allocated.load(Ordering::Acquire);
                 let records_count = mem.records_count.load(Ordering::Acquire);
+                let btree_entry_size = mem.btree_entry_size.load(Ordering::Acquire);
+                let key_size = mem.key_size.load(Ordering::Acquire);
                 trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
-                mem.record_header_size, records_allocated, data.len(), mem.btree_entry_size
+                record_header_size, records_allocated, data.len(), btree_entry_size
                 );
                 // last minus is neccessary, because allocated but not initialized record headers don't
                 // have key allocated on heap
-                mem.record_header_size * records_allocated + data.len() * mem.btree_entry_size
-                    - (records_allocated - records_count) * mem.key_size
+                record_header_size * records_allocated + data.len() * btree_entry_size
+                    - (records_allocated - records_count) * key_size
             } else {
                 0
             }
@@ -271,9 +274,9 @@ where
             .map(|h| h.map(|h| BlobRecordTimestamp::new(h.created())))
     }
 
-    fn push(&mut self, key: &K, h: RecordHeader) -> Result<()> {
+    fn push(&self, key: &K, h: RecordHeader) -> Result<()> {
         debug!("blob index simple push");
-        match &mut self.inner {
+        match &self.inner {
             State::InMemory(headers) => {
                 let mut headers = headers.write().expect("rwlock");
                 if let Some(headers) = headers.as_mut() {
@@ -282,7 +285,7 @@ where
                     debug!("blob index simple push key: {:?}", h.key());
                     let mem = self
                         .mem
-                        .as_mut()
+                        .as_ref()
                         .expect("No memory info in `InMemory` State");
                     if let Some(v) = headers.get_mut(key) {
                         let old_capacity = v.capacity();

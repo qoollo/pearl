@@ -5,10 +5,10 @@ use std::mem::size_of;
 pub(crate) struct IndexHashCalculator;
 
 impl IndexHashCalculator {
-    pub(crate) const HASH_LENGTH: usize = 32; 
+    pub(crate) const HASH_LENGTH: usize = 32;
 
     pub(crate) fn get_hash(buf: &[u8]) -> Vec<u8> {
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
         let digest = Sha256::digest(buf);
         digest.to_vec()
     }
@@ -25,19 +25,27 @@ where
 {
     let mut attrs: MemoryAttrs = Default::default();
     set_key_related_fields::<K>(&mut attrs);
-    attrs.records_allocated = record_headers.values().fold(0, |acc, v| acc + v.capacity());
-    attrs.records_count = records_count;
+    attrs.records_allocated.store(
+        record_headers.values().fold(0, |acc, v| acc + v.capacity()),
+        Ordering::Release,
+    );
+    attrs.records_count.store(records_count, Ordering::Release);
     attrs
 }
 
-pub(crate) fn set_key_related_fields<K>(attrs: &mut MemoryAttrs)
+pub(crate) fn set_key_related_fields<K>(attrs: &MemoryAttrs)
 where
     for<'a> K: Key<'a>,
 {
     let key_size = K::LEN as usize;
-    attrs.key_size = key_size;
-    attrs.btree_entry_size = size_of::<Vec<u8>>() + key_size + size_of::<Vec<RecordHeader>>();
-    attrs.record_header_size = size_of::<RecordHeader>() + key_size;
+    attrs.key_size.store(key_size, Ordering::Release);
+    attrs.btree_entry_size.store(
+        size_of::<Vec<u8>>() + key_size + size_of::<Vec<RecordHeader>>(),
+        Ordering::Release,
+    );
+    attrs
+        .record_header_size
+        .store(size_of::<RecordHeader>() + key_size, Ordering::Release);
 }
 
 pub(crate) fn clean_file(path: impl AsRef<Path>, recreate_index_file: bool) -> Result<()> {
@@ -52,7 +60,6 @@ pub(crate) fn clean_file(path: impl AsRef<Path>, recreate_index_file: bool) -> R
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::IndexHashCalculator;
@@ -61,7 +68,10 @@ mod tests {
     pub fn test_hash_compatibility() {
         let data_vec: Vec<u8> = (0..1024).into_iter().map(|i| (i % 256) as u8).collect();
         // SHA256 hash calculated with ring crate
-        let expected_hash = vec![120, 91, 7, 81, 252, 44, 83, 220, 20, 164, 206, 61, 128, 14, 105, 239, 156, 225, 0, 158, 179, 39, 204, 244, 88, 175, 224, 156, 36, 44, 38, 201];
+        let expected_hash = vec![
+            120, 91, 7, 81, 252, 44, 83, 220, 20, 164, 206, 61, 128, 14, 105, 239, 156, 225, 0,
+            158, 179, 39, 204, 244, 88, 175, 224, 156, 36, 44, 38, 201,
+        ];
         let actual_hash = IndexHashCalculator::get_hash(&data_vec);
 
         assert_eq!(expected_hash, actual_hash);

@@ -272,7 +272,7 @@ where
     ) -> Result<()> {
         let write_result = record.write_to_file(&blob.file).await?;
         header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
-        let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
+        let blob = RwLockUpgradableReadGuard::upgrade(blob).await;
         blob.index.push(key, header)?;
         Ok(())
     }
