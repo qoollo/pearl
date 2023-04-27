@@ -8,6 +8,7 @@ Pearl changelog
 
 #### Changed
 - Remove hard dependency on io uring (#230)
+- Remove upgradable lock from write path (#249)
 
 #### Fixed
 - Fix fork in test duplicating test environment (#254)
