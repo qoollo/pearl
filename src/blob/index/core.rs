@@ -57,11 +57,11 @@ where
 pub(crate) struct MemoryAttrs {
     pub(crate) key_size: usize,
     pub(crate) btree_entry_size: usize,
-    pub(crate) records_allocated: usize,
     // contains actual size occupied by record header in RAM (which helps
     // to compute actual size of indices in RAM in `InMemory` state)
     pub(crate) record_header_size: usize,
-    pub(crate) records_count: usize,
+    pub(crate) records_count: AtomicUsize,
+    pub(crate) records_allocated: AtomicUsize,
 }
 
 pub type InMemoryIndex<K> = BTreeMap<K, Vec<RecordHeader>>;
@@ -233,13 +233,15 @@ where
                     .mem
                     .as_ref()
                     .expect("No memory info in `InMemory` State");
+                let records_allocated = mem.records_allocated.load(Ordering::Acquire);
+                let records_count = mem.records_count.load(Ordering::Acquire);
                 trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
-            mem.record_header_size, mem.records_allocated, data.len(), mem.btree_entry_size
-            );
+                mem.record_header_size, records_allocated, data.len(), mem.btree_entry_size
+                );
                 // last minus is neccessary, because allocated but not initialized record headers don't
                 // have key allocated on heap
-                mem.record_header_size * mem.records_allocated + data.len() * mem.btree_entry_size
-                    - (mem.records_allocated - mem.records_count) * mem.key_size
+                mem.record_header_size * records_allocated + data.len() * mem.btree_entry_size
+                    - (records_allocated - records_count) * mem.key_size
             } else {
                 0
             }
@@ -286,16 +288,18 @@ where
                         let old_capacity = v.capacity();
                         v.push(h);
                         trace!("capacity growth: {}", v.capacity() - old_capacity);
-                        mem.records_allocated += v.capacity() - old_capacity;
+                        mem.records_allocated
+                            .fetch_add(v.capacity() - old_capacity, Ordering::Release);
                     } else {
-                        if mem.records_count == 0 {
+                        if mem.records_count.load(Ordering::Acquire) == 0 {
                             set_key_related_fields::<K>(mem);
                         }
                         let v = vec![h];
-                        mem.records_allocated += v.capacity(); // capacity == 1
+                        mem.records_allocated
+                            .fetch_add(v.capacity(), Ordering::Release); // capacity == 1
                         headers.insert(key.clone(), v);
                     }
-                    mem.records_count += 1;
+                    mem.records_count.fetch_add(1, Ordering::Release);
                     Ok(())
                 } else {
                     Err(Error::from(ErrorKind::Index(
@@ -392,7 +396,7 @@ where
             State::InMemory(_) => self
                 .mem
                 .as_ref()
-                .map(|mem| mem.records_count)
+                .map(|mem| mem.records_count.load(Ordering::Acquire))
                 .expect("No memory info in `InMemory` State"),
         }
     }
