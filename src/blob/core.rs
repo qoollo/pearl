@@ -1,6 +1,5 @@
 use std::time::SystemTime;
 
-use async_lock::RwLockUpgradableReadGuard;
 use bytes::{BufMut, Bytes, BytesMut};
 use tokio::time::Instant;
 
@@ -251,8 +250,8 @@ where
         debug!("blob write");
         // Only one upgradable_read lock is allowed at a time
         let (partially_serialized, header) = record.to_partially_serialized_and_header()?;
-        let blob = blob.upgradable_read().await;
-        Self::write_locked(blob, key, partially_serialized, header).await
+        let blob = blob.read().await;
+        Self::write_lock_taken(blob, key, partially_serialized, header).await
     }
 
     async fn write_mut(&mut self, key: &K, record: Record) -> Result<RecordHeader> {
@@ -264,15 +263,14 @@ where
         Ok(header)
     }
 
-    async fn write_locked(
-        blob: ASRwLockUpgradableReadGuard<'_, Blob<K>>,
+    async fn write_lock_taken(
+        blob: ASRwLockReadGuard<'_, Blob<K>>,
         key: &K,
         record: PartiallySerializedRecord,
         mut header: RecordHeader,
     ) -> Result<()> {
         let write_result = record.write_to_file(&blob.file).await?;
         header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
-        let blob = RwLockUpgradableReadGuard::upgrade(blob).await;
         blob.index.push(key, header)?;
         Ok(())
     }

@@ -1,5 +1,5 @@
-mod core;
 pub(crate) mod config;
+mod core;
 mod entry;
 pub(crate) mod header;
 pub(crate) mod index;
@@ -13,8 +13,6 @@ pub(crate) use super::prelude::*;
 
 mod prelude {
     pub(crate) use super::*;
-    pub(crate) use async_lock::{
-        RwLock as ASRwLock, RwLockUpgradableReadGuard as ASRwLockUpgradableReadGuard,
-    };
+    pub(crate) use async_lock::{RwLock as ASRwLock, RwLockReadGuard as ASRwLockReadGuard};
     pub(crate) use index::Index;
 }
