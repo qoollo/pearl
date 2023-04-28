@@ -249,9 +249,12 @@ where
     pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<()> {
         debug!("blob write");
         // Only one upgradable_read lock is allowed at a time
-        let (partially_serialized, header) = record.to_partially_serialized_and_header()?;
+        let (partially_serialized, mut header) = record.to_partially_serialized_and_header()?;
         let blob = blob.read().await;
-        Self::write_with_lock(blob, key, partially_serialized, header).await
+        let write_result = partially_serialized.write_to_file(&blob.file).await?;
+        header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
+        blob.index.push(key, header)?;
+        Ok(())
     }
 
     async fn write_mut(&mut self, key: &K, record: Record) -> Result<RecordHeader> {
@@ -261,18 +264,6 @@ where
         header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
         self.index.push(key, header.clone())?;
         Ok(header)
-    }
-
-    async fn write_with_lock(
-        blob: ASRwLockReadGuard<'_, Blob<K>>,
-        key: &K,
-        record: PartiallySerializedRecord,
-        mut header: RecordHeader,
-    ) -> Result<()> {
-        let write_result = record.write_to_file(&blob.file).await?;
-        header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
-        blob.index.push(key, header)?;
-        Ok(())
     }
 
     pub(crate) async fn read_last(
