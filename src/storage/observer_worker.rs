@@ -17,8 +17,6 @@ where
     dump_sem: Arc<Semaphore>,
     async_oplock: Arc<Mutex<()>>,
     deferred: Arc<Mutex<Option<DeferredEventData>>>,
-    deferred_min_duration: Duration,
-    deferred_max_duration: Duration,
 }
 
 struct DeferredEventData {
@@ -37,8 +35,6 @@ where
         dump_sem: Arc<Semaphore>,
         async_oplock: Arc<Mutex<()>>,
     ) -> Self {
-        let deferred_min_duration = inner.config().deferred_min_time().clone();
-        let deferred_max_duration = inner.config().deferred_max_time().clone();
         Self {
             inner,
             receiver,
@@ -46,8 +42,6 @@ where
             dump_sem,
             async_oplock,
             deferred: Arc::default(),
-            deferred_min_duration,
-            deferred_max_duration,
         }
     }
 
@@ -120,8 +114,8 @@ where
             let sender = self.loopback_sender.clone();
             let data = DeferredEventData::new();
             *deferred = Some(data);
-            let min = self.deferred_min_duration.clone();
-            let max = self.deferred_max_duration.clone();
+            let min = self.inner.config().deferred_min_time().clone();
+            let max = self.inner.config().deferred_max_time().clone();
             let deferred_local = self.deferred.clone();
             tokio::spawn(async move {
                 loop {
