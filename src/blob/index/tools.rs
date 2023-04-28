@@ -25,27 +25,19 @@ where
 {
     let mut attrs: MemoryAttrs = Default::default();
     set_key_related_fields::<K>(&mut attrs);
-    attrs.records_allocated.store(
-        record_headers.values().fold(0, |acc, v| acc + v.capacity()),
-        Ordering::Release,
-    );
-    attrs.records_count.store(records_count, Ordering::Release);
+    attrs.records_allocated = record_headers.values().fold(0, |acc, v| acc + v.capacity());
+    attrs.records_count = records_count;
     attrs
 }
 
-pub(crate) fn set_key_related_fields<K>(attrs: &MemoryAttrs)
+pub(crate) fn set_key_related_fields<K>(attrs: &mut MemoryAttrs)
 where
     for<'a> K: Key<'a>,
 {
     let key_size = K::LEN as usize;
-    attrs.key_size.store(key_size, Ordering::Release);
-    attrs.btree_entry_size.store(
-        size_of::<Vec<u8>>() + key_size + size_of::<Vec<RecordHeader>>(),
-        Ordering::Release,
-    );
-    attrs
-        .record_header_size
-        .store(size_of::<RecordHeader>() + key_size, Ordering::Release);
+    attrs.key_size = key_size;
+    attrs.btree_entry_size = size_of::<Vec<u8>>() + key_size + size_of::<Vec<RecordHeader>>();
+    attrs.record_header_size = size_of::<RecordHeader>() + key_size;
 }
 
 pub(crate) fn clean_file(path: impl AsRef<Path>, recreate_index_file: bool) -> Result<()> {
