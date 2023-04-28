@@ -139,15 +139,17 @@ impl File {
         setup: impl Fn(&mut OpenOptions) -> &mut OpenOptions,
     ) -> IOResult<Self> {
         const FILE_SHARE_READ: u32 = 1;
-        let file = setup(&mut OpenOptions::new().share_mode(FILE_SHARE_READ)).open(path.as_ref())?;
-
-        /* 
-        if Self::advisory_write_lock_file(file.as_raw_fd()) == LockAcquisitionResult::AlreadyLocked
-        {
-            error!("File {:?} is locked", path.as_ref());
-            panic!("File {:?} is locked", path.as_ref());
-        }
-        */
+        let file = 
+            match setup(&mut OpenOptions::new().share_mode(FILE_SHARE_READ)).open(path.as_ref()) {
+                Ok(file) => file,
+                Err(err) if err.raw_os_error().unwrap_or_default() == 32 => {
+                    error!("File {:?} is locked", path.as_ref());
+                    panic!("File {:?} is locked", path.as_ref());
+                },
+                Err(err) => {
+                    return Err(err);
+                }
+            };
 
         let size = file.metadata()?.len();
         let size = AtomicU64::new(size);
