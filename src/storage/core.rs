@@ -41,20 +41,20 @@ pub struct Storage<K>
 where
     for<'a> K: Key<'a>,
 {
-    pub(crate) inner: Inner<K>,
+    inner: Arc<Inner<K>>,
     observer: Observer<K>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct Inner<K>
 where
     for<'a> K: Key<'a>,
 {
-    pub(crate) config: Config,
-    pub(crate) safe: Arc<RwLock<Safe<K>>>,
-    next_blob_id: Arc<AtomicUsize>,
-    pub(crate) iodriver: IoDriver,
-    pub(crate) corrupted_blobs: Arc<AtomicUsize>,
+    config: Config,
+    safe: RwLock<Safe<K>>,
+    next_blob_id: AtomicUsize,
+    iodriver: IoDriver,
+    corrupted_blobs: AtomicUsize,
 }
 
 #[derive(Debug)]
@@ -95,7 +95,7 @@ where
 {
     pub(crate) fn new(config: Config, iodriver: IoDriver) -> Self {
         let dump_sem = config.dump_sem();
-        let inner = Inner::new(config, iodriver);
+        let inner = Arc::new(Inner::new(config, iodriver));
         let observer = Observer::new(inner.clone(), dump_sem);
         Self { inner, observer }
     }
@@ -1052,12 +1052,24 @@ where
 {
     fn new(config: Config, iodriver: IoDriver) -> Self {
         Self {
-            safe: Arc::new(RwLock::new(Safe::new(config.bloom_filter_group_size()))),
+            safe: RwLock::new(Safe::new(config.bloom_filter_group_size())),
             config,
-            next_blob_id: Arc::new(AtomicUsize::new(0)),
+            next_blob_id: AtomicUsize::new(0),
             iodriver,
-            corrupted_blobs: Arc::new(AtomicUsize::new(0)),
+            corrupted_blobs: AtomicUsize::new(0),
         }
+    }
+
+    pub(crate) fn config(&self) -> &Config {
+        &self.config
+    }
+
+    pub(crate) fn io_driver(&self) -> &IoDriver {
+        &self.iodriver
+    }
+
+    pub(crate) fn safe(&self) -> &RwLock<Safe<K>> {
+        &self.safe
     }
 
     pub(crate) async fn restore_active_blob(&self) -> Result<()> {
