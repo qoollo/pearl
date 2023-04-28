@@ -10,8 +10,16 @@ pub(crate) use unix::File;
 #[cfg(target_family = "unix")]
 pub use unix::IoDriver;
 
-#[cfg(not(target_family = "unix"))]
+#[cfg(target_family = "windows")]
+mod windows;
+#[cfg(target_family = "windows")]
+pub(crate) use windows::File;
+#[cfg(target_family = "windows")]
+pub use windows::IoDriver;
+
+#[cfg(not(any(target_family = "unix", target_family = "windows")))]
 compile_error!("Specified target platform is not supported (only unix family supported)");
+
 
 pub(crate) enum WritableData {
     Single(Bytes),
@@ -38,6 +46,6 @@ trait FileTrait: Sized {
     async fn read_all(&self) -> Result<BytesMut>;
     async fn read_exact_at_allocate(&self, size: usize, offset: u64) -> Result<BytesMut>;
     async fn read_exact_at(&self, mut buf: BytesMut, offset: u64) -> Result<BytesMut>;
-    
+
     async fn fsyncdata(&self) -> IOResult<()>;
 }

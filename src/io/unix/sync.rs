@@ -9,7 +9,10 @@ use std::{
     os::unix::prelude::{AsRawFd, FileExt},
     time::SystemTime,
 };
-use tokio::fs::OpenOptions;
+use tokio::fs::{
+    File as TokioFile,
+    OpenOptions
+};
 
 /// IO driver for file operations
 #[derive(Debug, Clone)]
