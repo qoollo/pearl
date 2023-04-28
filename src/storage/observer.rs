@@ -51,7 +51,7 @@ pub(crate) struct Observer<K>
 where
     for<'a> K: Key<'a>,
 {
-    inner: Option<Inner<K>>,
+    inner: Option<Arc<Inner<K>>>,
     pub sender: Option<Sender<Msg>>,
     dump_sem: Arc<Semaphore>,
     async_oplock: Arc<Mutex<()>>,
@@ -61,7 +61,7 @@ impl<K> Observer<K>
 where
     for<'a> K: Key<'a> + 'static,
 {
-    pub(crate) fn new(inner: Inner<K>, dump_sem: Arc<Semaphore>) -> Self {
+    pub(crate) fn new(inner: Arc<Inner<K>>, dump_sem: Arc<Semaphore>) -> Self {
         Self {
             inner: Some(inner),
             sender: None,

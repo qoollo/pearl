@@ -141,7 +141,7 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
 }
 
 pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<()> {
-    std::thread::sleep(std::time::Duration::from_millis(100));
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     storage.close().await?;
     fs::remove_dir_all(path).map_err(Into::into)
 }

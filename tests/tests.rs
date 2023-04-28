@@ -875,7 +875,7 @@ async fn test_blobs_count_random_names() {
     }
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     assert_eq!(names.len() + 1, storage.blobs_count().await);
-    common::clean(storage, path).await.unwrap();
+    common::clean(storage, path).await.expect("clean");
 }
 
 #[tokio::test]

@@ -11,7 +11,7 @@ pub(crate) struct ObserverWorker<K>
 where
     for<'a> K: Key<'a>,
 {
-    inner: Inner<K>,
+    inner: Arc<Inner<K>>,
     receiver: Receiver<Msg>,
     loopback_sender: Sender<Msg>,
     dump_sem: Arc<Semaphore>,
@@ -33,12 +33,12 @@ where
     pub(crate) fn new(
         receiver: Receiver<Msg>,
         loopback_sender: Sender<Msg>,
-        inner: Inner<K>,
+        inner: Arc<Inner<K>>,
         dump_sem: Arc<Semaphore>,
         async_oplock: Arc<Mutex<()>>,
     ) -> Self {
-        let deferred_min_duration = inner.config.deferred_min_time().clone();
-        let deferred_max_duration = inner.config.deferred_max_time().clone();
+        let deferred_min_duration = inner.config().deferred_min_time().clone();
+        let deferred_max_duration = inner.config().deferred_max_time().clone();
         Self {
             inner,
             receiver,
@@ -153,17 +153,17 @@ where
     async fn try_update_active_blob(&self) -> Result<bool> {
         let config_max_size = self
             .inner
-            .config
+            .config()
             .max_blob_size()
             .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
         let config_max_count = self
             .inner
-            .config
+            .config()
             .max_data_in_blob()
             .ok_or_else(|| Error::from(ErrorKind::Uninitialized))?;
 
         {
-            let read = self.inner.safe.read().await;
+            let read = self.inner.safe().read().await;
             let active_blob = read.active_blob.as_ref();
             if let Some(active_blob) = active_blob {
                 let active_blob = active_blob.read().await;
@@ -175,7 +175,7 @@ where
             }
         }
 
-        let mut write = self.inner.safe.write().await;
+        let mut write = self.inner.safe().write().await;
         let mut replace = false;
         {
             let active_blob = write.active_blob.as_ref();
@@ -205,7 +205,7 @@ where
 {
     let new_active = get_new_active_blob(inner).await?;
     inner
-        .safe
+        .safe()
         .write()
         .await
         .replace_active_blob(Box::new(ASRwLock::new(*new_active)))
@@ -219,7 +219,7 @@ where
 {
     let next_name = inner.next_blob_name()?;
     trace!("obtaining new active blob");
-    let new_active = Blob::open_new(next_name, inner.iodriver.clone(), inner.config.blob())
+    let new_active = Blob::open_new(next_name, inner.io_driver().clone(), inner.config().blob())
         .await?
         .boxed();
     Ok(new_active)
