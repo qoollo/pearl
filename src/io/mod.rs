@@ -1,4 +1,7 @@
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
+use std::io::Result as IOResult;
+use anyhow::Result as Result;
+use std::time::SystemTime;
 
 #[cfg(target_family = "unix")]
 mod unix;
@@ -18,4 +21,23 @@ pub(crate) enum WritableData {
 pub(crate) trait WritableDataCreator<R>: Send + 'static {
     fn create(self, offset: u64) -> (WritableData, R);
     fn len(&self) -> u64;
+}
+
+
+/// Trait that all Files implementations should support.
+/// Used to track that File implementations have all required functions
+#[async_trait::async_trait]
+trait FileTrait: Sized {
+    fn size(&self) -> u64;
+    fn created_at(&self) -> IOResult<SystemTime>;
+
+    async fn write_append_writable_data<R: Send + 'static>(&self, c: impl WritableDataCreator<R>) -> IOResult<R>;
+    async fn write_append_all(&self, buf: Bytes) -> IOResult<()>;
+    async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()>;
+
+    async fn read_all(&self) -> Result<BytesMut>;
+    async fn read_exact_at_allocate(&self, size: usize, offset: u64) -> Result<BytesMut>;
+    async fn read_exact_at(&self, mut buf: BytesMut, offset: u64) -> Result<BytesMut>;
+    
+    async fn fsyncdata(&self) -> IOResult<()>;
 }

@@ -141,7 +141,7 @@ impl File {
         }
     }
 
-    pub(crate) fn created_at(&self) -> Result<SystemTime> {
+    pub(crate) fn created_at(&self) -> IOResult<SystemTime> {
         self.sync.created_at()
     }
 
@@ -195,5 +195,39 @@ impl File {
 
     async fn from_file(sync: SyncFile, rio: Option<Rio>) -> IOResult<Self> {
         Ok(Self { sync, rio })
+    }
+}
+
+
+/// Trait implementation to track that all required function are implemented
+#[async_trait::async_trait]
+impl super::super::FileTrait for File {
+    fn size(&self) -> u64 {
+        self.size()
+    }
+    fn created_at(&self) -> IOResult<SystemTime> {
+        self.created_at()
+    }
+
+    async fn write_append_writable_data<R: Send + 'static>(&self, c: impl WritableDataCreator<R>) -> IOResult<R> {
+        self.write_append_writable_data(c).await
+    }
+    async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
+        self.write_append_all(buf).await
+    }
+    async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
+        self.write_all_at(offset, buf).await
+    }
+    async fn read_all(&self) -> Result<BytesMut> {
+        self.read_all().await
+    }
+    async fn read_exact_at_allocate(&self, size: usize, offset: u64) -> Result<BytesMut> {
+        self.read_exact_at_allocate(size, offset).await
+    }
+    async fn read_exact_at(&self, buf: BytesMut, offset: u64) -> Result<BytesMut> {
+        self.read_exact_at(buf, offset).await
+    }
+    async fn fsyncdata(&self) -> IOResult<()> {
+        self.fsyncdata().await
     }
 }
