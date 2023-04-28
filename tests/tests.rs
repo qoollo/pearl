@@ -1009,6 +1009,7 @@ async fn test_blob_header_validation() {
     let data = vec![1, 1, 2, 3, 5, 8];
     write_one(&storage, 42, &data, None).await.unwrap();
     storage.close().await.expect("storage close failed");
+
     let blob_path = std::env::temp_dir().join(&path).join("test.0.blob");
     info!("path: {}", blob_path.display());
     {
