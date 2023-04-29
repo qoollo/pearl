@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use super::prelude::*;
 use tokio::{
     sync::mpsc::{Receiver, Sender},
@@ -158,23 +156,19 @@ where
 
         {
             let read = self.inner.safe().read().await;
-            let active_blob = read.active_blob.as_ref();
-            if let Some(active_blob) = active_blob {
-                let active_blob = active_blob.read().await;
+            if let Some(active_blob) = read.read_active_blob().await {
                 if active_blob.file_size() < config_max_size
                     && (active_blob.records_count() as u64) < config_max_count
                 {
                     return Ok(false);
                 }
-            }
+            };
         }
 
         let mut write = self.inner.safe().write().await;
         let mut replace = false;
         {
-            let active_blob = write.active_blob.as_ref();
-            if let Some(active_blob) = active_blob {
-                let active_blob = active_blob.read().await;
+            if let Some(active_blob) = write.read_active_blob().await {
                 if active_blob.file_size() >= config_max_size
                     || active_blob.records_count() as u64 >= config_max_count
                 {
