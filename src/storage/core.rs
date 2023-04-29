@@ -62,8 +62,8 @@ pub(crate) struct Safe<K>
 where
     for<'a> K: Key<'a>,
 {
-    pub(crate) active_blob: Option<Box<ASRwLock<Blob<K>>>>,
-    pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
+    active_blob: Option<Box<ASRwLock<Blob<K>>>>,
+    blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
 }
 
 async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
@@ -1248,6 +1248,13 @@ where
             blob.read().await.fsyncdata().await?;
         }
         Ok(())
+    }
+
+    pub(crate) async fn read_active_blob<'a>(&'a self) -> Option<async_lock::RwLockReadGuard<'a, Blob<K>>> {
+        match &self.active_blob {
+            None => None,
+            Some(blob) => Some(blob.read().await)
+        }
     }
 
     pub(crate) async fn replace_active_blob(&mut self, blob: Box<ASRwLock<Blob<K>>>) -> Result<()> {

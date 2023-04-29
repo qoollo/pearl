@@ -255,6 +255,7 @@ fn test_work_dir_lock() {
         |_| {},
         move |c, _| {
             let runtime = Builder::new_current_thread()
+                .enable_time()
                 .build()
                 .expect("failed to create runtime in parent");
             let now = Instant::now();
@@ -298,6 +299,7 @@ fn test_work_dir_lock() {
 
             if let Err(_) = panic::catch_unwind(|| {
                 let runtime = Builder::new_current_thread()
+                    .enable_time()
                     .build()
                     .expect("failed to create runtime in child");
                 let storage_two = common::create_test_storage(child_path.as_ref(), 1_000_000);
