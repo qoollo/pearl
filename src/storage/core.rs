@@ -539,20 +539,23 @@ where
     /// # Errors
     /// Fails because of any IO errors
     pub async fn close(self) -> Result<()> {
-        let mut safe = self.inner.safe.write().await;
-        let active_blob = safe.active_blob.take();
         let mut res = Ok(());
-        if let Some(blob) = active_blob {
-            let mut blob = blob.write().await;
-            res = res.and(
-                blob.dump()
-                    .await
-                    .map(|_| info!("active blob dumped"))
-                    .with_context(|| format!("blob {} dump failed", blob.name())),
-            )
-        }
+        {
+            let mut safe = self.inner.safe.write().await;
+            let active_blob = safe.active_blob.take();      
+            if let Some(blob) = active_blob {
+                let mut blob = blob.write().await;
+                res = res.and(
+                    blob.dump()
+                        .await
+                        .map(|_| info!("active blob dumped"))
+                        .with_context(|| format!("blob {} dump failed", blob.name())),
+                )
+            }
+        };
 
-        //self.observer.shutdown().await;
+        // Wait for observer worker shutdown. Locks should be released at this point
+        self.observer.shutdown().await;
         res
     }
 

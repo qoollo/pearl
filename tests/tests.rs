@@ -120,12 +120,11 @@ async fn test_multithread_read_write() -> Result<(), String> {
     let writes = 25;
     let indexes = common::create_indexes(threads, writes);
     let data = vec![184u8; 3000];
-    let clonned_storage = storage.clone();
     let handles: FuturesUnordered<_> = indexes
         .iter()
         .cloned()
         .map(|mut range| {
-            let st = clonned_storage.clone();
+            let st = storage.clone();
             let data = data.clone();
             let task = async move {
                 let s = st.clone();
