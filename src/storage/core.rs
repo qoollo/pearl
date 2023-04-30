@@ -154,13 +154,6 @@ where
         Ok(())
     }
 
-    /// Checks if there is a pending async operation
-    /// Returns boolean value (true - if there is, false otherwise)
-    /// Never falls
-    pub fn is_pending(&self) -> bool {
-        self.observer.is_pending()
-    }
-
     /// FIXME: maybe it would be better to add check of `is_pending` state of observer for all
     /// sync operations and return result in more appropriate way for that case (change Result<bool>
     /// on Result<OpRes>, where OpRes = Pending|Done|NotDone for example)

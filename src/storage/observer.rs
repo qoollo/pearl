@@ -54,7 +54,6 @@ where
     inner: Option<Arc<Inner<K>>>,
     pub sender: Option<Sender<Msg>>,
     dump_sem: Arc<Semaphore>,
-    async_oplock: Arc<Mutex<()>>,
 }
 
 impl<K> Observer<K>
@@ -66,12 +65,7 @@ where
             inner: Some(inner),
             sender: None,
             dump_sem,
-            async_oplock: Arc::new(Mutex::new(())),
         }
-    }
-
-    pub(crate) fn is_pending(&self) -> bool {
-        self.async_oplock.try_lock().is_none()
     }
 
     pub(crate) fn run(&mut self) {
@@ -84,7 +78,6 @@ where
                 loop_sender,
                 inner,
                 self.dump_sem.clone(),
-                self.async_oplock.clone(),
             );
             tokio::spawn(worker.run());
         }
