@@ -2,7 +2,7 @@ use super::prelude::*;
 use tokio::{
     sync::mpsc::{Receiver, Sender},
     sync::Semaphore,
-    time::{sleep, Instant},
+    time::{sleep, timeout_at, Instant},
 };
 
 pub(crate) struct ObserverWorker<K>
@@ -14,11 +14,18 @@ where
     loopback_sender: Sender<Msg>,
     dump_sem: Arc<Semaphore>,
     deferred: Arc<Mutex<Option<DeferredEventData>>>,
+    next_deadline: Option<Instant>
 }
 
 struct DeferredEventData {
     first_time: Instant,
     last_time: Instant,
+}
+
+#[derive(Debug)]
+enum TickResult {
+    Continue,
+    Stop
 }
 
 impl<K> ObserverWorker<K>
@@ -37,28 +44,55 @@ where
             loopback_sender,
             dump_sem,
             deferred: Arc::default(),
+            next_deadline: None
         }
     }
 
     pub(crate) async fn run(mut self) {
         loop {
-            if let Err(e) = self.tick().await {
-                warn!("active blob will no longer be updated, shutdown the system");
-                warn!("{}", e);
-                break;
+            let tick_result = 
+                match self.next_deadline {
+                    None => self.tick().await,
+                    Some(deadline) => self.tick_with_deadline(deadline).await
+                };
+
+            match tick_result {
+                Ok(TickResult::Continue) => {},
+                Ok(TickResult::Stop) => {
+                    debug!("ObserverWorker stopping. No future update is possible");
+                    break;
+                },
+                Err(err) => {
+                    error!("ObserverWorker unexpected error: {:?}", err);
+                    panic!("ObserverWorker unexpected error: {:?}", err);
+                }
             }
         }
-        info!("observer stopped");
+        debug!("observer stopped");
     }
 
-    async fn tick(&mut self) -> Result<()> {
+    async fn tick(&mut self) -> Result<TickResult> {
         match self.receiver.recv().await {
-            Some(msg) => self.process_msg(msg).await,
-            None => {
-                return Err(anyhow!(
-                    "all observer connected to this worker are dropped, so worker is done"
-                        .to_string()
-                ))
+            Some(msg) => {
+                self.process_msg(msg).await?;
+                Ok(TickResult::Continue)
+            },
+            None => Ok(TickResult::Stop)
+        }
+    }
+
+    async fn tick_with_deadline(&mut self, deadline: Instant) -> Result<TickResult> {
+        match timeout_at(deadline, self.receiver.recv()).await {
+            Ok(Some(msg)) => {
+                self.process_msg(msg).await?;
+                Ok(TickResult::Continue)
+            },
+            Ok(None) => {
+                Ok(TickResult::Stop)
+            },
+            Err(_) => {
+                self.process_defered().await?;
+                Ok(TickResult::Continue)
             }
         }
     }
@@ -97,6 +131,10 @@ where
             }
             OperationType::DeferredDumpBlobIndexes => self.deffer_blob_indexes_dump().await?,
         }
+        Ok(())
+    }
+
+    async fn process_defered(&mut self) -> Result<()> {
         Ok(())
     }
 
