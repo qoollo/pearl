@@ -1,8 +1,8 @@
 use super::prelude::*;
 use tokio::{
-    sync::mpsc::{Receiver, Sender},
+    sync::mpsc::Receiver,
     sync::Semaphore,
-    time::{sleep, timeout_at, Instant},
+    time::{timeout_at, Instant, Duration},
 };
 
 pub(crate) struct ObserverWorker<K>
@@ -11,9 +11,8 @@ where
 {
     inner: Arc<Inner<K>>,
     receiver: Receiver<Msg>,
-    loopback_sender: Sender<Msg>,
     dump_sem: Arc<Semaphore>,
-    deferred: Arc<Mutex<Option<DeferredEventData>>>,
+    deferred_index_dump: Option<DeferredEventData>,
     next_deadline: Option<Instant>
 }
 
@@ -34,16 +33,14 @@ where
 {
     pub(crate) fn new(
         receiver: Receiver<Msg>,
-        loopback_sender: Sender<Msg>,
         inner: Arc<Inner<K>>,
         dump_sem: Arc<Semaphore>,
     ) -> Self {
         Self {
             inner,
             receiver,
-            loopback_sender,
             dump_sem,
-            deferred: Arc::default(),
+            deferred_index_dump: None,
             next_deadline: None
         }
     }
@@ -82,6 +79,8 @@ where
     }
 
     async fn tick_with_deadline(&mut self, deadline: Instant) -> Result<TickResult> {
+        // Extend deadline a little bit to guaranty, that process_defered will detect exceeding
+        let deadline = deadline + Duration::from_millis(10);
         match timeout_at(deadline, self.receiver.recv()).await {
             Ok(Some(msg)) => {
                 self.process_msg(msg).await?;
@@ -91,12 +90,28 @@ where
                 Ok(TickResult::Stop)
             },
             Err(_) => {
+                // Deadline reached
+                self.next_deadline = None; // Reset deadline
                 self.process_defered().await?;
                 Ok(TickResult::Continue)
             }
         }
     }
 
+    fn update_deadline(&mut self, deadline: Instant) {
+        match self.next_deadline {
+            None => {
+                self.next_deadline = Some(deadline);
+            },
+            Some(prev_deadline) => {
+                if deadline < prev_deadline {
+                    self.next_deadline = Some(deadline);
+                }
+            }
+        }
+    }
+
+    /// Processes messages
     async fn process_msg(&mut self, msg: Msg) -> Result<()> {
         if !self.predicate_wrapper(&msg.predicate).await {
             return Ok(());
@@ -134,37 +149,43 @@ where
         Ok(())
     }
 
+    /// Processes defered events
     async fn process_defered(&mut self) -> Result<()> {
+        self.process_deffered_blob_index_dump().await?;
+
         Ok(())
     }
 
-    async fn deffer_blob_indexes_dump(&self) -> Result<()> {
-        let mut deferred = self.deferred.lock().await;
-        if let Some(ref mut deferred) = *deferred {
+    async fn deffer_blob_indexes_dump(&mut self) -> Result<()> {
+        if let Some(deferred) = &mut self.deferred_index_dump {
             deferred.update_last_time();
         } else {
-            let sender = self.loopback_sender.clone();
-            let data = DeferredEventData::new();
-            *deferred = Some(data);
-            let min = self.inner.config().deferred_min_time().clone();
-            let max = self.inner.config().deferred_max_time().clone();
-            let deferred_local = self.deferred.clone();
-            tokio::spawn(async move {
-                loop {
-                    sleep(min).await;
-                    let mut deferred = deferred_local.lock().await;
-                    if deferred.as_ref().unwrap().last_time.elapsed() >= min
-                        || deferred.as_ref().unwrap().first_time.elapsed() >= max
-                    {
-                        let _ = sender
-                            .send(Msg::new(OperationType::TryDumpBlobIndexes, None))
-                            .await;
-                        *deferred = None;
-                        return;
-                    }
-                }
-            });
+            self.deferred_index_dump = Some(DeferredEventData::new());
         }
+
+        if let Some(deferred) = &self.deferred_index_dump {
+            let min = self.inner.config().deferred_min_time();
+            let max = self.inner.config().deferred_max_time();
+            let next_deadline = deferred.next_deadline(min, max);
+            self.update_deadline(next_deadline);
+        }
+
+        Ok(())
+    }
+
+    async fn process_deffered_blob_index_dump(&mut self) -> Result<()> {
+        if let Some(deferred) = &self.deferred_index_dump {
+            let min = self.inner.config().deferred_min_time();
+            let max = self.inner.config().deferred_max_time();
+            if deferred.last_time.elapsed() >= min || deferred.first_time.elapsed() >= max {
+                self.deferred_index_dump = None;
+                self.process_msg(Msg::new(OperationType::TryDumpBlobIndexes, None)).await?;
+            } else {
+                let next_deadline = deferred.next_deadline(min, max);
+                self.update_deadline(next_deadline);
+            }
+        }
+
         Ok(())
     }
 
@@ -258,5 +279,10 @@ impl DeferredEventData {
 
     fn update_last_time(&mut self) {
         self.last_time = Instant::now();
+    }
+
+    #[inline]
+    fn next_deadline(&self, min: Duration, max: Duration) -> Instant {
+        (self.first_time + max).min(self.last_time + min)
     }
 }

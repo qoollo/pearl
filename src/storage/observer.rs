@@ -83,11 +83,9 @@ where
         };
 
         let (sender, receiver) = channel(1024);  
-        let loop_sender = sender.clone();
         let dump_sem = inner.get_dump_sem();
         let worker = ObserverWorker::new(
             receiver,
-            loop_sender,
             inner,
             dump_sem,
         );
