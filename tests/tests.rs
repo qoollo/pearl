@@ -14,6 +14,7 @@ use std::{
     fs,
     hash::Hasher,
     time::{Duration, Instant},
+    sync::Arc
 };
 use tokio::time::sleep;
 
@@ -114,7 +115,7 @@ async fn test_storage_multiple_read_write() {
 async fn test_multithread_read_write() -> Result<(), String> {
     let now = Instant::now();
     let path = common::init("multithread");
-    let storage = common::default_test_storage_in(&path).await?;
+    let storage = Arc::new(common::default_test_storage_in(&path).await?);
     let threads = 16;
     let writes = 25;
     let indexes = common::create_indexes(threads, writes);
@@ -149,6 +150,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
         .collect::<Vec<_>>();
     debug!("make sure that all keys was written");
     common::check_all_written(&storage, keys).await?;
+    let storage = Arc::try_unwrap(storage).expect("this should be the last alive storage");
     common::close_storage(storage, &[&index]).await.unwrap();
     assert!(index.exists());
     fs::remove_dir_all(path).unwrap();

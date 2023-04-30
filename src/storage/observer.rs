@@ -1,4 +1,5 @@
 use super::prelude::*;
+use tokio::task::JoinHandle;
 use tokio::sync::{
     mpsc::{channel, Sender}
 };
@@ -45,7 +46,7 @@ impl Msg {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct Observer<K>
 where
     for<'a> K: Key<'a>,
@@ -53,13 +54,13 @@ where
     state: ObserverState<K>
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 enum ObserverState<K>
 where
     for<'a> K: Key<'a>,
 {
     Created(Arc<Inner<K>>),
-    Running(Sender<Msg>),
+    Running(Sender<Msg>, JoinHandle<()>),
     Stopped
 }
 
@@ -87,9 +88,21 @@ where
             receiver,
             inner
         );
-        tokio::spawn(worker.run());
+        let handle = tokio::spawn(worker.run());
 
-        self.state = ObserverState::Running(sender);
+        self.state = ObserverState::Running(sender, handle);
+    }
+
+    pub(crate) async fn shutdown(mut self) {
+        if let ObserverState::Running(sender, handle) = self.state {
+            std::mem::drop(sender); // Drop sender. That trigger ObserverWorker stopping
+            // Wait for completion
+            if let Err(err) = handle.await {
+                error!("Unexpected JoinError in Observer: {:?}", err);
+            }
+        }
+
+        self.state = ObserverState::Stopped;
     }
 
     pub(crate) async fn force_update_active_blob(&self, predicate: ActiveBlobPred) {
@@ -131,7 +144,7 @@ where
     }
 
     async fn send_msg(&self, msg: Msg) {
-        if let ObserverState::Running(sender) = &self.state {
+        if let ObserverState::Running(sender, _) = &self.state {
             let optype = msg.optype.clone();
             if let Err(e) = sender.send(msg).await {
                 error!(

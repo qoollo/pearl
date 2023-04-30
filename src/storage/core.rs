@@ -36,7 +36,7 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 /// ```
 ///
 /// [`Key`]: trait.Key.html
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Storage<K>
 where
     for<'a> K: Key<'a>,
@@ -551,6 +551,8 @@ where
                     .with_context(|| format!("blob {} dump failed", blob.name())),
             )
         }
+
+        //self.observer.shutdown().await;
         res
     }
 
