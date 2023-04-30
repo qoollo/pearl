@@ -13,7 +13,6 @@ where
     receiver: Receiver<Msg>,
     loopback_sender: Sender<Msg>,
     dump_sem: Arc<Semaphore>,
-    async_oplock: Arc<Mutex<()>>,
     deferred: Arc<Mutex<Option<DeferredEventData>>>,
 }
 
@@ -31,14 +30,12 @@ where
         loopback_sender: Sender<Msg>,
         inner: Arc<Inner<K>>,
         dump_sem: Arc<Semaphore>,
-        async_oplock: Arc<Mutex<()>>,
     ) -> Self {
         Self {
             inner,
             receiver,
             loopback_sender,
             dump_sem,
-            async_oplock,
             deferred: Arc::default(),
         }
     }
@@ -70,7 +67,6 @@ where
         if !self.predicate_wrapper(&msg.predicate).await {
             return Ok(());
         }
-        let _lock = self.async_oplock.lock().await;
         if !self.predicate_wrapper(&msg.predicate).await {
             return Ok(());
         }
