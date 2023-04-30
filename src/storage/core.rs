@@ -674,7 +674,7 @@ where
 
         let active_blob = if with_active {
             Some(Box::new(ASRwLock::new(
-                *Self::pop_active(&mut blobs, &self.inner.config).await?,
+                Self::pop_active(&mut blobs, &self.inner.config).await?,
             )))
         } else {
             None
@@ -696,15 +696,14 @@ where
         Ok(())
     }
 
-    async fn pop_active(blobs: &mut Vec<Blob<K>>, config: &Config) -> Result<Box<Blob<K>>> {
+    async fn pop_active(blobs: &mut Vec<Blob<K>>, config: &Config) -> Result<Blob<K>> {
         let mut active_blob = blobs
             .pop()
             .ok_or_else(|| {
                 let wd = config.work_dir();
                 error!("No blobs in {:?} to create an active one", wd);
                 Error::from(ErrorKind::Uninitialized)
-            })?
-            .boxed();
+            })?;
         active_blob.load_index().await?;
         Ok(active_blob)
     }
@@ -1079,9 +1078,9 @@ where
         }
         let mut safe = self.safe.write().await;
         if let None = safe.active_blob {
-            let blob_opt = safe.blobs.write().await.pop().map(|b| b.boxed());
+            let blob_opt = safe.blobs.write().await.pop();
             if let Some(blob) = blob_opt {
-                safe.active_blob = Some(Box::new(ASRwLock::new(*blob)));
+                safe.active_blob = Some(Box::new(ASRwLock::new(blob)));
                 Ok(())
             } else {
                 Err(Error::uninitialized().into())
@@ -1258,8 +1257,8 @@ where
         }
     }
 
-    pub(crate) async fn replace_active_blob(&mut self, blob: Box<ASRwLock<Blob<K>>>) -> Result<()> {
-        let old_active = self.active_blob.replace(blob);
+    pub(crate) async fn replace_active_blob(&mut self, blob: Blob<K>) -> Result<()> {
+        let old_active = self.active_blob.replace(Box::new(ASRwLock::new(blob)));
         if let Some(blob) = old_active {
             self.blobs.write().await.push(blob.into_inner()).await;
         }
