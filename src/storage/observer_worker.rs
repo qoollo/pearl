@@ -1,7 +1,6 @@
 use super::prelude::*;
 use tokio::{
     sync::mpsc::Receiver,
-    sync::Semaphore,
     time::{timeout_at, Instant, Duration},
 };
 
@@ -11,7 +10,6 @@ where
 {
     inner: Arc<Inner<K>>,
     receiver: Receiver<Msg>,
-    dump_sem: Arc<Semaphore>,
     deferred_index_dump: Option<DeferredEventData>,
     next_deadline: Option<Instant>
 }
@@ -34,12 +32,10 @@ where
     pub(crate) fn new(
         receiver: Receiver<Msg>,
         inner: Arc<Inner<K>>,
-        dump_sem: Arc<Semaphore>,
     ) -> Self {
         Self {
             inner,
             receiver,
-            dump_sem,
             deferred_index_dump: None,
             next_deadline: None
         }
@@ -122,29 +118,27 @@ where
         match msg.optype {
             OperationType::ForceUpdateActiveBlob => {
                 update_active_blob(&self.inner).await?;
-            }
+            },
             OperationType::CloseActiveBlob => {
                 self.inner.close_active_blob().await?;
-            }
+            },
             OperationType::CreateActiveBlob => {
                 self.inner.create_active_blob().await?;
-            }
+            },
             OperationType::RestoreActiveBlob => {
                 self.inner.restore_active_blob().await?;
-            }
+            },
             OperationType::TryDumpBlobIndexes => {
-                self.inner
-                    .try_dump_old_blob_indexes(self.dump_sem.clone())
-                    .await;
-            }
+                self.inner.try_dump_old_blob_indexes().await;
+            },
             OperationType::TryUpdateActiveBlob => {
                 if self.try_update_active_blob().await? {
-                    self.inner
-                        .try_dump_old_blob_indexes(self.dump_sem.clone())
-                        .await;
+                    self.inner.try_dump_old_blob_indexes().await;
                 }
-            }
-            OperationType::DeferredDumpBlobIndexes => self.deffer_blob_indexes_dump().await?,
+            },
+            OperationType::DeferredDumpBlobIndexes => {
+                self.deffer_blob_indexes_dump().await?;
+            },
         }
         Ok(())
     }

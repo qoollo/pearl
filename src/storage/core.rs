@@ -1064,7 +1064,7 @@ where
         &self.safe
     }
 
-    pub(crate) fn get_dump_sem(&self) -> Arc<Semaphore> {
+    fn get_dump_sem(&self) -> Arc<Semaphore> {
         self.config.dump_sem()
     }
 
@@ -1192,8 +1192,8 @@ where
         self.safe.read().await.fsyncdata().await
     }
 
-    pub(crate) async fn try_dump_old_blob_indexes(&self, sem: Arc<Semaphore>) {
-        self.safe.write().await.try_dump_old_blob_indexes(sem).await;
+    pub(crate) async fn try_dump_old_blob_indexes(&self) {
+        self.safe.write().await.try_dump_old_blob_indexes(self.get_dump_sem()).await;
     }
 }
 
