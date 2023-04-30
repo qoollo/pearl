@@ -227,9 +227,7 @@ where
         }
         if replace {
             let new_active = get_new_active_blob(&self.inner).await?;
-            write
-                .replace_active_blob(Box::new(ASRwLock::new(*new_active)))
-                .await?;
+            write.replace_active_blob(new_active).await?;
             return Ok(true);
         }
         Ok(false)
@@ -245,21 +243,18 @@ where
         .safe()
         .write()
         .await
-        .replace_active_blob(Box::new(ASRwLock::new(*new_active)))
+        .replace_active_blob(new_active)
         .await?;
     Ok(())
 }
 
-async fn get_new_active_blob<K>(inner: &Inner<K>) -> Result<Box<Blob<K>>>
+async fn get_new_active_blob<K>(inner: &Inner<K>) -> Result<Blob<K>>
 where
     for<'a> K: Key<'a> + 'static,
 {
     let next_name = inner.next_blob_name()?;
     trace!("obtaining new active blob");
-    let new_active = Blob::open_new(next_name, inner.io_driver().clone(), inner.config().blob())
-        .await?
-        .boxed();
-    Ok(new_active)
+    Blob::open_new(next_name, inner.io_driver().clone(), inner.config().blob()).await
 }
 
 impl DeferredEventData {
