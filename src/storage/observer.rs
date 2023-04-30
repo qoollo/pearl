@@ -83,11 +83,9 @@ where
         };
 
         let (sender, receiver) = channel(1024);  
-        let dump_sem = inner.get_dump_sem();
         let worker = ObserverWorker::new(
             receiver,
-            inner,
-            dump_sem,
+            inner
         );
         tokio::spawn(worker.run());
 
