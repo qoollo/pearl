@@ -1,7 +1,6 @@
 use super::prelude::*;
 use tokio::sync::{
-    mpsc::{channel, Sender},
-    Semaphore,
+    mpsc::{channel, Sender}
 };
 
 #[derive(Debug, Clone)]
@@ -51,36 +50,50 @@ pub(crate) struct Observer<K>
 where
     for<'a> K: Key<'a>,
 {
-    inner: Option<Arc<Inner<K>>>,
-    pub sender: Option<Sender<Msg>>,
-    dump_sem: Arc<Semaphore>,
+    state: ObserverState<K>
+}
+
+#[derive(Debug, Clone)]
+enum ObserverState<K>
+where
+    for<'a> K: Key<'a>,
+{
+    Created(Arc<Inner<K>>),
+    Running(Sender<Msg>),
+    Stopped
 }
 
 impl<K> Observer<K>
 where
     for<'a> K: Key<'a> + 'static,
 {
-    pub(crate) fn new(inner: Arc<Inner<K>>, dump_sem: Arc<Semaphore>) -> Self {
+    pub(crate) fn new(inner: Arc<Inner<K>>) -> Self {
         Self {
-            inner: Some(inner),
-            sender: None,
-            dump_sem,
+            state: ObserverState::Created(inner)
         }
     }
 
     pub(crate) fn run(&mut self) {
-        if let Some(inner) = self.inner.take() {
-            let (sender, receiver) = channel(1024);
-            let loop_sender = sender.clone();
-            self.sender = Some(sender);
-            let worker = ObserverWorker::new(
-                receiver,
-                loop_sender,
-                inner,
-                self.dump_sem.clone(),
-            );
-            tokio::spawn(worker.run());
+        if !matches!(&self.state, ObserverState::Created(_)) {
+            return;
         }
+
+        let ObserverState::Created(inner) = std::mem::replace(&mut self.state, ObserverState::Stopped) else {
+            unreachable!("State should be ObserverState::Created. It was checked at the beggining");
+        };
+
+        let (sender, receiver) = channel(1024);  
+        let loop_sender = sender.clone();
+        let dump_sem = inner.get_dump_sem();
+        let worker = ObserverWorker::new(
+            receiver,
+            loop_sender,
+            inner,
+            dump_sem,
+        );
+        tokio::spawn(worker.run());
+
+        self.state = ObserverState::Running(sender);
     }
 
     pub(crate) async fn force_update_active_blob(&self, predicate: ActiveBlobPred) {
@@ -122,7 +135,7 @@ where
     }
 
     async fn send_msg(&self, msg: Msg) {
-        if let Some(sender) = &self.sender {
+        if let ObserverState::Running(sender) = &self.state {
             let optype = msg.optype.clone();
             if let Err(e) = sender.send(msg).await {
                 error!(

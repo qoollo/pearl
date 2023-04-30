@@ -95,7 +95,7 @@ where
 {
     pub(crate) fn new(config: Config, iodriver: IoDriver) -> Self {
         let inner = Arc::new(Inner::new(config, iodriver));
-        let observer = Observer::new(inner.clone(), inner.get_dump_sem());
+        let observer = Observer::new(inner.clone());
         Self { inner, observer }
     }
 
