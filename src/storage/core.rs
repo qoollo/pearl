@@ -94,9 +94,8 @@ where
     for<'a> K: Key<'a> + 'static,
 {
     pub(crate) fn new(config: Config, iodriver: IoDriver) -> Self {
-        let dump_sem = config.dump_sem();
         let inner = Arc::new(Inner::new(config, iodriver));
-        let observer = Observer::new(inner.clone(), dump_sem);
+        let observer = Observer::new(inner.clone(), inner.get_dump_sem());
         Self { inner, observer }
     }
 
@@ -658,7 +657,7 @@ where
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>, with_active: bool) -> Result<()> {
         trace!("init from existing: {:#?}", files);
-        let disk_access_sem = self.observer.get_dump_sem();
+        let disk_access_sem = self.inner.get_dump_sem();
         let (mut blobs, corrupted_count) = Self::read_blobs(
             &files,
             self.inner.iodriver.clone(),
@@ -1070,6 +1069,10 @@ where
 
     pub(crate) fn safe(&self) -> &RwLock<Safe<K>> {
         &self.safe
+    }
+
+    pub(crate) fn get_dump_sem(&self) -> Arc<Semaphore> {
+        self.config.dump_sem()
     }
 
     pub(crate) async fn restore_active_blob(&self) -> Result<()> {
