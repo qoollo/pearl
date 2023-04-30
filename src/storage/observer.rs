@@ -141,8 +141,4 @@ where
             error!("storage observer task was not launched");
         }
     }
-
-    pub(crate) fn get_dump_sem(&self) -> Arc<Semaphore> {
-        self.dump_sem.clone()
-    }
 }
