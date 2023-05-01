@@ -5,7 +5,6 @@ use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
 use crate::filter::{CombinedFilter, FilterTrait};
-use crate::record::PartiallySerializedRecord;
 use crate::storage::{BlobRecordTimestamp, ReadResult};
 
 use super::prelude::*;

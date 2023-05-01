@@ -13,7 +13,7 @@ pub(crate) use super::prelude::*;
 
 mod prelude {
     pub(crate) use super::*;
-    pub(crate) use async_lock::{RwLock as ASRwLock, RwLockReadGuard as ASRwLockReadGuard};
+    pub(crate) use async_lock::RwLock as ASRwLock;
     pub(crate) use index::Index;
     pub(crate) use std::sync::RwLock as SRwLock;
 }
