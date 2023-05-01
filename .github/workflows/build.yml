@@ -38,7 +38,7 @@ jobs:
       - name: Set env variable
         run: |
           echo "$env:GITHUB_SHA"
-          set PEARL_COMMIT_HASH "$env:GITHUB_SHA".Substring(0, 7)
+          $env:PEARL_COMMIT_HASH="$env:GITHUB_SHA".Substring(0, 7)
       - name: Test env variable
         run: echo "$PEARL_COMMIT_HASH"
       - name: Install latest stable
