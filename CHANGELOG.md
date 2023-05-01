@@ -4,16 +4,19 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Limited Windows support added (#257)
 
 #### Changed
 - Remove hard dependency on io uring (#230)
+- Update offset only when write is imminent to prevent data corruption due to async Future cancellation (#228)
+- Improved Arc placement in Storage (#185)
+- Improved visibility levels in Storage (#186)
 
 #### Fixed
 - Fix fork in test duplicating test environment (#254)
+- Bug in ObserverWorker that prevents its stop and leads to memory leak (#259)
 
 #### Updated
-- Update offset only when write is imminent to prevent data corruption due to async Future cancellation (#228)
 
 
 
