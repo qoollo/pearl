@@ -2,6 +2,7 @@ use super::prelude::*;
 use tokio::{
     sync::mpsc::Receiver,
     time::{timeout_at, Instant, Duration},
+    task::JoinHandle
 };
 
 pub(crate) struct ObserverWorker<K>
@@ -10,8 +11,9 @@ where
 {
     inner: Arc<Inner<K>>,
     receiver: Receiver<Msg>,
-    deferred_index_dump: Option<DeferredEventData>,
-    next_deadline: Option<Instant>
+    next_deadline: Option<Instant>,
+    deferred_index_dump_info: Option<Box<DeferredEventData>>,
+    index_dump_task: Option<JoinHandle<()>>
 }
 
 struct DeferredEventData {
@@ -36,13 +38,19 @@ where
         Self {
             inner,
             receiver,
-            deferred_index_dump: None,
-            next_deadline: None
+            next_deadline: None,
+            deferred_index_dump_info: None,
+            index_dump_task: None
         }
     }
 
     pub(crate) async fn run(mut self) {
         loop {
+            if self.index_dump_task.as_ref().map_or(false, |task| task.is_finished()) {
+                // Complete task if it is already finished
+                complete_task(&mut self.index_dump_task, "index_dump_task").await;
+            }
+
             let tick_result = 
                 match self.next_deadline {
                     None => self.tick().await,
@@ -61,6 +69,10 @@ where
                 }
             }
         }
+
+        // Wait for background task completion
+        complete_task(&mut self.index_dump_task, "index_dump_task").await;
+
         debug!("observer stopped");
     }
 
@@ -94,6 +106,7 @@ where
         }
     }
 
+    /// Updates next deadline, chosing the closest between passed and laready set
     fn update_deadline(&mut self, deadline: Instant) {
         match self.next_deadline {
             None => {
@@ -129,11 +142,11 @@ where
                 self.inner.restore_active_blob().await?;
             },
             OperationType::TryDumpBlobIndexes => {
-                self.inner.try_dump_old_blob_indexes().await;
+                self.try_run_old_blob_indexes_dump_task().await;
             },
             OperationType::TryUpdateActiveBlob => {
                 if self.try_update_active_blob().await? {
-                    self.inner.try_dump_old_blob_indexes().await;
+                    self.try_run_old_blob_indexes_dump_task().await;
                 }
             },
             OperationType::DeferredDumpBlobIndexes => {
@@ -151,13 +164,13 @@ where
     }
 
     async fn deffer_blob_indexes_dump(&mut self) -> Result<()> {
-        if let Some(deferred) = &mut self.deferred_index_dump {
+        if let Some(deferred) = &mut self.deferred_index_dump_info {
             deferred.update_last_time();
         } else {
-            self.deferred_index_dump = Some(DeferredEventData::new());
+            self.deferred_index_dump_info = Some(Box::new(DeferredEventData::new()));
         }
 
-        if let Some(deferred) = &self.deferred_index_dump {
+        if let Some(deferred) = &self.deferred_index_dump_info {
             let min = self.inner.config().deferred_min_time();
             let max = self.inner.config().deferred_max_time();
             let next_deadline = deferred.next_deadline(min, max);
@@ -168,12 +181,12 @@ where
     }
 
     async fn process_deffered_blob_index_dump(&mut self) -> Result<()> {
-        if let Some(deferred) = &self.deferred_index_dump {
+        if let Some(deferred) = &self.deferred_index_dump_info {
             let min = self.inner.config().deferred_min_time();
             let max = self.inner.config().deferred_max_time();
             if deferred.last_time.elapsed() >= min || deferred.first_time.elapsed() >= max {
-                self.deferred_index_dump = None;
-                self.process_msg(Msg::new(OperationType::TryDumpBlobIndexes, None)).await?;
+                self.deferred_index_dump_info = None;
+                self.try_run_old_blob_indexes_dump_task().await;
             } else {
                 let next_deadline = deferred.next_deadline(min, max);
                 self.update_deadline(next_deadline);
@@ -182,6 +195,25 @@ where
 
         Ok(())
     }
+
+
+    /// Runs index dumping task in background if no task is already running
+    async fn try_run_old_blob_indexes_dump_task(&mut self) {
+        if self.index_dump_task.as_ref().map_or(false, |task| !task.is_finished()) {
+            // Dump task is in progress. Avoid starting second one
+            return;
+        }
+
+        complete_task(&mut self.index_dump_task, "index_dump_task").await;
+
+        let inner = self.inner.clone();
+        let task = tokio::spawn(async move {
+            inner.try_dump_old_blob_indexes().await
+        });
+
+        self.index_dump_task = Some(task);
+    }
+
 
     async fn predicate_wrapper(&self, predicate: &Option<ActiveBlobPred>) -> bool {
         if let Some(predicate) = predicate {
@@ -255,6 +287,18 @@ where
     let next_name = inner.next_blob_name()?;
     trace!("obtaining new active blob");
     Blob::open_new(next_name, inner.io_driver().clone(), inner.config().blob()).await
+}
+
+/// Waits for `task` completion, observes its result and resets `task` value to `None`.
+async fn complete_task(task: &mut Option<JoinHandle<()>>, task_name: &str) {
+    if let Some(task) = task.take() {
+        // Observing completed task result
+        if let Err(err) = task.await {
+            error!("Unexpected JoinError on '{}' task: {:?}", task_name, err);
+        } else {
+            trace!("Background task '{}' completed", task_name);
+        }
+    }
 }
 
 impl DeferredEventData {
