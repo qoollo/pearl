@@ -5,6 +5,7 @@ Pearl changelog
 ## [Unreleased]
 #### Added
 - Limited Windows support added (#257)
+- CI: build and test on Windows (#261)
 
 #### Changed
 - Remove hard dependency on io uring (#230)
