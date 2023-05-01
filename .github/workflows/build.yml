@@ -40,7 +40,7 @@ jobs:
           echo "$env:GITHUB_SHA"
           $env:PEARL_COMMIT_HASH="$env:GITHUB_SHA".Substring(0, 7)
       - name: Test env variable
-        run: echo "$PEARL_COMMIT_HASH"
+        run: echo "$env:PEARL_COMMIT_HASH"
       - name: Install latest stable
         uses: actions-rs/toolchain@v1
         with:
