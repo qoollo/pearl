@@ -111,7 +111,7 @@ async fn test_storage_multiple_read_write() {
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
 async fn test_multithread_read_write() -> Result<(), String> {
     let now = Instant::now();
     let path = common::init("multithread");
