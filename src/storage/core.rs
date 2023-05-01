@@ -977,19 +977,36 @@ where
     /// # Errors
     /// Fails after any disk IO errors.
     pub async fn delete(&self, key: impl AsRef<K>, only_if_presented: bool) -> Result<u64> {
-        let mut total = 0;
+        {
+            // Try read lock first
+            let safe = self.inner.safe.read().await;
+            if only_if_presented || safe.active_blob.is_some() {
+                return self.delete_core(&safe, key.as_ref(), only_if_presented).await;
+            }
+        }
+
+        // Active blob should be initialized => use write lock
         let mut safe = self.inner.safe.write().await;
-        total += self
-            .mark_all_as_deleted_active(&mut *safe, key.as_ref(), only_if_presented)
-            .await?;
-        total += self
-            .mark_all_as_deleted_closed(&mut *safe, key.as_ref())
-            .await?;
-        debug!("{} deleted total", total);
-        Ok(total)
+        if !only_if_presented {
+            self.inner.ensure_active_blob_exists(&mut safe).await?;
+        }
+        return self.delete_core(&mut safe, key.as_ref(), only_if_presented).await;
     }
 
-    async fn mark_all_as_deleted_closed(&self, safe: &mut Safe<K>, key: &K) -> Result<u64> {
+    /// Core deletion logic, when lock on `Safe<K>` is acquired
+    async fn delete_core(&self, safe: &Safe<K>, key: &K, only_if_presented: bool) -> Result<u64> {
+        let deleted_in_active = Self::mark_all_as_deleted_active(safe, key, only_if_presented).await?;
+        let deleted_in_closed = Self::mark_all_as_deleted_closed(safe, key).await?;
+
+        if deleted_in_closed > 0 {
+            self.observer.defer_dump_old_blob_indexes().await;
+        }
+
+        debug!("{} deleted total", deleted_in_active + deleted_in_closed);
+        Ok(deleted_in_active + deleted_in_closed)
+    }
+
+    async fn mark_all_as_deleted_closed(safe: &Safe<K>, key: &K) -> Result<u64> {
         let mut blobs = safe.blobs.write().await;
         let entries_closed_blobs = blobs
             .iter_mut()
@@ -1012,20 +1029,18 @@ where
             .fold(0, |s, n| s + n)
             .await;
         debug!("{} deleted from closed blobs", total);
-        self.observer.defer_dump_old_blob_indexes().await;
         Ok(total as u64)
     }
 
     async fn mark_all_as_deleted_active(
-        &self,
-        safe: &mut Safe<K>,
+        safe: &Safe<K>,
         key: &K,
         only_if_presented: bool,
     ) -> Result<u64> {
         if !only_if_presented {
-            self.inner.ensure_active_blob_exists(safe).await?;
+            assert!(safe.active_blob.is_some(), "Active BLOB should be initialized before calling 'mark_all_as_deleted_active'");
         }
-        let active_blob = safe.active_blob.as_deref_mut();
+        let active_blob = safe.active_blob.as_deref();
         let count = if let Some(active_blob) = active_blob {
             let is_deleted = active_blob
                 .write()
