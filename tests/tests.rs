@@ -1118,7 +1118,7 @@ async fn test_in_memory_and_disk_records_retrieval() -> Result<()> {
         ));
     }
 
-    common::clean(storage, path).await.expect("clean success");
+    common::clean(storage, path).await.expect("clean error");
     Ok(())
 }
 
@@ -1138,7 +1138,8 @@ async fn test_read_all_with_deletion_marker_delete_middle() -> Result<()> {
     assert!(!read[0].is_deleted());
     assert!(read[1].is_deleted());
 
-    common::clean(storage, path).await.expect("clean success");
+    std::mem::drop(read); // Entry holds file
+    common::clean(storage, path).await.expect("clean error");
     Ok(())
 }
 
@@ -1161,6 +1162,7 @@ async fn test_read_all_with_deletion_marker_delete_middle_different_blobs() -> R
     assert!(!read[0].is_deleted());
     assert!(read[1].is_deleted());
 
-    common::clean(storage, path).await.expect("clean success");
+    std::mem::drop(read); // Entry holds file
+    common::clean(storage, path).await.expect("clean error");
     Ok(())
 }

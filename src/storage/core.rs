@@ -1196,8 +1196,9 @@ where
         self.safe.read().await.fsyncdata().await
     }
 
+    /// Dumps indexes on old blobs. This method is slow, so it is better to run it in background
     pub(crate) async fn try_dump_old_blob_indexes(&self) {
-        self.safe.write().await.try_dump_old_blob_indexes(self.get_dump_sem()).await;
+        Safe::try_dump_old_blob_indexes(&self.safe, self.get_dump_sem(), Duration::from_millis(200)).await;
     }
 }
 
@@ -1265,22 +1266,37 @@ where
         Ok(())
     }
 
-    pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
-        let blobs = self.blobs.clone();
-        tokio::spawn(async move {
-            trace!("acquire blobs write to dump old blobs");
-            let mut write_blobs = blobs.write().await;
-            trace!("dump old blobs");
+    /// Dumps indexes on old blobs. This method is slow, so it is better to run it in background
+    pub(crate) async fn try_dump_old_blob_indexes(safe: &RwLock<Self>, dump_sem: Arc<Semaphore>, max_quantum: Duration) {
+        trace!("dump indexes for old blobs started");
+
+        let mut finished = false;
+        let mut last_attempt_progress: usize = 0;
+        while !finished {
+            let quantum_start = Instant::now();
+            let  mut current_progress = 0;
+            finished = true;
+
+            let safe_guard = safe.read().await;
+            let mut write_blobs = safe_guard.blobs.write().await;  
             for blob in write_blobs.iter_mut() {
-                trace!("dumping old blob");
-                let _ = sem.acquire().await;
-                trace!("acquired sem for dumping old blobs");
+                if current_progress > last_attempt_progress && quantum_start.elapsed() > max_quantum {
+                    // Time quantum ended. Unlock blobs to allow other threads to work
+                    finished = false;
+                    last_attempt_progress = current_progress;
+                    break;
+                }
+                current_progress += 1;
+                let _ = dump_sem.acquire().await;
                 if let Err(e) = blob.dump().await {
                     error!("Error dumping blob ({}): {}", blob.name(), e);
+                } else {
+                    trace!("finished dumping old blob: {}", blob.name());
                 }
-                trace!("finished dumping old blob");
             }
-        });
+        }
+
+        trace!("dump indexes for old blobs finished");
     }
 }
 
