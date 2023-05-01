@@ -36,11 +36,7 @@ jobs:
       - name: Checks-out repository
         uses: actions/checkout@v2
       - name: Set env variable
-        run: |
-          echo "$env:GITHUB_SHA"
-          echo "PEARL_COMMIT_HASH=$($env:GITHUB_SHA.Substring(0, 7))" >> $env:GITHUB_ENV
-      - name: Test env variable
-        run: echo "$env:PEARL_COMMIT_HASH"
+        run: echo "PEARL_COMMIT_HASH=$($env:GITHUB_SHA.Substring(0, 7))" >> $env:GITHUB_ENV
       - name: Install latest stable
         uses: actions-rs/toolchain@v1
         with:
