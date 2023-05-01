@@ -125,9 +125,7 @@ where
         if !self.predicate_wrapper(&msg.predicate).await {
             return Ok(());
         }
-        if !self.predicate_wrapper(&msg.predicate).await {
-            return Ok(());
-        }
+        
         match msg.optype {
             OperationType::ForceUpdateActiveBlob => {
                 update_active_blob(&self.inner).await?;
