@@ -53,14 +53,29 @@ where
 }
 
 #[derive(Debug, Default)] // Default can be used to initialize structure with 0
-pub(crate) struct MemoryAttrs {
-    pub(crate) key_size: usize,
-    pub(crate) btree_entry_size: usize,
+struct MemoryAttrs<K> {
+    records_count: usize,
+    records_allocated: usize,
+    marker: PhantomData<K>,
+}
+
+impl<K> MemoryAttrs<K>
+where
+    for<'a> K: Key<'a>,
+{
+    const fn key_size(&self) -> usize {
+        K::LEN as usize
+    }
+
+    const fn bptree_entry_size(&self) -> usize {
+        size_of::<Vec<u8>>() + self.key_size() + size_of::<Vec<RecordHeader>>()
+    }
+
     // contains actual size occupied by record header in RAM (which helps
     // to compute actual size of indices in RAM in `InMemory` state)
-    pub(crate) record_header_size: usize,
-    pub(crate) records_count: usize,
-    pub(crate) records_allocated: usize,
+    const fn record_header_size(&self) -> usize {
+        size_of::<RecordHeader>() + self.key_size()
+    }
 }
 
 pub type InMemoryIndex<K> = BTreeMap<K, Vec<RecordHeader>>;
@@ -68,7 +83,7 @@ pub type InMemoryIndex<K> = BTreeMap<K, Vec<RecordHeader>>;
 #[derive(Debug, Default)]
 pub(crate) struct InMemoryData<K> {
     headers: InMemoryIndex<K>,
-    mem: MemoryAttrs
+    mem: MemoryAttrs<K>,
 }
 
 impl<K> InMemoryData<K>
@@ -76,11 +91,38 @@ where
     for<'a> K: Key<'a>,
 {
     fn new(headers: InMemoryIndex<K>, count: usize) -> Self {
-        let mem = compute_mem_attrs(&headers, count);
-        Self {
-            headers,
-            mem
-        }
+        let mem = MemoryAttrs {
+            records_allocated: headers.values().fold(0, |acc, v| acc + v.capacity()),
+            records_count: count,
+            marker: PhantomData,
+        };
+
+        Self { headers, mem }
+    }
+
+    fn memory_used(&self) -> usize {
+        let Self { mem, .. } = &self;
+        let MemoryAttrs {
+            records_count,
+            records_allocated,
+            ..
+        } = &mem;
+        let len = self.headers.len();
+        trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
+                mem.record_header_size(), records_allocated, len, mem.bptree_entry_size());
+        // last minus is neccessary, because allocated but not initialized record
+        // headers don't have key allocated on heap
+        mem.record_header_size() * records_allocated + len * mem.bptree_entry_size()
+            - (records_allocated - records_count) * mem.key_size()
+    }
+
+    fn records_count(&self) -> usize {
+        self.mem.records_count
+    }
+
+    fn register_record_allocation(&mut self, allocated: usize) {
+        self.mem.records_allocated += allocated;
+        self.mem.records_count += 1;
     }
 }
 
@@ -234,22 +276,7 @@ where
 
     pub(crate) fn memory_used(&self) -> usize {
         if let State::InMemory(data) = &self.inner {
-            let data = data.read().expect("rwloc");
-            let MemoryAttrs { 
-                key_size, 
-                btree_entry_size, 
-                record_header_size, 
-                records_count, 
-                records_allocated 
-            } = &data.mem;
-            let len = data.headers.len();
-            trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
-                record_header_size, records_allocated, len, btree_entry_size
-            );
-            // last minus is neccessary, because allocated but not initialized record headers don't
-            // have key allocated on heap
-            record_header_size * records_allocated + len * btree_entry_size
-                - (records_allocated - records_count) * key_size
+            data.read().expect("rwlock").memory_used()
         } else {
             0
         }
@@ -291,15 +318,11 @@ where
                     trace!("capacity growth: {}", v.capacity() - old_capacity);
                     allocated = v.capacity() - old_capacity;
                 } else {
-                    if data.mem.records_count == 0 {
-                        set_key_related_fields::<K>(&mut data.mem);
-                    }
                     let v = vec![h];
                     allocated = v.capacity(); // capacity == 1
                     data.headers.insert(key.clone(), v);
                 }
-                data.mem.records_allocated += allocated;
-                data.mem.records_count += 1;
+                data.register_record_allocation(allocated);
                 Ok(())
             }
             State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
@@ -384,11 +407,7 @@ where
     fn count(&self) -> usize {
         match &self.inner {
             State::OnDisk(ref findex) => findex.records_count(),
-            State::InMemory(d) => d
-                .read()
-                .expect("rwlock")
-                .mem
-                .records_count
+            State::InMemory(d) => d.read().expect("rwlock").records_count(),
         }
     }
 

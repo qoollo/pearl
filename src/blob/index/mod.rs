@@ -16,7 +16,7 @@ pub(crate) use bptree::BPTreeFileIndex;
 use header::IndexHeader;
 
 pub(crate) use self::core::{
-    FileIndexTrait, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,
+    FileIndexTrait, InMemoryIndex, Index, IndexConfig, HEADER_VERSION,
     INDEX_HEADER_MAGIC_BYTE,
 };
 pub(crate) use super::prelude::*;
