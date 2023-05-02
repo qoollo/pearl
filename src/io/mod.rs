@@ -18,7 +18,7 @@ pub(crate) use windows::File;
 pub use windows::IoDriver;
 
 #[cfg(not(any(target_family = "unix", target_family = "windows")))]
-compile_error!("Specified target platform is not supported (only unix family supported)");
+compile_error!("Specified target platform is not supported (only unix and windows family supported)");
 
 
 pub(crate) enum WritableData {
