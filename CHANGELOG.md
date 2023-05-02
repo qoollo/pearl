@@ -4,7 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Windows support added (#257)
 
 #### Changed
 - Remove hard dependency on io uring (#230)
