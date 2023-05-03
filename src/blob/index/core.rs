@@ -63,19 +63,10 @@ impl<K> MemoryAttrs<K>
 where
     for<'a> K: Key<'a>,
 {
-    const fn key_size(&self) -> usize {
-        K::LEN as usize
-    }
-
-    const fn bptree_entry_size(&self) -> usize {
-        size_of::<Vec<u8>>() + self.key_size() + size_of::<Vec<RecordHeader>>()
-    }
-
-    // contains actual size occupied by record header in RAM (which helps
-    // to compute actual size of indices in RAM in `InMemory` state)
-    const fn record_header_size(&self) -> usize {
-        size_of::<RecordHeader>() + self.key_size()
-    }
+    const KEY_SIZE: usize = K::LEN as usize;
+    const BPTREE_ENTRY_SIZE: usize =
+        size_of::<Vec<u8>>() + MemoryAttrs::<K>::KEY_SIZE + size_of::<Vec<RecordHeader>>();
+    const RECORD_HEADER_SIZE: usize = size_of::<RecordHeader>() + MemoryAttrs::<K>::KEY_SIZE;
 }
 
 pub type InMemoryIndex<K> = BTreeMap<K, Vec<RecordHeader>>;
@@ -109,11 +100,12 @@ where
         } = &mem;
         let len = self.headers.len();
         trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
-                mem.record_header_size(), records_allocated, len, mem.bptree_entry_size());
+                MemoryAttrs::<K>::RECORD_HEADER_SIZE, records_allocated, len, MemoryAttrs::<K>::BPTREE_ENTRY_SIZE);
         // last minus is neccessary, because allocated but not initialized record
         // headers don't have key allocated on heap
-        mem.record_header_size() * records_allocated + len * mem.bptree_entry_size()
-            - (records_allocated - records_count) * mem.key_size()
+        MemoryAttrs::<K>::RECORD_HEADER_SIZE * records_allocated
+            + len * MemoryAttrs::<K>::BPTREE_ENTRY_SIZE
+            - (records_allocated - records_count) * MemoryAttrs::<K>::KEY_SIZE
     }
 
     fn records_count(&self) -> usize {
