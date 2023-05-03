@@ -4,6 +4,7 @@ use crate::prelude::*;
 use bytes::{Bytes, BytesMut};
 use std::sync::atomic::AtomicU64;
 use std::{
+    io::{Error as IOError, ErrorKind as IOErrorKind},
     os::windows::fs::{FileExt, OpenOptionsExt},
     time::SystemTime,
 };
@@ -168,34 +169,32 @@ impl FileInner {
     fn read_exact_at(&self, mut buf: &mut [u8], mut offset: u64) -> IOResult<()> {
         while !buf.is_empty() {
             match self.std_file.seek_read(buf, offset) {
-                Ok(0) => break,
+                Ok(0) => {
+                    return Err(IOError::new(IOErrorKind::UnexpectedEof, "failed to fill whole buffer"));
+                },
                 Ok(n) => {
                     let tmp = buf;
                     buf = &mut tmp[n..];
                     offset += n as u64;
                 }
-                Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(ref e) if e.kind() == IOErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
             }
         }
-        if !buf.is_empty() {
-            Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 
     fn write_all_at(&self, mut buf: &[u8], mut offset: u64) -> IOResult<()> {
         while !buf.is_empty() {
             match self.std_file.seek_write(buf, offset) {
                 Ok(0) => {
-                    return Err(std::io::Error::new(std::io::ErrorKind::WriteZero, "failed to write whole buffer"));
+                    return Err(IOError::new(IOErrorKind::WriteZero, "failed to write whole buffer"));
                 }
                 Ok(n) => {
                     buf = &buf[n..];
                     offset += n as u64
                 }
-                Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(ref e) if e.kind() == IOErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
             }
         }
@@ -204,7 +203,8 @@ impl FileInner {
 }
 
 
-/// Trait implementation to track that all required function are implemented
+/// Trait implementation to track that all required function are implemented.
+/// It should not contain the actual implementation of the functions, because `async_trait` adds the overhead by boxing the resulting `Future`.
 #[async_trait::async_trait]
 impl super::super::FileTrait for File {
     fn size(&self) -> u64 {

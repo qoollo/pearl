@@ -199,7 +199,8 @@ impl File {
 }
 
 
-/// Trait implementation to track that all required function are implemented
+/// Trait implementation to track that all required function are implemented.
+/// It should not contain the actual implementation of the functions, because `async_trait` adds the overhead by boxing the resulting `Future`.
 #[async_trait::async_trait]
 impl super::super::FileTrait for File {
     fn size(&self) -> u64 {

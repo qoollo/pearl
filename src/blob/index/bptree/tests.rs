@@ -76,9 +76,9 @@ fn get_test_dir(dir_name: &str) -> PathBuf {
     return result;
 }
 
-fn clean(index: BPTreeFileIndex<KeyType>, path: impl AsRef<Path>) -> Result<()> {
+fn clean(index: BPTreeFileIndex<KeyType>, path: impl AsRef<Path>) {
     std::mem::drop(index);
-    std::fs::remove_dir_all(path).map_err(Into::into)
+    std::fs::remove_dir_all(path).expect("Cleaning test dir error");
 }
 
 fn create_io_driver() -> IoDriver {
@@ -111,7 +111,7 @@ async fn serialize_deserialize_file() {
         .expect("Can't get InMemoryIndex");
     assert_eq!(inmem, inmem_after);
 
-    clean(findex, test_dir).expect("clean");
+    clean(findex, test_dir);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -150,7 +150,7 @@ async fn blob_size_invalidation() {
         }
     ));
 
-    clean(findex, test_dir).expect("clean");
+    clean(findex, test_dir);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -204,7 +204,7 @@ async fn magic_byte_corruption() {
         }
     ));
 
-    clean(findex, test_dir).expect("clean");
+    clean(findex, test_dir);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -256,7 +256,7 @@ async fn check_get_any() {
         }
     }
 
-    clean(findex, test_dir).expect("clean");
+    clean(findex, test_dir);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -298,7 +298,7 @@ async fn preserves_records_order() {
         );
     }
 
-    clean(findex, test_dir).expect("clean");
+    clean(findex, test_dir);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -352,5 +352,5 @@ async fn check_get() {
         }
     }
 
-    clean(findex, test_dir).expect("clean");
+    clean(findex, test_dir);
 }
