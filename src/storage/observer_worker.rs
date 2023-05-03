@@ -148,7 +148,7 @@ where
                 }
             },
             OperationType::DeferredDumpBlobIndexes => {
-                self.deffer_blob_indexes_dump().await?;
+                self.defer_blob_indexes_dump().await?;
             },
         }
         Ok(())
@@ -156,12 +156,12 @@ where
 
     /// Processes defered events
     async fn process_defered(&mut self) -> Result<()> {
-        self.process_deffered_blob_index_dump().await?;
+        self.process_deferred_blob_index_dump().await?;
 
         Ok(())
     }
 
-    async fn deffer_blob_indexes_dump(&mut self) -> Result<()> {
+    async fn defer_blob_indexes_dump(&mut self) -> Result<()> {
         if let Some(deferred) = &mut self.deferred_index_dump_info {
             deferred.update_last_time();
         } else {
@@ -178,7 +178,7 @@ where
         Ok(())
     }
 
-    async fn process_deffered_blob_index_dump(&mut self) -> Result<()> {
+    async fn process_deferred_blob_index_dump(&mut self) -> Result<()> {
         if let Some(deferred) = &self.deferred_index_dump_info {
             let min = self.inner.config().deferred_min_time();
             let max = self.inner.config().deferred_max_time();

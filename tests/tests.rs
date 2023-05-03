@@ -46,7 +46,7 @@ async fn test_storage_init_new() {
     assert_eq!(storage.blobs_count().await, 1);
     // check if active blob file exists
     assert!(path.join("test.0.blob").exists());
-    common::clean(storage, path).await.unwrap();
+    common::clean(storage, path).await;
 }
 
 #[tokio::test]
@@ -82,7 +82,7 @@ async fn test_storage_read_write() {
     write_one(&storage, 1234, data, None).await.unwrap();
     let new_data = storage.read(KeyTest::new(key)).await.unwrap();
     assert_eq!(new_data, ReadResult::Found(Bytes::copy_from_slice(data)));
-    common::clean(storage, path).await.unwrap();
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -107,7 +107,7 @@ async fn test_storage_multiple_read_write() {
         .collect::<Vec<_>>()
         .await;
     assert_eq!(keys.len(), data_from_file.len());
-    common::clean(storage, path).await.unwrap();
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -158,7 +158,7 @@ async fn test_multithread_read_write() -> Result<(), String> {
 }
 
 #[tokio::test]
-async fn test_storage_multithread_blob_overflow() -> Result<()> {
+async fn test_storage_multithread_blob_overflow() {
     let now = Instant::now();
     let path = common::init("overflow");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
@@ -171,9 +171,8 @@ async fn test_storage_multithread_blob_overflow() -> Result<()> {
     }
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
-    common::clean(storage, &path).await?;
+    common::clean(storage, &path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
-    Ok(())
 }
 
 #[tokio::test]
@@ -191,7 +190,7 @@ async fn test_storage_close() {
 }
 
 #[tokio::test]
-async fn test_on_disk_index() -> Result<()> {
+async fn test_on_disk_index() {
     let now = Instant::now();
     let path = common::init("index");
     let data_size = 500;
@@ -227,7 +226,7 @@ async fn test_on_disk_index() -> Result<()> {
     assert!(matches!(new_data, ReadResult::Found(_)));
     assert_eq!(new_data.unwrap(), data);
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
-    common::clean(storage, path).await
+    common::clean(storage, path).await;
 }
 
 #[test]
@@ -283,7 +282,7 @@ fn test_work_dir_lock() {
             );
 
             runtime.block_on(
-                common::clean(storage, path.as_ref()).map(|res| res.expect("clean failed")),
+                common::clean(storage, path.as_ref())
             );
 
             warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
@@ -336,9 +335,7 @@ async fn test_corrupted_index_regeneration() {
         .await
         .expect("storage should be loaded successfully");
 
-    common::clean(new_storage, path)
-        .map(|res| res.expect("clean failed"))
-        .await;
+    common::clean(new_storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -395,9 +392,7 @@ async fn test_write_with() {
     write_one(&storage, key, data, None).await.unwrap();
     let data = b"data_with_meta";
     write_one(&storage, key, data, Some("1.0")).await.unwrap();
-    common::clean(storage, path)
-        .map(|res| res.expect("clean failed"))
-        .await;
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -423,9 +418,7 @@ async fn test_write_with_with_on_disk_index() {
 
     // assert!(write_one(&storage, key, data, Some("1.0")).await.is_err());
 
-    common::clean(storage, path)
-        .map(|res| res.expect("clean failed"))
-        .await;
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -445,7 +438,7 @@ async fn test_write_512_records_with_same_key() {
             .await
             .unwrap();
     }
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -479,7 +472,7 @@ async fn test_read_with() {
         data_read_with,
         ReadResult::Found(Bytes::copy_from_slice(data1))
     );
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -536,7 +529,7 @@ async fn test_read_all_load_all() {
     records_read.sort();
     assert_eq!(records.len(), records_read.len());
     assert_eq!(records, records_read);
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -574,7 +567,7 @@ async fn test_read_all_find_one_key() {
             .unwrap(),
         &records_read[0]
     );
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -597,7 +590,7 @@ async fn test_check_bloom_filter_single() {
         assert_eq!(storage.check_filters(pos_key).await, Some(true));
         assert_eq!(storage.check_filters(neg_key).await, Some(false));
     }
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 #[tokio::test]
@@ -619,7 +612,7 @@ async fn test_check_bloom_filter_multiple() {
     for i in 800..1600 {
         assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(false));
     }
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -643,7 +636,7 @@ async fn test_check_bloom_filter_multiple_offloaded() {
     for i in 800..1600 {
         assert_eq!(storage.check_filters(KeyTest::new(i)).await, Some(false));
     }
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -687,7 +680,7 @@ async fn test_check_bloom_filter_init_from_existing() {
     let fpr = false_positive_counter as f64 / base as f64;
     info!("false positive rate: {:.6} < 0.001", fpr);
     assert!(fpr < 0.001);
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -737,7 +730,7 @@ async fn test_check_bloom_filter_generated() {
     let fpr = false_positive_counter as f64 / base as f64;
     info!("false positive rate: {:.6} < 0.001", fpr);
     assert!(fpr < 0.001);
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -781,7 +774,7 @@ async fn test_records_count() {
     assert_eq!(storage.records_count().await, count);
     assert!(storage.records_count_in_active_blob().await < Some(count));
 
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -800,7 +793,7 @@ async fn test_records_count_in_active() {
 
     assert_eq!(storage.records_count_in_active_blob().await, Some(count));
 
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -821,7 +814,7 @@ async fn test_records_count_detailed() {
     assert!(details[0].1 > 18);
     assert_eq!(details.iter().fold(0, |acc, d| acc + d.1), count);
 
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -840,7 +833,7 @@ async fn test_manual_close_active_blob() {
     storage.try_close_active_blob().await.unwrap();
     assert!(path.join("test.0.blob").exists());
     assert!(!path.join("test.1.blob").exists());
-    common::clean(storage, path).await.unwrap();
+    common::clean(storage, path).await;
 }
 
 #[tokio::test]
@@ -878,7 +871,7 @@ async fn test_blobs_count_random_names() {
     }
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     assert_eq!(names.len() + 1, storage.blobs_count().await);
-    common::clean(storage, path).await.expect("clean");
+    common::clean(storage, path).await;
 }
 
 #[tokio::test]
@@ -946,7 +939,7 @@ async fn test_memory_index() {
         KEY_AND_DATA_SIZE * 3 + RECORD_HEADER_SIZE * 3
     ); // 3 keys, 3 records in active blob (3 allocated)
     assert!(path.join("test.1.blob").exists());
-    common::clean(storage, path).await.unwrap();
+    common::clean(storage, path).await;
 }
 
 #[tokio::test]
@@ -966,7 +959,7 @@ async fn test_mark_as_deleted_single() {
         storage.contains(delete_key).await.unwrap(),
         ReadResult::Deleted(_)
     ));
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -999,7 +992,7 @@ async fn test_mark_as_deleted_deferred_dump() {
         update_time.modified().unwrap(),
         new_update_time.modified().unwrap()
     );
-    common::clean(storage, path).await.expect("clean failed");
+    common::clean(storage, path).await;
 }
 
 #[tokio::test]
@@ -1048,7 +1041,7 @@ async fn test_blob_header_validation() {
         }
     );
     assert!(is_correct);
-    common::clean(storage, path).await.unwrap();
+    common::clean(storage, path).await;
 }
 
 #[tokio::test]
@@ -1114,7 +1107,7 @@ async fn test_in_memory_and_disk_records_retrieval() -> Result<()> {
         ));
     }
 
-    common::clean(storage, path).await.expect("clean error");
+    common::clean(storage, path).await;
     Ok(())
 }
 
@@ -1159,6 +1152,6 @@ async fn test_read_all_with_deletion_marker_delete_middle_different_blobs() -> R
     assert!(read[1].is_deleted());
 
     std::mem::drop(read); // Entry holds file
-    common::clean(storage, path).await.expect("clean error");
+    common::clean(storage, path).await;
     Ok(())
 }

@@ -4,6 +4,9 @@ use tokio::sync::{
     mpsc::{channel, Sender}
 };
 
+/// Max size of the channel between `Observer` and `ObserverWorker`
+const OBSERVER_CHANNEL_SIZE_LIMIT: usize = 1024;
+
 #[derive(Debug, Clone)]
 pub(crate) enum OperationType {
     CreateActiveBlob = 0,
@@ -83,7 +86,7 @@ where
             unreachable!("State should be ObserverState::Created. It was checked at the beggining");
         };
 
-        let (sender, receiver) = channel(1024);  
+        let (sender, receiver) = channel(OBSERVER_CHANNEL_SIZE_LIMIT);  
         let worker = ObserverWorker::new(
             receiver,
             inner
