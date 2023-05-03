@@ -218,20 +218,20 @@ where
     }
 
     pub(crate) fn memory_used(&self) -> usize {
-        if let State::InMemory(data) = &self.inner {
-            let mem = self
-                .mem
-                .as_ref()
-                .expect("No memory info in `InMemory` State");
-            trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
-            mem.record_header_size, mem.records_allocated, data.len(), mem.btree_entry_size
-            );
-            // last minus is neccessary, because allocated but not initialized record headers don't
-            // have key allocated on heap
-            mem.record_header_size * mem.records_allocated + data.len() * mem.btree_entry_size
-                - (mem.records_allocated - mem.records_count) * mem.key_size
-        } else {
-            0
+        match &self.inner {
+            State::InMemory(data) => {
+                let mem = self
+                    .mem
+                    .as_ref()
+                    .expect("No memory info in `InMemory` State");
+                trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
+                    mem.record_header_size, mem.records_allocated, data.len(), mem.btree_entry_size);
+                // last minus is neccessary, because allocated but not initialized record headers don't
+                // have key allocated on heap
+                mem.record_header_size * mem.records_allocated + data.len() * mem.btree_entry_size
+                    - (mem.records_allocated - mem.records_count) * mem.key_size
+            }
+            State::OnDisk(file) => file.memory_used(),
         }
     }
 
@@ -397,6 +397,7 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
     async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)>;
     async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>>;
     fn validate(&self, blob_size: u64) -> Result<()>;
+    fn memory_used(&self) -> usize;
 }
 
 #[async_trait::async_trait]
