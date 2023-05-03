@@ -4,7 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Include file index ram memory used (#262)
 
 #### Changed
 - Remove hard dependency on io uring (#230)
