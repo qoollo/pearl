@@ -4,7 +4,6 @@ extern crate log;
 use anyhow::Result;
 use bytes::Bytes;
 use futures::{
-    future::FutureExt,
     stream::{futures_unordered::FuturesUnordered, FuturesOrdered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
@@ -68,7 +67,7 @@ async fn test_storage_init_from_existing() {
     assert_eq!(storage.blobs_count().await, 2);
     assert!(path.join("test.0.blob").exists());
     assert!(path.join("test.1.blob").exists());
-    common::clean(storage, path).await.unwrap();
+    common::clean(storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
 }
 
@@ -1128,7 +1127,7 @@ async fn test_read_all_with_deletion_marker_delete_middle() -> Result<()> {
     assert!(read[1].is_deleted());
 
     std::mem::drop(read); // Entry holds file
-    common::clean(storage, path).await.expect("clean error");
+    common::clean(storage, path).await;
     Ok(())
 }
 
