@@ -68,7 +68,7 @@ impl Into<usize> for KeyType {
 fn get_test_dir(dir_name: &str) -> PathBuf {
     let result = std::env::temp_dir()
         .join("pearl_bptree_test")
-        .join((std::time::UNIX_EPOCH.elapsed().unwrap().as_secs() % 1_563_100_000).to_string())
+        .join(std::time::UNIX_EPOCH.elapsed().unwrap().as_secs().to_string())
         .join(dir_name);
 
     std::fs::create_dir_all(&result).expect("Directory created");
