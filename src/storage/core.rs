@@ -63,6 +63,7 @@ where
     for<'a> K: Key<'a>,
 {
     pub(crate) active_blob: Option<Box<RwLock<Blob<K>>>>,
+    write_sem: Semaphore,
     pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
 }
 
@@ -323,19 +324,24 @@ where
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
-        let result = Blob::write(blob, key, record).await.or_else(|err| {
-            let e = err.downcast::<Error>()?;
-            if let ErrorKind::FileUnavailable(kind) = e.kind() {
-                let work_dir = self
-                    .inner
-                    .config
-                    .work_dir()
-                    .ok_or_else(Error::uninitialized)?;
-                Err(Error::work_dir_unavailable(work_dir, e.to_string(), kind.to_owned()).into())
-            } else {
-                Err(e.into())
-            }
-        });
+        let result = Blob::write(blob, &safe.write_sem, key, record)
+            .await
+            .or_else(|err| {
+                let e = err.downcast::<Error>()?;
+                if let ErrorKind::FileUnavailable(kind) = e.kind() {
+                    let work_dir = self
+                        .inner
+                        .config
+                        .work_dir()
+                        .ok_or_else(Error::uninitialized)?;
+                    Err(
+                        Error::work_dir_unavailable(work_dir, e.to_string(), kind.to_owned())
+                            .into(),
+                    )
+                } else {
+                    Err(e.into())
+                }
+            });
         self.try_update_active_blob(blob).await?;
         result
     }
@@ -1197,6 +1203,7 @@ where
         Self {
             active_blob: None,
             blobs: Arc::new(RwLock::new(HierarchicalFilters::new(group_size, 1))),
+            write_sem: Semaphore::new(1),
         }
     }
 
