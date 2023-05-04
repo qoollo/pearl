@@ -88,7 +88,7 @@ where
 
     async fn tick_with_deadline(&mut self, deadline: Instant) -> Result<TickResult> {
         // Extend deadline a little bit to guaranty, that process_defered will detect exceeding
-        let deadline = deadline + Duration::from_millis(10);
+        let deadline = deadline + Duration::from_millis(1);
         match timeout_at(deadline, self.receiver.recv()).await {
             Ok(Some(msg)) => {
                 self.process_msg(msg).await?;
