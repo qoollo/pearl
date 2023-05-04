@@ -62,7 +62,7 @@ pub(crate) struct Safe<K>
 where
     for<'a> K: Key<'a>,
 {
-    pub(crate) active_blob: Option<Box<ASRwLock<Blob<K>>>>,
+    pub(crate) active_blob: Option<Box<RwLock<Blob<K>>>>,
     pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
 }
 
@@ -340,7 +340,7 @@ where
         result
     }
 
-    async fn try_update_active_blob(&self, active_blob: &Box<ASRwLock<Blob<K>>>) -> Result<()> {
+    async fn try_update_active_blob(&self, active_blob: &Box<RwLock<Blob<K>>>) -> Result<()> {
         let config_max_size = self
             .inner
             .config
@@ -652,7 +652,7 @@ where
         let mut safe = self.inner.safe.write().await;
         let blob =
             Blob::open_new(next, self.inner.iodriver.clone(), self.inner.config.blob()).await?;
-        safe.active_blob = Some(Box::new(ASRwLock::new(blob)));
+        safe.active_blob = Some(Box::new(RwLock::new(blob)));
         Ok(())
     }
 
@@ -676,7 +676,7 @@ where
         blobs.sort_by_key(Blob::id);
 
         let active_blob = if with_active {
-            Some(Box::new(ASRwLock::new(
+            Some(Box::new(RwLock::new(
                 *Self::pop_active(&mut blobs, &self.inner.config).await?,
             )))
         } else {
@@ -1068,7 +1068,7 @@ where
         if let None = safe.active_blob {
             let blob_opt = safe.blobs.write().await.pop().map(|b| b.boxed());
             if let Some(blob) = blob_opt {
-                safe.active_blob = Some(Box::new(ASRwLock::new(*blob)));
+                safe.active_blob = Some(Box::new(RwLock::new(*blob)));
                 Ok(())
             } else {
                 Err(Error::uninitialized().into())
@@ -1090,7 +1090,7 @@ where
         if let None = safe.active_blob {
             let next = self.next_blob_name()?;
             let blob = Blob::open_new(next, self.iodriver.clone(), self.config.blob()).await?;
-            safe.active_blob = Some(Box::new(ASRwLock::new(blob)));
+            safe.active_blob = Some(Box::new(RwLock::new(blob)));
             Ok(())
         } else {
             Ok(())
@@ -1238,7 +1238,7 @@ where
         Ok(())
     }
 
-    pub(crate) async fn replace_active_blob(&mut self, blob: Box<ASRwLock<Blob<K>>>) -> Result<()> {
+    pub(crate) async fn replace_active_blob(&mut self, blob: Box<RwLock<Blob<K>>>) -> Result<()> {
         let old_active = self.active_blob.replace(blob);
         if let Some(blob) = old_active {
             self.blobs.write().await.push(blob.into_inner()).await;
