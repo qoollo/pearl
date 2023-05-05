@@ -112,8 +112,8 @@ where
         self.mem.records_count
     }
 
-    fn register_record_allocation(&mut self, allocated: usize) {
-        self.mem.records_allocated += allocated;
+    fn register_record_allocation(&mut self, records_allocated: usize) {
+        self.mem.records_allocated += records_allocated;
         self.mem.records_count += 1;
     }
 }
@@ -303,18 +303,18 @@ where
                 debug!("blob index simple push bloom filter add");
                 self.filter.add(key);
                 debug!("blob index simple push key: {:?}", h.key());
-                let allocated;
+                let records_allocated;
                 if let Some(v) = data.headers.get_mut(key) {
                     let old_capacity = v.capacity();
                     v.push(h);
                     trace!("capacity growth: {}", v.capacity() - old_capacity);
-                    allocated = v.capacity() - old_capacity;
+                    records_allocated = v.capacity() - old_capacity;
                 } else {
                     let v = vec![h];
-                    allocated = v.capacity(); // capacity == 1
+                    records_allocated = v.capacity(); // capacity == 1
                     data.headers.insert(key.clone(), v);
                 }
-                data.register_record_allocation(allocated);
+                data.register_record_allocation(records_allocated);
                 Ok(())
             }
             State::OnDisk(_) => Err(Error::from(ErrorKind::Index(
