@@ -36,25 +36,25 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 /// ```
 ///
 /// [`Key`]: trait.Key.html
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Storage<K>
 where
     for<'a> K: Key<'a>,
 {
-    pub(crate) inner: Inner<K>,
+    inner: Arc<Inner<K>>,
     observer: Observer<K>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct Inner<K>
 where
     for<'a> K: Key<'a>,
 {
-    pub(crate) config: Config,
-    pub(crate) safe: Arc<RwLock<Safe<K>>>,
-    next_blob_id: Arc<AtomicUsize>,
-    pub(crate) iodriver: IoDriver,
-    pub(crate) corrupted_blobs: Arc<AtomicUsize>,
+    config: Config,
+    safe: RwLock<Safe<K>>,
+    next_blob_id: AtomicUsize,
+    iodriver: IoDriver,
+    corrupted_blobs: AtomicUsize,
 }
 
 #[derive(Debug)]
@@ -62,8 +62,8 @@ pub(crate) struct Safe<K>
 where
     for<'a> K: Key<'a>,
 {
-    pub(crate) active_blob: Option<Box<ASRwLock<Blob<K>>>>,
-    pub(crate) blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
+    active_blob: Option<Box<ASRwLock<Blob<K>>>>,
+    blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
 }
 
 async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
@@ -94,9 +94,8 @@ where
     for<'a> K: Key<'a> + 'static,
 {
     pub(crate) fn new(config: Config, iodriver: IoDriver) -> Self {
-        let dump_sem = config.dump_sem();
-        let inner = Inner::new(config, iodriver);
-        let observer = Observer::new(inner.clone(), dump_sem);
+        let inner = Arc::new(Inner::new(config, iodriver));
+        let observer = Observer::new(inner.clone());
         Self { inner, observer }
     }
 
@@ -153,13 +152,6 @@ where
         self.launch_observer();
         trace!("observer started");
         Ok(())
-    }
-
-    /// Checks if there is a pending async operation
-    /// Returns boolean value (true - if there is, false otherwise)
-    /// Never falls
-    pub fn is_pending(&self) -> bool {
-        self.observer.is_pending()
     }
 
     /// FIXME: maybe it would be better to add check of `is_pending` state of observer for all
@@ -547,18 +539,23 @@ where
     /// # Errors
     /// Fails because of any IO errors
     pub async fn close(self) -> Result<()> {
-        let mut safe = self.inner.safe.write().await;
-        let active_blob = safe.active_blob.take();
         let mut res = Ok(());
-        if let Some(blob) = active_blob {
-            let mut blob = blob.write().await;
-            res = res.and(
-                blob.dump()
-                    .await
-                    .map(|_| info!("active blob dumped"))
-                    .with_context(|| format!("blob {} dump failed", blob.name())),
-            )
-        }
+        {
+            let mut safe = self.inner.safe.write().await;
+            let active_blob = safe.active_blob.take();      
+            if let Some(blob) = active_blob {
+                let mut blob = blob.write().await;
+                res = res.and(
+                    blob.dump()
+                        .await
+                        .map(|_| info!("active blob dumped"))
+                        .with_context(|| format!("blob {} dump failed", blob.name())),
+                )
+            }
+        };
+
+        // Wait for observer worker shutdown. Locks should be released at this point
+        self.observer.shutdown().await;
         res
     }
 
@@ -658,7 +655,7 @@ where
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>, with_active: bool) -> Result<()> {
         trace!("init from existing: {:#?}", files);
-        let disk_access_sem = self.observer.get_dump_sem();
+        let disk_access_sem = self.inner.get_dump_sem();
         let (mut blobs, corrupted_count) = Self::read_blobs(
             &files,
             self.inner.iodriver.clone(),
@@ -677,7 +674,7 @@ where
 
         let active_blob = if with_active {
             Some(Box::new(ASRwLock::new(
-                *Self::pop_active(&mut blobs, &self.inner.config).await?,
+                Self::pop_active(&mut blobs, &self.inner.config).await?,
             )))
         } else {
             None
@@ -699,15 +696,14 @@ where
         Ok(())
     }
 
-    async fn pop_active(blobs: &mut Vec<Blob<K>>, config: &Config) -> Result<Box<Blob<K>>> {
+    async fn pop_active(blobs: &mut Vec<Blob<K>>, config: &Config) -> Result<Blob<K>> {
         let mut active_blob = blobs
             .pop()
             .ok_or_else(|| {
                 let wd = config.work_dir();
                 error!("No blobs in {:?} to create an active one", wd);
                 Error::from(ErrorKind::Uninitialized)
-            })?
-            .boxed();
+            })?;
         active_blob.load_index().await?;
         Ok(active_blob)
     }
@@ -981,19 +977,36 @@ where
     /// # Errors
     /// Fails after any disk IO errors.
     pub async fn delete(&self, key: impl AsRef<K>, only_if_presented: bool) -> Result<u64> {
-        let mut total = 0;
+        {
+            // Try read lock first
+            let safe = self.inner.safe.read().await;
+            if only_if_presented || safe.active_blob.is_some() {
+                return self.delete_core(&safe, key.as_ref(), only_if_presented).await;
+            }
+        }
+
+        // Active blob should be initialized => use write lock
         let mut safe = self.inner.safe.write().await;
-        total += self
-            .mark_all_as_deleted_active(&mut *safe, key.as_ref(), only_if_presented)
-            .await?;
-        total += self
-            .mark_all_as_deleted_closed(&mut *safe, key.as_ref())
-            .await?;
-        debug!("{} deleted total", total);
-        Ok(total)
+        if !only_if_presented {
+            self.inner.ensure_active_blob_exists(&mut safe).await?;
+        }
+        return self.delete_core(&mut safe, key.as_ref(), only_if_presented).await;
     }
 
-    async fn mark_all_as_deleted_closed(&self, safe: &mut Safe<K>, key: &K) -> Result<u64> {
+    /// Core deletion logic, when lock on `Safe<K>` is acquired
+    async fn delete_core(&self, safe: &Safe<K>, key: &K, only_if_presented: bool) -> Result<u64> {
+        let deleted_in_active = Self::mark_all_as_deleted_active(safe, key, only_if_presented).await?;
+        let deleted_in_closed = Self::mark_all_as_deleted_closed(safe, key).await?;
+
+        if deleted_in_closed > 0 {
+            self.observer.defer_dump_old_blob_indexes().await;
+        }
+
+        debug!("{} deleted total", deleted_in_active + deleted_in_closed);
+        Ok(deleted_in_active + deleted_in_closed)
+    }
+
+    async fn mark_all_as_deleted_closed(safe: &Safe<K>, key: &K) -> Result<u64> {
         let mut blobs = safe.blobs.write().await;
         let entries_closed_blobs = blobs
             .iter_mut()
@@ -1016,20 +1029,18 @@ where
             .fold(0, |s, n| s + n)
             .await;
         debug!("{} deleted from closed blobs", total);
-        self.observer.defer_dump_old_blob_indexes().await;
         Ok(total as u64)
     }
 
     async fn mark_all_as_deleted_active(
-        &self,
-        safe: &mut Safe<K>,
+        safe: &Safe<K>,
         key: &K,
         only_if_presented: bool,
     ) -> Result<u64> {
         if !only_if_presented {
-            self.inner.ensure_active_blob_exists(safe).await?;
+            assert!(safe.active_blob.is_some(), "Active BLOB should be initialized before calling 'mark_all_as_deleted_active'");
         }
-        let active_blob = safe.active_blob.as_deref_mut();
+        let active_blob = safe.active_blob.as_deref();
         let count = if let Some(active_blob) = active_blob {
             let is_deleted = active_blob
                 .write()
@@ -1052,12 +1063,28 @@ where
 {
     fn new(config: Config, iodriver: IoDriver) -> Self {
         Self {
-            safe: Arc::new(RwLock::new(Safe::new(config.bloom_filter_group_size()))),
+            safe: RwLock::new(Safe::new(config.bloom_filter_group_size())),
             config,
-            next_blob_id: Arc::new(AtomicUsize::new(0)),
+            next_blob_id: AtomicUsize::new(0),
             iodriver,
-            corrupted_blobs: Arc::new(AtomicUsize::new(0)),
+            corrupted_blobs: AtomicUsize::new(0),
         }
+    }
+
+    pub(crate) fn config(&self) -> &Config {
+        &self.config
+    }
+
+    pub(crate) fn io_driver(&self) -> &IoDriver {
+        &self.iodriver
+    }
+
+    pub(crate) fn safe(&self) -> &RwLock<Safe<K>> {
+        &self.safe
+    }
+
+    fn get_dump_sem(&self) -> Arc<Semaphore> {
+        self.config.dump_sem()
     }
 
     pub(crate) async fn restore_active_blob(&self) -> Result<()> {
@@ -1066,9 +1093,9 @@ where
         }
         let mut safe = self.safe.write().await;
         if let None = safe.active_blob {
-            let blob_opt = safe.blobs.write().await.pop().map(|b| b.boxed());
+            let blob_opt = safe.blobs.write().await.pop();
             if let Some(blob) = blob_opt {
-                safe.active_blob = Some(Box::new(ASRwLock::new(*blob)));
+                safe.active_blob = Some(Box::new(ASRwLock::new(blob)));
                 Ok(())
             } else {
                 Err(Error::uninitialized().into())
@@ -1184,8 +1211,9 @@ where
         self.safe.read().await.fsyncdata().await
     }
 
-    pub(crate) async fn try_dump_old_blob_indexes(&self, sem: Arc<Semaphore>) {
-        self.safe.write().await.try_dump_old_blob_indexes(sem).await;
+    /// Dumps indexes on old blobs. This method is slow, so it is better to run it in background
+    pub(crate) async fn try_dump_old_blob_indexes(&self) {
+        Safe::try_dump_old_blob_indexes(&self.safe, self.get_dump_sem(), Duration::from_millis(200)).await;
     }
 }
 
@@ -1238,30 +1266,52 @@ where
         Ok(())
     }
 
-    pub(crate) async fn replace_active_blob(&mut self, blob: Box<ASRwLock<Blob<K>>>) -> Result<()> {
-        let old_active = self.active_blob.replace(blob);
+    pub(crate) async fn read_active_blob<'a>(&'a self) -> Option<async_lock::RwLockReadGuard<'a, Blob<K>>> {
+        match &self.active_blob {
+            None => None,
+            Some(blob) => Some(blob.read().await)
+        }
+    }
+
+    pub(crate) async fn replace_active_blob(&mut self, blob: Blob<K>) -> Result<()> {
+        let old_active = self.active_blob.replace(Box::new(ASRwLock::new(blob)));
         if let Some(blob) = old_active {
             self.blobs.write().await.push(blob.into_inner()).await;
         }
         Ok(())
     }
 
-    pub(crate) async fn try_dump_old_blob_indexes(&mut self, sem: Arc<Semaphore>) {
-        let blobs = self.blobs.clone();
-        tokio::spawn(async move {
-            trace!("acquire blobs write to dump old blobs");
-            let mut write_blobs = blobs.write().await;
-            trace!("dump old blobs");
+    /// Dumps indexes on old blobs. This method is slow, so it is better to run it in background
+    pub(crate) async fn try_dump_old_blob_indexes(safe: &RwLock<Self>, dump_sem: Arc<Semaphore>, max_quantum: Duration) {
+        trace!("dump indexes for old blobs started");
+
+        let mut finished = false;
+        let mut last_attempt_progress: usize = 0;
+        while !finished {
+            let quantum_start = Instant::now();
+            let  mut current_progress = 0;
+            finished = true;
+
+            let safe_guard = safe.read().await;
+            let mut write_blobs = safe_guard.blobs.write().await;  
             for blob in write_blobs.iter_mut() {
-                trace!("dumping old blob");
-                let _ = sem.acquire().await;
-                trace!("acquired sem for dumping old blobs");
+                if current_progress > last_attempt_progress && quantum_start.elapsed() > max_quantum {
+                    // Time quantum ended. Unlock blobs to allow other threads to work
+                    finished = false;
+                    last_attempt_progress = current_progress;
+                    break;
+                }
+                current_progress += 1;
+                let _ = dump_sem.acquire().await;
                 if let Err(e) = blob.dump().await {
                     error!("Error dumping blob ({}): {}", blob.name(), e);
+                } else {
+                    trace!("finished dumping old blob: {}", blob.name());
                 }
-                trace!("finished dumping old blob");
             }
-        });
+        }
+
+        trace!("dump indexes for old blobs finished");
     }
 }
 

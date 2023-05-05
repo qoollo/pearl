@@ -140,10 +140,10 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<()> {
-    std::thread::sleep(std::time::Duration::from_millis(100));
-    storage.close().await?;
-    fs::remove_dir_all(path).map_err(Into::into)
+pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) {
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    storage.close().await.expect("Storage closing error");
+    fs::remove_dir_all(path).expect("Test directory cleaning error");
 }
 
 pub async fn close_storage(storage: Storage<KeyTest>, expected_files: &[&PathBuf]) -> Result<()> {

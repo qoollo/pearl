@@ -113,10 +113,6 @@ where
         Ok(())
     }
 
-    pub(crate) fn boxed(self) -> Box<Self> {
-        Box::new(self)
-    }
-
     pub(crate) async fn from_file(
         path: PathBuf,
         iodriver: IoDriver,
