@@ -8,7 +8,7 @@ Pearl changelog
 
 #### Changed
 - Remove hard dependency on io uring (#230)
-- Remove upgradable lock from write path (#249)
+- BLOB-wide exclusive lock removed from the write path, instead the short lock on the in-memory index added (#249)
 
 #### Fixed
 - Fix fork in test duplicating test environment (#254)
