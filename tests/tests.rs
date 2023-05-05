@@ -933,6 +933,7 @@ async fn test_memory_index() {
     storage.try_close_active_blob().await.unwrap();
     // Doesn't work without this: indices are written in old btree (which I want to dump in memory)
     sleep(Duration::from_millis(100)).await;
+    let file_index_size = storage.index_memory().await;
     for (key, data) in records.iter().skip(7) {
         println!("{} {:?}", key, data);
         write_one(&storage, *key, data, None).await.unwrap();
@@ -940,7 +941,7 @@ async fn test_memory_index() {
     }
     assert_eq!(
         storage.index_memory().await,
-        KEY_AND_DATA_SIZE * 3 + RECORD_HEADER_SIZE * 3
+        KEY_AND_DATA_SIZE * 3 + RECORD_HEADER_SIZE * 3 + file_index_size
     ); // 3 keys, 3 records in active blob (3 allocated)
     assert!(path.join("test.1.blob").exists());
     common::clean(storage, path).await.unwrap();

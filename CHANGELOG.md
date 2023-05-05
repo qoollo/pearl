@@ -5,9 +5,11 @@ Pearl changelog
 ## [Unreleased]
 #### Added
 - Windows support added (#257)
+- Include file index memory in the calculation of occupied memory (#262)
 
 #### Changed
 - Remove hard dependency on io uring (#230)
+- BLOB-wide exclusive lock removed from the write path, instead the short lock on the in-memory index added (#249)
 
 #### Fixed
 - Fix fork in test duplicating test environment (#254)
