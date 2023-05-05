@@ -128,7 +128,7 @@ where
         info!("{} blob init started", name);
         let size = file.size();
 
-        let header = Header::from_file(&name, iodriver.clone())
+        let header = Header::from_file(&file, &path)
             .await
             .with_context(|| format!("failed to read blob header. Blob file: {:?}", path))?;
 

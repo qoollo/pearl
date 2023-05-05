@@ -4,6 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Windows support added (#257)
 - Include file index memory in the calculation of occupied memory (#262)
 
 #### Changed

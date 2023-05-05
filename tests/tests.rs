@@ -1003,23 +1003,27 @@ async fn test_mark_as_deleted_deferred_dump() {
 #[tokio::test]
 async fn test_blob_header_validation() {
     use pearl::error::{AsPearlError, ValidationErrorKind};
-    use std::os::unix::fs::FileExt;
+    use std::io::{Seek, Write};
 
     let path = common::init("blob_header_validation");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let data = vec![1, 1, 2, 3, 5, 8];
     write_one(&storage, 42, &data, None).await.unwrap();
     storage.close().await.expect("storage close failed");
+
     let blob_path = std::env::temp_dir().join(&path).join("test.0.blob");
     info!("path: {}", blob_path.display());
-    let file = fs::OpenOptions::new()
-        .write(true)
-        .create(false)
-        .open(&blob_path)
-        .expect("failed to open file");
-    let buf = bincode::serialize(&0_u32).expect("failed to serialize u32");
-    file.write_at(&buf, 8)
-        .expect("failed to overwrite blob version");
+    {
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(false)
+            .open(&blob_path)
+            .expect("failed to open file");
+        let buf = bincode::serialize(&0_u32).expect("failed to serialize u32");
+        file.seek(std::io::SeekFrom::Start(8)).expect("seek ok");
+        file.write(&buf).expect("failed to overwrite blob version");
+        file.flush().expect("flush ok");
+    }
     let iodriver = pearl::IoDriver::new();
     let builder = Builder::new()
         .work_dir(&path)
