@@ -5,12 +5,20 @@ Pearl changelog
 ## [Unreleased]
 #### Added
 - Use InMemoryIndex as an additional filter on Blob level (#238)
+- Windows support added (#257)
+- CI: build and test on Windows (#261)
+- Include file index memory in the calculation of occupied memory (#262)
 
 #### Changed
 - Remove hard dependency on io uring (#230)
+- Update offset only when write is imminent to prevent data corruption due to async Future cancellation (#228)
+- Improved Arc placement in Storage (#185)
+- Improved visibility levels in Storage (#186)
+- BLOB-wide exclusive lock removed from the write path, instead the short lock on the in-memory index added (#249)
 
 #### Fixed
-
+- Fix fork in test duplicating test environment (#254)
+- Bug in ObserverWorker that prevents its stop and leads to memory leak (#259)
 
 #### Updated
 

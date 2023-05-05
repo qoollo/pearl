@@ -9,7 +9,10 @@ use std::{
     os::unix::prelude::{AsRawFd, FileExt},
     time::SystemTime,
 };
-use tokio::fs::OpenOptions;
+use tokio::fs::{
+    File as TokioFile,
+    OpenOptions
+};
 
 /// IO driver for file operations
 #[derive(Debug, Clone)]
@@ -43,8 +46,13 @@ const MAX_SYNC_OPERATION_SIZE: usize = 81_920;
 
 #[derive(Debug, Clone)]
 pub(crate) struct File {
-    no_lock_fd: Arc<StdFile>,
-    size: Arc<AtomicU64>,
+    inner: Arc<FileInner>
+}
+
+#[derive(Debug)]
+struct FileInner {
+    std_file: StdFile,
+    size: AtomicU64
 }
 
 #[derive(PartialEq, Eq)]
@@ -56,37 +64,54 @@ enum LockAcquisitionResult {
 
 impl File {
     pub(crate) fn size(&self) -> u64 {
-        self.size.load(Ordering::SeqCst)
+        self.inner.size.load(Ordering::SeqCst)
     }
 
-    pub(crate) async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
-        let offset = self.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
-        self.write_all_at(offset, buf).await
-    }
-
-    pub(crate) async fn write_append_all_buffers(
+    pub(crate) async fn write_append_writable_data<R: Send + 'static>(
         &self,
-        first_buf: Bytes,
-        second_buf: Bytes,
-    ) -> IOResult<()> {
-        let first_len = first_buf.len() as u64;
-        let second_len = second_buf.len() as u64;
-        let len = first_len + second_len;
-        let mut offset = self.size.fetch_add(len, Ordering::SeqCst);
-        let file = self.no_lock_fd.clone();
+        c: impl WritableDataCreator<R>,
+    ) -> IOResult<R> {
+        let len = c.len();
+        let file_inner = self.inner.clone();
         if Self::can_run_inplace(len) {
             Self::inplace_sync_call(move || {
-                file.write_all_at(&first_buf, offset)?;
-                offset = offset + first_len;
-                file.write_all_at(&second_buf, offset)?;
-                Ok(())
+                let offset = file_inner.size.fetch_add(len, Ordering::SeqCst);
+                let (res, data) = c.create(offset);
+                Self::write_data(&file_inner.std_file, offset, res)?;
+                Ok(data)
             })
         } else {
             Self::background_sync_call(move || {
-                file.write_all_at(&first_buf, offset)?;
-                offset = offset + first_len;
-                file.write_all_at(&second_buf, offset)?;
-                Ok(())
+                let offset = file_inner.size.fetch_add(len, Ordering::SeqCst);
+                let (res, data) = c.create(offset);
+                Self::write_data(&file_inner.std_file, offset, res)?;
+                Ok(data)
+            })
+            .await
+        }
+    }
+
+    fn write_data(file: &StdFile, mut offset: u64, writable_data: WritableData) -> IOResult<()> {
+        match writable_data {
+            WritableData::Single(bytes) => file.write_all_at(&bytes, offset),
+            WritableData::Double(b1, b2) => file.write_all_at(&b1, offset).and_then(|_| {
+                offset = offset + b1.len() as u64;
+                file.write_all_at(&b2, offset)
+            }),
+        }
+    }
+
+    pub(crate) async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
+        let file_inner = self.inner.clone();
+        if Self::can_run_inplace(buf.len() as u64) {
+            Self::inplace_sync_call(move || {
+                let offset = file_inner.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
+                file_inner.std_file.write_all_at(&buf, offset)
+            })
+        } else {
+            Self::background_sync_call(move || {
+                let offset = file_inner.size.fetch_add(buf.len() as u64, Ordering::SeqCst);
+                file_inner.std_file.write_all_at(&buf, offset)
             })
             .await
         }
@@ -94,11 +119,11 @@ impl File {
 
     pub(crate) async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
         debug_assert!(offset + buf.len() as u64 <= self.size());
-        let file = self.no_lock_fd.clone();
+        let file_inner = self.inner.clone();
         if Self::can_run_inplace(buf.len() as u64) {
-            Self::inplace_sync_call(move || file.write_all_at(&buf, offset))
+            Self::inplace_sync_call(move || file_inner.std_file.write_all_at(&buf, offset))
         } else {
-            Self::background_sync_call(move || file.write_all_at(&buf, offset)).await
+            Self::background_sync_call(move || file_inner.std_file.write_all_at(&buf, offset)).await
         }
     }
 
@@ -119,34 +144,34 @@ impl File {
     }
 
     pub(crate) async fn read_exact_at(&self, mut buf: BytesMut, offset: u64) -> Result<BytesMut> {
-        let file = self.no_lock_fd.clone();
+        let file_inner = self.inner.clone();
 
         Ok(if Self::can_run_inplace(buf.len() as u64) {
-            Self::inplace_sync_call(move || file.read_exact_at(&mut buf, offset).map(|_| buf))
+            Self::inplace_sync_call(move || file_inner.std_file.read_exact_at(&mut buf, offset).map(|_| buf))
         } else {
-            Self::background_sync_call(move || file.read_exact_at(&mut buf, offset).map(|_| buf))
+            Self::background_sync_call(move || file_inner.std_file.read_exact_at(&mut buf, offset).map(|_| buf))
                 .await
         }?)
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
-        let fd = self.no_lock_fd.clone();
-        Self::background_sync_call(move || fd.sync_all()).await
+        let file_inner = self.inner.clone();
+        Self::background_sync_call(move || file_inner.std_file.sync_all()).await
     }
 
-    pub(crate) fn created_at(&self) -> Result<SystemTime> {
-        let metadata = self.no_lock_fd.metadata()?;
+    pub(crate) fn created_at(&self) -> IOResult<SystemTime> {
+        let metadata = self.inner.std_file.metadata()?;
         Ok(metadata.created().unwrap_or(SystemTime::now()))
     }
 
     #[cfg(feature = "async-io-rio")]
     pub(super) fn std_file_ref(&self) -> &StdFile {
-        self.no_lock_fd.as_ref()
+        &self.inner.std_file
     }
 
     #[cfg(feature = "async-io-rio")]
     pub(super) fn file_size_append(&self, len: u64) -> u64 {
-        self.size.fetch_add(len, Ordering::SeqCst)
+        self.inner.size.fetch_add(len, Ordering::SeqCst)
     }
 
     fn advisory_write_lock_file(fd: i32) -> LockAcquisitionResult {
@@ -210,13 +235,50 @@ impl File {
 
     async fn from_tokio_file(file: TokioFile) -> IOResult<Self> {
         let size = file.metadata().await?.len();
-        let size = Arc::new(AtomicU64::new(size));
+        let size = AtomicU64::new(size);
         let std_file = file.try_into_std().expect("tokio file into std");
 
         let file = Self {
-            no_lock_fd: Arc::new(std_file),
-            size,
+            inner: Arc::new(FileInner { 
+                std_file, 
+                size 
+            })
         };
         Ok(file)
+    }
+}
+
+
+/// Trait implementation to track that all required function are implemented.
+/// It should not contain the actual implementation of the functions, because `async_trait` adds the overhead by boxing the resulting `Future`.
+#[async_trait::async_trait]
+impl super::super::FileTrait for File {
+    fn size(&self) -> u64 {
+        self.size()
+    }
+    fn created_at(&self) -> IOResult<SystemTime> {
+        self.created_at()
+    }
+
+    async fn write_append_writable_data<R: Send + 'static>(&self, c: impl WritableDataCreator<R>) -> IOResult<R> {
+        self.write_append_writable_data(c).await
+    }
+    async fn write_append_all(&self, buf: Bytes) -> IOResult<()> {
+        self.write_append_all(buf).await
+    }
+    async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
+        self.write_all_at(offset, buf).await
+    }
+    async fn read_all(&self) -> Result<BytesMut> {
+        self.read_all().await
+    }
+    async fn read_exact_at_allocate(&self, size: usize, offset: u64) -> Result<BytesMut> {
+        self.read_exact_at_allocate(size, offset).await
+    }
+    async fn read_exact_at(&self, buf: BytesMut, offset: u64) -> Result<BytesMut> {
+        self.read_exact_at(buf, offset).await
+    }
+    async fn fsyncdata(&self) -> IOResult<()> {
+        self.fsyncdata().await
     }
 }

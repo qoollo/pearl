@@ -7,7 +7,7 @@ on:
     branches: [master]
 
 jobs:
-  tests:
+  tests-linux:
     runs-on: ubuntu-latest
     steps:
       - name: Checks-out repository
@@ -19,7 +19,7 @@ jobs:
           default: true
       - name: Set env variable
         run: |
-          export PEARL_COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)
+          echo "PEARL_COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_ENV
       - name: Tests
         uses: actions-rs/cargo@v1
         with:
@@ -29,3 +29,21 @@ jobs:
         with:
           command: test
           args: --features async-io-rio
+
+  tests-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checks-out repository
+        uses: actions/checkout@v2
+      - name: Install latest stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+      - name: Set env variable
+        run: |
+          echo "PEARL_COMMIT_HASH=$($env:GITHUB_SHA.Substring(0, 8))" >> $env:GITHUB_ENV
+      - name: Tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test

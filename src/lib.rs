@@ -81,10 +81,10 @@ mod prelude {
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
     pub(crate) use blob::{self, Blob, BlobConfig, IndexConfig};
     pub(crate) use filter::{Bloom, BloomProvider, Config as BloomConfig, HierarchicalFilters};
-    pub(crate) use futures::{lock::Mutex, stream::futures_unordered::FuturesUnordered};
+    pub(crate) use futures::{stream::futures_unordered::FuturesUnordered};
     pub(crate) use record::{Header as RecordHeader, Record, RECORD_MAGIC_BYTE};
 
-    pub(crate) use io::File;
+    pub(crate) use io::{File, WritableData, WritableDataCreator};
 
     pub(crate) use std::{
         cmp::Ordering as CmpOrdering,
@@ -104,8 +104,9 @@ mod prelude {
     };
     pub(crate) use thiserror::Error;
     pub(crate) use tokio::{
-        fs::{read_dir, DirEntry, File as TokioFile},
+        fs::{read_dir, DirEntry},
         sync::{RwLock, Semaphore},
+        time::{Instant, Duration},
     };
     pub(crate) use tokio_stream::StreamExt;
 }
