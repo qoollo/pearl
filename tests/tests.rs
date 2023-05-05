@@ -928,6 +928,7 @@ async fn test_memory_index() {
     storage.try_close_active_blob().await.unwrap();
     // Doesn't work without this: indices are written in old btree (which I want to dump in memory)
     sleep(Duration::from_millis(100)).await;
+    let file_index_size = storage.index_memory().await;
     for (key, data) in records.iter().skip(7) {
         println!("{} {:?}", key, data);
         write_one(&storage, *key, data, None).await.unwrap();
@@ -935,7 +936,7 @@ async fn test_memory_index() {
     }
     assert_eq!(
         storage.index_memory().await,
-        KEY_AND_DATA_SIZE * 3 + RECORD_HEADER_SIZE * 3
+        KEY_AND_DATA_SIZE * 3 + RECORD_HEADER_SIZE * 3 + file_index_size
     ); // 3 keys, 3 records in active blob (3 allocated)
     assert!(path.join("test.1.blob").exists());
     common::clean(storage, path).await;
@@ -997,23 +998,27 @@ async fn test_mark_as_deleted_deferred_dump() {
 #[tokio::test]
 async fn test_blob_header_validation() {
     use pearl::error::{AsPearlError, ValidationErrorKind};
-    use std::os::unix::fs::FileExt;
+    use std::io::{Seek, Write};
 
     let path = common::init("blob_header_validation");
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let data = vec![1, 1, 2, 3, 5, 8];
     write_one(&storage, 42, &data, None).await.unwrap();
     storage.close().await.expect("storage close failed");
+
     let blob_path = std::env::temp_dir().join(&path).join("test.0.blob");
     info!("path: {}", blob_path.display());
-    let file = fs::OpenOptions::new()
-        .write(true)
-        .create(false)
-        .open(&blob_path)
-        .expect("failed to open file");
-    let buf = bincode::serialize(&0_u32).expect("failed to serialize u32");
-    file.write_at(&buf, 8)
-        .expect("failed to overwrite blob version");
+    {
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(false)
+            .open(&blob_path)
+            .expect("failed to open file");
+        let buf = bincode::serialize(&0_u32).expect("failed to serialize u32");
+        file.seek(std::io::SeekFrom::Start(8)).expect("seek ok");
+        file.write(&buf).expect("failed to overwrite blob version");
+        file.flush().expect("flush ok");
+    }
     let iodriver = pearl::IoDriver::new();
     let builder = Builder::new()
         .work_dir(&path)

@@ -16,7 +16,7 @@ pub(crate) use bptree::BPTreeFileIndex;
 use header::IndexHeader;
 
 pub(crate) use self::core::{
-    FileIndexTrait, InMemoryIndex, Index, IndexConfig, MemoryAttrs, HEADER_VERSION,
+    FileIndexTrait, InMemoryIndex, Index, IndexConfig, HEADER_VERSION,
     INDEX_HEADER_MAGIC_BYTE,
 };
 pub(crate) use super::prelude::*;
@@ -32,7 +32,7 @@ pub(crate) trait IndexTrait<K>: Send + Sync {
     async fn get_all(&self, key: &K) -> Result<Vec<RecordHeader>>;
     async fn get_all_with_deletion_marker(&self, key: &K) -> Result<Vec<RecordHeader>>;
     async fn get_any(&self, key: &K) -> Result<ReadResult<RecordHeader>>;
-    fn push(&mut self, key: &K, h: RecordHeader) -> Result<()>;
+    fn push(&self, key: &K, h: RecordHeader) -> Result<()>;
     async fn contains_key(&self, key: &K) -> Result<ReadResult<BlobRecordTimestamp>>;
     fn count(&self) -> usize;
     async fn dump(&mut self, blob_size: u64) -> Result<usize>;

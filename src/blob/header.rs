@@ -4,8 +4,6 @@ use bincode::{deserialize, serialized_size};
 
 use crate::{error::ValidationErrorKind, Error};
 
-use super::FileName;
-
 pub(crate) const BLOB_VERSION: u32 = 1;
 pub(crate) const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
 
@@ -25,18 +23,14 @@ impl Header {
         }
     }
 
-    pub(crate) async fn from_file(name: &FileName, iodriver: IoDriver) -> Result<Self> {
-        let file = iodriver
-            .open(name.to_path())
-            .await
-            .with_context(|| format!("failed to open blob file: {}", name))?;
+    pub(crate) async fn from_file(file: &File, file_name: &Path) -> Result<Self> {
         let size = serialized_size(&Header::new()).expect("failed to serialize default header");
         let buf = file
             .read_exact_at_allocate(size as usize, 0)
             .await
-            .with_context(|| format!("failed to read from file: {}", name))?;
+            .with_context(|| format!("failed to read from file: {:?}", file_name))?;
         let header: Self = deserialize(&buf)
-            .with_context(|| format!("failed to deserialize header from file: {}", name))?;
+            .with_context(|| format!("failed to deserialize header from file: {:?}", file_name))?;
         header.validate().context("header validation failed")?;
         Ok(header)
     }

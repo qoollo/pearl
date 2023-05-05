@@ -104,7 +104,7 @@ mod prelude {
     };
     pub(crate) use thiserror::Error;
     pub(crate) use tokio::{
-        fs::{read_dir, DirEntry, File as TokioFile},
+        fs::{read_dir, DirEntry},
         sync::{RwLock, Semaphore},
         time::{Instant, Duration},
     };
