@@ -247,9 +247,10 @@ where
 
     pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<()> {
         debug!("blob write");
-        // Only one upgradable_read lock is allowed at a time
         let (partially_serialized, mut header) = record.to_partially_serialized_and_header()?;
-        let blob = blob.read().await;
+        // Only one upgradable_read lock is allowed at a time. This is critical because we want to
+        // be sure that only one write operation is running at a time
+        let blob = blob.upgradable_read().await;
         let write_result = partially_serialized.write_to_file(&blob.file).await?;
         header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
         blob.index.push(key, header)?;
