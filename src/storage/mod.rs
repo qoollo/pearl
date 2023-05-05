@@ -16,6 +16,7 @@ pub use self::{
 };
 
 mod prelude {
+    pub(crate) use async_lock::RwLock as ASRwLock;
     pub(crate) use {
         super::{
             config::Config, core::Inner, observer::Msg, observer::Observer,

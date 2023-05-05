@@ -191,7 +191,7 @@ where
         if replace {
             let new_active = get_new_active_blob(&self.inner).await?;
             write
-                .replace_active_blob(Box::new(RwLock::new(*new_active)))
+                .replace_active_blob(Box::new(ASRwLock::new(*new_active)))
                 .await?;
             return Ok(true);
         }
@@ -208,7 +208,7 @@ where
         .safe
         .write()
         .await
-        .replace_active_blob(Box::new(RwLock::new(*new_active)))
+        .replace_active_blob(Box::new(ASRwLock::new(*new_active)))
         .await?;
     Ok(())
 }
