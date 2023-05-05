@@ -632,10 +632,22 @@ where
 {
     type Filter = CombinedFilter<K>;
     async fn check_filter(&self, item: &K) -> FilterResult {
+        match self.index.contains_key_fast(item) {
+            Some(true) => { return FilterResult::NeedAdditionalCheck; },
+            Some(false) => { return FilterResult::NotContains; },
+            None => { }
+        }
+        
         self.index.get_filter().contains(&self.index, item).await
     }
 
     fn check_filter_fast(&self, item: &K) -> FilterResult {
+        match self.index.contains_key_fast(item) {
+            Some(true) => { return FilterResult::NeedAdditionalCheck; },
+            Some(false) => { return FilterResult::NotContains; },
+            None => { }
+        }
+        
         self.index.get_filter().contains_fast(item)
     }
 

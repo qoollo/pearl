@@ -163,6 +163,14 @@ where
         &self.name
     }
 
+    /// Fast check for key presence. None - can't perform fast check (disk access required)
+    pub(crate) fn contains_key_fast(&self, key: &K) -> Option<bool> {
+        match &self.inner {
+            State::InMemory(index) => Some(index.read().expect("read lock acquired").headers.contains_key(key)),
+            State::OnDisk(_) => None
+        }
+    }
+
     pub(crate) async fn from_file(
         name: FileName,
         config: IndexConfig,

@@ -4,6 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Use InMemoryIndex as an additional filter on Blob level (#238)
 - Windows support added (#257)
 - CI: build and test on Windows (#261)
 - Include file index memory in the calculation of occupied memory (#262)
