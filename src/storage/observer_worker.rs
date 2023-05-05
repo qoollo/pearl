@@ -5,6 +5,9 @@ use tokio::{
     task::JoinHandle
 };
 
+/// The amount of time to shift the deadline to ensure that the delayed processing starts after the timeout has elapsed
+const DEFERRED_PROCESS_DEADLINE_EPS: Duration = Duration::from_millis(1);
+
 pub(crate) struct ObserverWorker<K>
 where
     for<'a> K: Key<'a>,
@@ -88,7 +91,7 @@ where
 
     async fn tick_with_deadline(&mut self, deadline: Instant) -> Result<TickResult> {
         // Extend deadline a little bit to guaranty, that process_defered will detect exceeding
-        let deadline = deadline + Duration::from_millis(1);
+        let deadline = deadline + DEFERRED_PROCESS_DEADLINE_EPS;
         match timeout_at(deadline, self.receiver.recv()).await {
             Ok(Some(msg)) => {
                 self.process_msg(msg).await?;
