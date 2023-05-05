@@ -29,6 +29,7 @@ where
     file: File,
     created_at: SystemTime,
     validate_data_during_index_regen: bool,
+    write_sem: Semaphore,
 }
 
 impl<K> Blob<K>
@@ -61,6 +62,7 @@ where
             file,
             created_at: SystemTime::now(),
             validate_data_during_index_regen,
+            write_sem: Semaphore::new(1),
         };
         blob.write_header().await?;
         Ok(blob)
@@ -180,6 +182,7 @@ where
             index,
             created_at,
             validate_data_during_index_regen,
+            write_sem: Semaphore::new(1),
         };
         trace!("call update index");
         if is_index_corrupted || size as u64 > header_size {
@@ -246,16 +249,11 @@ where
         // @TODO implement
     }
 
-    pub(crate) async fn write(
-        blob: &RwLock<Self>,
-        write_sem: &Semaphore,
-        key: &K,
-        record: Record,
-    ) -> Result<()> {
+    pub(crate) async fn write(blob: &RwLock<Self>, key: &K, record: Record) -> Result<()> {
         debug!("blob write");
         let (partially_serialized, mut header) = record.to_partially_serialized_and_header()?;
-        let _ = write_sem.acquire().await?;
         let blob = blob.read().await;
+        let _ = blob.write_sem.acquire().await?;
         let write_result = partially_serialized.write_to_file(&blob.file).await?;
         header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
         blob.index.push(key, header)?;
