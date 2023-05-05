@@ -196,6 +196,10 @@ where
         }
         Ok(())
     }
+
+    fn memory_used(&self) -> usize {
+        std::mem::size_of::<Self>() + self.root_node.len()
+    }
 }
 
 impl<K> BPTreeFileIndex<K>

@@ -267,10 +267,9 @@ where
     }
 
     pub(crate) fn memory_used(&self) -> usize {
-        if let State::InMemory(data) = &self.inner {
-            data.read().expect("rwlock").memory_used()
-        } else {
-            0
+        match &self.inner {
+            State::InMemory(data) => data.read().expect("rwlock").memory_used(),
+            State::OnDisk(file) => file.memory_used(),
         }
     }
 
@@ -431,6 +430,7 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
     async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)>;
     async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>>;
     fn validate(&self, blob_size: u64) -> Result<()>;
+    fn memory_used(&self) -> usize;
 }
 
 #[async_trait::async_trait]

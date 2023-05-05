@@ -157,6 +157,10 @@ where
         }
         Ok(())
     }
+
+    fn memory_used(&self) -> usize {
+        std::mem::size_of::<Self>()
+    }
 }
 
 // helpers
