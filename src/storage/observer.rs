@@ -1,8 +1,11 @@
 use super::prelude::*;
+use tokio::task::JoinHandle;
 use tokio::sync::{
-    mpsc::{channel, Sender},
-    Semaphore,
+    mpsc::{channel, Sender}
 };
+
+/// Max size of the channel between `Observer` and `ObserverWorker`
+const OBSERVER_CHANNEL_SIZE_LIMIT: usize = 1024;
 
 #[derive(Debug, Clone)]
 pub(crate) enum OperationType {
@@ -46,48 +49,63 @@ impl Msg {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct Observer<K>
 where
     for<'a> K: Key<'a>,
 {
-    inner: Option<Inner<K>>,
-    pub sender: Option<Sender<Msg>>,
-    dump_sem: Arc<Semaphore>,
-    async_oplock: Arc<Mutex<()>>,
+    state: ObserverState<K>
+}
+
+#[derive(Debug)]
+enum ObserverState<K>
+where
+    for<'a> K: Key<'a>,
+{
+    Created(Arc<Inner<K>>),
+    Running(Sender<Msg>, JoinHandle<()>),
+    Stopped
 }
 
 impl<K> Observer<K>
 where
     for<'a> K: Key<'a> + 'static,
 {
-    pub(crate) fn new(inner: Inner<K>, dump_sem: Arc<Semaphore>) -> Self {
+    pub(crate) fn new(inner: Arc<Inner<K>>) -> Self {
         Self {
-            inner: Some(inner),
-            sender: None,
-            dump_sem,
-            async_oplock: Arc::new(Mutex::new(())),
+            state: ObserverState::Created(inner)
         }
-    }
-
-    pub(crate) fn is_pending(&self) -> bool {
-        self.async_oplock.try_lock().is_none()
     }
 
     pub(crate) fn run(&mut self) {
-        if let Some(inner) = self.inner.take() {
-            let (sender, receiver) = channel(1024);
-            let loop_sender = sender.clone();
-            self.sender = Some(sender);
-            let worker = ObserverWorker::new(
-                receiver,
-                loop_sender,
-                inner,
-                self.dump_sem.clone(),
-                self.async_oplock.clone(),
-            );
-            tokio::spawn(worker.run());
+        if !matches!(&self.state, ObserverState::Created(_)) {
+            return;
         }
+
+        let ObserverState::Created(inner) = std::mem::replace(&mut self.state, ObserverState::Stopped) else {
+            unreachable!("State should be ObserverState::Created. It was checked at the beggining");
+        };
+
+        let (sender, receiver) = channel(OBSERVER_CHANNEL_SIZE_LIMIT);  
+        let worker = ObserverWorker::new(
+            receiver,
+            inner
+        );
+        let handle = tokio::spawn(worker.run());
+
+        self.state = ObserverState::Running(sender, handle);
+    }
+
+    pub(crate) async fn shutdown(mut self) {
+        if let ObserverState::Running(sender, handle) = self.state {
+            std::mem::drop(sender); // Drop sender. That trigger ObserverWorker stopping
+            // Wait for completion
+            if let Err(err) = handle.await {
+                error!("Unexpected JoinError in Observer: {:?}", err);
+            }
+        }
+
+        self.state = ObserverState::Stopped;
     }
 
     pub(crate) async fn force_update_active_blob(&self, predicate: ActiveBlobPred) {
@@ -129,7 +147,7 @@ where
     }
 
     async fn send_msg(&self, msg: Msg) {
-        if let Some(sender) = &self.sender {
+        if let ObserverState::Running(sender, _) = &self.state {
             let optype = msg.optype.clone();
             if let Err(e) = sender.send(msg).await {
                 error!(
@@ -140,9 +158,5 @@ where
         } else {
             error!("storage observer task was not launched");
         }
-    }
-
-    pub(crate) fn get_dump_sem(&self) -> Arc<Semaphore> {
-        self.dump_sem.clone()
     }
 }

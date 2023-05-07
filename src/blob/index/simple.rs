@@ -15,9 +15,10 @@ impl<K> FileIndexTrait<K> for SimpleFileIndex
 where
     for<'a> K: Key<'a>,
 {
-    async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self> {
+    async fn from_file(name: FileName, iodriver: IoDriver) -> Result<Self> {
         trace!("open index file");
-        let file = File::open(name.to_path(), ioring)
+        let file = iodriver
+            .open(name.to_path())
             .await
             .context(format!("failed to open index file: {}", name))?;
         let header = Self::read_index_header(&file).await?;
@@ -63,7 +64,7 @@ where
 
     async fn from_records(
         path: &Path,
-        ioring: Option<Rio>,
+        iodriver: IoDriver,
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,
@@ -76,7 +77,8 @@ where
         }
         let (mut header, buf) = res.expect("None case is checked");
         clean_file(path, recreate_index_file)?;
-        let file = File::create(path, ioring)
+        let file = iodriver
+            .create(path)
             .await
             .with_context(|| format!("file open failed {:?}", path))?;
         file.write_append_all(buf.freeze()).await?;
@@ -155,18 +157,22 @@ where
         }
         Ok(())
     }
+
+    fn memory_used(&self) -> usize {
+        std::mem::size_of::<Self>()
+    }
 }
 
 // helpers
 impl SimpleFileIndex {
     fn hash_valid(header: &IndexHeader, buf: &mut [u8]) -> Result<bool> {
-        let hash = header.hash.clone();
+        let hash = &header.hash;
         let mut header = header.clone();
-        header.hash = vec![0; ring::digest::SHA256.output_len];
+        header.reset_hash();
         header.set_written(false);
         serialize_into(&mut buf[..], &header)?;
-        let new_hash = get_hash(&buf);
-        Ok(hash == new_hash)
+        let new_hash = IndexHashCalculator::get_hash(&buf);
+        Ok(*hash == new_hash)
     }
 
     async fn read_index_header(file: &File) -> Result<IndexHeader> {
@@ -349,7 +355,7 @@ impl SimpleFileIndex {
                 "blob index simple serialize headers buf len after: {}",
                 buf.len()
             );
-            let hash = get_hash(&buf);
+            let hash = IndexHashCalculator::get_hash(&buf);
             let header = IndexHeader::with_hash(
                 record_header_size,
                 headers.len(),

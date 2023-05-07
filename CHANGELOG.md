@@ -4,10 +4,37 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Use InMemoryIndex as an additional filter on Blob level (#238)
+- Windows support added (#257)
+- CI: build and test on Windows (#261)
+- Include file index memory in the calculation of occupied memory (#262)
 
 #### Changed
+- Remove hard dependency on io uring (#230)
+- Update offset only when write is imminent to prevent data corruption due to async Future cancellation (#228)
+- Improved Arc placement in Storage (#185)
+- Improved visibility levels in Storage (#186)
+- BLOB-wide exclusive lock removed from the write path, instead the short lock on the in-memory index added (#249)
 
+#### Fixed
+- Fix fork in test duplicating test environment (#254)
+- Bug in ObserverWorker that prevents its stop and leads to memory leak (#259)
+
+#### Updated
+
+
+
+## [0.18.0] - 2023-02-25
+#### Added
+- Index regeneration checks record data checksum (#215)
+
+#### Changed
+- `ring` crate replaced with `sha2` crate (#246)
+- `async-std` replaced with `async-lock` to avoid redundant dependencies (#247)
+- Change locks for filters update (#218)
+- Serialization moved out of critical section (#188)
+- Removed multiple header checksum calculations (#206)
+- Rename functions to show that it returns last entry (#199)
 
 #### Fixed
 - Converting UnexpectedEOF errors to bincode errors before deserialize() calls (#233)
