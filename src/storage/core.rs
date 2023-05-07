@@ -12,9 +12,7 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 
 /// A main storage struct.
 ///
-/// This type is clonable, cloning it will only create a new reference,
-/// not a new storage.
-/// Storage has a type kindeter K.
+/// Storage has a generic parameter K representing the type of `Key`.
 /// To perform read/write operations K must implement [`Key`] trait.
 ///
 /// # Examples
