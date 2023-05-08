@@ -67,6 +67,11 @@ where
     const BPTREE_ENTRY_SIZE: usize =
         size_of::<Vec<u8>>() + MemoryAttrs::<K>::KEY_SIZE + size_of::<Vec<RecordHeader>>();
     const RECORD_HEADER_SIZE: usize = size_of::<RecordHeader>() + MemoryAttrs::<K>::KEY_SIZE;
+    const BTREE_SIZE_MULTIPLIER: usize = (
+        size_of::<std::ptr::NonNull<()>>() + // btree node
+        size_of::<u16>() * 2 + // metadata
+        size_of::<std::ptr::NonNull<()>>() * 12 // edges vector in node
+    ) / 11; // count of keys in single node
 }
 
 pub type InMemoryIndex<K> = BTreeMap<K, Vec<RecordHeader>>;
@@ -104,7 +109,7 @@ where
         // last minus is neccessary, because allocated but not initialized record
         // headers don't have key allocated on heap
         MemoryAttrs::<K>::RECORD_HEADER_SIZE * records_allocated
-            + len * MemoryAttrs::<K>::BPTREE_ENTRY_SIZE
+            + len * (MemoryAttrs::<K>::BPTREE_ENTRY_SIZE + MemoryAttrs::<K>::BTREE_SIZE_MULTIPLIER)
             - (records_allocated - records_count) * MemoryAttrs::<K>::KEY_SIZE
     }
 
