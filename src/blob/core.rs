@@ -495,6 +495,10 @@ impl FileName {
     fn exists(&self) -> bool {
         self.to_path().exists()
     }
+
+    pub(crate) fn id(&self) -> usize {
+        self.id
+    }
 }
 
 impl Display for FileName {

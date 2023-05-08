@@ -264,7 +264,8 @@ where
         while offset > 0 {
             offset = offset.saturating_sub(record_header_size);
             let record_end = offset + record_header_size;
-            let current_header: RecordHeader = deserialize(&raw_headers_buf[offset..record_end]).map_err(|err| Error::from(err))?;
+            let current_header: RecordHeader = deserialize(&raw_headers_buf[offset..record_end])
+                .map_err(|err| Error::from(err))?;
             if !current_header.key().eq(key.as_ref()) {
                 return Ok(prev_header);
             }
@@ -345,7 +346,8 @@ where
         offset += record_header_size;
         while offset + record_header_size < right_bound {
             let record_end = offset + record_header_size;
-            let rh: RecordHeader = deserialize(&buf[offset..record_end]).map_err(|err| Error::from(err))?;
+            let rh: RecordHeader = deserialize(&buf[offset..record_end])
+                .map_err(|err| Error::from(err))?;
             if rh.key() == headers[0].key() {
                 headers.push(rh);
             } else {
@@ -368,7 +370,8 @@ where
             buf = self.file.read_exact_at(buf, offset).await
                 .map_err(|err| err.into_bincode_if_unexpected_eof())
                 .context("Error reading record header from Index file")?;
-            let header: RecordHeader = deserialize(&buf).map_err(|err| Error::from(err))?;
+            let header: RecordHeader = deserialize(&buf)
+                .map_err(|err| Error::from(err))?;
             if header.key() == headers[0].key() {
                 headers.push(header);
             } else {

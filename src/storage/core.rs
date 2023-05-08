@@ -64,6 +64,16 @@ where
     blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
 }
 
+/// Helper struct to add names to result parameters
+struct ReadBlobsResult<K> 
+where
+    for<'a> K: Key<'a>,
+{
+    blobs: Vec<Blob<K>>,
+    new_corrupted_blob_count: usize,
+    max_blob_id: Option<usize>
+}
+
 async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
     let mut files = Vec::new();
     let mut dir = read_dir(wd).await?;
@@ -611,7 +621,7 @@ where
     /// lock. So it is much faster than `blobs_count`.
     #[must_use]
     pub fn next_blob_id(&self) -> usize {
-        self.inner.next_blob_id.load(ORD)
+        self.inner.next_blob_id.load(Ordering::Acquire)
     }
 
     async fn prepare_work_dir(&mut self) -> Result<()> {
@@ -653,8 +663,9 @@ where
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>, with_active: bool) -> Result<()> {
         trace!("init from existing: {:#?}", files);
+        let existed_corrupted_blob_count = Self::count_old_corrupted_blobs(&self.inner.config).await;
         let disk_access_sem = self.inner.get_dump_sem();
-        let (mut blobs, corrupted_count) = Self::read_blobs(
+        let ReadBlobsResult { mut blobs, max_blob_id, new_corrupted_blob_count} = Self::read_blobs(
             &files,
             self.inner.iodriver.clone(),
             disk_access_sem,
@@ -665,15 +676,25 @@ where
 
         self.inner
             .corrupted_blobs
-            .store(corrupted_count, Ordering::Release);
+            .store(existed_corrupted_blob_count + new_corrupted_blob_count, Ordering::Release);
+        self.inner
+            .next_blob_id
+            .store(max_blob_id.map_or(0, |i| i + 1), Ordering::Release);
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
 
         let active_blob = if with_active {
-            Some(Box::new(ASRwLock::new(
-                Self::pop_active(&mut blobs, &self.inner.config).await?,
-            )))
+            if blobs.is_empty() && new_corrupted_blob_count > 0 {
+                let next = self.inner.next_blob_name()?;
+                Some(Box::new(ASRwLock::new(
+                    Blob::open_new(next, self.inner.iodriver.clone(), self.inner.config.blob()).await?,
+                )))
+            } else {
+                Some(Box::new(ASRwLock::new(
+                    Self::pop_active(&mut blobs, &self.inner.config).await?,
+                )))
+            }
         } else {
             None
         };
@@ -688,9 +709,9 @@ where
         *safe.blobs.write().await =
             HierarchicalFilters::from_vec(self.inner.config.bloom_filter_group_size(), 1, blobs)
                 .await;
-        self.inner
-            .next_blob_id
-            .store(safe.max_id().await.map_or(0, |i| i + 1), ORD);
+        let new_next_blob_id = self.inner.next_blob_id.load(Ordering::Acquire)
+            .max(safe.max_id().await.map_or(0, |i| i + 1));
+        self.inner.next_blob_id.store(new_next_blob_id, Ordering::Release);
         Ok(())
     }
 
@@ -711,8 +732,9 @@ where
         iodriver: IoDriver,
         disk_access_sem: Arc<Semaphore>,
         config: &Config,
-    ) -> Result<(Vec<Blob<K>>, usize)> {
-        let mut corrupted = Self::count_old_corrupted_blobs(config).await;
+    ) -> Result<ReadBlobsResult<K>> {
+        let mut corrupted = 0;
+        let mut max_blob_id: Option<usize> = None;
 
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
@@ -741,14 +763,22 @@ where
         let mut blobs = Vec::new();
         while let Some(blob_res) = futures.next().await {
             match blob_res {
-                Ok(blob) => blobs.push(blob),
+                Ok(blob) => {
+                    max_blob_id = Some(max_blob_id.map_or(blob.id(), |v| v.max(blob.id())));
+                    blobs.push(blob);
+                },
                 Err((e, file)) => {
                     let msg = format!("Failed to read existing blob: {}", file.display());
+
+                    if let Ok(file_name) = blob::FileName::from_path(&file) {
+                        max_blob_id = Some(max_blob_id.map_or(file_name.id(), |v| v.max(file_name.id())));
+                    }
+
                     if config.ignore_corrupted() {
                         error!("{}, cause: {:#}", msg, e);
                     } else if Self::should_save_corrupted_blob(&e) {
-                        error!(
-                            "save corrupted blob '{}' to directory '{}'",
+                        warn!(
+                            "Corrupted BLOB detected. Save corrupted blob '{}' to directory '{}'",
                             file.display(),
                             config.corrupted_dir_name()
                         );
@@ -764,7 +794,7 @@ where
                 }
             }
         }
-        Ok((blobs, corrupted))
+        Ok(ReadBlobsResult { blobs, new_corrupted_blob_count: corrupted, max_blob_id })
     }
 
     async fn count_old_corrupted_blobs(config: &Config) -> usize {
@@ -1163,7 +1193,7 @@ where
     // FIXME: Maybe we should revert counter if new blob creation failed?
     // It'll make code a bit more complicated, but blobs will sequentially grow for sure
     pub(crate) fn next_blob_name(&self) -> Result<blob::FileName> {
-        let next_id = self.next_blob_id.fetch_add(1, ORD);
+        let next_id = self.next_blob_id.fetch_add(1, Ordering::AcqRel);
         let prefix = self
             .config
             .blob_file_name_prefix()
