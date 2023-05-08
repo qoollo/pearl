@@ -64,7 +64,7 @@ where
     for<'a> K: Key<'a>,
 {
     const KEY_SIZE: usize = K::LEN as usize;
-    const BPTREE_ENTRY_SIZE: usize =
+    const BTREE_ENTRY_SIZE: usize =
         size_of::<Vec<u8>>() + MemoryAttrs::<K>::KEY_SIZE + size_of::<Vec<RecordHeader>>();
     const RECORD_HEADER_SIZE: usize = size_of::<RecordHeader>() + MemoryAttrs::<K>::KEY_SIZE;
     const BTREE_SIZE_MULTIPLIER: usize = (
@@ -105,11 +105,11 @@ where
         } = &mem;
         let len = self.headers.len();
         trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
-                MemoryAttrs::<K>::RECORD_HEADER_SIZE, records_allocated, len, MemoryAttrs::<K>::BPTREE_ENTRY_SIZE);
+                MemoryAttrs::<K>::RECORD_HEADER_SIZE, records_allocated, len, MemoryAttrs::<K>::BTREE_ENTRY_SIZE);
         // last minus is neccessary, because allocated but not initialized record
         // headers don't have key allocated on heap
         MemoryAttrs::<K>::RECORD_HEADER_SIZE * records_allocated
-            + len * (MemoryAttrs::<K>::BPTREE_ENTRY_SIZE + MemoryAttrs::<K>::BTREE_SIZE_MULTIPLIER)
+            + len * (MemoryAttrs::<K>::BTREE_ENTRY_SIZE + MemoryAttrs::<K>::BTREE_SIZE_MULTIPLIER)
             - (records_allocated - records_count) * MemoryAttrs::<K>::KEY_SIZE
     }
 
