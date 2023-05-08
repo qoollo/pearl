@@ -8,12 +8,13 @@ use futures::{
     TryFutureExt,
 };
 use pearl::{BloomProvider, Builder, Meta, ReadResult, Storage};
-use rand::{seq::SliceRandom, Rng};
+use rand::{seq::SliceRandom, Rng, SeedableRng};
 use std::{
     fs,
     hash::Hasher,
     time::{Duration, Instant},
-    sync::Arc
+    sync::Arc,
+    collections::HashMap
 };
 use tokio::time::sleep;
 
@@ -153,6 +154,90 @@ async fn test_multithread_read_write() -> Result<(), String> {
     assert!(index.exists());
     fs::remove_dir_all(path).unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+    Ok(())
+}
+
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+async fn test_multithread_read_write_exist_delete() -> Result<(), String> {
+    let now = Instant::now();
+    let path = common::init("multithread_read_write_exist_delete");
+    let storage = Arc::new(
+        common::create_custom_test_storage(&path, |builder| {
+            builder
+                .max_blob_size(5_000_000)
+                .set_deferred_index_dump_times(Duration::from_millis(500), Duration::from_millis(1000))
+        }).await?);
+    const THREADS: usize = 2;
+    const KEYS_PER_THREAD: usize = 5000;
+    const OPERATIONS_PER_THREAD: usize = 20000;
+
+    let data = vec![184u8; 2000];
+    let handles: FuturesUnordered<_> = (0..THREADS)
+        .into_iter()
+        .map(|thread_id| {
+            let st = storage.clone();
+            let data = data.clone();
+            let task = async move {
+                let mut rng = ::rand::rngs::StdRng::from_entropy();
+                let mut map = HashMap::new();
+                let min_key: u32 = (thread_id * KEYS_PER_THREAD) as u32;
+                let max_key: u32 = ((thread_id + 1) * KEYS_PER_THREAD) as u32;
+
+                for _ in 0..OPERATIONS_PER_THREAD {
+                    let key: u32 = rng.gen_range(min_key..max_key);
+                    match rng.gen::<usize>() % 10 {
+                        0 => {
+                            st.delete(KeyTest::new(key), false).await.expect("delete success");
+                            map.insert(key, usize::MAX);
+                        },
+                        1 | 2 | 3 => {
+                            let data_len = rng.gen::<usize>() % data.len();
+                            write_one(&st, key, &data[0..data_len], None).await.expect("write success");
+                            map.insert(key, data_len);
+                        },
+                        4 | 5 | 6 => {
+                            let exist_res = st.contains(KeyTest::new(key)).await.expect("exist success");
+                            match exist_res {
+                                ReadResult::Found(_) => {
+                                    assert!(map.contains_key(&key));
+                                },
+                                ReadResult::Deleted(_) => {
+                                    assert!(map.contains_key(&key));
+                                    assert_eq!(*map.get(&key).unwrap(), usize::MAX);
+                                },
+                                ReadResult::NotFound => {
+                                    assert!(!map.contains_key(&key));
+                                }
+                            }
+                        },
+                        _ => {
+                            let read_res = st.read(KeyTest::new(key)).await.expect("read success");
+                            match read_res {
+                                ReadResult::Found(data) => {
+                                    assert!(map.contains_key(&key));
+                                    assert_eq!(*map.get(&key).unwrap(), data.len());
+                                },
+                                ReadResult::Deleted(_) => {
+                                    assert!(map.contains_key(&key));
+                                    assert_eq!(*map.get(&key).unwrap(), usize::MAX);
+                                },
+                                ReadResult::NotFound => {
+                                    assert!(!map.contains_key(&key));
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            tokio::spawn(task)
+        })
+        .collect();
+    let handles = handles.try_collect::<Vec<_>>().await.expect("Threads success");
+    assert_eq!(THREADS, handles.len());
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+    let storage = Arc::try_unwrap(storage).expect("this should be the last alive storage");
+    common::clean(storage, &path).await;
     Ok(())
 }
 
