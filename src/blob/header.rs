@@ -2,7 +2,7 @@ use crate::prelude::*;
 use anyhow::{Context, Result};
 use bincode::{deserialize, serialized_size};
 
-use crate::{error::ValidationErrorKind, Error, unexpected_eof_converter};
+use crate::{error::ValidationErrorKind, Error};
 
 pub(crate) const BLOB_VERSION: u32 = 1;
 pub(crate) const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
@@ -28,9 +28,10 @@ impl Header {
         let buf = file
             .read_exact_at_allocate(size as usize, 0)
             .await
-            .map_err(|e| unexpected_eof_converter(e))
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
             .with_context(|| format!("failed to read from file: {:?}", file_name))?;
         let header: Self = deserialize(&buf)
+            .map_err(|err| Error::from(err))
             .with_context(|| format!("failed to deserialize header from file: {:?}", file_name))?;
         header.validate().context("header validation failed")?;
         Ok(header)

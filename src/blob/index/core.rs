@@ -177,11 +177,11 @@ where
         iodriver: IoDriver,
         blob_size: u64,
     ) -> Result<Self> {
-        let findex = FileIndex::from_file(name.clone(), iodriver.clone()).await.map_err(unexpected_eof_converter)?;
+        let findex = FileIndex::from_file(name.clone(), iodriver.clone()).await?;
         findex
             .validate(blob_size)
             .with_context(|| "Header is corrupt")?;
-        let meta_buf = findex.read_meta().await.map_err(unexpected_eof_converter)?;
+        let meta_buf = findex.read_meta().await.map_err(|err| err.into_bincode_if_unexpected_eof())?;
         let (bloom_filter, range_filter, bloom_offset) = Self::deserialize_filters(&meta_buf)?;
         let params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
         let bloom_filter = if params.bloom_is_on {
@@ -262,7 +262,7 @@ where
     async fn load_in_memory(&mut self, findex: FileIndex, blob_size: u64) -> Result<()> {
         let (record_headers, records_count) = findex.get_records_headers(blob_size).await?;
         self.inner = State::InMemory(SRwLock::new(InMemoryData::new(record_headers, records_count)));
-        let meta_buf = findex.read_meta().await.map_err(unexpected_eof_converter)?;
+        let meta_buf = findex.read_meta().await.map_err(|err| err.into_bincode_if_unexpected_eof())?;
         let (bloom_filter, range_filter, _) = Self::deserialize_filters(&meta_buf)?;
         let bloom_filter = if self.params.bloom_is_on {
             Some(bloom_filter)

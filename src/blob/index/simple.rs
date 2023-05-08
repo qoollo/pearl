@@ -44,6 +44,7 @@ where
         self.file
             .read_exact_at_allocate(self.header.meta_size, self.header.serialized_size())
             .await
+            .map_err(|err| err.into())
     }
 
     async fn read_meta_at(&self, i: u64) -> Result<u8> {
@@ -178,8 +179,9 @@ impl SimpleFileIndex {
     async fn read_index_header(file: &File) -> Result<IndexHeader> {
         let header_size = IndexHeader::serialized_size_default() as usize;
         let buf = file.read_exact_at_allocate(header_size, 0).await
-            .map_err(unexpected_eof_converter)?;
-        IndexHeader::from_raw(&buf).map_err(Into::into)
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
+            .context("Index header read error")?;
+        IndexHeader::from_raw(&buf).map_err(|err| Error::from(err).into())
     }
 
     async fn search_all<K>(
@@ -384,9 +386,9 @@ impl SimpleFileIndex {
         let buf = file
             .read_exact_at_allocate(header.record_header_size, offset)
             .await
-            .map_err(|e| unexpected_eof_converter_ctx(e, 
-                format!("failed to read, offset: {}", offset)))?;
-        let header = deserialize(&buf)?;
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
+            .with_context(|| format!("failed to read, offset: {}", offset))?;
+        let header = deserialize(&buf).map_err(|err| Error::from(err))?;
         debug!("blob index simple header: {:?}", header);
         Ok(header)
     }

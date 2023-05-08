@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use anyhow::Error as AHError;
 
 /// The error type for `Storage` operations.
 #[derive(Debug, Error)]
@@ -79,6 +78,14 @@ impl From<Kind> for Error {
     #[must_use]
     fn from(kind: Kind) -> Self {
         Self { kind }
+    }
+}
+
+impl From<bincode::Error> for Error {
+    fn from(value: bincode::Error) -> Self {
+        Self {
+            kind: Kind::Bincode(format!("Serialization/deserialization error: {}", value))
+        }
     }
 }
 
@@ -181,22 +188,34 @@ impl AsPearlError for anyhow::Error {
     }
 }
 
-/// Util function for UnexpectedEOF error conversion
-pub fn unexpected_eof_converter(e: AHError) -> AHError {
-    if let Some(io_error) = e.downcast_ref::<std::io::Error>() {
-        if let std::io::ErrorKind::UnexpectedEof = io_error.kind() {
-            return AHError::from(Error::bincode("unexpected eof".into()));
-        }
-    }
-    e
+
+/// Helper trait to convert [`IOErrorKind::UnexpectedEof`] into [`Kind::Bincode`] error wrapped into [`anyhow::Error`].
+/// If deserialization expected from the buffer read from file and that read ended with [`IOErrorKind::UnexpectedEof`],
+/// then that means that there is not enough data in file and deserialization should end with [`Kind::Bincode`] error.
+/// There is a code that explicitly check for [`Kind::Bincode`] to detect BLOB corruption
+pub(crate) trait IntoBincodeIfUnexpectedEofTrait {
+    /// Converts [`IOErrorKind::UnexpectedEof`] into [`Kind::Bincode`] error wrapped into [`anyhow::Error`].
+    /// Should be called when further deserialization expected
+    fn into_bincode_if_unexpected_eof(self) -> anyhow::Error;
 }
 
-/// Util function for UnexpectedEOF error conversion with additional context
-pub fn unexpected_eof_converter_ctx(e: AHError, context: String) -> AHError {
-    if let Some(io_error) = e.downcast_ref::<std::io::Error>() {
-        if let std::io::ErrorKind::UnexpectedEof = io_error.kind() {
-            return AHError::from(Error::bincode("unexpected eof".into())).context(context);
+impl IntoBincodeIfUnexpectedEofTrait for IOError {
+    fn into_bincode_if_unexpected_eof(self) -> anyhow::Error {
+        if self.kind() == IOErrorKind::UnexpectedEof {
+            Error::bincode("Can't read whole buffer, required for deserialization due to unexpected end of file".to_string()).into()
+        } else {
+            self.into()
         }
     }
-    e.context(context)
+}
+
+impl IntoBincodeIfUnexpectedEofTrait for anyhow::Error {
+    fn into_bincode_if_unexpected_eof(self) -> anyhow::Error {
+        if let Some(io_error) = self.downcast_ref::<IOError>() {
+            if io_error.kind() == IOErrorKind::UnexpectedEof {
+                return Error::bincode("Can't read whole buffer, required for deserialization due to unexpected end of file".to_string()).into();
+            }
+        }
+        return self;
+    }
 }

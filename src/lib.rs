@@ -65,7 +65,7 @@ pub use filter::{Bloom, BloomDataProvider, BloomProvider, Config as BloomConfig,
 pub mod tools;
 
 pub use blob::Entry;
-pub use error::{Error, Kind as ErrorKind, unexpected_eof_converter, unexpected_eof_converter_ctx};
+pub use error::{Error, Kind as ErrorKind};
 pub use record::Meta;
 pub use storage::{ArrayKey, BlobRecordTimestamp, Builder, Key, ReadResult, RefKey, Storage};
 
@@ -109,4 +109,5 @@ mod prelude {
         time::{Instant, Duration},
     };
     pub(crate) use tokio_stream::StreamExt;
+    pub(crate) use error::IntoBincodeIfUnexpectedEofTrait;
 }
