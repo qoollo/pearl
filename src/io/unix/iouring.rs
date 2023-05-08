@@ -166,7 +166,7 @@ impl File {
         rio: &Rio,
     ) -> IOResult<BytesMut> {
         let compl = rio.read_at(self.sync.std_file_ref(), &buf, offset);
-        let mut size = compl.await.with_context(|| "read at failed")?;
+        let mut size = compl.await?;
         while size < buf.len() {
             debug!(
                 "io uring read partial block, trying to read the rest, completed {}/{} bytes",
@@ -176,7 +176,7 @@ impl File {
             let slice = buf.split_at_mut(size).1;
             debug!("blob file read at buf to fill up: {}b", slice.len());
             let compl = rio.read_at(self.sync.std_file_ref(), &slice, offset + size as u64);
-            let remainder_size = compl.await.with_context(|| "second read at failed")?;
+            let remainder_size = compl.await?;
             debug!(
                 "blob file read at second read, completed {}/{} of remains bytes",
                 remainder_size,
