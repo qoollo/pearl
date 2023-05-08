@@ -15,6 +15,7 @@ Pearl changelog
 - Improved Arc placement in Storage (#185)
 - Improved visibility levels in Storage (#186)
 - BLOB-wide exclusive lock removed from the write path, instead the short lock on the in-memory index added (#249)
+- Include BTreeMap overhead in index calculations (#266)
 
 #### Fixed
 - Fix fork in test duplicating test environment (#254)
