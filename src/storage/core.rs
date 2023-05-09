@@ -1241,7 +1241,7 @@ where
 
     /// Dumps indexes on old blobs. This method is slow, so it is better to run it in background
     pub(crate) async fn try_dump_old_blob_indexes(&self) {
-        Safe::try_dump_old_blob_indexes(&self.safe, self.get_dump_sem(), Duration::from_millis(250)).await;
+        Safe::try_dump_old_blob_indexes(&self.safe, self.get_dump_sem(), Duration::from_millis(200)).await;
     }
 }
 
@@ -1322,7 +1322,7 @@ where
             let mut write_blobs = safe_guard.blobs.write().await;  
 
             let quantum_start = Instant::now();
-            let progress_start = current_progress;
+            let progress_start = current_progress; // Every new iteration should go further
             for blob in write_blobs.iter_mut().skip(current_progress) {
                 if current_progress > progress_start && quantum_start.elapsed() > max_quantum {
                     // Time quantum ended. Unlock blobs to allow other threads to work

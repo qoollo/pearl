@@ -165,12 +165,12 @@ async fn test_multithread_read_write_exist_delete() -> Result<(), String> {
     let storage = Arc::new(
         common::create_custom_test_storage(&path, |builder| {
             builder
-                .max_blob_size(5_000_000)
-                .set_deferred_index_dump_times(Duration::from_millis(500), Duration::from_millis(1000))
+                .max_blob_size(3_000_000)
+                .set_deferred_index_dump_times(Duration::from_millis(750), Duration::from_millis(1500))
         }).await?);
     const THREADS: usize = 2;
     const KEYS_PER_THREAD: usize = 5000;
-    const OPERATIONS_PER_THREAD: usize = 20000;
+    const OPERATIONS_PER_THREAD: usize = 25000;
 
     let data = vec![184u8; 2000];
     let handles: FuturesUnordered<_> = (0..THREADS)
@@ -226,6 +226,38 @@ async fn test_multithread_read_write_exist_delete() -> Result<(), String> {
                                     assert!(!map.contains_key(&key));
                                 }
                             }
+                        }
+                    }
+                }
+                
+                // Check all keys
+                for key in min_key..max_key {
+                    let read_res = st.read(KeyTest::new(key)).await.expect("read success");
+                    match read_res {
+                        ReadResult::Found(data) => {
+                            assert!(map.contains_key(&key));
+                            assert_eq!(*map.get(&key).unwrap(), data.len());
+                        },
+                        ReadResult::Deleted(_) => {
+                            assert!(map.contains_key(&key));
+                            assert_eq!(*map.get(&key).unwrap(), usize::MAX);
+                        },
+                        ReadResult::NotFound => {
+                            assert!(!map.contains_key(&key));
+                        }
+                    }
+
+                    let exist_res = st.contains(KeyTest::new(key)).await.expect("exist success");
+                    match exist_res {
+                        ReadResult::Found(_) => {
+                            assert!(map.contains_key(&key));
+                        },
+                        ReadResult::Deleted(_) => {
+                            assert!(map.contains_key(&key));
+                            assert_eq!(*map.get(&key).unwrap(), usize::MAX);
+                        },
+                        ReadResult::NotFound => {
+                            assert!(!map.contains_key(&key));
                         }
                     }
                 }
