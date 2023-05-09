@@ -67,11 +67,15 @@ where
     const BTREE_ENTRY_SIZE: usize =
         size_of::<Vec<u8>>() + MemoryAttrs::<K>::KEY_SIZE + size_of::<Vec<RecordHeader>>();
     const RECORD_HEADER_SIZE: usize = size_of::<RecordHeader>() + MemoryAttrs::<K>::KEY_SIZE;
+    // Each node in BTreeMap contains preallocated vectors of 11 values and 12 edges.
+    // Although count of nodes can't be determined without reimplementing insertion algorithm,
+    // we can use approximation of overhead size added per one key
     const BTREE_SIZE_MULTIPLIER: usize = (
-        size_of::<std::ptr::NonNull<()>>() + // btree node
-        size_of::<u16>() * 2 + // metadata
-        size_of::<std::ptr::NonNull<()>>() * 12 // edges vector in node
-    ) / 11; // count of keys in single node
+        size_of::<std::ptr::NonNull<()>>() +      // ptr to parent btree node
+        size_of::<u16>() * 2 +                    // metadata
+        MemoryAttrs::<K>::BTREE_ENTRY_SIZE * 11 + // values vector
+        size_of::<std::ptr::NonNull<()>>() * 12   // edges vector
+    ) / 11;                                       // count of values in single node
 }
 
 pub type InMemoryIndex<K> = BTreeMap<K, Vec<RecordHeader>>;
@@ -104,12 +108,12 @@ where
             ..
         } = &mem;
         let len = self.headers.len();
-        trace!("record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}",
-                MemoryAttrs::<K>::RECORD_HEADER_SIZE, records_allocated, len, MemoryAttrs::<K>::BTREE_ENTRY_SIZE);
+        trace!("record_header_size: {}, records_allocated: {}, data.len(): {}",
+                MemoryAttrs::<K>::RECORD_HEADER_SIZE, records_allocated, len);
         // last minus is neccessary, because allocated but not initialized record
         // headers don't have key allocated on heap
         MemoryAttrs::<K>::RECORD_HEADER_SIZE * records_allocated
-            + len * (MemoryAttrs::<K>::BTREE_ENTRY_SIZE + MemoryAttrs::<K>::BTREE_SIZE_MULTIPLIER)
+            + len * MemoryAttrs::<K>::BTREE_SIZE_MULTIPLIER
             - (records_allocated - records_count) * MemoryAttrs::<K>::KEY_SIZE
     }
 
