@@ -73,9 +73,9 @@ where
     const BTREE_SIZE_MULTIPLIER: usize = (
         size_of::<std::ptr::NonNull<()>>() +      // ptr to parent btree node
         size_of::<u16>() * 2 +                    // metadata
-        MemoryAttrs::<K>::BTREE_ENTRY_SIZE * 11 + // values vector
         size_of::<std::ptr::NonNull<()>>() * 12   // edges vector
-    ) / 11;                                       // count of values in single node
+    ) / 11 +                                      // count of values in single node
+        MemoryAttrs::<K>::BTREE_ENTRY_SIZE;       // size of single value
 }
 
 pub type InMemoryIndex<K> = BTreeMap<K, Vec<RecordHeader>>;
