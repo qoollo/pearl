@@ -59,6 +59,10 @@ struct MemoryAttrs<K> {
     marker: PhantomData<K>,
 }
 
+const BTREE_B_FACTOR: usize = 6;
+const BTREE_VALUES_LEN: usize = BTREE_B_FACTOR * 2 - 1;
+const BTREE_EDGES_LEN: usize = BTREE_B_FACTOR * 2;
+
 impl<K> MemoryAttrs<K>
 where
     for<'a> K: Key<'a>,
@@ -70,12 +74,14 @@ where
     // Each node in BTreeMap contains preallocated vectors of 11 values and 12 edges.
     // Although count of nodes can't be determined without reimplementing insertion algorithm,
     // we can use approximation of overhead size added per one key
-    const BTREE_SIZE_MULTIPLIER: usize = (
-        size_of::<std::ptr::NonNull<()>>() +      // ptr to parent btree node
-        size_of::<u16>() * 2 +                    // metadata
-        size_of::<std::ptr::NonNull<()>>() * 12   // edges vector
-    ) / 11 +                                      // count of values in single node
-        MemoryAttrs::<K>::BTREE_ENTRY_SIZE;       // size of single value
+    const BTREE_SIZE_MULTIPLIER: f64 = 
+        ((size_of::<Option<std::ptr::NonNull<()>>>() +                     // ptr to parent
+          size_of::<u16>() * 2 +                                           // metadata
+          MemoryAttrs::<K>::BTREE_ENTRY_SIZE * BTREE_VALUES_LEN) as f64    // vector of values
+         / BTREE_VALUES_LEN as f64) +                                      // data exists every `BTREE_VALUES_LEN` nodes
+        ((size_of::<std::ptr::NonNull<()>>() * BTREE_EDGES_LEN) as f64 /   // vector of edges
+         (((1.0 + BTREE_EDGES_LEN as f64 + BTREE_EDGES_LEN.pow(2) as f64 + BTREE_EDGES_LEN.pow(3) as f64 + BTREE_EDGES_LEN.pow(4) as f64)
+           * BTREE_VALUES_LEN as f64) / (BTREE_EDGES_LEN.pow(5) as f64))); // multiplier of inner nodes
 }
 
 pub type InMemoryIndex<K> = BTreeMap<K, Vec<RecordHeader>>;
@@ -113,7 +119,7 @@ where
         // last minus is neccessary, because allocated but not initialized record
         // headers don't have key allocated on heap
         MemoryAttrs::<K>::RECORD_HEADER_SIZE * records_allocated
-            + len * MemoryAttrs::<K>::BTREE_SIZE_MULTIPLIER
+            + (len as f64 * MemoryAttrs::<K>::BTREE_SIZE_MULTIPLIER) as usize
             - (records_allocated - records_count) * MemoryAttrs::<K>::KEY_SIZE
     }
 
