@@ -78,12 +78,12 @@ where
                                         MemoryAttrs::<K>::BTREE_ENTRY_SIZE * BTREE_VALUES_LEN;           // data
     const BTREE_DATA_NODE_RATIO: f64 = 1.0 / BTREE_VALUES_LEN as f64;
     const BTREE_INTERNAL_NODE_OVERHEAD: usize = size_of::<std::ptr::NonNull<()>>() * BTREE_EDGES_LEN;    // edges
-    const BTREE_INTERNAL_NODE_RATIO: f64 = (((1 +
-                                              BTREE_EDGES_LEN +
-                                              BTREE_EDGES_LEN.pow(2) +
-                                              BTREE_EDGES_LEN.pow(3) +
-                                              BTREE_EDGES_LEN.pow(4)) as f64
-                                             / (BTREE_VALUES_LEN * BTREE_EDGES_LEN.pow(5)) as f64));
+    const BTREE_INTERNAL_NODE_RATIO: f64 = (1 +
+                                            BTREE_EDGES_LEN +
+                                            BTREE_EDGES_LEN.pow(2) +
+                                            BTREE_EDGES_LEN.pow(3) +
+                                            BTREE_EDGES_LEN.pow(4)) as f64
+                                           / (BTREE_VALUES_LEN * BTREE_EDGES_LEN.pow(5)) as f64;
     const BTREE_SIZE_MULTIPLIER: f64 =
         (MemoryAttrs::<K>::BTREE_DATA_NODE_SIZE as f64 * MemoryAttrs::<K>::BTREE_DATA_NODE_RATIO) +
         (MemoryAttrs::<K>::BTREE_INTERNAL_NODE_OVERHEAD as f64 * MemoryAttrs::<K>::BTREE_INTERNAL_NODE_RATIO);
