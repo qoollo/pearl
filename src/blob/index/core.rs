@@ -67,10 +67,9 @@ impl<K> MemoryAttrs<K>
 where
     for<'a> K: Key<'a>,
 {
-    const KEY_SIZE: usize = K::LEN as usize;
     const BTREE_ENTRY_SIZE: usize =
-        size_of::<Vec<u8>>() + MemoryAttrs::<K>::KEY_SIZE + size_of::<Vec<RecordHeader>>();
-    const RECORD_HEADER_SIZE: usize = size_of::<RecordHeader>() + MemoryAttrs::<K>::KEY_SIZE;
+        size_of::<Vec<u8>>() + K::MEM_SIZE + size_of::<Vec<RecordHeader>>();
+    const RECORD_HEADER_SIZE: usize = size_of::<RecordHeader>() + K::MEM_SIZE;
     // Each node in BTreeMap contains preallocated vectors of 11 values and 12 edges.
     // Although count of nodes can't be determined without reimplementing insertion algorithm,
     // we can use approximation of overhead size added per one key
@@ -124,14 +123,9 @@ where
                 len, records_allocated, records_count);
         // last minus is neccessary, because allocated but not initialized record
         // headers don't have key allocated on heap
-        let len = 100_000;
-        let res1 = MemoryAttrs::<K>::RECORD_HEADER_SIZE * records_allocated
+        MemoryAttrs::<K>::RECORD_HEADER_SIZE * records_allocated
             + (len as f64 * MemoryAttrs::<K>::BTREE_SIZE_MULTIPLIER) as usize
-            - (records_allocated - records_count) * MemoryAttrs::<K>::KEY_SIZE;
-        let res2 = MemoryAttrs::<K>::RECORD_HEADER_SIZE * records_allocated
-            + (len as f64 * MemoryAttrs::<K>::BTREE_ENTRY_SIZE as f64) as usize
-            - (records_allocated - records_count) * MemoryAttrs::<K>::KEY_SIZE;
-            panic!("{}", res1 - res2);
+            - (records_allocated - records_count) * K::MEM_SIZE
     }
 
     fn records_count(&self) -> usize {

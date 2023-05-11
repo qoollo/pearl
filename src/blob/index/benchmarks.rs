@@ -20,6 +20,8 @@ impl<'a> RefKey<'a> for RefKeyType<'a> {}
 impl<'a> Key<'a> for KeyType {
     const LEN: u16 = 8;
 
+    const MEM_SIZE: usize = 8 + std::mem::size_of::<Vec<u8>>();
+
     type Ref = RefKeyType<'a>;
 }
 

@@ -252,6 +252,8 @@ mod tests {
     impl<'a> Key<'a> for ProperKey {
         const LEN: u16 = LEN;
 
+        const MEM_SIZE: usize = LEN as usize + std::mem::size_of::<Vec<u8>>();
+
         type Ref = RefProperKey<'a>;
     }
 
@@ -303,6 +305,8 @@ mod tests {
 
     impl<'a> Key<'a> for WrongKey {
         const LEN: u16 = LEN;
+
+        const MEM_SIZE: usize = LEN as usize + std::mem::size_of::<Vec<u8>>();
 
         type Ref = RefWrongKey<'a>;
     }
