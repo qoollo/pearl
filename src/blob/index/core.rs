@@ -67,9 +67,8 @@ impl<K> MemoryAttrs<K>
 where
     for<'a> K: Key<'a>,
 {
-    const BTREE_ENTRY_SIZE: usize =
-        size_of::<Vec<u8>>() + K::MEM_SIZE + size_of::<Vec<RecordHeader>>();
-    const RECORD_HEADER_SIZE: usize = size_of::<RecordHeader>() + K::MEM_SIZE;
+    const BTREE_ENTRY_SIZE: usize = K::MEM_SIZE + size_of::<Vec<RecordHeader>>();
+    const RECORD_HEADER_SIZE: usize = size_of::<RecordHeader>() + K::LEN as usize;
     // Each node in BTreeMap contains preallocated vectors of 11 values and 12 edges.
     // Although count of nodes can't be determined without reimplementing insertion algorithm,
     // we can use approximation of overhead size added per one key
