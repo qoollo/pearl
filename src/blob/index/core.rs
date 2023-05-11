@@ -79,12 +79,12 @@ where
                                         MemoryAttrs::<K>::BTREE_ENTRY_SIZE * BTREE_VALUES_LEN;           // data
     const BTREE_DATA_NODE_RATIO: f64 = 1.0 / BTREE_VALUES_LEN as f64;
     const BTREE_INTERNAL_NODE_OVERHEAD: usize = size_of::<std::ptr::NonNull<()>>() * BTREE_EDGES_LEN;    // edges
-    const BTREE_INTERNAL_NODE_RATIO: f64 = (((1.0 +
-                                              BTREE_EDGES_LEN as f64 +
-                                              BTREE_EDGES_LEN.pow(2) as f64 +
-                                              BTREE_EDGES_LEN.pow(3) as f64 +
-                                              BTREE_EDGES_LEN.pow(4) as f64)
-                                             / (BTREE_VALUES_LEN as f64 * BTREE_EDGES_LEN.pow(5) as f64)));
+    const BTREE_INTERNAL_NODE_RATIO: f64 = (((1 +
+                                              BTREE_EDGES_LEN +
+                                              BTREE_EDGES_LEN.pow(2) +
+                                              BTREE_EDGES_LEN.pow(3) +
+                                              BTREE_EDGES_LEN.pow(4)) as f64
+                                             / (BTREE_VALUES_LEN * BTREE_EDGES_LEN.pow(5)) as f64));
     const BTREE_SIZE_MULTIPLIER: f64 =
         (MemoryAttrs::<K>::BTREE_DATA_NODE_SIZE as f64 * MemoryAttrs::<K>::BTREE_DATA_NODE_RATIO) +
         (MemoryAttrs::<K>::BTREE_INTERNAL_NODE_OVERHEAD as f64 * MemoryAttrs::<K>::BTREE_INTERNAL_NODE_RATIO);
@@ -124,9 +124,14 @@ where
                 len, records_allocated, records_count);
         // last minus is neccessary, because allocated but not initialized record
         // headers don't have key allocated on heap
-        MemoryAttrs::<K>::RECORD_HEADER_SIZE * records_allocated
+        let len = 100_000;
+        let res1 = MemoryAttrs::<K>::RECORD_HEADER_SIZE * records_allocated
             + (len as f64 * MemoryAttrs::<K>::BTREE_SIZE_MULTIPLIER) as usize
-            - (records_allocated - records_count) * MemoryAttrs::<K>::KEY_SIZE
+            - (records_allocated - records_count) * MemoryAttrs::<K>::KEY_SIZE;
+        let res2 = MemoryAttrs::<K>::RECORD_HEADER_SIZE * records_allocated
+            + (len as f64 * MemoryAttrs::<K>::BTREE_ENTRY_SIZE as f64) as usize
+            - (records_allocated - records_count) * MemoryAttrs::<K>::KEY_SIZE;
+            panic!("{}", res1 - res2);
     }
 
     fn records_count(&self) -> usize {
