@@ -124,7 +124,7 @@ where
         // headers don't have key allocated on heap
         MemoryAttrs::<K>::RECORD_HEADER_SIZE * records_allocated
             + (len as f64 * MemoryAttrs::<K>::BTREE_SIZE_MULTIPLIER) as usize
-            - (records_allocated - records_count) * K::MEM_SIZE
+            - (records_allocated - records_count) * K::LEN as usize
     }
 
     fn records_count(&self) -> usize {

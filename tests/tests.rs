@@ -17,6 +17,7 @@ use std::{
 };
 use tokio::time::sleep;
 
+
 mod common;
 
 use common::{KeyTest, MAX_DEFER_TIME, MIN_DEFER_TIME};
@@ -906,7 +907,7 @@ async fn test_memory_index() {
     // Key and data size - size of entries in binarymap not including size of entry internal value (RecordHeader)
     // RecordHeader is private, so instead of measurement size_of::Vec<RecordHeader>() there is
     // measurement size_of::<Vec<u8>>(), which has the same size on stack
-    const KEY_AND_DATA_SIZE: usize = KeyTest::MEM_SIZE;
+    const KEY_AND_DATA_SIZE: usize = KeyTest::MEM_SIZE + std::mem::size_of::<Vec<u8>>();
     // I checked vector source code and there is a rule for vector buffer memory allocation (min
     // memory capacity):
     // ```
@@ -922,8 +923,8 @@ async fn test_memory_index() {
         storage.index_memory().await,
         KEY_AND_DATA_SIZE * 4 + // 4 keys
         RECORD_HEADER_SIZE * 13 - // 13 allocated
-        6 * KeyTest::MEM_SIZE + // 6 without key on heap
-        103// btree overhead
+        6 * KeyTest::LEN as usize + // 6 without key on heap
+        7  // btree overhead
     );
     assert!(path.join("test.0.blob").exists());
     storage.try_close_active_blob().await.unwrap();
@@ -940,7 +941,7 @@ async fn test_memory_index() {
         KEY_AND_DATA_SIZE * 3 + // 3 keys
         RECORD_HEADER_SIZE * 3 +  // 3 records in active blob
         file_index_size + // file structures
-        77 // btree overhead
+        5 // btree overhead
     ); // 3 keys, 3 records in active blob (3 allocated)
     assert!(path.join("test.1.blob").exists());
     common::clean(storage, path).await;
