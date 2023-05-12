@@ -7,7 +7,7 @@ use futures::{
     stream::{futures_unordered::FuturesUnordered, FuturesOrdered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
-use pearl::{BloomProvider, Builder, Meta, ReadResult, Storage};
+use pearl::{BloomProvider, Builder, Meta, ReadResult, Storage, BlobRecordTimestamp};
 use rand::{seq::SliceRandom, Rng, SeedableRng};
 use std::{
     fs,
@@ -159,7 +159,22 @@ async fn test_multithread_read_write() -> Result<(), String> {
 
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
-async fn test_multithread_read_write_exist_delete() -> Result<(), String> {
+async fn test_multithread_read_write_exist_delete() -> Result<(), String> 
+{
+    fn map_value_into_read_result(val: Option<&usize>) -> ReadResult<usize> {
+        match val {
+            Some(v) if *v == usize::MAX => ReadResult::Deleted(BlobRecordTimestamp::new(0)),
+            Some(v) => ReadResult::Found(*v),
+            None => ReadResult::NotFound
+        }
+    }
+    fn reset_delete_timestamp<T>(val: ReadResult<T>) -> ReadResult<T> {
+        if val.is_deleted() {
+            return ReadResult::Deleted(BlobRecordTimestamp::new(0));
+        } 
+        val
+    }
+
     let now = Instant::now();
     let path = common::init("multithread_read_write_exist_delete");
     let storage = Arc::new(
@@ -198,34 +213,13 @@ async fn test_multithread_read_write_exist_delete() -> Result<(), String> {
                         },
                         4 | 5 | 6 => {
                             let exist_res = st.contains(KeyTest::new(key)).await.expect("exist success");
-                            match exist_res {
-                                ReadResult::Found(_) => {
-                                    assert!(map.contains_key(&key));
-                                },
-                                ReadResult::Deleted(_) => {
-                                    assert!(map.contains_key(&key));
-                                    assert_eq!(*map.get(&key).unwrap(), usize::MAX);
-                                },
-                                ReadResult::NotFound => {
-                                    assert!(!map.contains_key(&key));
-                                }
-                            }
+                            let map_res = map_value_into_read_result(map.get(&key));
+                            assert_eq!(map_res.map(|_| ()), reset_delete_timestamp(exist_res.map(|_| ())));
                         },
                         _ => {
                             let read_res = st.read(KeyTest::new(key)).await.expect("read success");
-                            match read_res {
-                                ReadResult::Found(data) => {
-                                    assert!(map.contains_key(&key));
-                                    assert_eq!(*map.get(&key).unwrap(), data.len());
-                                },
-                                ReadResult::Deleted(_) => {
-                                    assert!(map.contains_key(&key));
-                                    assert_eq!(*map.get(&key).unwrap(), usize::MAX);
-                                },
-                                ReadResult::NotFound => {
-                                    assert!(!map.contains_key(&key));
-                                }
-                            }
+                            let map_res = map_value_into_read_result(map.get(&key));
+                            assert_eq!(map_res, reset_delete_timestamp(read_res.map(|v| v.len())));
                         }
                     }
                 }
@@ -233,33 +227,12 @@ async fn test_multithread_read_write_exist_delete() -> Result<(), String> {
                 // Check all keys
                 for key in min_key..max_key {
                     let read_res = st.read(KeyTest::new(key)).await.expect("read success");
-                    match read_res {
-                        ReadResult::Found(data) => {
-                            assert!(map.contains_key(&key));
-                            assert_eq!(*map.get(&key).unwrap(), data.len());
-                        },
-                        ReadResult::Deleted(_) => {
-                            assert!(map.contains_key(&key));
-                            assert_eq!(*map.get(&key).unwrap(), usize::MAX);
-                        },
-                        ReadResult::NotFound => {
-                            assert!(!map.contains_key(&key));
-                        }
-                    }
+                    let map_res = map_value_into_read_result(map.get(&key));
+                    assert_eq!(map_res, reset_delete_timestamp(read_res.map(|v| v.len())));
 
                     let exist_res = st.contains(KeyTest::new(key)).await.expect("exist success");
-                    match exist_res {
-                        ReadResult::Found(_) => {
-                            assert!(map.contains_key(&key));
-                        },
-                        ReadResult::Deleted(_) => {
-                            assert!(map.contains_key(&key));
-                            assert_eq!(*map.get(&key).unwrap(), usize::MAX);
-                        },
-                        ReadResult::NotFound => {
-                            assert!(!map.contains_key(&key));
-                        }
-                    }
+                    let map_res = map_value_into_read_result(map.get(&key));
+                    assert_eq!(map_res.map(|_| ()), reset_delete_timestamp(exist_res.map(|_| ())));
                 }
             };
             tokio::spawn(task)
