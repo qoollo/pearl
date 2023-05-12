@@ -687,13 +687,9 @@ where
         let active_blob = if with_active {
             if blobs.is_empty() && new_corrupted_blob_count > 0 {
                 let next = self.inner.next_blob_name()?;
-                Some(Box::new(ASRwLock::new(
-                    Blob::open_new(next, self.inner.iodriver.clone(), self.inner.config.blob()).await?,
-                )))
+                Some(Blob::open_new(next, self.inner.iodriver.clone(), self.inner.config.blob()).await?)
             } else {
-                Some(Box::new(ASRwLock::new(
-                    Self::pop_active(&mut blobs, &self.inner.config).await?,
-                )))
+                Some(Self::pop_active(&mut blobs, &self.inner.config).await?)
             }
         } else {
             None
@@ -705,13 +701,10 @@ where
         }
 
         let mut safe = self.inner.safe.write().await;
-        safe.active_blob = active_blob;
+        safe.active_blob = active_blob.map(|ab| Box::new(ASRwLock::new(ab)));
         *safe.blobs.write().await =
-            HierarchicalFilters::from_vec(self.inner.config.bloom_filter_group_size(), 1, blobs)
-                .await;
-        let new_next_blob_id = self.inner.next_blob_id.load(Ordering::Acquire)
-            .max(safe.max_id().await.map_or(0, |i| i + 1));
-        self.inner.next_blob_id.store(new_next_blob_id, Ordering::Release);
+            HierarchicalFilters::from_vec(self.inner.config.bloom_filter_group_size(), 1, blobs).await;
+        self.inner.next_blob_id.fetch_max(safe.max_id().await.map_or(0, |i| i + 1), Ordering::AcqRel);
         Ok(())
     }
 
@@ -764,14 +757,14 @@ where
         while let Some(blob_res) = futures.next().await {
             match blob_res {
                 Ok(blob) => {
-                    max_blob_id = Some(max_blob_id.map_or(blob.id(), |v| v.max(blob.id())));
+                    max_blob_id = max_blob_id.max(Some(blob.id()));
                     blobs.push(blob);
                 },
                 Err((e, file)) => {
                     let msg = format!("Failed to read existing blob: {}", file.display());
 
                     if let Ok(file_name) = blob::FileName::from_path(&file) {
-                        max_blob_id = Some(max_blob_id.map_or(file_name.id(), |v| v.max(file_name.id())));
+                        max_blob_id = max_blob_id.max(Some(file_name.id()));
                     }
 
                     if config.ignore_corrupted() {
