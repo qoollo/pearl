@@ -97,10 +97,10 @@ impl Meta {
     }
 
     #[inline]
-    pub(crate) fn from_raw(buf: &[u8]) -> Result<Self> {
+    pub(crate) fn from_raw(buf: &[u8]) -> bincode::Result<Self> {
         let res = deserialize(buf);
         trace!("meta deserialized: {:?}", res);
-        res.map_err(Into::into)
+        res
     }
 
     #[inline]

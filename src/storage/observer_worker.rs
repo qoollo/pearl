@@ -147,7 +147,12 @@ where
             },
             OperationType::TryUpdateActiveBlob => {
                 if self.try_update_active_blob().await? {
-                    self.try_run_old_blob_indexes_dump_task().await;
+                    // Dump due to an active BLOB switch can overlap with a deferred dump due to deletion. 
+                    // That can result in performance degradation. 
+                    // Therefore, if a deferred dump is registered, then we attach to it
+                    if self.deferred_index_dump_info.is_some() || !self.try_run_old_blob_indexes_dump_task().await {
+                        self.defer_blob_indexes_dump().await?;
+                    }
                 }
             },
             OperationType::DeferredDumpBlobIndexes => {
@@ -186,8 +191,13 @@ where
             let min = self.inner.config().deferred_min_time();
             let max = self.inner.config().deferred_max_time();
             if deferred.last_time.elapsed() >= min || deferred.first_time.elapsed() >= max {
-                self.deferred_index_dump_info = None;
-                self.try_run_old_blob_indexes_dump_task().await;
+                if self.try_run_old_blob_indexes_dump_task().await {
+                    self.deferred_index_dump_info = None;
+                } else {
+                    // The dump procedure is already running, but this does not guarantee that the dump for the desired blob will be made in it. 
+                    // Therefore, we defer the dump procedure once more
+                    self.deferred_index_dump_info = Some(Box::new(DeferredEventData::new()));
+                }
             } else {
                 let next_deadline = deferred.next_deadline(min, max);
                 self.update_deadline(next_deadline);
@@ -199,10 +209,10 @@ where
 
 
     /// Runs index dumping task in background if no task is already running
-    async fn try_run_old_blob_indexes_dump_task(&mut self) {
+    async fn try_run_old_blob_indexes_dump_task(&mut self) -> bool {
         if self.index_dump_task.as_ref().map_or(false, |task| !task.is_finished()) {
             // Dump task is in progress. Avoid starting second one
-            return;
+            return false;
         }
 
         complete_task(&mut self.index_dump_task, "index_dump_task").await;
@@ -213,6 +223,7 @@ where
         });
 
         self.index_dump_task = Some(task);
+        return true;
     }
 
 

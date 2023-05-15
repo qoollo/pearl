@@ -75,7 +75,6 @@ mod prelude {
 
     pub(crate) use super::*;
     pub(crate) use std::collections::BTreeMap;
-    pub(crate) const ORD: Ordering = Ordering::Relaxed;
 
     pub(crate) use anyhow::{Context as ErrorContexts, Result};
     pub(crate) use bincode::{deserialize, serialize, serialize_into, serialized_size};
@@ -109,4 +108,5 @@ mod prelude {
         time::{Instant, Duration},
     };
     pub(crate) use tokio_stream::StreamExt;
+    pub(crate) use error::IntoBincodeIfUnexpectedEofTrait;
 }

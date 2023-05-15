@@ -110,8 +110,8 @@ impl File {
         }
     }
 
-    pub(crate) async fn read_all(&self) -> Result<BytesMut> {
-        self.read_exact_at_allocate(self.size().try_into()?, 0)
+    pub(crate) async fn read_all(&self) -> IOResult<BytesMut> {
+        self.read_exact_at_allocate(self.size().try_into().expect("File is too large"), 0)
             .await
     }
 
@@ -119,12 +119,12 @@ impl File {
         &self,
         size: usize,
         offset: u64,
-    ) -> Result<BytesMut> {
+    ) -> IOResult<BytesMut> {
         let buf = BytesMut::zeroed(size);
         self.read_exact_at(buf, offset).await
     }
 
-    pub(crate) async fn read_exact_at(&self, buf: BytesMut, offset: u64) -> Result<BytesMut> {
+    pub(crate) async fn read_exact_at(&self, buf: BytesMut, offset: u64) -> IOResult<BytesMut> {
         debug!("File read at buf len: {}, offset: {}", buf.len(), offset);
         if let Some(ref rio) = self.rio {
             self.read_exact_at_aio(buf, offset, rio).await
@@ -164,9 +164,9 @@ impl File {
         mut buf: BytesMut,
         offset: u64,
         rio: &Rio,
-    ) -> Result<BytesMut> {
+    ) -> IOResult<BytesMut> {
         let compl = rio.read_at(self.sync.std_file_ref(), &buf, offset);
-        let mut size = compl.await.with_context(|| "read at failed")?;
+        let mut size = compl.await?;
         while size < buf.len() {
             debug!(
                 "io uring read partial block, trying to read the rest, completed {}/{} bytes",
@@ -176,15 +176,14 @@ impl File {
             let slice = buf.split_at_mut(size).1;
             debug!("blob file read at buf to fill up: {}b", slice.len());
             let compl = rio.read_at(self.sync.std_file_ref(), &slice, offset + size as u64);
-            let remainder_size = compl.await.with_context(|| "second read at failed")?;
+            let remainder_size = compl.await?;
             debug!(
                 "blob file read at second read, completed {}/{} of remains bytes",
                 remainder_size,
                 slice.len()
             );
             if remainder_size == 0 {
-                let msg = "blob file read failed, second read returns zero bytes".to_string();
-                return Err(Error::io(msg).into());
+                return Err(IOError::new(IOErrorKind::UnexpectedEof, "failed to fill whole buffer"));
             }
             size += remainder_size;
             debug!("blob file read at proggress {}/{}", size, buf.len());
@@ -219,13 +218,13 @@ impl super::super::FileTrait for File {
     async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
         self.write_all_at(offset, buf).await
     }
-    async fn read_all(&self) -> Result<BytesMut> {
+    async fn read_all(&self) -> IOResult<BytesMut> {
         self.read_all().await
     }
-    async fn read_exact_at_allocate(&self, size: usize, offset: u64) -> Result<BytesMut> {
+    async fn read_exact_at_allocate(&self, size: usize, offset: u64) -> IOResult<BytesMut> {
         self.read_exact_at_allocate(size, offset).await
     }
-    async fn read_exact_at(&self, buf: BytesMut, offset: u64) -> Result<BytesMut> {
+    async fn read_exact_at(&self, buf: BytesMut, offset: u64) -> IOResult<BytesMut> {
         self.read_exact_at(buf, offset).await
     }
     async fn fsyncdata(&self) -> IOResult<()> {

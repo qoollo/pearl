@@ -4,7 +4,6 @@ use crate::prelude::*;
 use bytes::{Bytes, BytesMut};
 use std::sync::atomic::AtomicU64;
 use std::{
-    io::{Error as IOError, ErrorKind as IOErrorKind},
     os::windows::fs::{FileExt, OpenOptionsExt},
     time::SystemTime,
 };
@@ -94,23 +93,22 @@ impl File {
         Self::background_sync_call(move || file_inner.write_all_at(&buf, offset)).await
     }
 
-    pub(crate) async fn read_all(&self) -> Result<BytesMut> {
-        self.read_exact_at_allocate(self.size().try_into()?, 0).await
+    pub(crate) async fn read_all(&self) -> IOResult<BytesMut> {
+        self.read_exact_at_allocate(self.size().try_into().expect("File is too large"), 0).await
     }
 
     pub(crate) async fn read_exact_at_allocate(
         &self,
         size: usize,
         offset: u64,
-    ) -> Result<BytesMut> {
+    ) -> IOResult<BytesMut> {
         let buf = BytesMut::zeroed(size);
         self.read_exact_at(buf, offset).await
     }
 
-    pub(crate) async fn read_exact_at(&self, mut buf: BytesMut, offset: u64) -> Result<BytesMut> {
+    pub(crate) async fn read_exact_at(&self, mut buf: BytesMut, offset: u64) -> IOResult<BytesMut> {
         let file_inner = self.inner.clone();
         Self::background_sync_call(move || file_inner.read_exact_at(&mut buf, offset).map(|_| buf)).await
-            .map_err(|err| err.into())
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
@@ -223,13 +221,13 @@ impl super::super::FileTrait for File {
     async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()> {
         self.write_all_at(offset, buf).await
     }
-    async fn read_all(&self) -> Result<BytesMut> {
+    async fn read_all(&self) -> IOResult<BytesMut> {
         self.read_all().await
     }
-    async fn read_exact_at_allocate(&self, size: usize, offset: u64) -> Result<BytesMut> {
+    async fn read_exact_at_allocate(&self, size: usize, offset: u64) -> IOResult<BytesMut> {
         self.read_exact_at_allocate(size, offset).await
     }
-    async fn read_exact_at(&self, buf: BytesMut, offset: u64) -> Result<BytesMut> {
+    async fn read_exact_at(&self, buf: BytesMut, offset: u64) -> IOResult<BytesMut> {
         self.read_exact_at(buf, offset).await
     }
     async fn fsyncdata(&self) -> IOResult<()> {
