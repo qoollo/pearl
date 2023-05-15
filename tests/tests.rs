@@ -7,7 +7,7 @@ use futures::{
     stream::{futures_unordered::FuturesUnordered, FuturesOrdered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
-use pearl::{BloomProvider, Builder, Meta, ReadResult, Storage, BlobRecordTimestamp};
+use pearl::{BloomProvider, Builder, Meta, ReadResult, Storage, Key, BlobRecordTimestamp};
 use rand::{seq::SliceRandom, Rng, SeedableRng};
 use std::{
     fs,
@@ -17,6 +17,7 @@ use std::{
     collections::HashMap
 };
 use tokio::time::sleep;
+
 
 mod common;
 
@@ -996,9 +997,7 @@ async fn test_memory_index() {
     // Key and data size - size of entries in binarymap not including size of entry internal value (RecordHeader)
     // RecordHeader is private, so instead of measurement size_of::Vec<RecordHeader>() there is
     // measurement size_of::<Vec<u8>>(), which has the same size on stack
-    const KEY_AND_DATA_SIZE: usize = std::mem::size_of::<Vec<u8>>()
-        + std::mem::size_of::<u32>()
-        + std::mem::size_of::<Vec<u8>>();
+    const KEY_AND_DATA_SIZE: usize = KeyTest::MEM_SIZE + std::mem::size_of::<Vec<u8>>();
     // I checked vector source code and there is a rule for vector buffer memory allocation (min
     // memory capacity):
     // ```
@@ -1012,8 +1011,11 @@ async fn test_memory_index() {
     // rule higher). Then there is the amortized growth.
     assert_eq!(
         storage.index_memory().await,
-        KEY_AND_DATA_SIZE * 4 + RECORD_HEADER_SIZE * 13 - 6 * std::mem::size_of::<u32>()
-    ); // 4 keys, 7 records in active blob (13 allocated (6 without key on heap))
+        KEY_AND_DATA_SIZE * 4 + // 4 keys
+        RECORD_HEADER_SIZE * 13 - // 13 allocated
+        6 * KeyTest::LEN as usize + // 6 without key on heap
+        7  // btree overhead
+    );
     assert!(path.join("test.0.blob").exists());
     storage.try_close_active_blob().await.unwrap();
     // Doesn't work without this: indices are written in old btree (which I want to dump in memory)
@@ -1026,7 +1028,10 @@ async fn test_memory_index() {
     }
     assert_eq!(
         storage.index_memory().await,
-        KEY_AND_DATA_SIZE * 3 + RECORD_HEADER_SIZE * 3 + file_index_size
+        KEY_AND_DATA_SIZE * 3 + // 3 keys
+        RECORD_HEADER_SIZE * 3 +  // 3 records in active blob
+        file_index_size + // file structures
+        5 // btree overhead
     ); // 3 keys, 3 records in active blob (3 allocated)
     assert!(path.join("test.1.blob").exists());
     common::clean(storage, path).await;
