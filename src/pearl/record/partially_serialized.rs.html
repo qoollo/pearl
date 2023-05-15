@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/record/partially_serialized.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>partially_serialized.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-6827029ac823cab7.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-8af5e100b21cd173.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-c55e1eb52e1886b4.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/record/partially_serialized.rs`."><title>partially_serialized.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-be46fdc453a55015.css"><script src="../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -109,18 +109,20 @@
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::blob::File;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>bytes::{Bytes, BytesMut};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PartiallySerializedWriteResult {
-    bytes_written: u64,
+    blob_offset: u64,
     header_checksum: u32,
 }
 
 <span class="kw">impl </span>PartiallySerializedWriteResult {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>bytes_written(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
-        <span class="self">self</span>.bytes_written
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>blob_offset(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.blob_offset
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>header_checksum(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
@@ -143,7 +145,9 @@
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>serialize_with_checksum(
+    <span class="comment">// Only needed for tests
+    </span><span class="attr">#[allow(dead_code)]
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>serialize_with_checksum(
         <span class="self">self</span>,
         blob_offset: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Bytes, <span class="prelude-ty">Option</span>&lt;Bytes&gt;, u32)&gt; {
@@ -153,34 +157,26 @@
             data,
         } = <span class="self">self</span>;
         <span class="kw">let </span>(head, checksum) =
-            <span class="self">Self</span>::finalize_with_checksum(head_with_data, header_len, blob_offset)<span class="question-mark">?</span>;
+            <span class="self">Self</span>::finalize_with_checksum(head_with_data, header_len, blob_offset);
         <span class="prelude-val">Ok</span>((head.freeze(), data, checksum))
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_to_file(
-        <span class="self">self</span>,
-        file: <span class="kw-2">&amp;</span>File,
-        offset: u64,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PartiallySerializedWriteResult&gt; {
-        <span class="kw">let </span>(head, data, checksum) = <span class="self">self</span>.serialize_with_checksum(offset)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>res = <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = data {
-            <span class="self">Self</span>::write_double_pass(head, data, file).<span class="kw">await
-        </span>} <span class="kw">else </span>{
-            <span class="self">Self</span>::write_single_pass(head, file).<span class="kw">await
-        </span>};
-
-        res.map(|l| PartiallySerializedWriteResult {
-            bytes_written: l,
-            header_checksum: checksum,
-        })
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write_to_file(<span class="self">self</span>, file: <span class="kw-2">&amp;</span>File) -&gt; <span class="prelude-ty">Result</span>&lt;PartiallySerializedWriteResult&gt; {
+        file.write_append_writable_data(<span class="self">self</span>)
+            .<span class="kw">await
+            </span>.map_err(|e| <span class="kw">match </span>e.kind() {
+                kind <span class="kw">if </span>kind == IOErrorKind::Other || kind == IOErrorKind::NotFound =&gt; {
+                    Error::file_unavailable(kind).into()
+                }
+                <span class="kw">_ </span>=&gt; e.into(),
+            })
     }
 
     <span class="kw">fn </span>finalize_with_checksum(
         <span class="kw-2">mut </span>buf: BytesMut,
         header_len: usize,
         blob_offset: u64,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(BytesMut, u32)&gt; {
+    ) -&gt; (BytesMut, u32) {
         <span class="kw">use </span>std::mem::size_of;
 
         <span class="kw">let </span>offset_pos = RecordHeader::blob_offset_offset(header_len);
@@ -196,29 +192,37 @@
         <span class="kw">let </span>checksum_slice = <span class="kw-2">&amp;mut </span>buf[checksum_pos..(checksum_pos + size_of::&lt;u32&gt;())];
         checksum_slice.copy_from_slice(<span class="kw-2">&amp;</span>checksum.to_le_bytes());
 
-        <span class="prelude-val">Ok</span>((buf, checksum))
+        (buf, checksum)
+    }
+}
+
+<span class="kw">impl </span>WritableDataCreator&lt;PartiallySerializedWriteResult&gt; <span class="kw">for </span>PartiallySerializedRecord {
+    <span class="kw">fn </span>create(<span class="self">self</span>, blob_offset: u64) -&gt; (WritableData, PartiallySerializedWriteResult) {
+        <span class="kw">let </span>PartiallySerializedRecord {
+            head_with_data,
+            header_len,
+            data,
+        } = <span class="self">self</span>;
+        <span class="kw">let </span>(head, header_checksum) = PartiallySerializedRecord::finalize_with_checksum(
+            head_with_data,
+            header_len,
+            blob_offset,
+        );
+        <span class="kw">let </span>bytes_data = <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = data {
+            WritableData::Double(head.freeze(), data)
+        } <span class="kw">else </span>{
+            WritableData::Single(head.freeze())
+        };
+        <span class="kw">let </span>ret_data = PartiallySerializedWriteResult {
+            blob_offset,
+            header_checksum,
+        };
+        (bytes_data, ret_data)
     }
 
-    <span class="kw">async fn </span>write_single_pass(buf: Bytes, file: <span class="kw-2">&amp;</span>File) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
-        <span class="kw">let </span>len = buf.len() <span class="kw">as </span>u64;
-        <span class="self">Self</span>::process_file_result(file.write_append_all(buf).<span class="kw">await</span>).map(|<span class="kw">_</span>| len)
-    }
-
-    <span class="kw">async fn </span>write_double_pass(head: Bytes, data: Bytes, file: <span class="kw-2">&amp;</span>File) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
-        <span class="kw">let </span>len = (head.len() + data.len()) <span class="kw">as </span>u64;
-        <span class="self">Self</span>::process_file_result(file.write_append_all_buffers(head, data).<span class="kw">await</span>).map(|<span class="kw">_</span>| len)
-    }
-
-    <span class="kw">fn </span>process_file_result(result: std::result::Result&lt;(), std::io::Error&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        result.map_err(|e| -&gt; anyhow::Error {
-            <span class="kw">match </span>e.kind() {
-                kind <span class="kw">if </span>kind == IOErrorKind::Other || kind == IOErrorKind::NotFound =&gt; {
-                    Error::file_unavailable(kind).into()
-                }
-                <span class="kw">_ </span>=&gt; e.into(),
-            }
-        })
+    <span class="kw">fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.head_with_data.len() <span class="kw">as </span>u64 + <span class="self">self</span>.data.as_ref().map_or(<span class="number">0</span>, |v| v.len()) <span class="kw">as </span>u64
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="pearl" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="pearl" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

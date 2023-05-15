@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/index/core.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-6827029ac823cab7.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-8af5e100b21cd173.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-c55e1eb52e1886b4.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../pearl/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/index/core.rs`."><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-be46fdc453a55015.css"><script src="../../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../pearl/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -416,6 +416,67 @@
 <a href="#416" id="416">416</a>
 <a href="#417" id="417">417</a>
 <a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
 </pre><pre class="rust"><code><span class="kw">use </span>bytes::BytesMut;
 
 <span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
@@ -462,31 +523,102 @@
 <span class="kw">where
     for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
 {
-    mem: <span class="prelude-ty">Option</span>&lt;MemoryAttrs&gt;,
     filter: CombinedFilter&lt;K&gt;,
     bloom_offset: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     params: IndexParams,
     inner: State&lt;FileIndex, K&gt;,
     name: FileName,
-    ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
+    iodriver: IoDriver,
 }
 
 <span class="attr">#[derive(Debug, Default)] </span><span class="comment">// Default can be used to initialize structure with 0
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MemoryAttrs {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) key_size: usize,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) btree_entry_size: usize,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) records_allocated: usize,
-    <span class="comment">// contains actual size occupied by record header in RAM (which helps
-    // to compute actual size of indices in RAM in `InMemory` state)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) record_header_size: usize,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) records_count: usize,
+</span><span class="kw">struct </span>MemoryAttrs&lt;K&gt; {
+    records_count: usize,
+    records_allocated: usize,
+    marker: PhantomData&lt;K&gt;,
+}
+
+<span class="kw">const </span>BTREE_B_FACTOR: usize = <span class="number">6</span>;
+<span class="kw">const </span>BTREE_VALUES_LEN: usize = BTREE_B_FACTOR * <span class="number">2 </span>- <span class="number">1</span>;
+<span class="kw">const </span>BTREE_EDGES_LEN: usize = BTREE_B_FACTOR * <span class="number">2</span>;
+
+<span class="kw">impl</span>&lt;K&gt; MemoryAttrs&lt;K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
+{
+    <span class="kw">const </span>BTREE_ENTRY_SIZE: usize = K::MEM_SIZE + size_of::&lt;Vec&lt;RecordHeader&gt;&gt;();
+    <span class="kw">const </span>RECORD_HEADER_SIZE: usize = size_of::&lt;RecordHeader&gt;() + K::LEN <span class="kw">as </span>usize;
+    <span class="comment">// Each node in BTreeMap contains preallocated vectors of 11 values and 12 edges.
+    // Although count of nodes can&#39;t be determined without reimplementing insertion algorithm,
+    // we can use approximation of overhead size added per one key
+    </span><span class="kw">const </span>BTREE_DATA_NODE_SIZE: usize = size_of::&lt;<span class="prelude-ty">Option</span>&lt;std::ptr::NonNull&lt;()&gt;&gt;&gt;() +                     <span class="comment">// ptr to parent
+                                        </span>size_of::&lt;u16&gt;() * <span class="number">2 </span>+                                           <span class="comment">// metadata
+                                        </span>MemoryAttrs::&lt;K&gt;::BTREE_ENTRY_SIZE * BTREE_VALUES_LEN;           <span class="comment">// data
+    </span><span class="kw">const </span>BTREE_DATA_NODE_RATIO: f64 = <span class="number">1.0 </span>/ BTREE_VALUES_LEN <span class="kw">as </span>f64;
+    <span class="kw">const </span>BTREE_INTERNAL_NODE_OVERHEAD: usize = size_of::&lt;std::ptr::NonNull&lt;()&gt;&gt;() * BTREE_EDGES_LEN;    <span class="comment">// edges
+    </span><span class="kw">const </span>BTREE_INTERNAL_NODE_RATIO: f64 = (<span class="number">1 </span>+
+                                            BTREE_EDGES_LEN +
+                                            BTREE_EDGES_LEN.pow(<span class="number">2</span>) +
+                                            BTREE_EDGES_LEN.pow(<span class="number">3</span>) +
+                                            BTREE_EDGES_LEN.pow(<span class="number">4</span>)) <span class="kw">as </span>f64
+                                           / (BTREE_VALUES_LEN * BTREE_EDGES_LEN.pow(<span class="number">5</span>)) <span class="kw">as </span>f64;
+    <span class="kw">const </span>BTREE_SIZE_MULTIPLIER: f64 =
+        (MemoryAttrs::&lt;K&gt;::BTREE_DATA_NODE_SIZE <span class="kw">as </span>f64 * MemoryAttrs::&lt;K&gt;::BTREE_DATA_NODE_RATIO) +
+        (MemoryAttrs::&lt;K&gt;::BTREE_INTERNAL_NODE_OVERHEAD <span class="kw">as </span>f64 * MemoryAttrs::&lt;K&gt;::BTREE_INTERNAL_NODE_RATIO);
 }
 
 <span class="kw">pub type </span>InMemoryIndex&lt;K&gt; = BTreeMap&lt;K, Vec&lt;RecordHeader&gt;&gt;;
 
-<span class="attr">#[derive(Debug, Clone)]
+<span class="attr">#[derive(Debug, Default)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>InMemoryData&lt;K&gt; {
+    headers: InMemoryIndex&lt;K&gt;,
+    mem: MemoryAttrs&lt;K&gt;,
+}
+
+<span class="kw">impl</span>&lt;K&gt; InMemoryData&lt;K&gt;
+<span class="kw">where
+    for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
+{
+    <span class="kw">fn </span>new(headers: InMemoryIndex&lt;K&gt;, count: usize) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>mem = MemoryAttrs {
+            records_allocated: headers.values().fold(<span class="number">0</span>, |acc, v| acc + v.capacity()),
+            records_count: count,
+            marker: PhantomData,
+        };
+
+        <span class="self">Self </span>{ headers, mem }
+    }
+
+    <span class="kw">fn </span>memory_used(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="kw">let </span><span class="self">Self </span>{ mem, .. } = <span class="kw-2">&amp;</span><span class="self">self</span>;
+        <span class="kw">let </span>MemoryAttrs {
+            records_count,
+            records_allocated,
+            ..
+        } = <span class="kw-2">&amp;</span>mem;
+        <span class="kw">let </span>len = <span class="self">self</span>.headers.len();
+        <span class="macro">trace!</span>(<span class="string">&quot;len: {}, records_allocated: {}, records_count: {}&quot;</span>,
+                len, records_allocated, records_count);
+        <span class="comment">// last minus is neccessary, because allocated but not initialized record
+        // headers don&#39;t have key allocated on heap
+        </span>MemoryAttrs::&lt;K&gt;::RECORD_HEADER_SIZE * records_allocated
+            + (len <span class="kw">as </span>f64 * MemoryAttrs::&lt;K&gt;::BTREE_SIZE_MULTIPLIER) <span class="kw">as </span>usize
+            - (records_allocated - records_count) * K::LEN <span class="kw">as </span>usize
+    }
+
+    <span class="kw">fn </span>records_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.mem.records_count
+    }
+
+    <span class="kw">fn </span>register_record_allocation(<span class="kw-2">&amp;mut </span><span class="self">self</span>, records_allocated: usize) {
+        <span class="self">self</span>.mem.records_allocated += records_allocated;
+        <span class="self">self</span>.mem.records_count += <span class="number">1</span>;
+    }
+}
+
+<span class="attr">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>State&lt;FileIndex, K&gt; {
-    InMemory(InMemoryIndex&lt;K&gt;),
+    InMemory(SRwLock&lt;InMemoryData&lt;K&gt;&gt;),
     OnDisk(FileIndex),
 }
 
@@ -495,24 +627,21 @@
     </span>FileIndex: FileIndexTrait&lt;K&gt;,
     <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
 {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(name: FileName, ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;, config: IndexConfig) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(name: FileName, iodriver: IoDriver, config: IndexConfig) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
         <span class="kw">let </span>bloom_filter = config.bloom_config.map(|cfg| Bloom::new(cfg));
-        <span class="kw">let </span>mem = <span class="prelude-val">Some</span>(Default::default());
         <span class="self">Self </span>{
             params,
             filter: CombinedFilter::new(bloom_filter, RangeFilter::new()),
             bloom_offset: <span class="prelude-val">None</span>,
-            inner: State::InMemory(BTreeMap::new()),
-            mem,
+            inner: State::InMemory(SRwLock::default()),
             name,
-            ioring,
+            iodriver,
         }
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.inner = State::InMemory(BTreeMap::new());
-        <span class="self">self</span>.mem = <span class="prelude-val">Some</span>(Default::default());
+        <span class="self">self</span>.inner = State::InMemory(SRwLock::default());
         <span class="self">self</span>.filter.clear_filter();
     }
 
@@ -532,17 +661,25 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.name
     }
 
+    <span class="doccomment">/// Fast check for key presence. None - can&#39;t perform fast check (disk access required)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>contains_key_fast(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            State::InMemory(index) =&gt; <span class="prelude-val">Some</span>(index.read().expect(<span class="string">&quot;read lock acquired&quot;</span>).headers.contains_key(key)),
+            State::OnDisk(<span class="kw">_</span>) =&gt; <span class="prelude-val">None
+        </span>}
+    }
+
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>from_file(
         name: FileName,
         config: IndexConfig,
-        ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
+        iodriver: IoDriver,
         blob_size: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>findex = FileIndex::from_file(name.clone(), ioring.clone()).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>findex = FileIndex::from_file(name.clone(), iodriver.clone()).<span class="kw">await</span><span class="question-mark">?</span>;
         findex
             .validate(blob_size)
             .with_context(|| <span class="string">&quot;Header is corrupt&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>meta_buf = findex.read_meta().<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>meta_buf = findex.read_meta().<span class="kw">await</span>.map_err(|err| err.into_bincode_if_unexpected_eof())<span class="question-mark">?</span>;
         <span class="kw">let </span>(bloom_filter, range_filter, bloom_offset) = <span class="self">Self</span>::deserialize_filters(<span class="kw-2">&amp;</span>meta_buf)<span class="question-mark">?</span>;
         <span class="kw">let </span>params = IndexParams::new(config.bloom_config.is_some(), config.recreate_index_file);
         <span class="kw">let </span>bloom_filter = <span class="kw">if </span>params.bloom_is_on {
@@ -553,12 +690,11 @@
         <span class="macro">trace!</span>(<span class="string">&quot;index restored successfuly&quot;</span>);
         <span class="kw">let </span>index = <span class="self">Self </span>{
             inner: State::OnDisk(findex),
-            mem: <span class="prelude-val">None</span>,
             name,
             filter: CombinedFilter::new(bloom_filter, range_filter),
             bloom_offset: <span class="prelude-val">Some</span>(bloom_offset <span class="kw">as </span>u64),
             params,
-            ioring,
+            iodriver,
         };
         <span class="prelude-val">Ok</span>(index)
     }
@@ -569,6 +705,10 @@
 
     <span class="kw">async fn </span>dump_in_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
         <span class="kw">if let </span>State::InMemory(headers) = <span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            <span class="kw">let </span>headers = {
+                <span class="kw">let </span><span class="kw-2">mut </span>headers = headers.write().expect(<span class="string">&quot;rwlock&quot;</span>);
+                std::mem::take(<span class="kw-2">&amp;mut *</span>headers).headers
+            };
             <span class="kw">if </span>headers.len() == <span class="number">0 </span>{
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="number">0</span>);
             }
@@ -577,8 +717,8 @@
             <span class="self">self</span>.bloom_offset = <span class="prelude-val">Some</span>(bloom_offset <span class="kw">as </span>u64);
             <span class="kw">let </span>findex = FileIndex::from_records(
                 <span class="kw-2">&amp;</span><span class="self">self</span>.name.to_path(),
-                <span class="self">self</span>.ioring.clone(),
-                headers,
+                <span class="self">self</span>.iodriver.clone(),
+                <span class="kw-2">&amp;</span>headers,
                 meta_buf,
                 <span class="self">self</span>.params.recreate_file,
                 blob_size,
@@ -586,11 +726,9 @@
             .<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="kw">let </span>size = findex.file_size() <span class="kw">as </span>usize;
             <span class="self">self</span>.inner = State::OnDisk(findex);
-            <span class="self">self</span>.mem = <span class="prelude-val">None</span>;
-            <span class="prelude-val">Ok</span>(size)
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Ok</span>(<span class="number">0</span>)
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(size);
         }
+        <span class="prelude-val">Ok</span>(<span class="number">0</span>)
     }
 
     <span class="kw">fn </span>serialize_filters(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, usize)&gt; {
@@ -621,9 +759,8 @@
 
     <span class="kw">async fn </span>load_in_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>, findex: FileIndex, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>(record_headers, records_count) = findex.get_records_headers(blob_size).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="self">self</span>.mem = <span class="prelude-val">Some</span>(compute_mem_attrs(<span class="kw-2">&amp;</span>record_headers, records_count));
-        <span class="self">self</span>.inner = State::InMemory(record_headers);
-        <span class="kw">let </span>meta_buf = findex.read_meta().<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="self">self</span>.inner = State::InMemory(SRwLock::new(InMemoryData::new(record_headers, records_count)));
+        <span class="kw">let </span>meta_buf = findex.read_meta().<span class="kw">await</span>.map_err(|err| err.into_bincode_if_unexpected_eof())<span class="question-mark">?</span>;
         <span class="kw">let </span>(bloom_filter, range_filter, <span class="kw">_</span>) = <span class="self">Self</span>::deserialize_filters(<span class="kw-2">&amp;</span>meta_buf)<span class="question-mark">?</span>;
         <span class="kw">let </span>bloom_filter = <span class="kw">if </span><span class="self">self</span>.params.bloom_is_on {
             <span class="prelude-val">Some</span>(bloom_filter)
@@ -636,21 +773,10 @@
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>memory_used(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="kw">if let </span>State::InMemory(data) = <span class="kw-2">&amp;</span><span class="self">self</span>.inner {
-            <span class="kw">let </span>mem = <span class="self">self
-                </span>.mem
-                .as_ref()
-                .expect(<span class="string">&quot;No memory info in `InMemory` State&quot;</span>);
-            <span class="macro">trace!</span>(<span class="string">&quot;record_header_size: {}, records_allocated: {}, data.len(): {}, entry_size (key + vec): {}&quot;</span>,
-            mem.record_header_size, mem.records_allocated, data.len(), mem.btree_entry_size
-            );
-            <span class="comment">// last minus is neccessary, because allocated but not initialized record headers don&#39;t
-            // have key allocated on heap
-            </span>mem.record_header_size * mem.records_allocated + data.len() * mem.btree_entry_size
-                - (mem.records_allocated - mem.records_count) * mem.key_size
-        } <span class="kw">else </span>{
-            <span class="number">0
-        </span>}
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
+            State::InMemory(data) =&gt; data.read().expect(<span class="string">&quot;rwlock&quot;</span>).memory_used(),
+            State::OnDisk(file) =&gt; file.memory_used(),
+        }
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>disk_used(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
@@ -674,31 +800,26 @@
             </span>.map(|h| h.map(|h| BlobRecordTimestamp::new(h.created())))
     }
 
-    <span class="kw">fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K, h: RecordHeader) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">fn </span>push(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K, h: RecordHeader) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob index simple push&quot;</span>);
-        <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.inner {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
             State::InMemory(headers) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>data = headers.write().expect(<span class="string">&quot;rwlock&quot;</span>);
                 <span class="macro">debug!</span>(<span class="string">&quot;blob index simple push bloom filter add&quot;</span>);
                 <span class="self">self</span>.filter.add(key);
                 <span class="macro">debug!</span>(<span class="string">&quot;blob index simple push key: {:?}&quot;</span>, h.key());
-                <span class="kw">let </span>mem = <span class="self">self
-                    </span>.mem
-                    .as_mut()
-                    .expect(<span class="string">&quot;No memory info in `InMemory` State&quot;</span>);
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = headers.get_mut(key) {
+                <span class="kw">let </span>records_allocated;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = data.headers.get_mut(key) {
                     <span class="kw">let </span>old_capacity = v.capacity();
                     v.push(h);
                     <span class="macro">trace!</span>(<span class="string">&quot;capacity growth: {}&quot;</span>, v.capacity() - old_capacity);
-                    mem.records_allocated += v.capacity() - old_capacity;
+                    records_allocated = v.capacity() - old_capacity;
                 } <span class="kw">else </span>{
-                    <span class="kw">if </span>mem.records_count == <span class="number">0 </span>{
-                        set_key_related_fields::&lt;K&gt;(mem);
-                    }
                     <span class="kw">let </span>v = <span class="macro">vec!</span>[h];
-                    mem.records_allocated += v.capacity(); <span class="comment">// capacity == 1
-                    </span>headers.insert(key.clone(), v);
+                    records_allocated = v.capacity(); <span class="comment">// capacity == 1
+                    </span>data.headers.insert(key.clone(), v);
                 }
-                mem.records_count += <span class="number">1</span>;
+                data.register_record_allocation(records_allocated);
                 <span class="prelude-val">Ok</span>(())
             }
             State::OnDisk(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(Error::from(ErrorKind::Index(
@@ -720,12 +841,15 @@
 
     <span class="kw">async fn </span>get_all_with_deletion_marker(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;RecordHeader&gt;&gt; {
         <span class="kw">let </span>headers = <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
-            State::InMemory(headers) =&gt; <span class="prelude-val">Ok</span>(headers.get(key).cloned().map(|<span class="kw-2">mut </span>hs| {
-                <span class="kw">if </span>hs.len() &gt; <span class="number">1 </span>{
-                    hs.reverse();
-                }
-                hs
-            })),
+            State::InMemory(data) =&gt; {
+                <span class="kw">let </span>data = data.read().expect(<span class="string">&quot;rwlock&quot;</span>);
+                <span class="prelude-val">Ok</span>(data.headers.get(key).cloned().map(|<span class="kw-2">mut </span>hs| {
+                    <span class="kw">if </span>hs.len() &gt; <span class="number">1 </span>{
+                        hs.reverse();
+                    }
+                    hs
+                }))
+            }
             State::OnDisk(findex) =&gt; findex.find_by_key(key).<span class="kw">await</span>,
         }<span class="question-mark">?</span>;
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>hs) = headers {
@@ -743,10 +867,11 @@
         <span class="macro">debug!</span>(<span class="string">&quot;index get any&quot;</span>);
         <span class="kw">let </span>result = <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
             State::InMemory(headers) =&gt; {
-                <span class="macro">debug!</span>(<span class="string">&quot;index get any in memory headers: {}&quot;</span>, headers.len());
+                <span class="kw">let </span>data = headers.read().expect(<span class="string">&quot;rwlock&quot;</span>);
+                <span class="macro">debug!</span>(<span class="string">&quot;index get any in memory headers: {}&quot;</span>, data.headers.len());
                 <span class="comment">// in memory indexes with same key are stored in ascending order, so the last
                 // by adding time record is last in list (in b+tree disk index it&#39;s first)
-                </span>headers.get(key).and_then(|h| h.last()).cloned()
+                </span>data.headers.get(key).and_then(|h| h.last()).cloned()
             }
             State::OnDisk(findex) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;index get any on disk&quot;</span>);
@@ -777,13 +902,9 @@
     }
 
     <span class="kw">fn </span>count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="kw">match </span><span class="self">self</span>.inner {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.inner {
             State::OnDisk(<span class="kw-2">ref </span>findex) =&gt; findex.records_count(),
-            State::InMemory(<span class="kw">_</span>) =&gt; <span class="self">self
-                </span>.mem
-                .as_ref()
-                .map(|mem| mem.records_count)
-                .expect(<span class="string">&quot;No memory info in `InMemory` State&quot;</span>),
+            State::InMemory(d) =&gt; d.read().expect(<span class="string">&quot;rwlock&quot;</span>).records_count(),
         }
     }
 
@@ -797,10 +918,10 @@
 
 <span class="attr">#[async_trait::async_trait]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>FileIndexTrait&lt;K&gt;: Sized + Send + Sync {
-    <span class="kw">async fn </span>from_file(name: FileName, ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt;;
+    <span class="kw">async fn </span>from_file(name: FileName, iodriver: IoDriver) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt;;
     <span class="kw">async fn </span>from_records(
         path: <span class="kw-2">&amp;</span>Path,
-        rio: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
+        iodriver: IoDriver,
         headers: <span class="kw-2">&amp;</span>InMemoryIndex&lt;K&gt;,
         meta: Vec&lt;u8&gt;,
         recreate_index_file: bool,
@@ -815,6 +936,7 @@
     <span class="kw">async fn </span>get_records_headers(<span class="kw-2">&amp;</span><span class="self">self</span>, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(InMemoryIndex&lt;K&gt;, usize)&gt;;
     <span class="kw">async fn </span>get_any(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;RecordHeader&gt;&gt;;
     <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, blob_size: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;;
+    <span class="kw">fn </span>memory_used(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 }
 
 <span class="attr">#[async_trait::async_trait]
@@ -835,4 +957,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="pearl" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="pearl" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

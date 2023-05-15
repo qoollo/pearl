@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["HierarchicalFilters","Container for types which is support bloom filtering"],["Leaf","Leaf"],["PossibleRevIter","PossibleIter"]],"type":[["ChildId","Child id"]]};
+window.SIDEBAR_ITEMS = {"struct":["HierarchicalFilters","Leaf","PossibleRevIter"],"type":["ChildId"]};

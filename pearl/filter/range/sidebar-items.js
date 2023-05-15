@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["RangeFilter","Range filter (concurrency supported)"]]};
+window.SIDEBAR_ITEMS = {"struct":["RangeFilter"]};

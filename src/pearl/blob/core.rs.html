@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/core.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-6827029ac823cab7.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-8af5e100b21cd173.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-c55e1eb52e1886b4.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/blob/core.rs`."><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-be46fdc453a55015.css"><script src="../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -665,15 +665,25 @@
 <a href="#665" id="665">665</a>
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::SystemTime;
 
-<span class="kw">use </span>async_lock::RwLockUpgradableReadGuard;
 <span class="kw">use </span>bytes::{BufMut, Bytes, BytesMut};
 <span class="kw">use </span>tokio::time::Instant;
 
 <span class="kw">use </span><span class="kw">crate</span>::error::ValidationErrorKind;
 <span class="kw">use </span><span class="kw">crate</span>::filter::{CombinedFilter, FilterTrait};
-<span class="kw">use </span><span class="kw">crate</span>::record::PartiallySerializedRecord;
 <span class="kw">use </span><span class="kw">crate</span>::storage::{BlobRecordTimestamp, ReadResult};
 
 <span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
@@ -695,7 +705,6 @@
     index: Index&lt;K&gt;,
     name: FileName,
     file: File,
-    current_offset: u64,
     created_at: SystemTime,
     validate_data_during_index_regen: bool,
 }
@@ -713,19 +722,21 @@
     /// [`FileName`]: struct.FileName.html
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>open_new(
         name: FileName,
-        ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
+        iodriver: IoDriver,
         config: BlobConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>BlobConfig { index: index_config, validate_data_during_index_regen} = config;
-        <span class="kw">let </span>file = File::create(name.to_path(), ioring.clone()).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let </span>index = <span class="self">Self</span>::create_index(name.clone(), ioring, index_config);
+        <span class="kw">let </span>BlobConfig {
+            index: index_config,
+            validate_data_during_index_regen,
+        } = config;
+        <span class="kw">let </span>file = iodriver.create(name.to_path()).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>index = <span class="self">Self</span>::create_index(name.clone(), iodriver, index_config);
         <span class="kw">let </span>header = Header::new();
         <span class="kw">let </span><span class="kw-2">mut </span>blob = <span class="self">Self </span>{
             header,
             index,
             name,
             file,
-            current_offset: <span class="number">0</span>,
             created_at: SystemTime::now(),
             validate_data_during_index_regen,
         };
@@ -745,20 +756,14 @@
         <span class="kw">let </span>size = <span class="self">self</span>.header.serialized_size();
         <span class="kw">let </span><span class="kw-2">mut </span>buf = BytesMut::with_capacity(size <span class="kw">as </span>usize);
         serialize_into((<span class="kw-2">&amp;mut </span>buf).writer(), <span class="kw-2">&amp;</span><span class="self">self</span>.header)<span class="question-mark">?</span>;
-        <span class="kw">let </span>len = buf.len() <span class="kw">as </span>u64;
         <span class="self">self</span>.file.write_append_all(buf.freeze()).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="self">self</span>.current_offset = len;
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="attr">#[inline]
-    </span><span class="kw">fn </span>create_index(
-        <span class="kw-2">mut </span>name: FileName,
-        ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
-        index_config: IndexConfig,
-    ) -&gt; Index&lt;K&gt; {
+    </span><span class="kw">fn </span>create_index(<span class="kw-2">mut </span>name: FileName, iodriver: IoDriver, index_config: IndexConfig) -&gt; Index&lt;K&gt; {
         name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        Index::new(name, ioring, index_config)
+        Index::new(name, iodriver, index_config)
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>dump(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
@@ -787,27 +792,26 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>boxed(<span class="self">self</span>) -&gt; Box&lt;<span class="self">Self</span>&gt; {
-        Box::new(<span class="self">self</span>)
-    }
-
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>from_file(
         path: PathBuf,
-        ioring: <span class="prelude-ty">Option</span>&lt;Rio&gt;,
+        iodriver: IoDriver,
         config: BlobConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span>now = Instant::now();
-        <span class="kw">let </span>file = File::open(<span class="kw-2">&amp;</span>path, ioring.clone()).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>file = iodriver.open(<span class="kw-2">&amp;</span>path).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>name = FileName::from_path(<span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>;
         <span class="macro">info!</span>(<span class="string">&quot;{} blob init started&quot;</span>, name);
         <span class="kw">let </span>size = file.size();
 
-        <span class="kw">let </span>header = Header::from_file(<span class="kw-2">&amp;</span>name, ioring.clone())
+        <span class="kw">let </span>header = Header::from_file(<span class="kw-2">&amp;</span>file, <span class="kw-2">&amp;</span>path)
             .<span class="kw">await
             </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;failed to read blob header. Blob file: {:?}&quot;</span>, path))<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>index_name = name.clone();
-        <span class="kw">let </span>BlobConfig { index: index_config, validate_data_during_index_regen} = config;
+        <span class="kw">let </span>BlobConfig {
+            index: index_config,
+            validate_data_during_index_regen,
+        } = config;
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         <span class="macro">trace!</span>(<span class="string">&quot;looking for index file: [{}]&quot;</span>, index_name);
         <span class="kw">let </span><span class="kw-2">mut </span>is_index_corrupted = <span class="bool-val">false</span>;
@@ -816,7 +820,7 @@
             Index::from_file(
                 index_name.clone(),
                 index_config.clone(),
-                ioring.clone(),
+                iodriver.clone(),
                 size,
             )
             .<span class="kw">await
@@ -834,11 +838,11 @@
                     }
                 }
                 is_index_corrupted = <span class="bool-val">true</span>;
-                <span class="prelude-val">Ok</span>(Index::new(index_name, ioring, index_config))
+                <span class="prelude-val">Ok</span>(Index::new(index_name, iodriver, index_config))
             })<span class="question-mark">?
         </span>} <span class="kw">else </span>{
             <span class="macro">trace!</span>(<span class="string">&quot;file not found, create new&quot;</span>);
-            Index::new(index_name, ioring, index_config)
+            Index::new(index_name, iodriver, index_config)
         };
         <span class="macro">trace!</span>(<span class="string">&quot;index initialized&quot;</span>);
         <span class="kw">let </span>header_size = bincode::serialized_size(<span class="kw-2">&amp;</span>header)<span class="question-mark">?</span>;
@@ -848,7 +852,6 @@
             file,
             name,
             index,
-            current_offset: size,
             created_at,
             validate_data_during_index_regen,
         };
@@ -888,12 +891,15 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
         <span class="macro">debug!</span>(<span class="string">&quot;index file missed&quot;</span>);
-        <span class="kw">let </span>raw_r = <span class="self">self</span>.raw_records(<span class="self">self</span>.validate_data_during_index_regen).<span class="kw">await</span>.with_context(|| {
-            <span class="macro">format!</span>(
-                <span class="string">&quot;failed to read raw records from blob {:?}&quot;</span>,
-                <span class="self">self</span>.name.to_path()
-            )
-        })<span class="question-mark">?</span>;
+        <span class="kw">let </span>raw_r = <span class="self">self
+            </span>.raw_records(<span class="self">self</span>.validate_data_during_index_regen)
+            .<span class="kw">await
+            </span>.with_context(|| {
+                <span class="macro">format!</span>(
+                    <span class="string">&quot;failed to read raw records from blob {:?}&quot;</span>,
+                    <span class="self">self</span>.name.to_path()
+                )
+            })<span class="question-mark">?</span>;
         <span class="macro">debug!</span>(<span class="string">&quot;raw records loaded&quot;</span>);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = raw_r.load().<span class="kw">await</span>.with_context(|| {
             <span class="macro">format!</span>(
@@ -916,40 +922,23 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write(blob: <span class="kw-2">&amp;</span>ASRwLock&lt;<span class="self">Self</span>&gt;, key: <span class="kw-2">&amp;</span>K, record: Record) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob write&quot;</span>);
-        <span class="comment">// Only one upgradable_read lock is allowed at a time
-        </span><span class="kw">let </span>(partially_serialized, header) = record.to_partially_serialized_and_header()<span class="question-mark">?</span>;
-        <span class="kw">let </span>blob = blob.upgradable_read().<span class="kw">await</span>;
-        <span class="self">Self</span>::write_locked(blob, key, partially_serialized, header).<span class="kw">await
-    </span>}
+        <span class="kw">let </span>(partially_serialized, <span class="kw-2">mut </span>header) = record.to_partially_serialized_and_header()<span class="question-mark">?</span>;
+        <span class="comment">// Only one upgradable_read lock is allowed at a time. This is critical because we want to
+        // be sure that only one write operation is running at a time
+        </span><span class="kw">let </span>blob = blob.upgradable_read().<span class="kw">await</span>;
+        <span class="kw">let </span>write_result = partially_serialized.write_to_file(<span class="kw-2">&amp;</span>blob.file).<span class="kw">await</span><span class="question-mark">?</span>;
+        header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
+        blob.index.push(key, header)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
 
     <span class="kw">async fn </span>write_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K, record: Record) -&gt; <span class="prelude-ty">Result</span>&lt;RecordHeader&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;blob write&quot;</span>);
-        <span class="macro">debug!</span>(<span class="string">&quot;blob write record offset: {}&quot;</span>, <span class="self">self</span>.current_offset);
         <span class="kw">let </span>(record, <span class="kw-2">mut </span>header) = record.to_partially_serialized_and_header()<span class="question-mark">?</span>;
-        <span class="kw">let </span>write_result = record
-            .write_to_file(<span class="kw-2">&amp;</span><span class="self">self</span>.file, <span class="self">self</span>.current_offset)
-            .<span class="kw">await</span><span class="question-mark">?</span>;
-        header.set_offset_checksum(<span class="self">self</span>.current_offset, write_result.header_checksum());
+        <span class="kw">let </span>write_result = record.write_to_file(<span class="kw-2">&amp;</span><span class="self">self</span>.file).<span class="kw">await</span><span class="question-mark">?</span>;
+        header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
         <span class="self">self</span>.index.push(key, header.clone())<span class="question-mark">?</span>;
-        <span class="self">self</span>.current_offset += write_result.bytes_written();
         <span class="prelude-val">Ok</span>(header)
-    }
-
-    <span class="kw">async fn </span>write_locked(
-        blob: ASRwLockUpgradableReadGuard&lt;<span class="lifetime">&#39;_</span>, Blob&lt;K&gt;&gt;,
-        key: <span class="kw-2">&amp;</span>K,
-        record: PartiallySerializedRecord,
-        <span class="kw-2">mut </span>header: RecordHeader,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="macro">debug!</span>(<span class="string">&quot;blob write record offset: {}&quot;</span>, blob.current_offset);
-        <span class="kw">let </span>write_result = record
-            .write_to_file(<span class="kw-2">&amp;</span>blob.file, blob.current_offset)
-            .<span class="kw">await</span><span class="question-mark">?</span>;
-        header.set_offset_checksum(blob.current_offset, write_result.header_checksum());
-        <span class="kw">let </span><span class="kw-2">mut </span>blob = RwLockUpgradableReadGuard::upgrade(blob).<span class="kw">await</span>;
-        blob.index.push(key, header)<span class="question-mark">?</span>;
-        blob.current_offset += write_result.bytes_written();
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>read_last(
@@ -1185,6 +1174,10 @@
     <span class="kw">fn </span>exists(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.to_path().exists()
     }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.id
+    }
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>FileName {
@@ -1201,7 +1194,12 @@
 }
 
 <span class="kw">impl </span>RawRecords {
-    <span class="kw">async fn </span>start(file: File, blob_header_size: u64, key_size: usize, validate_data: bool) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+    <span class="kw">async fn </span>start(
+        file: File,
+        blob_header_size: u64,
+        key_size: usize,
+        validate_data: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span>current_offset = blob_header_size;
         <span class="macro">debug!</span>(<span class="string">&quot;blob raw records start, current offset: {}&quot;</span>, current_offset);
         <span class="kw">let </span>size_of_len = bincode::serialized_size(<span class="kw-2">&amp;</span>(<span class="number">0_usize</span>))<span class="question-mark">? </span><span class="kw">as </span>usize;
@@ -1215,13 +1213,17 @@
         // vector contains usize len in front
         </span><span class="kw">let </span>buf = file
             .read_exact_at_allocate(size_of_magic_byte + size_of_len, current_offset)
-            .<span class="kw">await</span><span class="question-mark">?</span>;
+            .<span class="kw">await
+            </span>.map_err(|err| err.into_bincode_if_unexpected_eof())
+            .context(<span class="string">&quot;Can&#39;t read BLOB header from file&quot;</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>(magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         <span class="macro">debug!</span>(<span class="string">&quot;blob raw records start, read at {} bytes&quot;</span>, buf.len());
         <span class="kw">let </span>magic_byte = bincode::deserialize::&lt;u64&gt;(magic_byte_buf)
+            .map_err(|err| Error::from(err))
             .context(<span class="string">&quot;failed to deserialize magic byte&quot;</span>)<span class="question-mark">?</span>;
         <span class="self">Self</span>::check_record_header_magic_byte(magic_byte)<span class="question-mark">?</span>;
         <span class="kw">let </span>key_len = bincode::deserialize::&lt;usize&gt;(key_len_buf)
+            .map_err(|err| Error::from(err))
             .context(<span class="string">&quot;failed to deserialize index buf vec length&quot;</span>)<span class="question-mark">?</span>;
         <span class="kw">if </span>key_len != key_size {
             <span class="kw">let </span>msg = <span class="string">&quot;blob key_size is not equal to pearl compile-time key size&quot;</span>;
@@ -1253,13 +1255,18 @@
         <span class="macro">debug!</span>(<span class="string">&quot;blob raw records load&quot;</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>headers = Vec::new();
         <span class="kw">while </span><span class="self">self</span>.current_offset &lt; <span class="self">self</span>.file.size() {
-            <span class="kw">let </span>(header, data) = <span class="self">self</span>.read_current_record(<span class="self">self</span>.validate_data).<span class="kw">await</span>.with_context(|| {
-                <span class="macro">format!</span>(<span class="string">&quot;read record header or data failed, at {}&quot;</span>, <span class="self">self</span>.current_offset)
-            })<span class="question-mark">?</span>;
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = data {
-                Record::data_checksum_audit(<span class="kw-2">&amp;</span>header, <span class="kw-2">&amp;</span>data).with_context(|| {
-                    <span class="macro">format!</span>(<span class="string">&quot;bad data checksum, at {}&quot;</span>, <span class="self">self</span>.current_offset)
+            <span class="kw">let </span>(header, data) = <span class="self">self
+                </span>.read_current_record(<span class="self">self</span>.validate_data)
+                .<span class="kw">await
+                </span>.with_context(|| {
+                    <span class="macro">format!</span>(
+                        <span class="string">&quot;read record header or data failed, at {}&quot;</span>,
+                        <span class="self">self</span>.current_offset
+                    )
                 })<span class="question-mark">?</span>;
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = data {
+                Record::data_checksum_audit(<span class="kw-2">&amp;</span>header, <span class="kw-2">&amp;</span>data)
+                    .with_context(|| <span class="macro">format!</span>(<span class="string">&quot;bad data checksum, at {}&quot;</span>, <span class="self">self</span>.current_offset))<span class="question-mark">?</span>;
             }
             headers.push(header);
         }
@@ -1270,12 +1277,16 @@
         }
     }
 
-    <span class="kw">async fn </span>read_current_record(<span class="kw-2">&amp;mut </span><span class="self">self</span>, read_data: bool) -&gt; <span class="prelude-ty">Result</span>&lt;(RecordHeader, <span class="prelude-ty">Option</span>&lt;BytesMut&gt;)&gt; {
+    <span class="kw">async fn </span>read_current_record(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        read_data: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(RecordHeader, <span class="prelude-ty">Option</span>&lt;BytesMut&gt;)&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="self">self
             </span>.file
             .read_exact_at_allocate(<span class="self">self</span>.record_header_size <span class="kw">as </span>usize, <span class="self">self</span>.current_offset)
             .<span class="kw">await
-            </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;read at call failed, size {}&quot;</span>, <span class="self">self</span>.current_offset))<span class="question-mark">?</span>;
+            </span>.map_err(|err| err.into_bincode_if_unexpected_eof())
+            .with_context(|| <span class="macro">format!</span>(<span class="string">&quot;read at call failed, size {}&quot;</span>, <span class="self">self</span>.current_offset))<span class="question-mark">?</span>;
         <span class="kw">let </span>header = RecordHeader::from_raw(<span class="kw-2">&amp;</span>buf)
             .map_err(|e| Error::from(ErrorKind::Bincode(e.to_string())))
             .with_context(|| {
@@ -1286,17 +1297,18 @@
             })<span class="question-mark">?</span>;
         <span class="self">self</span>.current_offset += <span class="self">self</span>.record_header_size;
         <span class="self">self</span>.current_offset += header.meta_size();
-        <span class="kw">let </span>data =
-            <span class="kw">if </span>read_data {
-                buf.resize(header.data_size() <span class="kw">as </span>usize, <span class="number">0</span>);
-                buf = <span class="self">self</span>.file
-                    .read_exact_at(buf, <span class="self">self</span>.current_offset)
-                    .<span class="kw">await
-                    </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;read at call failed, size {}&quot;</span>, <span class="self">self</span>.current_offset))<span class="question-mark">?</span>;
-                <span class="prelude-val">Some</span>(buf)
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>};
+        <span class="kw">let </span>data = <span class="kw">if </span>read_data {
+            buf.resize(header.data_size() <span class="kw">as </span>usize, <span class="number">0</span>);
+            buf = <span class="self">self
+                </span>.file
+                .read_exact_at(buf, <span class="self">self</span>.current_offset)
+                .<span class="kw">await
+                </span>.map_err(|err| err.into_bincode_if_unexpected_eof())
+                .with_context(|| <span class="macro">format!</span>(<span class="string">&quot;read at call failed, size {}&quot;</span>, <span class="self">self</span>.current_offset))<span class="question-mark">?</span>;
+            <span class="prelude-val">Some</span>(buf)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
         <span class="self">self</span>.current_offset += header.data_size();
         <span class="prelude-val">Ok</span>((header, data))
     }
@@ -1309,10 +1321,22 @@
 {
     <span class="kw">type </span>Filter = CombinedFilter&lt;K&gt;;
     <span class="kw">async fn </span>check_filter(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span>K) -&gt; FilterResult {
+        <span class="kw">match </span><span class="self">self</span>.index.contains_key_fast(item) {
+            <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; { <span class="kw">return </span>FilterResult::NeedAdditionalCheck; },
+            <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; { <span class="kw">return </span>FilterResult::NotContains; },
+            <span class="prelude-val">None </span>=&gt; { }
+        }
+        
         <span class="self">self</span>.index.get_filter().contains(<span class="kw-2">&amp;</span><span class="self">self</span>.index, item).<span class="kw">await
     </span>}
 
     <span class="kw">fn </span>check_filter_fast(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span>K) -&gt; FilterResult {
+        <span class="kw">match </span><span class="self">self</span>.index.contains_key_fast(item) {
+            <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; { <span class="kw">return </span>FilterResult::NeedAdditionalCheck; },
+            <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; { <span class="kw">return </span>FilterResult::NotContains; },
+            <span class="prelude-val">None </span>=&gt; { }
+        }
+        
         <span class="self">self</span>.index.get_filter().contains_fast(item)
     }
 
@@ -1333,4 +1357,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="pearl" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="pearl" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

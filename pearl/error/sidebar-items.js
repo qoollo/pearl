@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["Kind","A list specifying categories of Storage error."],["ValidationErrorKind","Variants of validation errors."]],"struct":[["Error","The error type for `Storage` operations."]],"trait":[["AsPearlError","Convenient helper for downcasting anyhow error to pearl error."]]};
+window.SIDEBAR_ITEMS = {"enum":["Kind","ValidationErrorKind"],"struct":["Error"],"trait":["AsPearlError"]};

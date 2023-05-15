@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["Bloom","Bloom filter"],["Config","Bloom filter configuration parameters."]]};
+window.SIDEBAR_ITEMS = {"struct":["Bloom","Config"]};
