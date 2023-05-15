@@ -7,13 +7,14 @@ use futures::{
     stream::{futures_unordered::FuturesUnordered, FuturesOrdered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
-use pearl::{BloomProvider, Builder, Meta, ReadResult, Storage};
-use rand::{seq::SliceRandom, Rng};
+use pearl::{BloomProvider, Builder, Meta, ReadResult, Storage, BlobRecordTimestamp};
+use rand::{seq::SliceRandom, Rng, SeedableRng};
 use std::{
     fs,
     hash::Hasher,
     time::{Duration, Instant},
-    sync::Arc
+    sync::Arc,
+    collections::HashMap
 };
 use tokio::time::sleep;
 
@@ -153,6 +154,95 @@ async fn test_multithread_read_write() -> Result<(), String> {
     assert!(index.exists());
     fs::remove_dir_all(path).unwrap();
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+    Ok(())
+}
+
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+async fn test_multithread_read_write_exist_delete() -> Result<(), String> 
+{
+    fn map_value_into_read_result(val: Option<&usize>) -> ReadResult<usize> {
+        match val {
+            Some(v) if *v == usize::MAX => ReadResult::Deleted(BlobRecordTimestamp::new(0)),
+            Some(v) => ReadResult::Found(*v),
+            None => ReadResult::NotFound
+        }
+    }
+    fn reset_delete_timestamp<T>(val: ReadResult<T>) -> ReadResult<T> {
+        if val.is_deleted() {
+            return ReadResult::Deleted(BlobRecordTimestamp::new(0));
+        } 
+        val
+    }
+
+    let now = Instant::now();
+    let path = common::init("multithread_read_write_exist_delete");
+    let storage = Arc::new(
+        common::create_custom_test_storage(&path, |builder| {
+            builder
+                .max_blob_size(3_000_000)
+                .set_deferred_index_dump_times(Duration::from_millis(750), Duration::from_millis(1500))
+        }).await?);
+    const THREADS: usize = 2;
+    const KEYS_PER_THREAD: usize = 5000;
+    const OPERATIONS_PER_THREAD: usize = 25000;
+
+    let data = vec![184u8; 2000];
+    let handles: FuturesUnordered<_> = (0..THREADS)
+        .into_iter()
+        .map(|thread_id| {
+            let st = storage.clone();
+            let data = data.clone();
+            let task = async move {
+                let mut rng = ::rand::rngs::StdRng::from_entropy();
+                let mut map = HashMap::new();
+                let min_key: u32 = (thread_id * KEYS_PER_THREAD) as u32;
+                let max_key: u32 = ((thread_id + 1) * KEYS_PER_THREAD) as u32;
+
+                for _ in 0..OPERATIONS_PER_THREAD {
+                    let key: u32 = rng.gen_range(min_key..max_key);
+                    match rng.gen::<usize>() % 10 {
+                        0 => {
+                            st.delete(KeyTest::new(key), false).await.expect("delete success");
+                            map.insert(key, usize::MAX);
+                        },
+                        1 | 2 | 3 => {
+                            let data_len = rng.gen::<usize>() % data.len();
+                            write_one(&st, key, &data[0..data_len], None).await.expect("write success");
+                            map.insert(key, data_len);
+                        },
+                        4 | 5 | 6 => {
+                            let exist_res = st.contains(KeyTest::new(key)).await.expect("exist success");
+                            let map_res = map_value_into_read_result(map.get(&key));
+                            assert_eq!(map_res.map(|_| ()), reset_delete_timestamp(exist_res.map(|_| ())));
+                        },
+                        _ => {
+                            let read_res = st.read(KeyTest::new(key)).await.expect("read success");
+                            let map_res = map_value_into_read_result(map.get(&key));
+                            assert_eq!(map_res, reset_delete_timestamp(read_res.map(|v| v.len())));
+                        }
+                    }
+                }
+                
+                // Check all keys
+                for key in min_key..max_key {
+                    let read_res = st.read(KeyTest::new(key)).await.expect("read success");
+                    let map_res = map_value_into_read_result(map.get(&key));
+                    assert_eq!(map_res, reset_delete_timestamp(read_res.map(|v| v.len())));
+
+                    let exist_res = st.contains(KeyTest::new(key)).await.expect("exist success");
+                    let map_res = map_value_into_read_result(map.get(&key));
+                    assert_eq!(map_res.map(|_| ()), reset_delete_timestamp(exist_res.map(|_| ())));
+                }
+            };
+            tokio::spawn(task)
+        })
+        .collect();
+    let handles = handles.try_collect::<Vec<_>>().await.expect("Threads success");
+    assert_eq!(THREADS, handles.len());
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+    let storage = Arc::try_unwrap(storage).expect("this should be the last alive storage");
+    common::clean(storage, &path).await;
     Ok(())
 }
 
@@ -1045,6 +1135,93 @@ async fn test_blob_header_validation() {
         }
     );
     assert!(is_correct);
+    common::clean(storage, path).await;
+}
+
+
+#[tokio::test]
+async fn test_empty_blob_detected_as_corrupted() {
+    use std::io::Write;
+
+    let path = common::init("empty_blob_detected_as_corrupted");
+    let storage = common::create_test_storage(&path, 10_000).await.unwrap();
+    let data = vec![1, 1, 2, 3, 5, 8];
+    write_one(&storage, 42, &data, None).await.unwrap();
+    storage.close().await.expect("storage close failed");
+
+    let blob_path = std::env::temp_dir().join(&path).join("test.0.blob");
+    info!("path: {}", blob_path.display());
+    {
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(false)
+            .open(&blob_path)
+            .expect("failed to open file");
+        file.set_len(0).expect("set_len success");
+        file.flush().expect("flush ok");
+    }
+    let iodriver = pearl::IoDriver::new();
+    let builder = Builder::new()
+        .work_dir(&path)
+        .set_io_driver(iodriver.clone())
+        .blob_file_name_prefix("test")
+        .max_blob_size(10_000)
+        .max_data_in_blob(100_000)
+        .set_filter_config(Default::default())
+        .corrupted_dir_name("corrupted")
+        .allow_duplicates();
+    let mut storage: Storage<KeyTest> = builder.build().unwrap();
+    storage
+        .init()
+        .await
+        .expect("storage initialization error");
+
+    write_one(&storage, 43, &data, None).await.unwrap();
+
+    assert_eq!(1, storage.corrupted_blobs_count());
+    assert!(path.join("corrupted").exists());
+    assert_eq!(2, storage.next_blob_id());
+
+    storage.close().await.expect("storage close failed");
+
+    // One more attempt with lazy storage initialization and blob with length = 1
+
+    let blob_path = std::env::temp_dir().join(&path).join("test.1.blob");
+    info!("path: {}", blob_path.display());
+    {
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(false)
+            .open(&blob_path)
+            .expect("failed to open file");
+        file.set_len(1).expect("set_len success");
+        file.flush().expect("flush ok");
+    }
+
+    let builder = Builder::new()
+        .work_dir(&path)
+        .set_io_driver(iodriver)
+        .blob_file_name_prefix("test")
+        .max_blob_size(10_000)
+        .max_data_in_blob(100_000)
+        .set_filter_config(Default::default())
+        .corrupted_dir_name("corrupted")
+        .allow_duplicates();
+    let mut storage: Storage<KeyTest> = builder.build().unwrap();
+    storage
+        .init_lazy()
+        .await
+        .expect("storage initialization error");
+
+
+    assert_eq!(2, storage.corrupted_blobs_count());
+    assert!(path.join("corrupted").exists());
+    assert_eq!(2, storage.next_blob_id());
+
+    write_one(&storage, 44, &data, None).await.unwrap();
+
+    assert_eq!(3, storage.next_blob_id());
+
     common::clean(storage, path).await;
 }
 

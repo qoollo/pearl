@@ -495,6 +495,10 @@ impl FileName {
     fn exists(&self) -> bool {
         self.to_path().exists()
     }
+
+    pub(crate) fn id(&self) -> usize {
+        self.id
+    }
 }
 
 impl Display for FileName {
@@ -530,13 +534,17 @@ impl RawRecords {
         // vector contains usize len in front
         let buf = file
             .read_exact_at_allocate(size_of_magic_byte + size_of_len, current_offset)
-            .await?;
+            .await
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
+            .context("Can't read BLOB header from file")?;
         let (magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         debug!("blob raw records start, read at {} bytes", buf.len());
         let magic_byte = bincode::deserialize::<u64>(magic_byte_buf)
+            .map_err(|err| Error::from(err))
             .context("failed to deserialize magic byte")?;
         Self::check_record_header_magic_byte(magic_byte)?;
         let key_len = bincode::deserialize::<usize>(key_len_buf)
+            .map_err(|err| Error::from(err))
             .context("failed to deserialize index buf vec length")?;
         if key_len != key_size {
             let msg = "blob key_size is not equal to pearl compile-time key size";
@@ -598,6 +606,7 @@ impl RawRecords {
             .file
             .read_exact_at_allocate(self.record_header_size as usize, self.current_offset)
             .await
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
             .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
         let header = RecordHeader::from_raw(&buf)
             .map_err(|e| Error::from(ErrorKind::Bincode(e.to_string())))
@@ -615,6 +624,7 @@ impl RawRecords {
                 .file
                 .read_exact_at(buf, self.current_offset)
                 .await
+                .map_err(|err| err.into_bincode_if_unexpected_eof())
                 .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
             Some(buf)
         } else {

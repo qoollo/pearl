@@ -1,6 +1,5 @@
 use bytes::{Bytes, BytesMut};
 use std::io::Result as IOResult;
-use anyhow::Result as Result;
 use std::time::SystemTime;
 
 #[cfg(target_family = "unix")]
@@ -43,9 +42,9 @@ trait FileTrait: Sized {
     async fn write_append_all(&self, buf: Bytes) -> IOResult<()>;
     async fn write_all_at(&self, offset: u64, buf: Bytes) -> IOResult<()>;
 
-    async fn read_all(&self) -> Result<BytesMut>;
-    async fn read_exact_at_allocate(&self, size: usize, offset: u64) -> Result<BytesMut>;
-    async fn read_exact_at(&self, mut buf: BytesMut, offset: u64) -> Result<BytesMut>;
+    async fn read_all(&self) -> IOResult<BytesMut>;
+    async fn read_exact_at_allocate(&self, size: usize, offset: u64) -> IOResult<BytesMut>;
+    async fn read_exact_at(&self, mut buf: BytesMut, offset: u64) -> IOResult<BytesMut>;
 
     async fn fsyncdata(&self) -> IOResult<()>;
 }

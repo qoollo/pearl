@@ -19,6 +19,7 @@ Pearl changelog
 #### Fixed
 - Fix fork in test duplicating test environment (#254)
 - Bug in ObserverWorker that prevents its stop and leads to memory leak (#259)
+- Converting UnexpectedEOF errors to bincode errors before deserialize() calls (#233)
 
 #### Updated
 

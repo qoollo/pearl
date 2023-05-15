@@ -12,9 +12,7 @@ const BLOB_FILE_EXTENSION: &str = "blob";
 
 /// A main storage struct.
 ///
-/// This type is clonable, cloning it will only create a new reference,
-/// not a new storage.
-/// Storage has a type kindeter K.
+/// Storage has a generic parameter K representing the type of `Key`.
 /// To perform read/write operations K must implement [`Key`] trait.
 ///
 /// # Examples
@@ -64,6 +62,16 @@ where
 {
     active_blob: Option<Box<ASRwLock<Blob<K>>>>,
     blobs: Arc<RwLock<HierarchicalFilters<K, CombinedFilter<K>, Blob<K>>>>,
+}
+
+/// Helper struct to add names to result parameters
+struct ReadBlobsResult<K> 
+where
+    for<'a> K: Key<'a>,
+{
+    blobs: Vec<Blob<K>>,
+    new_corrupted_blob_count: usize,
+    max_blob_id: Option<usize>
 }
 
 async fn work_dir_content(wd: &Path) -> Result<Option<Vec<DirEntry>>> {
@@ -613,7 +621,7 @@ where
     /// lock. So it is much faster than `blobs_count`.
     #[must_use]
     pub fn next_blob_id(&self) -> usize {
-        self.inner.next_blob_id.load(ORD)
+        self.inner.next_blob_id.load(Ordering::Acquire)
     }
 
     async fn prepare_work_dir(&mut self) -> Result<()> {
@@ -655,8 +663,9 @@ where
 
     async fn init_from_existing(&mut self, files: Vec<DirEntry>, with_active: bool) -> Result<()> {
         trace!("init from existing: {:#?}", files);
+        let existed_corrupted_blob_count = Self::count_old_corrupted_blobs(&self.inner.config).await;
         let disk_access_sem = self.inner.get_dump_sem();
-        let (mut blobs, corrupted_count) = Self::read_blobs(
+        let ReadBlobsResult { mut blobs, max_blob_id, new_corrupted_blob_count} = Self::read_blobs(
             &files,
             self.inner.iodriver.clone(),
             disk_access_sem,
@@ -667,15 +676,21 @@ where
 
         self.inner
             .corrupted_blobs
-            .store(corrupted_count, Ordering::Release);
+            .store(existed_corrupted_blob_count + new_corrupted_blob_count, Ordering::Release);
+        self.inner
+            .next_blob_id
+            .store(max_blob_id.map_or(0, |i| i + 1), Ordering::Release);
 
         debug!("{} blobs successfully created", blobs.len());
         blobs.sort_by_key(Blob::id);
 
         let active_blob = if with_active {
-            Some(Box::new(ASRwLock::new(
-                Self::pop_active(&mut blobs, &self.inner.config).await?,
-            )))
+            if blobs.is_empty() && new_corrupted_blob_count > 0 {
+                let next = self.inner.next_blob_name()?;
+                Some(Blob::open_new(next, self.inner.iodriver.clone(), self.inner.config.blob()).await?)
+            } else {
+                Some(Self::pop_active(&mut blobs, &self.inner.config).await?)
+            }
         } else {
             None
         };
@@ -686,13 +701,10 @@ where
         }
 
         let mut safe = self.inner.safe.write().await;
-        safe.active_blob = active_blob;
+        safe.active_blob = active_blob.map(|ab| Box::new(ASRwLock::new(ab)));
         *safe.blobs.write().await =
-            HierarchicalFilters::from_vec(self.inner.config.bloom_filter_group_size(), 1, blobs)
-                .await;
-        self.inner
-            .next_blob_id
-            .store(safe.max_id().await.map_or(0, |i| i + 1), ORD);
+            HierarchicalFilters::from_vec(self.inner.config.bloom_filter_group_size(), 1, blobs).await;
+        self.inner.next_blob_id.fetch_max(safe.max_id().await.map_or(0, |i| i + 1), Ordering::AcqRel);
         Ok(())
     }
 
@@ -713,8 +725,9 @@ where
         iodriver: IoDriver,
         disk_access_sem: Arc<Semaphore>,
         config: &Config,
-    ) -> Result<(Vec<Blob<K>>, usize)> {
-        let mut corrupted = Self::count_old_corrupted_blobs(config).await;
+    ) -> Result<ReadBlobsResult<K>> {
+        let mut corrupted = 0;
+        let mut max_blob_id: Option<usize> = None;
 
         debug!("read working directory content");
         let dir_content = files.iter().map(DirEntry::path);
@@ -743,14 +756,22 @@ where
         let mut blobs = Vec::new();
         while let Some(blob_res) = futures.next().await {
             match blob_res {
-                Ok(blob) => blobs.push(blob),
+                Ok(blob) => {
+                    max_blob_id = max_blob_id.max(Some(blob.id()));
+                    blobs.push(blob);
+                },
                 Err((e, file)) => {
                     let msg = format!("Failed to read existing blob: {}", file.display());
+
+                    if let Ok(file_name) = blob::FileName::from_path(&file) {
+                        max_blob_id = max_blob_id.max(Some(file_name.id()));
+                    }
+
                     if config.ignore_corrupted() {
                         error!("{}, cause: {:#}", msg, e);
                     } else if Self::should_save_corrupted_blob(&e) {
-                        error!(
-                            "save corrupted blob '{}' to directory '{}'",
+                        warn!(
+                            "Corrupted BLOB detected. Save corrupted blob '{}' to directory '{}'",
                             file.display(),
                             config.corrupted_dir_name()
                         );
@@ -766,7 +787,7 @@ where
                 }
             }
         }
-        Ok((blobs, corrupted))
+        Ok(ReadBlobsResult { blobs, new_corrupted_blob_count: corrupted, max_blob_id })
     }
 
     async fn count_old_corrupted_blobs(config: &Config) -> usize {
@@ -1165,7 +1186,7 @@ where
     // FIXME: Maybe we should revert counter if new blob creation failed?
     // It'll make code a bit more complicated, but blobs will sequentially grow for sure
     pub(crate) fn next_blob_name(&self) -> Result<blob::FileName> {
-        let next_id = self.next_blob_id.fetch_add(1, ORD);
+        let next_id = self.next_blob_id.fetch_add(1, Ordering::AcqRel);
         let prefix = self
             .config
             .blob_file_name_prefix()
@@ -1286,19 +1307,19 @@ where
         trace!("dump indexes for old blobs started");
 
         let mut finished = false;
-        let mut last_attempt_progress: usize = 0;
+        let mut current_progress: usize = 0;
         while !finished {
-            let quantum_start = Instant::now();
-            let  mut current_progress = 0;
             finished = true;
 
             let safe_guard = safe.read().await;
             let mut write_blobs = safe_guard.blobs.write().await;  
-            for blob in write_blobs.iter_mut() {
-                if current_progress > last_attempt_progress && quantum_start.elapsed() > max_quantum {
+
+            let quantum_start = Instant::now();
+            let progress_start = current_progress; // Every new iteration should go further
+            for blob in write_blobs.iter_mut().skip(current_progress) {
+                if current_progress > progress_start && quantum_start.elapsed() > max_quantum {
                     // Time quantum ended. Unlock blobs to allow other threads to work
                     finished = false;
-                    last_attempt_progress = current_progress;
                     break;
                 }
                 current_progress += 1;
