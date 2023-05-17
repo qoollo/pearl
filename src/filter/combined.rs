@@ -39,7 +39,7 @@ where
     Bloom: FilterTrait<K>,
 {
     /// Add key to filter
-    fn add(&mut self, key: &K) {
+    fn add(&self, key: &K) {
         self.range.add(key);
         self.bloom.add(key);
     }

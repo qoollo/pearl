@@ -9,6 +9,9 @@ pub trait Key<'a>:
     /// Key must have fixed length
     const LEN: u16;
 
+    /// Size of key in memory
+    const MEM_SIZE: usize;
+
     /// Reference type for zero-copy key creation
     type Ref: RefKey<'a>;
 
@@ -60,6 +63,12 @@ impl<const N: usize> From<&[u8]> for ArrayKey<N> {
     }
 }
 
+impl<const N: usize> From<[u8; N]> for ArrayKey<N> {
+    fn from(a: [u8; N]) -> Self {
+        Self(a)
+    }
+}
+
 impl<const N: usize> PartialOrd for ArrayKey<N> {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         self.0.partial_cmp(&rhs.0)
@@ -97,5 +106,8 @@ impl<'a> RefKey<'a> for SliceKey<'a> {}
 
 impl<'a, const N: usize> Key<'a> for ArrayKey<N> {
     const LEN: u16 = N as u16;
+
+    const MEM_SIZE: usize = N as usize;
+
     type Ref = SliceKey<'a>;
 }

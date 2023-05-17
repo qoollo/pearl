@@ -1,7 +1,6 @@
 use std::time::SystemTime;
 
-use async_std::sync::RwLockUpgradableReadGuard;
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
@@ -27,8 +26,8 @@ where
     index: Index<K>,
     name: FileName,
     file: File,
-    current_offset: u64,
     created_at: SystemTime,
+    validate_data_during_index_regen: bool,
 }
 
 impl<K> Blob<K>
@@ -44,19 +43,23 @@ where
     /// [`FileName`]: struct.FileName.html
     pub(crate) async fn open_new(
         name: FileName,
-        ioring: Option<Rio>,
-        index_config: IndexConfig,
+        iodriver: IoDriver,
+        config: BlobConfig,
     ) -> Result<Self> {
-        let file = File::create(name.to_path(), ioring.clone()).await?;
-        let index = Self::create_index(name.clone(), ioring, index_config);
+        let BlobConfig {
+            index: index_config,
+            validate_data_during_index_regen,
+        } = config;
+        let file = iodriver.create(name.to_path()).await?;
+        let index = Self::create_index(name.clone(), iodriver, index_config);
         let header = Header::new();
         let mut blob = Self {
             header,
             index,
             name,
             file,
-            current_offset: 0,
             created_at: SystemTime::now(),
+            validate_data_during_index_regen,
         };
         blob.write_header().await?;
         Ok(blob)
@@ -71,20 +74,17 @@ where
     }
 
     async fn write_header(&mut self) -> Result<()> {
-        let buf = serialize(&self.header)?;
-        self.file.write_append(&buf).await?;
-        self.current_offset = buf.len() as u64;
+        let size = self.header.serialized_size();
+        let mut buf = BytesMut::with_capacity(size as usize);
+        serialize_into((&mut buf).writer(), &self.header)?;
+        self.file.write_append_all(buf.freeze()).await?;
         Ok(())
     }
 
     #[inline]
-    fn create_index(
-        mut name: FileName,
-        ioring: Option<Rio>,
-        index_config: IndexConfig,
-    ) -> Index<K> {
+    fn create_index(mut name: FileName, iodriver: IoDriver, index_config: IndexConfig) -> Index<K> {
         name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        Index::new(name, ioring, index_config)
+        Index::new(name, iodriver, index_config)
     }
 
     pub(crate) async fn dump(&mut self) -> Result<usize> {
@@ -113,26 +113,26 @@ where
         Ok(())
     }
 
-    pub(crate) fn boxed(self) -> Box<Self> {
-        Box::new(self)
-    }
-
     pub(crate) async fn from_file(
         path: PathBuf,
-        ioring: Option<Rio>,
-        index_config: IndexConfig,
+        iodriver: IoDriver,
+        config: BlobConfig,
     ) -> Result<Self> {
         let now = Instant::now();
-        let file = File::open(&path, ioring.clone()).await?;
+        let file = iodriver.open(&path).await?;
         let name = FileName::from_path(&path)?;
         info!("{} blob init started", name);
         let size = file.size();
 
-        let header = Header::from_file(&name, ioring.clone())
+        let header = Header::from_file(&file, &path)
             .await
             .with_context(|| format!("failed to read blob header. Blob file: {:?}", path))?;
 
         let mut index_name = name.clone();
+        let BlobConfig {
+            index: index_config,
+            validate_data_during_index_regen,
+        } = config;
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         trace!("looking for index file: [{}]", index_name);
         let mut is_index_corrupted = false;
@@ -141,7 +141,7 @@ where
             Index::from_file(
                 index_name.clone(),
                 index_config.clone(),
-                ioring.clone(),
+                iodriver.clone(),
                 size,
             )
             .await
@@ -159,11 +159,11 @@ where
                     }
                 }
                 is_index_corrupted = true;
-                Ok(Index::new(index_name, ioring, index_config))
+                Ok(Index::new(index_name, iodriver, index_config))
             })?
         } else {
             trace!("file not found, create new");
-            Index::new(index_name, ioring, index_config)
+            Index::new(index_name, iodriver, index_config)
         };
         trace!("index initialized");
         let header_size = bincode::serialized_size(&header)?;
@@ -173,8 +173,8 @@ where
             file,
             name,
             index,
-            current_offset: size,
             created_at,
+            validate_data_during_index_regen,
         };
         trace!("call update index");
         if is_index_corrupted || size as u64 > header_size {
@@ -194,11 +194,12 @@ where
         Ok(blob)
     }
 
-    async fn raw_records(&self) -> Result<RawRecords> {
+    async fn raw_records(&self, validate_data: bool) -> Result<RawRecords> {
         RawRecords::start(
             self.file.clone(),
             bincode::serialized_size(&self.header)?,
             K::LEN as usize,
+            validate_data,
         )
         .await
         .context("failed to create iterator for raw records")
@@ -211,12 +212,15 @@ where
             return Ok(());
         }
         debug!("index file missed");
-        let raw_r = self.raw_records().await.with_context(|| {
-            format!(
-                "failed to read raw records from blob {:?}",
-                self.name.to_path()
-            )
-        })?;
+        let raw_r = self
+            .raw_records(self.validate_data_during_index_regen)
+            .await
+            .with_context(|| {
+                format!(
+                    "failed to read raw records from blob {:?}",
+                    self.name.to_path()
+                )
+            })?;
         debug!("raw records loaded");
         if let Some(headers) = raw_r.load().await.with_context(|| {
             format!(
@@ -239,58 +243,26 @@ where
 
     pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<()> {
         debug!("blob write");
-        // Only one upgradable_read lock is allowed at a time
+        let (partially_serialized, mut header) = record.to_partially_serialized_and_header()?;
+        // Only one upgradable_read lock is allowed at a time. This is critical because we want to
+        // be sure that only one write operation is running at a time
         let blob = blob.upgradable_read().await;
-        Self::write_locked(blob, key, record).await
-    }
-
-    async fn write_mut(&mut self, key: &K, mut record: Record) -> Result<RecordHeader> {
-        debug!("blob write");
-        debug!("blob write record offset: {}", self.current_offset);
-        record.set_offset(self.current_offset)?;
-        let buf = record.to_raw()?;
-        self.file
-            .write_append(&buf)
-            .await
-            .map_err(|e| -> anyhow::Error {
-                match e.kind() {
-                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
-                        Error::file_unavailable(kind).into()
-                    }
-                    _ => e.into(),
-                }
-            })?;
-        self.index.push(key, record.header().clone())?;
-        self.current_offset += buf.len() as u64;
-        Ok(record.into_header())
-    }
-
-    async fn write_locked(
-        blob: ASRwLockUpgradableReadGuard<'_, Blob<K>>,
-        key: &K,
-        mut record: Record,
-    ) -> Result<()> {
-        debug!("blob write record offset: {}", blob.current_offset);
-        record.set_offset(blob.current_offset)?;
-        let buf = record.to_raw()?;
-        blob.file
-            .write_append(&buf)
-            .await
-            .map_err(|e| -> anyhow::Error {
-                match e.kind() {
-                    kind if kind == IOErrorKind::Other || kind == IOErrorKind::NotFound => {
-                        Error::file_unavailable(kind).into()
-                    }
-                    _ => e.into(),
-                }
-            })?;
-        let mut blob = RwLockUpgradableReadGuard::upgrade(blob).await;
-        blob.index.push(key, record.header().clone())?;
-        blob.current_offset += buf.len() as u64;
+        let write_result = partially_serialized.write_to_file(&blob.file).await?;
+        header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
+        blob.index.push(key, header)?;
         Ok(())
     }
 
-    pub(crate) async fn read_any(
+    async fn write_mut(&mut self, key: &K, record: Record) -> Result<RecordHeader> {
+        debug!("blob write");
+        let (record, mut header) = record.to_partially_serialized_and_header()?;
+        let write_result = record.write_to_file(&self.file).await?;
+        header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
+        self.index.push(key, header.clone())?;
+        Ok(header)
+    }
+
+    pub(crate) async fn read_last(
         &self,
         key: &K,
         meta: Option<&Meta>,
@@ -525,6 +497,10 @@ impl FileName {
     fn exists(&self) -> bool {
         self.to_path().exists()
     }
+
+    pub(crate) fn id(&self) -> usize {
+        self.id
+    }
 }
 
 impl Display for FileName {
@@ -537,10 +513,16 @@ struct RawRecords {
     current_offset: u64,
     record_header_size: u64,
     file: File,
+    validate_data: bool,
 }
 
 impl RawRecords {
-    async fn start(file: File, blob_header_size: u64, key_size: usize) -> Result<Self> {
+    async fn start(
+        file: File,
+        blob_header_size: u64,
+        key_size: usize,
+        validate_data: bool,
+    ) -> Result<Self> {
         let current_offset = blob_header_size;
         debug!("blob raw records start, current offset: {}", current_offset);
         let size_of_len = bincode::serialized_size(&(0_usize))? as usize;
@@ -554,13 +536,17 @@ impl RawRecords {
         // vector contains usize len in front
         let buf = file
             .read_exact_at_allocate(size_of_magic_byte + size_of_len, current_offset)
-            .await?;
+            .await
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
+            .context("Can't read BLOB header from file")?;
         let (magic_byte_buf, key_len_buf) = buf.split_at(size_of_magic_byte);
         debug!("blob raw records start, read at {} bytes", buf.len());
         let magic_byte = bincode::deserialize::<u64>(magic_byte_buf)
+            .map_err(|err| Error::from(err))
             .context("failed to deserialize magic byte")?;
         Self::check_record_header_magic_byte(magic_byte)?;
         let key_len = bincode::deserialize::<usize>(key_len_buf)
+            .map_err(|err| Error::from(err))
             .context("failed to deserialize index buf vec length")?;
         if key_len != key_size {
             let msg = "blob key_size is not equal to pearl compile-time key size";
@@ -575,6 +561,7 @@ impl RawRecords {
             current_offset,
             record_header_size,
             file,
+            validate_data,
         })
     }
 
@@ -591,9 +578,19 @@ impl RawRecords {
         debug!("blob raw records load");
         let mut headers = Vec::new();
         while self.current_offset < self.file.size() {
-            let header = self.read_current_record_header().await.with_context(|| {
-                format!("read record header failed, at {}", self.current_offset)
-            })?;
+            let (header, data) = self
+                .read_current_record(self.validate_data)
+                .await
+                .with_context(|| {
+                    format!(
+                        "read record header or data failed, at {}",
+                        self.current_offset
+                    )
+                })?;
+            if let Some(data) = data {
+                Record::data_checksum_audit(&header, &data)
+                    .with_context(|| format!("bad data checksum, at {}", self.current_offset))?;
+            }
             headers.push(header);
         }
         if headers.is_empty() {
@@ -603,11 +600,15 @@ impl RawRecords {
         }
     }
 
-    async fn read_current_record_header(&mut self) -> Result<RecordHeader> {
-        let buf = self
+    async fn read_current_record(
+        &mut self,
+        read_data: bool,
+    ) -> Result<(RecordHeader, Option<BytesMut>)> {
+        let mut buf = self
             .file
             .read_exact_at_allocate(self.record_header_size as usize, self.current_offset)
             .await
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
             .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
         let header = RecordHeader::from_raw(&buf)
             .map_err(|e| Error::from(ErrorKind::Bincode(e.to_string())))
@@ -619,8 +620,20 @@ impl RawRecords {
             })?;
         self.current_offset += self.record_header_size;
         self.current_offset += header.meta_size();
+        let data = if read_data {
+            buf.resize(header.data_size() as usize, 0);
+            buf = self
+                .file
+                .read_exact_at(buf, self.current_offset)
+                .await
+                .map_err(|err| err.into_bincode_if_unexpected_eof())
+                .with_context(|| format!("read at call failed, size {}", self.current_offset))?;
+            Some(buf)
+        } else {
+            None
+        };
         self.current_offset += header.data_size();
-        Ok(header)
+        Ok((header, data))
     }
 }
 
@@ -631,10 +644,22 @@ where
 {
     type Filter = CombinedFilter<K>;
     async fn check_filter(&self, item: &K) -> FilterResult {
+        match self.index.contains_key_fast(item) {
+            Some(true) => { return FilterResult::NeedAdditionalCheck; },
+            Some(false) => { return FilterResult::NotContains; },
+            None => { }
+        }
+        
         self.index.get_filter().contains(&self.index, item).await
     }
 
     fn check_filter_fast(&self, item: &K) -> FilterResult {
+        match self.index.contains_key_fast(item) {
+            Some(true) => { return FilterResult::NeedAdditionalCheck; },
+            Some(false) => { return FilterResult::NotContains; },
+            None => { }
+        }
+        
         self.index.get_filter().contains_fast(item)
     }
 

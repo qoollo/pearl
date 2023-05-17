@@ -18,6 +18,7 @@ pub(crate) struct Config {
     bloom_filter_group_size: usize,
     deferred_min_time: Duration,
     deferred_max_time: Duration,
+    validate_data_during_index_regen: bool,
 }
 
 // Getters
@@ -63,8 +64,13 @@ impl Config {
     }
 
     #[inline]
-    pub fn index(&self) -> IndexConfig {
-        self.index.clone()
+    pub fn index(&self) -> &IndexConfig {
+        &self.index
+    }
+
+    #[inline]
+    pub fn blob(&self) -> BlobConfig {
+        BlobConfig::new(self.index().clone(), self.validate_data_during_index_regen())
     }
 
     #[inline]
@@ -87,6 +93,10 @@ impl Config {
 
     pub fn deferred_max_time(&self) -> Duration {
         self.deferred_max_time
+    }
+
+    pub fn validate_data_during_index_regen(&self) -> bool {
+        self.validate_data_during_index_regen
     }
 }
 
@@ -140,6 +150,10 @@ impl Config {
         self.deferred_min_time = min;
         self.deferred_max_time = max;
     }
+
+    pub fn set_validate_data_during_index_regen(&mut self, value: bool) {
+        self.validate_data_during_index_regen = value;
+    }
 }
 
 // Impl Traits
@@ -160,6 +174,7 @@ impl Default for Config {
             bloom_filter_group_size: 8,
             deferred_min_time: Duration::from_secs(60),
             deferred_max_time: Duration::from_secs(180),
+            validate_data_during_index_regen: false,
         }
     }
 }

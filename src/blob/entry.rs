@@ -30,10 +30,11 @@ impl Entry {
             .blob_file
             .read_exact_at_allocate(data_size + meta_size, self.header.meta_offset())
             .await
-            .with_context(|| "blob load failed")?;
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
+            .context("Record load failed")?;
         let mut buf = buf.freeze();
         let data_buf = buf.split_off(meta_size);
-        let meta = Meta::from_raw(&buf)?;
+        let meta = Meta::from_raw(&buf).map_err(|err| Error::from(err))?;
         let record = Record::new(self.header.clone(), meta, data_buf);
         record.validate()
     }
@@ -46,6 +47,8 @@ impl Entry {
         self.blob_file
             .read_exact_at_allocate(self.header.data_size().try_into()?, data_offset)
             .await
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
+            .context("Error loading Record data")
     }
 
     /// Loads meta data from fisk, and returns reference to it.
@@ -56,8 +59,10 @@ impl Entry {
         let buf = self
             .blob_file
             .read_exact_at_allocate(self.header.meta_size().try_into()?, meta_offset)
-            .await?;
-        self.meta = Some(Meta::from_raw(&buf)?);
+            .await
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
+            .with_context(|| format!("failed to read Record metadata, offset: {}", meta_offset))?;
+        self.meta = Some(Meta::from_raw(&buf).map_err(|err| Error::from(err))?);
         Ok(self.meta.as_ref())
     }
 

@@ -8,10 +8,68 @@ Pearl changelog
 
 #### Changed
 - Receive timestamp as parameter, store it within record and return it with BlobRecordTimestamp (#231)
-- Added different path for sync read/write (#184)
+
+#### Fixed
+- Use `dep:<crate_name>` syntax in feature declaration to avoid unnecessary feature flags (#272) 
+
+#### Updated
+
+
+
+## [0.19.0] - 2023-05-15
+#### Added
+- Use InMemoryIndex as an additional filter on Blob level (#238)
+- Windows support added (#257)
+- CI: build and test on Windows (#261)
+- Include file index memory in the calculation of occupied memory (#262)
+
+#### Changed
+- Remove hard dependency on io uring (#230)
+- Update offset only when write is imminent to prevent data corruption due to async Future cancellation (#228)
+- Improved Arc placement in Storage (#185)
+- Improved visibility levels in Storage (#186)
+- `Clone` impl removed from `Storage` (#265)
+- BLOB-wide exclusive lock removed from the write path, instead the short lock on the in-memory index added (#249)
+- Include BTreeMap overhead in index calculations (#266)
+- `MEM_SIZE` const has been added into the `Key` trait for proper calculation of memory occupied by the Key struct (#270)
+
+#### Fixed
+- Fix fork in test duplicating test environment (#254)
+- Bug in ObserverWorker that prevents its stop and leads to memory leak (#259)
+- Converting UnexpectedEOF errors to bincode errors before deserialize() calls (#233)
+
+#### Updated
+
+
+
+## [0.18.0] - 2023-02-25
+#### Added
+- Index regeneration checks record data checksum (#215)
+
+#### Changed
+- `ring` crate replaced with `sha2` crate (#246)
+- `async-std` replaced with `async-lock` to avoid redundant dependencies (#247)
+- Change locks for filters update (#218)
+- Serialization moved out of critical section (#188)
+- Removed multiple header checksum calculations (#206)
+- Rename functions to show that it returns last entry (#199)
 
 #### Fixed
 
+
+#### Updated
+
+
+
+## [0.17.0] - 2023-01-16
+#### Added
+- Special handling for large data write (#192)
+
+#### Changed
+- Added different path for sync read/write (#184)
+
+#### Fixed
+- Fixed skip condition in Storage::get_data_last causing incorrect NotFound result (#235)
 
 #### Updated
 

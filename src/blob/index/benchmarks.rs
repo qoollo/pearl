@@ -20,6 +20,8 @@ impl<'a> RefKey<'a> for RefKeyType<'a> {}
 impl<'a> Key<'a> for KeyType {
     const LEN: u16 = 8;
 
+    const MEM_SIZE: usize = 8 + std::mem::size_of::<Vec<u8>>();
+
     type Ref = RefKeyType<'a>;
 }
 
@@ -69,6 +71,10 @@ fn generate_headers(records_amount: usize, key_mapper: fn(u32) -> u32) -> InMemo
     inmem
 }
 
+fn create_io_driver() -> IoDriver {
+    IoDriver::new()
+}
+
 fn generate_meta(meta_size: usize) -> Vec<u8> {
     vec![0; meta_size]
 }
@@ -82,22 +88,18 @@ async fn benchmark_from_records() {
     const FILEPATH: &str = "/tmp/index_ser_bench.b";
     const KEY_MAPPER: fn(u32) -> u32 = |k| k % 100_000;
 
-    let ioring = rio::new();
-    if ioring.is_err() {
-        println!("Current OS doesn't support AIO");
-    }
-    let ioring = ioring.ok();
     println!("Generating headers...");
     let headers = generate_headers(RECORDS_AMOUNT, KEY_MAPPER);
     let meta = generate_meta(META_SIZE);
 
     let time = Instant::now();
     println!("Running serialization benches...");
+    let iodriver = create_io_driver();
     for i in 0..TESTS_AMOUNT {
         println!("Test {}...", i + 1);
         let _ = FileIndexStruct::from_records(
             Path::new(FILEPATH),
-            ioring.clone(),
+            iodriver.clone(),
             &headers,
             meta.clone(),
             true,
@@ -125,20 +127,17 @@ async fn benchmark_from_file() {
     const EXTENSION: &str = "b";
     let filepath = format!("{}/{}.{}.{}", DIR, PREFIX, ID, EXTENSION);
 
-    let ioring = rio::new();
-    if ioring.is_err() {
-        println!("Current OS doesn't support AIO");
-    }
-    let ioring = ioring.ok();
     println!("Generating headers...");
     let headers = generate_headers(RECORDS_AMOUNT, KEY_MAPPER);
     let meta = generate_meta(META_SIZE);
+
+    let iodriver = create_io_driver();
 
     println!("Creating index file...");
     {
         let _ = FileIndexStruct::from_records(
             Path::new(&filepath),
-            ioring.clone(),
+            iodriver.clone(),
             &headers,
             meta,
             true,
@@ -157,7 +156,7 @@ async fn benchmark_from_file() {
                 EXTENSION.to_owned(),
                 PathBuf::from(DIR),
             ),
-            ioring.clone(),
+            iodriver.clone(),
         )
         .await
         .unwrap();
@@ -179,19 +178,14 @@ async fn benchmark_get_any() {
     const KEY_TO: u32 = 10_100_000;
     const PRINT_EVERY: u32 = 10_000;
 
-    let ioring = rio::new();
-    if ioring.is_err() {
-        println!("Current OS doesn't support AIO");
-    }
-    let ioring = ioring.ok();
     println!("Generating headers...");
     let headers = generate_headers(RECORDS_AMOUNT, KEY_MAPPER);
     let meta = generate_meta(META_SIZE);
-
+    let iodriver = create_io_driver();
     println!("Creating file index from headers...");
     let findex = FileIndexStruct::from_records(
         Path::new(FILEPATH),
-        ioring.clone(),
+        iodriver,
         &headers,
         meta.clone(),
         true,
@@ -233,19 +227,14 @@ async fn benchmark_get_all() {
     const KEY_TO: u32 = 10_100_000;
     const PRINT_EVERY: u32 = 10_000;
 
-    let ioring = rio::new();
-    if ioring.is_err() {
-        println!("Current OS doesn't support AIO");
-    }
-    let ioring = ioring.ok();
     println!("Generating headers...");
     let headers = generate_headers(RECORDS_AMOUNT, KEY_MAPPER);
     let meta = generate_meta(META_SIZE);
-
+    let iodriver = create_io_driver();
     println!("Creating file index from headers...");
     let findex = FileIndexStruct::from_records(
         Path::new(FILEPATH),
-        ioring.clone(),
+        iodriver,
         &headers,
         meta.clone(),
         true,

@@ -147,6 +147,8 @@ mod tests {
     impl<'a> Key<'a> for KeyType {
         const LEN: u16 = 4;
 
+        const MEM_SIZE: usize = 4 + std::mem::size_of::<Vec<u8>>();
+
         type Ref = RefKeyType<'a>;
     }
 

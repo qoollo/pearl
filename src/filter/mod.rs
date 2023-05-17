@@ -7,6 +7,8 @@ pub mod hierarchical;
 pub mod range;
 /// Traits
 pub mod traits;
+// AtomicBitVec
+mod atomic_bitvec;
 
 use super::prelude::*;
 pub use bloom::*;

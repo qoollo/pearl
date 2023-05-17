@@ -48,6 +48,8 @@ impl<'a> RefKey<'a> for RefKeyTest<'a> {}
 impl<'a> Key<'a> for KeyTest {
     const LEN: u16 = 4;
 
+    const MEM_SIZE: usize = 4 + std::mem::size_of::<Vec<u8>>();
+
     type Ref = RefKeyTest<'a>;
 }
 
@@ -118,21 +120,26 @@ pub async fn create_test_storage(
     dir_name: impl AsRef<Path>,
     max_blob_size: u64,
 ) -> Result<Storage<KeyTest>, String> {
+    create_custom_test_storage(dir_name, |b| b.max_blob_size(max_blob_size)).await
+}
+
+pub async fn create_custom_test_storage(
+    dir_name: impl AsRef<Path>,
+    configurator: impl FnOnce(Builder) -> Builder,
+) -> Result<Storage<KeyTest>, String> {
     let path = env::temp_dir().join(dir_name);
-    let builder = Builder::new()
-        .work_dir(&path)
-        .blob_file_name_prefix("test")
-        .max_blob_size(max_blob_size)
-        .max_data_in_blob(100_000)
-        .set_filter_config(Default::default())
-        .set_deferred_index_dump_times(MIN_DEFER_TIME, MAX_DEFER_TIME)
-        .allow_duplicates();
-    let builder = if let Ok(ioring) = rio::new() {
-        builder.enable_aio(ioring)
-    } else {
-        println!("current OS doesn't support AIO");
-        builder
-    };
+    let iodriver = pearl::IoDriver::new();
+    let builder = configurator(
+        Builder::new()
+            .work_dir(&path)
+            .set_io_driver(iodriver)
+            .blob_file_name_prefix("test")
+            .max_blob_size(1_000_000)
+            .max_data_in_blob(100_000)
+            .set_filter_config(Default::default())
+            .set_deferred_index_dump_times(MIN_DEFER_TIME, MAX_DEFER_TIME)
+            .allow_duplicates());
+
     let mut storage = builder.build().unwrap();
     storage.init().await.map_err(|e| e.to_string())?;
     Ok(storage)
@@ -144,10 +151,10 @@ pub fn create_indexes(threads: usize, writes: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) -> Result<()> {
-    std::thread::sleep(std::time::Duration::from_millis(100));
-    storage.close().await?;
-    fs::remove_dir_all(path).map_err(Into::into)
+pub async fn clean(storage: Storage<KeyTest>, path: impl AsRef<Path>) {
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    storage.close().await.expect("Storage closing error");
+    fs::remove_dir_all(path).expect("Test directory cleaning error");
 }
 
 pub async fn close_storage(storage: Storage<KeyTest>, expected_files: &[&PathBuf]) -> Result<()> {

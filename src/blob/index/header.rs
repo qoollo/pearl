@@ -82,14 +82,14 @@ impl IndexHeader {
         self.version = (version << 1) | written;
     }
 
-    pub(crate) fn serialized_size_default() -> bincode::Result<u64> {
+    pub(crate) fn serialized_size_default() -> u64 {
         let header = Self::default();
         header.serialized_size()
     }
 
     #[inline]
-    pub fn serialized_size(&self) -> bincode::Result<u64> {
-        bincode::serialized_size(&self)
+    pub fn serialized_size(&self) -> u64 {
+        bincode::serialized_size(&self).expect("index header size")
     }
 
     #[inline]
@@ -108,6 +108,14 @@ impl IndexHeader {
     pub(crate) fn blob_size(&self) -> u64 {
         self.blob_size
     }
+
+    pub(crate) fn reset_hash(&mut self) {
+        if self.hash.len() == IndexHashCalculator::HASH_LENGTH {
+            self.hash.fill(0);
+        } else {
+            self.hash = vec![0; IndexHashCalculator::HASH_LENGTH];
+        }
+    }
 }
 
 impl Default for IndexHeader {
@@ -117,7 +125,7 @@ impl Default for IndexHeader {
             record_header_size: 0,
             meta_size: 0,
             blob_size: 0,
-            hash: vec![0; ring::digest::SHA256.output_len],
+            hash: vec![0; IndexHashCalculator::HASH_LENGTH],
             version: HEADER_VERSION << 1,
             key_size: 0,
             magic_byte: INDEX_HEADER_MAGIC_BYTE,

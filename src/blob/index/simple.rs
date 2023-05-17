@@ -1,4 +1,4 @@
-use bytes::BytesMut;
+use bytes::{BufMut, BytesMut};
 
 use crate::error::ValidationErrorKind;
 
@@ -15,9 +15,10 @@ impl<K> FileIndexTrait<K> for SimpleFileIndex
 where
     for<'a> K: Key<'a>,
 {
-    async fn from_file(name: FileName, ioring: Option<Rio>) -> Result<Self> {
+    async fn from_file(name: FileName, iodriver: IoDriver) -> Result<Self> {
         trace!("open index file");
-        let file = File::open(name.to_path(), ioring)
+        let file = iodriver
+            .open(name.to_path())
             .await
             .context(format!("failed to open index file: {}", name))?;
         let header = Self::read_index_header(&file).await?;
@@ -41,8 +42,9 @@ where
         trace!("load meta");
         trace!("read meta into buf: [0; {}]", self.header.meta_size);
         self.file
-            .read_exact_at_allocate(self.header.meta_size, self.header.serialized_size()? as u64)
+            .read_exact_at_allocate(self.header.meta_size, self.header.serialized_size())
             .await
+            .map_err(|err| err.into())
     }
 
     async fn read_meta_at(&self, i: u64) -> Result<u8> {
@@ -52,7 +54,7 @@ where
         }
         let buf = self
             .file
-            .read_exact_at_allocate(1, self.header.serialized_size()? + i)
+            .read_exact_at_allocate(1, self.header.serialized_size() + i)
             .await?;
         Ok(buf[0])
     }
@@ -63,7 +65,7 @@ where
 
     async fn from_records(
         path: &Path,
-        ioring: Option<Rio>,
+        iodriver: IoDriver,
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         recreate_index_file: bool,
@@ -76,13 +78,16 @@ where
         }
         let (mut header, buf) = res.expect("None case is checked");
         clean_file(path, recreate_index_file)?;
-        let file = File::create(path, ioring)
+        let file = iodriver
+            .create(path)
             .await
             .with_context(|| format!("file open failed {:?}", path))?;
-        file.write_append(&buf).await?;
+        file.write_append_all(buf.freeze()).await?;
         header.set_written(true);
-        let serialized_header = serialize(&header)?;
-        file.write_at(0, &serialized_header).await?;
+        let size = header.serialized_size();
+        let mut serialized_header = BytesMut::with_capacity(size as usize);
+        serialize_into((&mut serialized_header).writer(), &header)?;
+        file.write_all_at(0, serialized_header.freeze()).await?;
         file.fsyncdata().await?;
         Ok(Self { file, header })
     }
@@ -90,7 +95,7 @@ where
     async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)> {
         let mut buf = self.file.read_all().await?;
         self.validate_header::<K>(&mut buf, blob_size).await?;
-        let offset = self.header.meta_size + self.header.serialized_size()? as usize;
+        let offset = self.header.meta_size + self.header.serialized_size() as usize;
         let records_buf = &buf[offset..];
         (0..self.header.records_count)
             .try_fold(InMemoryIndex::new(), |mut headers, i| {
@@ -153,24 +158,30 @@ where
         }
         Ok(())
     }
+
+    fn memory_used(&self) -> usize {
+        std::mem::size_of::<Self>()
+    }
 }
 
 // helpers
 impl SimpleFileIndex {
     fn hash_valid(header: &IndexHeader, buf: &mut [u8]) -> Result<bool> {
-        let hash = header.hash.clone();
+        let hash = &header.hash;
         let mut header = header.clone();
-        header.hash = vec![0; ring::digest::SHA256.output_len];
+        header.reset_hash();
         header.set_written(false);
         serialize_into(&mut buf[..], &header)?;
-        let new_hash = get_hash(&buf);
-        Ok(hash == new_hash)
+        let new_hash = IndexHashCalculator::get_hash(&buf);
+        Ok(*hash == new_hash)
     }
 
     async fn read_index_header(file: &File) -> Result<IndexHeader> {
-        let header_size = IndexHeader::serialized_size_default()? as usize;
-        let buf = file.read_exact_at_allocate(header_size, 0).await?;
-        IndexHeader::from_raw(&buf).map_err(Into::into)
+        let header_size = IndexHeader::serialized_size_default() as usize;
+        let buf = file.read_exact_at_allocate(header_size, 0).await
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
+            .context("Index header read error")?;
+        IndexHeader::from_raw(&buf).map_err(|err| Error::from(err).into())
     }
 
     async fn search_all<K>(
@@ -306,7 +317,7 @@ impl SimpleFileIndex {
         headers: &InMemoryIndex<K>,
         meta: Vec<u8>,
         blob_size: u64,
-    ) -> Result<Option<(IndexHeader, Vec<u8>)>>
+    ) -> Result<Option<(IndexHeader, BytesMut)>>
     where
         for<'a> K: Key<'a>,
     {
@@ -323,11 +334,11 @@ impl SimpleFileIndex {
                 K::LEN,
                 blob_size,
             );
-            let hs: usize = header.serialized_size()?.try_into().expect("u64 to usize");
+            let hs: usize = header.serialized_size().try_into().expect("u64 to usize");
             trace!("index header size: {}b", hs);
             let fsize = header.meta_size;
-            let mut buf = Vec::with_capacity(hs + fsize + headers.len() * record_header_size);
-            serialize_into(&mut buf, &header)?;
+            let mut buf = BytesMut::with_capacity(hs + fsize + headers.len() * record_header_size);
+            serialize_into((&mut buf).writer(), &header)?;
             debug!(
                 "serialize headers meta size: {}, header.meta_size: {}, buf.len: {}",
                 meta.len(),
@@ -346,7 +357,7 @@ impl SimpleFileIndex {
                 "blob index simple serialize headers buf len after: {}",
                 buf.len()
             );
-            let hash = get_hash(&buf);
+            let hash = IndexHashCalculator::get_hash(&buf);
             let header = IndexHeader::with_hash(
                 record_header_size,
                 headers.len(),
@@ -355,7 +366,7 @@ impl SimpleFileIndex {
                 blob_size,
                 hash,
             );
-            serialize_into(buf.as_mut_slice(), &header)?;
+            serialize_into((&mut buf).writer(), &header)?;
             Ok(Some((header, buf)))
         } else {
             Ok(None)
@@ -374,8 +385,10 @@ impl SimpleFileIndex {
         );
         let buf = file
             .read_exact_at_allocate(header.record_header_size, offset)
-            .await?;
-        let header = deserialize(&buf)?;
+            .await
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
+            .with_context(|| format!("failed to read, offset: {}", offset))?;
+        let header = deserialize(&buf).map_err(|err| Error::from(err))?;
         debug!("blob index simple header: {:?}", header);
         Ok(header)
     }

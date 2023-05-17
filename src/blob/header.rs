@@ -1,10 +1,8 @@
+use crate::prelude::*;
 use anyhow::{Context, Result};
 use bincode::{deserialize, serialized_size};
-use rio::Rio;
 
-use crate::{blob::File, error::ValidationErrorKind, Error};
-
-use super::FileName;
+use crate::{error::ValidationErrorKind, Error};
 
 pub(crate) const BLOB_VERSION: u32 = 1;
 pub(crate) const BLOB_MAGIC_BYTE: u64 = 0xdeaf_abcd;
@@ -25,17 +23,16 @@ impl Header {
         }
     }
 
-    pub(crate) async fn from_file(name: &FileName, ioring: Option<Rio>) -> Result<Self> {
-        let file = File::open(name.to_path(), ioring)
-            .await
-            .with_context(|| format!("failed to open blob file: {}", name))?;
+    pub(crate) async fn from_file(file: &File, file_name: &Path) -> Result<Self> {
         let size = serialized_size(&Header::new()).expect("failed to serialize default header");
         let buf = file
             .read_exact_at_allocate(size as usize, 0)
             .await
-            .with_context(|| format!("failed to read from file: {}", name))?;
+            .map_err(|err| err.into_bincode_if_unexpected_eof())
+            .with_context(|| format!("failed to read from file: {:?}", file_name))?;
         let header: Self = deserialize(&buf)
-            .with_context(|| format!("failed to deserialize header from file: {}", name))?;
+            .map_err(|err| Error::from(err))
+            .with_context(|| format!("failed to deserialize header from file: {:?}", file_name))?;
         header.validate().context("header validation failed")?;
         Ok(header)
     }
@@ -59,5 +56,10 @@ impl Header {
             return Err(Error::validation(param, "blob header magic byte mismatch").into());
         }
         Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn serialized_size(&self) -> u64 {
+        serialized_size(&self).expect("blob header size")
     }
 }
