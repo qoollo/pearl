@@ -1345,3 +1345,79 @@ async fn test_read_all_with_deletion_marker_delete_middle_different_blobs() -> R
     common::clean(storage, path).await;
     Ok(())
 }
+
+
+#[tokio::test]
+async fn test_read_ordered_by_timestamp() -> Result<()> {
+    let path = common::init("read_ordered_by_timestamp");
+    let storage = common::default_test_storage_in(&path).await.unwrap();
+    let key: KeyTest = vec![0].into();
+    let data1: Bytes = "1. test data string".repeat(16).as_bytes().to_vec().into();
+    let data2: Bytes = "2. test data string".repeat(16).as_bytes().to_vec().into();
+    let data3: Bytes = "3. test data string".repeat(16).as_bytes().to_vec().into();
+    storage.write(&key, data1.clone(), BlobRecordTimestamp::new(10)).await?;
+    storage.write(&key, data2.clone(), BlobRecordTimestamp::new(10)).await?;
+    storage.write(&key, data3.clone(), BlobRecordTimestamp::new(5)).await?;
+
+    let read = storage.read_all_with_deletion_marker(&key).await?;
+
+    assert_eq!(3, read.len());
+    assert_eq!(BlobRecordTimestamp::new(10), read[0].timestamp());
+    assert_eq!(data2, Bytes::from(read[0].load_data().await.unwrap()));
+    assert_eq!(BlobRecordTimestamp::new(10), read[1].timestamp());
+    assert_eq!(data1, Bytes::from(read[1].load_data().await.unwrap()));
+    assert_eq!(BlobRecordTimestamp::new(5), read[2].timestamp());
+    assert_eq!(data3, Bytes::from(read[2].load_data().await.unwrap()));
+
+    std::mem::drop(read); // Entry holds file
+
+    let data = storage.read(&key).await?;
+    assert!(data.is_found());
+    assert_eq!(data2, Bytes::from(data.into_option().unwrap()));
+
+    let contains = storage.contains(&key).await?;
+    assert!(contains.is_found());
+    assert_eq!(BlobRecordTimestamp::new(10), contains.into_option().unwrap());
+
+    common::clean(storage, path).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_read_ordered_by_timestamp_in_different_blobs() -> Result<()> {
+    let path = common::init("read_ordered_by_timestamp_in_different_blobs");
+    let storage = common::default_test_storage_in(&path).await.unwrap();
+    let key: KeyTest = vec![0].into();
+    let data1: Bytes = "1. test data string".repeat(16).as_bytes().to_vec().into();
+    let data2: Bytes = "2. test data string".repeat(16).as_bytes().to_vec().into();
+    let data3: Bytes = "3. test data string".repeat(16).as_bytes().to_vec().into();
+    storage.write(&key, data1.clone(), BlobRecordTimestamp::new(10)).await?;
+    storage.try_close_active_blob().await?;
+    storage.write(&key, data2.clone(), BlobRecordTimestamp::new(10)).await?;
+    storage.try_close_active_blob().await?;
+    storage.write(&key, data3.clone(), BlobRecordTimestamp::new(5)).await?;
+    storage.try_close_active_blob().await?;
+
+    let read = storage.read_all_with_deletion_marker(&key).await?;
+
+    assert_eq!(3, read.len());
+    assert_eq!(BlobRecordTimestamp::new(10), read[0].timestamp());
+    assert_eq!(data2, Bytes::from(read[0].load_data().await.unwrap()));
+    assert_eq!(BlobRecordTimestamp::new(10), read[1].timestamp());
+    assert_eq!(data1, Bytes::from(read[1].load_data().await.unwrap()));
+    assert_eq!(BlobRecordTimestamp::new(5), read[2].timestamp());
+    assert_eq!(data3, Bytes::from(read[2].load_data().await.unwrap()));
+
+    std::mem::drop(read); // Entry holds file
+
+    let data = storage.read(&key).await?;
+    assert!(data.is_found());
+    assert_eq!(data2, Bytes::from(data.into_option().unwrap()));
+
+    let contains = storage.contains(&key).await?;
+    assert!(contains.is_found());
+    assert_eq!(BlobRecordTimestamp::new(10), contains.into_option().unwrap());
+
+    common::clean(storage, path).await;
+    Ok(())
+}
