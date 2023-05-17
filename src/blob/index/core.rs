@@ -333,9 +333,13 @@ where
                 if let Some(v) = data.headers.get_mut(key) {
                     let old_capacity = v.capacity();
                     // Keep ordered by timestamp
-                    let mut pos = v.binary_search_by(|item| item.timestamp().cmp(&h.timestamp())).unwrap_or_else(|e| e);
-                    // Skip records with equal timestamp (our should be the latest)
-                    while pos < v.len() && v[pos].timestamp() == h.timestamp() {
+                    let mut pos = 0;
+                    if v.len() > 4 {
+                        // Use binary search when len > 4. For smaller len sequential search will be faster
+                        pos = v.binary_search_by(|item| item.timestamp().cmp(&h.timestamp())).unwrap_or_else(|e| e);
+                    }
+                    // Skip records with timestamp less or equal to our (our should be the latest)
+                    while pos < v.len() && v[pos].timestamp() <= h.timestamp() {
                         pos += 1;
                     }
                     v.insert(pos, h);
