@@ -1358,16 +1358,19 @@ async fn test_read_ordered_by_timestamp() -> Result<()> {
     storage.write(&key, data1.clone(), BlobRecordTimestamp::new(10)).await?;
     storage.write(&key, data2.clone(), BlobRecordTimestamp::new(10)).await?;
     storage.write(&key, data3.clone(), BlobRecordTimestamp::new(5)).await?;
+    storage.delete(&key, BlobRecordTimestamp::new(0), false).await?;
 
     let read = storage.read_all_with_deletion_marker(&key).await?;
 
-    assert_eq!(3, read.len());
+    assert_eq!(4, read.len());
     assert_eq!(BlobRecordTimestamp::new(10), read[0].timestamp());
     assert_eq!(data2, Bytes::from(read[0].load_data().await.unwrap()));
     assert_eq!(BlobRecordTimestamp::new(10), read[1].timestamp());
     assert_eq!(data1, Bytes::from(read[1].load_data().await.unwrap()));
     assert_eq!(BlobRecordTimestamp::new(5), read[2].timestamp());
     assert_eq!(data3, Bytes::from(read[2].load_data().await.unwrap()));
+    assert_eq!(BlobRecordTimestamp::new(0), read[3].timestamp());
+    assert!(read[3].is_deleted());
 
     std::mem::drop(read); // Entry holds file
 
@@ -1397,16 +1400,19 @@ async fn test_read_ordered_by_timestamp_in_different_blobs() -> Result<()> {
     storage.try_close_active_blob().await?;
     storage.write(&key, data3.clone(), BlobRecordTimestamp::new(5)).await?;
     storage.try_close_active_blob().await?;
+    storage.delete(&key, BlobRecordTimestamp::new(0), false).await?;
 
     let read = storage.read_all_with_deletion_marker(&key).await?;
 
-    assert_eq!(3, read.len());
+    assert_eq!(4, read.len());
     assert_eq!(BlobRecordTimestamp::new(10), read[0].timestamp());
     assert_eq!(data2, Bytes::from(read[0].load_data().await.unwrap()));
     assert_eq!(BlobRecordTimestamp::new(10), read[1].timestamp());
     assert_eq!(data1, Bytes::from(read[1].load_data().await.unwrap()));
     assert_eq!(BlobRecordTimestamp::new(5), read[2].timestamp());
     assert_eq!(data3, Bytes::from(read[2].load_data().await.unwrap()));
+    assert_eq!(BlobRecordTimestamp::new(0), read[3].timestamp());
+    assert!(read[3].is_deleted());
 
     std::mem::drop(read); // Entry holds file
 
