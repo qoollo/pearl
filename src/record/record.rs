@@ -139,7 +139,7 @@ impl Record {
     {
         let key = key.as_ref().to_vec();
         let meta = meta.unwrap_or_default();
-        let meta_size = meta.serialized_size()?;
+        let meta_size = meta.serialized_size();
         let data_checksum = CRC32C.checksum(&data);
         let header = Header::new(key, timestamp, meta_size, data.len() as u64, data_checksum);
         Ok(Self { header, meta, data })
@@ -392,7 +392,7 @@ mod tests {
             let checksum: u32 = CRC32C.checksum(&data);
             let meta = Meta::new();
             let header =
-                RecordHeader::new(key, meta.serialized_size(), data.len() as u64, checksum);
+                RecordHeader::new(key, 101, meta.serialized_size(), data.len() as u64, checksum);
             let header_size = header.serialized_size();
             let record = Record::new(header, meta, data);
             let offset: u64 = 101 * i as u64;
@@ -417,7 +417,7 @@ mod tests {
             let checksum: u32 = CRC32C.checksum(&data);
             let meta = Meta::new();
             let mut header =
-                RecordHeader::new(key, meta.serialized_size(), data.len() as u64, checksum);
+                RecordHeader::new(key, 101, meta.serialized_size(), data.len() as u64, checksum);
             let header_size = header.serialized_size() as usize;
             let record = Record::new(header.clone(), meta.clone(), data.clone());
             let offset: u64 = 101 * i as u64;
