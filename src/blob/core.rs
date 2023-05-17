@@ -269,7 +269,7 @@ where
         check_filters: bool,
     ) -> Result<ReadResult<Bytes>> {
         debug!("blob read any");
-        let entry = self.get_entry(key, meta, check_filters).await?;
+        let entry = self.get_last_entry(key, meta, check_filters).await?;
         match entry {
             ReadResult::Found(entry) => {
                 debug!("blob read any entry found");
@@ -349,7 +349,7 @@ where
             .collect()
     }
 
-    async fn get_entry(
+    pub(crate) async fn get_last_entry(
         &self,
         key: &K,
         meta: Option<&Meta>,
@@ -415,7 +415,7 @@ where
     ) -> Result<ReadResult<BlobRecordTimestamp>> {
         debug!("blob contains");
         let contains = self
-            .get_entry(key, meta, true)
+            .get_last_entry(key, meta, true)
             .await?
             .map(|e| e.timestamp());
         debug!("blob contains any: {:?}", contains);

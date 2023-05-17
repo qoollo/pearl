@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use crate::Entry;
 
 /// Timestamp
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -108,6 +109,47 @@ impl<T> ReadResult<T> {
         match self {
             ReadResult::Found(d) => d,
             _ => panic!("Cannot unwrap empty result"),
+        }
+    }
+}
+
+impl ReadResult<BlobRecordTimestamp> {
+    fn timestamp(&self) -> Option<BlobRecordTimestamp> {
+        match &self {
+            ReadResult::Found(ts) => Some(*ts),
+            ReadResult::Deleted(ts) => Some(*ts),
+            ReadResult::NotFound => None
+        }
+    }
+
+    /// Returns [`ReadResult<BlobRecordTimestamp>`] with max timetamp.
+    /// If timestamps are equal, then `self` is preserved
+    pub fn latest(self, other: ReadResult<BlobRecordTimestamp>) -> ReadResult<BlobRecordTimestamp> {
+        if other.timestamp() > self.timestamp() {
+            other
+        } else {
+            self
+        }
+    }
+}
+
+
+impl ReadResult<Entry> {
+    fn timestamp(&self) -> Option<BlobRecordTimestamp> {
+        match &self {
+            ReadResult::Found(entry) => Some(entry.timestamp()),
+            ReadResult::Deleted(ts) => Some(*ts),
+            ReadResult::NotFound => None
+        }
+    }
+
+    /// Returns [`ReadResult<Entry>`] with max timetamp.
+    /// If timestamps are equal, then `self` is preserved
+    pub fn latest(self, other: ReadResult<Entry>) -> ReadResult<Entry> {
+        if other.timestamp() > self.timestamp() {
+            other
+        } else {
+            self
         }
     }
 }

@@ -908,22 +908,19 @@ where
         key: &K,
         meta: Option<&Meta>,
     ) -> Result<ReadResult<BlobRecordTimestamp>> {
+        let mut latest_result: ReadResult<BlobRecordTimestamp> = ReadResult::NotFound;
+
         let inner = self.inner.safe.read().await;
         if let Some(active_blob) = &inner.active_blob {
-            let res = active_blob.read().await.contains(key, meta).await?;
-            if res.is_presented() {
-                return Ok(res);
-            }
-        }
-        let blobs = inner.blobs.read().await;
-        for blob in blobs.iter_possible_childs_rev(key) {
-            let res = blob.1.data.contains(key, meta).await?;
-            if res.is_presented() {
-                return Ok(res);
-            }
+            latest_result = latest_result.latest(active_blob.read().await.contains(key, meta).await?);
         }
 
-        Ok(ReadResult::NotFound)
+        let blobs = inner.blobs.read().await;
+        for blob in blobs.iter_possible_childs_rev(key) {
+            latest_result = latest_result.latest(blob.1.data.contains(key, meta).await?);
+        }
+
+        Ok(latest_result)
     }
 
     /// `check_filters` is used to check whether a key is in storage.
