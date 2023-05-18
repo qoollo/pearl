@@ -4,7 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
-
+- Checksum validation in `Entry::load_data` (#274)
 
 #### Changed
 
