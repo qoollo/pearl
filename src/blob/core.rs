@@ -24,7 +24,7 @@ where
 {
     header: Header,
     index: Index<K>,
-    name: FileName,
+    name: Arc<FileName>,
     file: File,
     created_at: SystemTime,
     validate_data_during_index_regen: bool,
@@ -56,7 +56,7 @@ where
         let mut blob = Self {
             header,
             index,
-            name,
+            name: Arc::new(name),
             file,
             created_at: SystemTime::now(),
             validate_data_during_index_regen,
@@ -171,7 +171,7 @@ where
         let mut blob = Self {
             header,
             file,
-            name,
+            name: Arc::new(name),
             index,
             created_at,
             validate_data_during_index_regen,
@@ -277,14 +277,7 @@ where
                 let buf = entry
                     .load()
                     .await
-                    .with_context(|| {
-                        format!(
-                            "failed to read key {:?} with meta {:?} from blob {:?}",
-                            key,
-                            meta,
-                            self.name.to_path()
-                        )
-                    })?
+                    .with_context(|| format!("Failed to read data for key {:?} with meta {:?}", key, meta))?
                     .into_data();
                 debug!("blob read any entry loaded bytes: {}", buf.len());
                 Ok(ReadResult::Found(buf))
@@ -302,7 +295,7 @@ where
             .iter()
             .zip(headers.iter().skip(1))
             .all(|(x, y)| x.timestamp() >= y.timestamp()));
-        Ok(Self::headers_to_entries(headers, &self.file))
+        Ok(Self::headers_to_entries(headers, &self.file, &self.name))
     }
 
     #[inline]
@@ -315,7 +308,7 @@ where
             .iter()
             .zip(headers.iter().skip(1))
             .all(|(x, y)| x.timestamp() >= y.timestamp()));
-        Ok(Self::headers_to_entries(headers, &self.file))
+        Ok(Self::headers_to_entries(headers, &self.file, &self.name))
     }
 
     pub(crate) async fn delete(
@@ -343,10 +336,10 @@ where
         self.index.push_deletion(key, header)
     }
 
-    fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
+    fn headers_to_entries(headers: Vec<RecordHeader>, file: &File, file_name: &Arc<FileName>) -> Vec<Entry> {
         headers
             .into_iter()
-            .map(|header| Entry::new(header, file.clone()))
+            .map(|header| Entry::new(header, file.clone(), file_name.clone()))
             .collect()
     }
 
@@ -374,7 +367,7 @@ where
                     format!("index get any failed for blob: {:?}", self.name.to_path())
                 })?
                 .map(|header| {
-                    let entry = Entry::new(header, self.file.clone());
+                    let entry = Entry::new(header, self.file.clone(), self.name.clone());
                     debug!("blob, get any entry, bloom true no meta, entry found");
                     entry
                 }))
@@ -390,7 +383,7 @@ where
         if deleted_ts.is_some() {
             headers.truncate(headers.len() - 1);
         }
-        let entries = Self::headers_to_entries(headers, &self.file);
+        let entries = Self::headers_to_entries(headers, &self.file, &self.name);
         if let Some(entries) = self.filter_entries(entries, meta).await? {
             Ok(ReadResult::Found(entries))
         } else {

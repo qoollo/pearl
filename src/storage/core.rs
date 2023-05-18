@@ -541,14 +541,7 @@ where
                 let buf = entry
                     .load()
                     .await
-                    .with_context(|| {
-                        format!(
-                            "failed to read key {:?} with meta {:?} from blob ??",
-                            key,
-                            meta,
-                            //self.name.to_path()
-                        )
-                    })?
+                    .with_context(|| format!("Failed to read data for key {:?} with meta {:?}", key, meta))?
                     .into_data();
                 trace!("Storage::read_with_optional_meta: loaded bytes: {}", buf.len());
                 Ok(ReadResult::Found(buf))

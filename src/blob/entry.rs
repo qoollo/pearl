@@ -16,6 +16,7 @@ pub struct Entry {
     header: RecordHeader,
     meta: Option<Meta>,
     blob_file: File,
+    blob_file_name: Arc<FileName>
 }
 
 impl Entry {
@@ -31,12 +32,15 @@ impl Entry {
             .read_exact_at_allocate(data_size + meta_size, self.header.meta_offset())
             .await
             .map_err(|err| err.into_bincode_if_unexpected_eof())
-            .context("Record load failed")?;
+            .with_context(|| format!("Record load failed from BLOB: {}", self.blob_file_name.to_path().display()))?;
         let mut buf = buf.freeze();
         let data_buf = buf.split_off(meta_size);
-        let meta = Meta::from_raw(&buf).map_err(|err| Error::from(err))?;
-        let record = Record::new(self.header.clone(), meta, data_buf);
-        record.validate()
+        let meta = Meta::from_raw(&buf)
+            .map_err(|err| Error::from(err))
+            .with_context(|| format!("Deserialization failed for Meta loaded from BLOB: {}", self.blob_file_name.to_path().display()))?;
+        Record::new(self.header, meta, data_buf)
+            .validate()
+            .with_context(|| format!("Validation failed for Record loaded from BLOB: {}", self.blob_file_name.to_path().display()))
     }
 
     /// Returns only data.
@@ -48,7 +52,7 @@ impl Entry {
             .read_exact_at_allocate(self.header.data_size().try_into()?, data_offset)
             .await
             .map_err(|err| err.into_bincode_if_unexpected_eof())
-            .context("Error loading Record data")
+            .with_context(|| format!("Error loading Record data from BLOB: {}", self.blob_file_name.to_path().display()))
     }
 
     /// Loads meta data from fisk, and returns reference to it.
@@ -61,8 +65,12 @@ impl Entry {
             .read_exact_at_allocate(self.header.meta_size().try_into()?, meta_offset)
             .await
             .map_err(|err| err.into_bincode_if_unexpected_eof())
-            .with_context(|| format!("failed to read Record metadata, offset: {}", meta_offset))?;
-        self.meta = Some(Meta::from_raw(&buf).map_err(|err| Error::from(err))?);
+            .with_context(|| format!("Failed to read Record metadata from BLOB: {}", self.blob_file_name.to_path().display()))?;
+        let meta = Meta::from_raw(&buf)
+            .map_err(|err| Error::from(err))
+            .with_context(|| format!("Deserialization failed for Meta loaded from BLOB: {}", self.blob_file_name.to_path().display()))?;
+
+        self.meta = Some(meta);
         Ok(self.meta.as_ref())
     }
 
@@ -76,11 +84,12 @@ impl Entry {
         BlobRecordTimestamp::new(self.header.timestamp())
     }
 
-    pub(crate) fn new(header: RecordHeader, blob_file: File) -> Self {
+    pub(crate) fn new(header: RecordHeader, blob_file: File, blob_file_name: Arc<FileName>) -> Self {
         Self {
             meta: None,
             header,
             blob_file,
+            blob_file_name
         }
     }
 }
