@@ -262,7 +262,8 @@ where
         Ok(header)
     }
 
-    pub(crate) async fn read_last(
+    #[allow(dead_code)]
+    pub(crate) async fn read_latest(
         &self,
         key: &K,
         meta: Option<&Meta>,
@@ -349,6 +350,7 @@ where
             .collect()
     }
 
+    /// Returns latest Entry from Blob for specified key and meta
     pub(crate) async fn get_latest_entry(
         &self,
         key: &K,
@@ -408,6 +410,7 @@ where
         Ok(None)
     }
 
+    #[allow(dead_code)]
     pub(crate) async fn contains(
         &self,
         key: &K,

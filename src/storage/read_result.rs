@@ -45,10 +45,6 @@ impl Into<u64> for BlobRecordTimestamp {
 }
 
 impl<T> ReadResult<T> {
-    pub(crate) fn is_presented(&self) -> bool {
-        !matches!(self, ReadResult::NotFound)
-    }
-
     /// Is this found result
     pub fn is_found(&self) -> bool {
         matches!(self, ReadResult::Found(_))

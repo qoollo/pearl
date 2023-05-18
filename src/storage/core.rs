@@ -491,6 +491,41 @@ where
         Ok(all_entries)
     }
 
+
+    /// Returns latest Entry by timestamp
+    async fn get_latest_entry(
+        safe: &Safe<K>,
+        key: &K,
+        meta: Option<&Meta>,
+    ) -> Result<ReadResult<Entry>> {
+        let mut latest_entry: ReadResult<Entry> = ReadResult::NotFound;
+
+        if let Some(ablob) = safe.active_blob.as_ref() {
+            let ablob_entry = ablob.read().await.get_latest_entry(key, meta, true).await.map_err(|err| {
+                debug!("get_latest_entry from active blob returned error: {:?}", err);
+                err
+            })?;
+
+            latest_entry = latest_entry.latest(ablob_entry);
+        }
+
+        let blobs = safe.blobs.read().await;
+        let mut stream = blobs
+            .iter_possible_childs_rev(key)
+            .map(|(_, blob)| blob.data.get_latest_entry(key, meta, true))
+            .collect::<FuturesOrdered<_>>();
+
+        while let Some(entry) = stream.next().await {
+            let entry = entry.map_err(|err| {
+                debug!("get_latest_entry from closed blob returned error: {:?}", err);
+                err
+            })?;
+            latest_entry = latest_entry.latest(entry);
+        }
+
+        Ok(latest_entry)
+    } 
+
     async fn read_with_optional_meta(
         &self,
         key: &K,
@@ -498,62 +533,29 @@ where
     ) -> Result<ReadResult<Bytes>> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
-        if let Some(ablob) = safe.active_blob.as_ref() {
-            match ablob.read().await.read_last(key, meta, true).await {
-                Ok(data) => {
-                    if data.is_presented() {
-                        debug!("storage read with optional meta active blob returned data");
-                        return Ok(data);
-                    }
-                }
-                Err(e) => debug!("read with optional meta active blob returned: {:#?}", e),
-            }
-        }
-        Self::get_data_last(&safe, key, meta).await
-    }
+        let latest_entry = Self::get_latest_entry(&safe, key, meta).await?;
 
-    async fn get_data_last(
-        safe: &Safe<K>,
-        key: &K,
-        meta: Option<&Meta>,
-    ) -> Result<ReadResult<Bytes>> {
-        let blobs = safe.blobs.read().await;
-        let possible_blobs = blobs
-            .iter_possible_childs_rev(key)
-            .map(|(id, blob)| async move {
-                if !matches!(blob.data.check_filter(key).await, FilterResult::NotContains) {
-                    Some(id)
-                } else {
-                    None
-                }
-            })
-            .collect::<FuturesOrdered<_>>()
-            .filter_map(|x| x)
-            .collect::<Vec<_>>()
-            .await;
-        debug!(
-            "len of possible blobs: {} (start len: {})",
-            possible_blobs.len(),
-            blobs.len()
-        );
-        let stream: FuturesOrdered<_> = possible_blobs
-            .into_iter()
-            .filter_map(|id| blobs.get_child(id))
-            .map(|blob| blob.data.read_last(key, meta, false))
-            .collect();
-        debug!("read with optional meta {} closed blobs", stream.len());
-
-        let mut task = stream.skip_while(|read_res| {
-            match read_res {
-                Ok(inner_res) => inner_res.is_not_found(), // Skip not found
-                Err(e) => {
-                    debug!("error reading data from Blob (blob.read_any): {:?}", e);
-                    true // skip errors
-                }
-            }
-        });
-
-        task.next().await.unwrap_or(Ok(ReadResult::NotFound))
+        match latest_entry {
+            ReadResult::Found(entry) => {
+                trace!("Storage::read_with_optional_meta: entry found");
+                let buf = entry
+                    .load()
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "failed to read key {:?} with meta {:?} from blob ??",
+                            key,
+                            meta,
+                            //self.name.to_path()
+                        )
+                    })?
+                    .into_data();
+                trace!("Storage::read_with_optional_meta: loaded bytes: {}", buf.len());
+                Ok(ReadResult::Found(buf))
+            },
+            ReadResult::Deleted(ts) => Ok(ReadResult::Deleted(ts)),
+            ReadResult::NotFound => Ok(ReadResult::NotFound)
+        }     
     }
 
     /// Stop blob updater and release lock file
@@ -908,19 +910,9 @@ where
         key: &K,
         meta: Option<&Meta>,
     ) -> Result<ReadResult<BlobRecordTimestamp>> {
-        let mut latest_result: ReadResult<BlobRecordTimestamp> = ReadResult::NotFound;
-
-        let inner = self.inner.safe.read().await;
-        if let Some(active_blob) = &inner.active_blob {
-            latest_result = latest_result.latest(active_blob.read().await.contains(key, meta).await?);
-        }
-
-        let blobs = inner.blobs.read().await;
-        for blob in blobs.iter_possible_childs_rev(key) {
-            latest_result = latest_result.latest(blob.1.data.contains(key, meta).await?);
-        }
-
-        Ok(latest_result)
+        let safe = self.inner.safe.read().await;
+        let latest_result = Self::get_latest_entry(&safe, key, meta).await?;
+        Ok(latest_result.map(|entry| entry.timestamp()))
     }
 
     /// `check_filters` is used to check whether a key is in storage.
