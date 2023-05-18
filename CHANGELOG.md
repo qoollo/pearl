@@ -8,6 +8,8 @@ Pearl changelog
 
 #### Changed
 - Receive timestamp as parameter, store it within record and return it with BlobRecordTimestamp (#231)
+- `Storage::read` now propagates the error further instead of hiding it (#241)
+- `Storage::read` now reads Entries first, select latest one and only then loads the data (#276)
 
 #### Fixed
 - Use `dep:<crate_name>` syntax in feature declaration to avoid unnecessary feature flags (#272) 
