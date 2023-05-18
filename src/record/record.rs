@@ -191,23 +191,7 @@ impl Record {
     }
 
     fn check_data_checksum(&self) -> Result<()> {
-        Self::data_checksum_audit(&self.header, &self.data)
-    }
-
-    pub fn data_checksum_audit(header: &Header, data: &[u8]) -> Result<()> {
-        let calc_crc = CRC32C.checksum(data);
-        if calc_crc == header.data_checksum {
-            Ok(())
-        } else {
-            let cause = format!(
-                "wrong data checksum {} vs {}",
-                calc_crc, header.data_checksum
-            );
-            let param = ValidationErrorKind::RecordDataChecksum;
-            let e = Error::validation(param, cause);
-            error!("{:#?}", e);
-            Err(e.into())
-        }
+        self.header.data_checksum_audit(&self.data)
     }
 
     pub fn meta(&self) -> &Meta {
@@ -363,6 +347,22 @@ impl Header {
         self.check_header_checksum()
             .with_context(|| "check header checksum failed")?;
         Ok(())
+    }
+
+    pub(crate) fn data_checksum_audit(&self, data: &[u8]) -> Result<()> {
+        let calc_crc = CRC32C.checksum(data);
+        if calc_crc == self.data_checksum {
+            Ok(())
+        } else {
+            let cause = format!(
+                "wrong data checksum {} vs {}",
+                calc_crc, self.data_checksum
+            );
+            let param = ValidationErrorKind::RecordDataChecksum;
+            let e = Error::validation(param, cause);
+            error!("{:#?}", e);
+            Err(e.into())
+        }
     }
 
     pub(crate) fn mark_as_deleted(&mut self) -> bincode::Result<()> {
