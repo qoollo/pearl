@@ -269,7 +269,7 @@ where
         check_filters: bool,
     ) -> Result<ReadResult<Bytes>> {
         debug!("blob read any");
-        let entry = self.get_last_entry(key, meta, check_filters).await?;
+        let entry = self.get_latest_entry(key, meta, check_filters).await?;
         match entry {
             ReadResult::Found(entry) => {
                 debug!("blob read any entry found");
@@ -324,7 +324,7 @@ where
         meta: Option<Meta>,
         only_if_presented: bool,
     ) -> Result<bool> {
-        if !only_if_presented || self.index.get_any(key).await?.is_found() {
+        if !only_if_presented || self.index.get_latest(key).await?.is_found() {
             let record = Record::deleted(key, timestamp.into(), meta)?;
             self.push_deletion_record(key, record).await?;
             Ok(true)
@@ -349,7 +349,7 @@ where
             .collect()
     }
 
-    pub(crate) async fn get_last_entry(
+    pub(crate) async fn get_latest_entry(
         &self,
         key: &K,
         meta: Option<&Meta>,
@@ -366,7 +366,7 @@ where
             debug!("blob get any entry bloom true no meta");
             Ok(self
                 .index
-                .get_any(key)
+                .get_latest(key)
                 .await
                 .with_context(|| {
                     format!("index get any failed for blob: {:?}", self.name.to_path())
@@ -415,7 +415,7 @@ where
     ) -> Result<ReadResult<BlobRecordTimestamp>> {
         debug!("blob contains");
         let contains = self
-            .get_last_entry(key, meta, true)
+            .get_latest_entry(key, meta, true)
             .await?
             .map(|e| e.timestamp());
         debug!("blob contains any: {:?}", contains);

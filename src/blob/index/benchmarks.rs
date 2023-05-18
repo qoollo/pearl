@@ -208,7 +208,7 @@ async fn benchmark_get_any() {
         if (i as u32 + 1) % PRINT_EVERY == 0 {
             println!("Iteration: {}...", i + 1);
         }
-        let _ = findex.get_any(&q.into()).await.unwrap();
+        let _ = findex.get_latest(&q.into()).await.unwrap();
     }
     println!(
         "get_any avg time: {}\n",

@@ -114,7 +114,7 @@ where
             .map(|headers| (headers, self.header.records_count))
     }
 
-    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
+    async fn get_latest(&self, key: &K) -> Result<Option<RecordHeader>> {
         Self::binary_search(&self.file, key, &self.header)
             .await
             .map(|res| res.map(|h| h.0))

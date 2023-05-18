@@ -236,7 +236,7 @@ async fn check_get_any() {
     .expect("Can't create file index");
     let presented_keys = RANGE_FROM..RANGE_TO;
     for key in presented_keys.map(|k| k.into()) {
-        if let Ok(inner_res) = findex.get_any(&key).await {
+        if let Ok(inner_res) = findex.get_latest(&key).await {
             if let Some(actual_header) = inner_res {
                 let key_deserialized: usize = key.clone().into();
                 assert_eq!(
@@ -254,7 +254,7 @@ async fn check_get_any() {
     let not_presented_ranges = [0..RANGE_FROM, RANGE_TO..(RANGE_TO + 100)];
     for not_presented_keys in not_presented_ranges.iter() {
         for key in not_presented_keys.clone().map(|k| serialize(&k).unwrap()) {
-            assert_eq!(None, findex.get_any(&key.into()).await.unwrap());
+            assert_eq!(None, findex.get_latest(&key.into()).await.unwrap());
         }
     }
 
@@ -332,7 +332,7 @@ async fn check_get() {
     .expect("Can't create file index");
     let presented_keys = RANGE_FROM..RANGE_TO;
     for key in presented_keys.map(|k| k.into()) {
-        if let Ok(inner_res) = findex.get_any(&key).await {
+        if let Ok(inner_res) = findex.get_latest(&key).await {
             if let Some(actual_header) = inner_res {
                 let key_deserialized: usize = key.clone().into();
                 assert_eq!(

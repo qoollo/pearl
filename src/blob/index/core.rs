@@ -316,7 +316,7 @@ where
     for<'a> K: Key<'a>,
 {
     async fn contains_key(&self, key: &K) -> Result<ReadResult<BlobRecordTimestamp>> {
-        self.get_any(key)
+        self.get_latest(key)
             .await
             .map(|h| h.map(|h| BlobRecordTimestamp::new(h.timestamp())))
     }
@@ -394,7 +394,7 @@ where
         }
     }
 
-    async fn get_any(&self, key: &K) -> Result<ReadResult<RecordHeader>> {
+    async fn get_latest(&self, key: &K) -> Result<ReadResult<RecordHeader>> {
         debug!("index get any");
         let result = match &self.inner {
             State::InMemory(headers) => {
@@ -406,7 +406,7 @@ where
             }
             State::OnDisk(findex) => {
                 debug!("index get any on disk");
-                findex.get_any(key).await?
+                findex.get_latest(key).await?
             }
         };
         Ok(match result {
@@ -465,7 +465,7 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
     async fn read_meta_at(&self, i: u64) -> Result<u8>;
     async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)>;
-    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>>;
+    async fn get_latest(&self, key: &K) -> Result<Option<RecordHeader>>;
     fn validate(&self, blob_size: u64) -> Result<()>;
     fn memory_used(&self) -> usize;
 }
