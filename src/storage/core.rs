@@ -1187,26 +1187,24 @@ where
     // It'll make code a bit more complicated, but blobs will sequentially grow for sure
     pub(crate) fn next_blob_name(&self) -> Result<blob::FileName> {
         let next_id = self.next_blob_id.fetch_add(1, Ordering::AcqRel);
-        let prefix = self
+        let name_prefix = self
             .config
             .blob_file_name_prefix()
             .ok_or_else(|| {
                 error!("Blob file name prefix is not set");
                 Error::uninitialized()
-            })?
-            .to_owned();
+            })?;
         let dir = self
             .config
             .work_dir()
             .ok_or_else(|| {
                 error!("Work dir is not set");
                 Error::uninitialized()
-            })?
-            .to_owned();
+            })?;
         Ok(blob::FileName::new(
-            prefix,
+            name_prefix,
             next_id,
-            BLOB_FILE_EXTENSION.to_owned(),
+            BLOB_FILE_EXTENSION,
             dir,
         ))
     }
