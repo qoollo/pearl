@@ -7,7 +7,7 @@ Pearl changelog
 
 
 #### Changed
-
+- Reduced internal strucutre size in memory: bloom filter `Config` and `FileName` (#260)
 
 #### Fixed
 - Use `dep:<crate_name>` syntax in feature declaration to avoid unnecessary feature flags (#272) 
