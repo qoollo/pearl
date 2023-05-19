@@ -7,7 +7,7 @@ Pearl changelog
 
 
 #### Changed
-
+- Serialize/Deserialize implementation removed from `Record` struct (#282)
 
 #### Fixed
 - Use `dep:<crate_name>` syntax in feature declaration to avoid unnecessary feature flags (#272) 
