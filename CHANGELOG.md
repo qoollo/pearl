@@ -11,7 +11,7 @@ Pearl changelog
 
 #### Fixed
 - Use `dep:<crate_name>` syntax in feature declaration to avoid unnecessary feature flags (#272) 
-- Only add deletion record in old blobs if key is presented (#284)
+- Only add a deletion record in old blobs if the key is present (#284)
 
 #### Updated
 
