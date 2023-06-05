@@ -85,11 +85,11 @@ impl<K: Key + 'static> Blob<K> {
         } else {
             self.fsyncdata()
                 .await
-                .with_context(|| "Blob file dump failed!")?;
+                .with_context(|| format!("blob file dump failed: {:?}", self.name.to_path().display()))?;
             self.index
                 .dump()
                 .await
-                .with_context(|| "Blob index file dump failed!")
+                .with_context(|| format!("index file dump failed, associated blob file: {:?}", self.name.to_path().display()))
         }
     }
 
@@ -119,7 +119,7 @@ impl<K: Key + 'static> Blob<K> {
 
         let header = Header::from_file(&name, ioring.clone())
             .await
-            .context("failed to read blob header")?;
+            .with_context(|| format!("failed to read blob header. Blob file: {}", path.display()))?;
 
         let mut index_name = name.clone();
         index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
@@ -133,7 +133,7 @@ impl<K: Key + 'static> Blob<K> {
                     if let Some(io_error) = error.downcast_ref::<IOError>() {
                         match io_error.kind() {
                             IOErrorKind::PermissionDenied | IOErrorKind::Other => {
-                                warn!("index cannot be regenerated due to error: {}", io_error);
+                                warn!("index for file '{}' cannot be regenerated due to an error: {}", path.display(), io_error);
                                 return Err(error);
                             }
                             _ => {}
@@ -161,7 +161,7 @@ impl<K: Key + 'static> Blob<K> {
         if is_index_corrupted || size as u64 > header_size {
             blob.try_regenerate_index()
                 .await
-                .context("failed to regenerate index")?;
+                .with_context(|| format!("failed to regenerate index for blob file: {}", path.display()))?;
         } else {
             warn!("empty or corrupted blob: {:?}", path);
         }
@@ -195,7 +195,7 @@ impl<K: Key + 'static> Blob<K> {
         let raw_r = self
             .raw_records()
             .await
-            .context("failed to read raw records")?;
+            .with_context(|| format!("failed to read raw records from blob {}", self.name.to_path().display()))?;
         debug!("raw records loaded");
         if let Some(headers) = raw_r.load().await.with_context(|| {
             format!(
@@ -254,7 +254,7 @@ impl<K: Key + 'static> Blob<K> {
         let buf = entry
             .load()
             .await
-            .with_context(|| format!("failed to read key {:?} with meta {:?}", key, meta))?
+            .with_context(|| format!("failed to read key {:?} with meta {:?} from blob {}", key, meta, self.name.to_path().display()))?
             .into_data();
         debug!("blob read any entry loaded bytes: {}", buf.len());
         Ok(buf)
@@ -313,7 +313,9 @@ impl<K: Key + 'static> Blob<K> {
                 .index
                 .get_any(key)
                 .await
-                .with_context(|| "blob index get any failed")?
+                .with_context(|| {
+                    format!("index get any failed for blob: {}", self.name.to_path().display())
+                })?
             {
                 let entry = Entry::new(header, self.file.clone());
                 debug!("blob, get any entry, bloom true no meta, entry found");
