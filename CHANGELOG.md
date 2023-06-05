@@ -6,6 +6,16 @@ Pearl changelog
 #### Added
 
 #### Changed
+
+#### Fixed
+
+#### Updated
+
+
+## [0.9.5] - 2023-06-05
+#### Added
+
+#### Changed
 - Blob file path added into context information for several errors (#286)
 
 #### Fixed
