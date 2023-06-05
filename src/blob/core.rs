@@ -78,6 +78,7 @@ where
         let mut buf = BytesMut::with_capacity(size as usize);
         serialize_into((&mut buf).writer(), &self.header)?;
         self.file.write_append_all(buf.freeze()).await?;
+        self.file.fsyncdata().await?;
         Ok(())
     }
 
