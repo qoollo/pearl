@@ -6,6 +6,7 @@ Pearl changelog
 #### Added
 
 #### Changed
+- Blob file path added into context information for several errors (#286)
 
 #### Fixed
 
