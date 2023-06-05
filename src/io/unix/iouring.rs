@@ -69,6 +69,10 @@ impl File {
         self.sync.size()
     }
 
+    pub(crate) fn dirty_bytes(&self) -> u64 {
+        self.sync.dirty_bytes()
+    }
+
     pub(crate) async fn write_append_writable_data<R: Send + 'static>(
         &self,
         c: impl WritableDataCreator<R>,
@@ -207,6 +211,9 @@ impl super::super::FileTrait for File {
     }
     fn created_at(&self) -> IOResult<SystemTime> {
         self.created_at()
+    }
+    fn dirty_bytes(&self) -> u64 {
+        self.dirty_bytes()
     }
 
     async fn write_append_writable_data<R: Send + 'static>(&self, c: impl WritableDataCreator<R>) -> IOResult<R> {
