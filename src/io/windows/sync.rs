@@ -158,12 +158,14 @@ impl File {
             };
 
         let size = file.metadata()?.len();
+        let synced_size = AtomicU64::new(size);
         let size = AtomicU64::new(size);
 
         Ok(Self {
             inner: Arc::new(FileInner {
                 std_file: file,
-                size
+                size,
+                synced_size
             })
         })
     }
