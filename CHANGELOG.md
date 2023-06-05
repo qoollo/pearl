@@ -5,6 +5,7 @@ Pearl changelog
 ## [Unreleased]
 #### Added
 - Add fsync to header writing in blob (#243)
+- Add periodic fsync (#234)
 
 
 #### Changed
