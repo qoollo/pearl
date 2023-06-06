@@ -19,6 +19,7 @@ pub(crate) struct Config {
     deferred_min_time: Duration,
     deferred_max_time: Duration,
     validate_data_during_index_regen: bool,
+    max_dirty_bytes_before_sync: u64
 }
 
 // Getters
@@ -98,6 +99,10 @@ impl Config {
     pub fn validate_data_during_index_regen(&self) -> bool {
         self.validate_data_during_index_regen
     }
+
+    pub fn max_dirty_bytes_before_sync(&self) -> u64 {
+        self.max_dirty_bytes_before_sync
+    }
 }
 
 //Setters
@@ -154,6 +159,10 @@ impl Config {
     pub fn set_validate_data_during_index_regen(&mut self, value: bool) {
         self.validate_data_during_index_regen = value;
     }
+
+    pub fn set_max_dirty_bytes_before_sync(&mut self, value: u64) {
+        self.max_dirty_bytes_before_sync = value;
+    }
 }
 
 // Impl Traits
@@ -175,6 +184,7 @@ impl Default for Config {
             deferred_min_time: Duration::from_secs(60),
             deferred_max_time: Duration::from_secs(180),
             validate_data_during_index_regen: false,
+            max_dirty_bytes_before_sync: 1024 * 1024
         }
     }
 }

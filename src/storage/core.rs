@@ -41,6 +41,7 @@ where
 {
     inner: Arc<Inner<K>>,
     observer: Observer<K>,
+    max_dirty_bytes_before_sync: u64
 }
 
 #[derive(Debug)]
@@ -102,9 +103,10 @@ where
     for<'a> K: Key<'a> + 'static,
 {
     pub(crate) fn new(config: Config, iodriver: IoDriver) -> Self {
+        let max_dirty_bytes_before_sync = config.max_dirty_bytes_before_sync();
         let inner = Arc::new(Inner::new(config, iodriver));
         let observer = Observer::new(inner.clone());
-        Self { inner, observer }
+        Self { inner, observer, max_dirty_bytes_before_sync }
     }
 
     /// [`init()`] used to prepare all environment to further work.
@@ -323,7 +325,7 @@ where
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
-        let result = Blob::write(blob, key, record).await.or_else(|err| {
+        let result = Blob::write(blob, key, record).await.or_else::<anyhow::Error, _>(|err| {
             let e = err.downcast::<Error>()?;
             if let ErrorKind::FileUnavailable(kind) = e.kind() {
                 let work_dir = self
@@ -335,9 +337,12 @@ where
             } else {
                 Err(e.into())
             }
-        });
+        })?;
         self.try_update_active_blob(blob).await?;
-        result
+        if result.dirty_bytes() > self.max_dirty_bytes_before_sync {
+            self.observer.try_fsync_data().await;
+        }
+        Ok(())
     }
 
     async fn try_update_active_blob(&self, active_blob: &Box<ASRwLock<Blob<K>>>) -> Result<()> {

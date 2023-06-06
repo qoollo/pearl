@@ -30,6 +30,16 @@ where
     validate_data_during_index_regen: bool,
 }
 
+pub(crate) struct WriteResult {
+    dirty_bytes: u64
+}
+
+impl WriteResult {
+    pub(crate) fn dirty_bytes(&self) -> u64 {
+        self.dirty_bytes
+    }
+}
+
 impl<K> Blob<K>
 where
     for<'a> K: Key<'a> + 'static,
@@ -242,7 +252,7 @@ where
         // @TODO implement
     }
 
-    pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<()> {
+    pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<WriteResult> {
         debug!("blob write");
         let (partially_serialized, mut header) = record.to_partially_serialized_and_header()?;
         // Only one upgradable_read lock is allowed at a time. This is critical because we want to
@@ -251,7 +261,7 @@ where
         let write_result = partially_serialized.write_to_file(&blob.file).await?;
         header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
         blob.index.push(key, header)?;
-        Ok(())
+        Ok(WriteResult { dirty_bytes: blob.file.dirty_bytes() })
     }
 
     async fn write_mut(&mut self, key: &K, record: Record) -> Result<RecordHeader> {
