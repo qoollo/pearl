@@ -1228,7 +1228,7 @@ where
         }
     }
 
-    async fn fsyncdata(&self) -> IOResult<()> {
+    pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
         self.safe.read().await.fsyncdata().await
     }
 

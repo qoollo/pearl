@@ -16,7 +16,8 @@ where
     receiver: Receiver<Msg>,
     next_deadline: Option<Instant>,
     deferred_index_dump_info: Option<Box<DeferredEventData>>,
-    index_dump_task: Option<JoinHandle<()>>
+    index_dump_task: Option<JoinHandle<()>>,
+    fsync_task: Option<JoinHandle<()>>
 }
 
 struct DeferredEventData {
@@ -43,7 +44,8 @@ where
             receiver,
             next_deadline: None,
             deferred_index_dump_info: None,
-            index_dump_task: None
+            index_dump_task: None,
+            fsync_task: None
         }
     }
 
@@ -52,6 +54,9 @@ where
             if self.index_dump_task.as_ref().map_or(false, |task| task.is_finished()) {
                 // Complete task if it is already finished
                 complete_task(&mut self.index_dump_task, "index_dump_task").await;
+            }
+            if self.fsync_task.as_ref().map_or(false, |task| task.is_finished()) {
+                complete_task(&mut self.fsync_task, "fsync_task").await;
             }
 
             let tick_result = 
@@ -73,8 +78,9 @@ where
             }
         }
 
-        // Wait for background task completion
+        // Wait for background tasks completion
         complete_task(&mut self.index_dump_task, "index_dump_task").await;
+        complete_task(&mut self.fsync_task, "fsync_task").await;
 
         debug!("observer stopped");
     }
@@ -145,6 +151,9 @@ where
             OperationType::TryDumpBlobIndexes => {
                 self.try_run_old_blob_indexes_dump_task().await;
             },
+            OperationType::TryFsyncData => {
+                self.try_run_fsync_task().await;
+            }
             OperationType::TryUpdateActiveBlob => {
                 if self.try_update_active_blob().await? {
                     // Dump due to an active BLOB switch can overlap with a deferred dump due to deletion. 
@@ -226,6 +235,24 @@ where
         return true;
     }
 
+    async fn try_run_fsync_task(&mut self) -> bool {
+        if self.fsync_task.as_ref().map_or(false, |task| !task.is_finished()) {
+            // Task is in progress. Avoid starting second one
+            return false;
+        }
+
+        complete_task(&mut self.fsync_task, "index_dump_task").await;
+
+        let inner = self.inner.clone();
+        let task = tokio::spawn(async move {
+            if let Err(e) = inner.fsyncdata().await {
+                error!("failed to fsync data in {:?}: {:?}", inner.config().work_dir(), e);
+            }
+        });
+
+        self.fsync_task = Some(task);
+        return true;
+    }
 
     async fn predicate_wrapper(&self, predicate: &Option<ActiveBlobPred>) -> bool {
         if let Some(predicate) = predicate {
