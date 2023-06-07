@@ -165,7 +165,11 @@ impl File {
         let file_inner = self.inner.clone();
         let size = self.size();
         Self::background_sync_call(
-            move || file_inner.std_file.sync_all().map(|_| file_inner.synced_size.store(size, Ordering::SeqCst))
+            move || {
+               file_inner.std_file.sync_all()?;
+               file_inner.synced_size.store(size, Ordering::SeqCst);
+               Ok(())
+            }
         ).await
     }
 
