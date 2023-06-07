@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicBool;
+
 use crate::{
     error::ValidationErrorKind,
     filter::{CombinedFilter, FilterTrait}, blob::DeleteResult,
@@ -53,6 +55,7 @@ where
     next_blob_id: AtomicUsize,
     iodriver: IoDriver,
     corrupted_blobs: AtomicUsize,
+    fsync_in_progress: AtomicBool,
 }
 
 #[derive(Debug)]
@@ -337,7 +340,7 @@ where
             }
         })?;
         self.try_update_active_blob(blob).await?;
-        if result.dirty_bytes() > self.inner.config().max_dirty_bytes_before_sync() {
+        if self.inner.should_try_fsync(result.dirty_bytes()) {
             self.observer.try_fsync_data().await;
         }
         Ok(())
@@ -1027,7 +1030,7 @@ where
             self.observer.defer_dump_old_blob_indexes().await;
         }
         if let Some(result) = deleted_in_active_result {
-            if result.dirty_bytes() > self.inner.config().max_dirty_bytes_before_sync() {
+            if self.inner.should_try_fsync(result.dirty_bytes()) {
                 self.observer.try_fsync_data().await;
             }
         }
@@ -1098,6 +1101,7 @@ where
             next_blob_id: AtomicUsize::new(0),
             iodriver,
             corrupted_blobs: AtomicUsize::new(0),
+            fsync_in_progress: AtomicBool::new(false)
         }
     }
 
@@ -1241,16 +1245,26 @@ where
         let safe = self.safe.read().await;
         if let Some(ablob) = &safe.active_blob {
             let ablob = ablob.read().await;
-            if ablob.file_dirty_bytes() <= self.config().max_dirty_bytes_before_sync() {
+            if !self.should_try_fsync(ablob.file_dirty_bytes()) {
                 return Ok(());
             }
         }
-        safe.fsyncdata().await
+        self.fsync_in_progress.store(true, Ordering::Release);
+        safe.fsyncdata().await?;
+        self.fsync_in_progress.store(false, Ordering::Release);
+        Ok(())
     }
 
     /// Dumps indexes on old blobs. This method is slow, so it is better to run it in background
     pub(crate) async fn try_dump_old_blob_indexes(&self) {
         Safe::try_dump_old_blob_indexes(&self.safe, self.get_dump_sem(), Duration::from_millis(200)).await;
+    }
+
+    pub(crate) fn should_try_fsync(&self, dirty_bytes: u64) -> bool {
+        if dirty_bytes > self.config().max_dirty_bytes_before_sync() {
+            return !self.fsync_in_progress.load(Ordering::Acquire);
+        }
+        false
     }
 }
 
