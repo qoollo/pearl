@@ -40,6 +40,21 @@ impl WriteResult {
     }
 }
 
+pub(crate) struct DeleteResult {
+    dirty_bytes: u64,
+    success: bool
+}
+
+impl DeleteResult {
+    pub(crate) fn dirty_bytes(&self) -> u64 {
+        self.dirty_bytes
+    }
+
+    pub(crate) fn success(&self) -> bool {
+        self.success
+    }
+}
+
 impl<K> Blob<K>
 where
     for<'a> K: Key<'a> + 'static,
@@ -332,23 +347,24 @@ where
         &mut self,
         key: &K,
         only_if_presented: bool,
-    ) -> Result<bool> {
+    ) -> Result<DeleteResult> {
         if !only_if_presented || self.index.get_any(key).await?.is_found() {
-            self.push_deletion_record(key).await?;
-            Ok(true)
+            self.push_deletion_record(key).await
         } else {
-            Ok(false)
+            Ok(DeleteResult { dirty_bytes: self.file.dirty_bytes(), success: false })
         }
     }
 
-    async fn push_deletion_record(&mut self, key: &K) -> Result<()> {
+    async fn push_deletion_record(&mut self, key: &K) -> Result<DeleteResult> {
         let on_disk = self.index.on_disk();
         if on_disk {
             self.load_index().await?;
         }
         let record = Record::deleted(key)?;
         let header = self.write_mut(key, record).await?;
-        self.index.push_deletion(key, header)
+        self.index.push_deletion(key, header)?;
+        let dirty_bytes = self.file.dirty_bytes();
+        Ok(DeleteResult { dirty_bytes, success: true })
     }
 
     fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
@@ -438,6 +454,10 @@ where
 
     pub(crate) fn records_count(&self) -> usize {
         self.index.count()
+    }
+
+    pub(crate) fn file_dirty_bytes(&self) -> u64 {
+        self.file.dirty_bytes()
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {

@@ -1,6 +1,6 @@
 use crate::{
     error::ValidationErrorKind,
-    filter::{CombinedFilter, FilterTrait},
+    filter::{CombinedFilter, FilterTrait}, blob::DeleteResult,
 };
 
 use super::{prelude::*, read_result::BlobRecordTimestamp};
@@ -40,8 +40,7 @@ where
     for<'a> K: Key<'a>,
 {
     inner: Arc<Inner<K>>,
-    observer: Observer<K>,
-    max_dirty_bytes_before_sync: u64
+    observer: Observer<K>
 }
 
 #[derive(Debug)]
@@ -103,10 +102,9 @@ where
     for<'a> K: Key<'a> + 'static,
 {
     pub(crate) fn new(config: Config, iodriver: IoDriver) -> Self {
-        let max_dirty_bytes_before_sync = config.max_dirty_bytes_before_sync();
         let inner = Arc::new(Inner::new(config, iodriver));
         let observer = Observer::new(inner.clone());
-        Self { inner, observer, max_dirty_bytes_before_sync }
+        Self { inner, observer }
     }
 
     /// [`init()`] used to prepare all environment to further work.
@@ -339,7 +337,7 @@ where
             }
         })?;
         self.try_update_active_blob(blob).await?;
-        if result.dirty_bytes() > self.max_dirty_bytes_before_sync {
+        if result.dirty_bytes() > self.inner.config().max_dirty_bytes_before_sync() {
             self.observer.try_fsync_data().await;
         }
         Ok(())
@@ -1021,11 +1019,17 @@ where
 
     /// Core deletion logic, when lock on `Safe<K>` is acquired
     async fn delete_core(&self, safe: &Safe<K>, key: &K, only_if_presented: bool) -> Result<u64> {
-        let deleted_in_active = Self::mark_all_as_deleted_active(safe, key, only_if_presented).await?;
+        let deleted_in_active_result = Self::mark_all_as_deleted_active(safe, key, only_if_presented).await?;
+        let deleted_in_active = deleted_in_active_result.as_ref().map(|r| if r.success() { 1 } else { 0 }).unwrap_or(0);
         let deleted_in_closed = Self::mark_all_as_deleted_closed(safe, key).await?;
 
         if deleted_in_closed > 0 {
             self.observer.defer_dump_old_blob_indexes().await;
+        }
+        if let Some(result) = deleted_in_active_result {
+            if result.dirty_bytes() > self.inner.config().max_dirty_bytes_before_sync() {
+                self.observer.try_fsync_data().await;
+            }
         }
 
         debug!("{} deleted total", deleted_in_active + deleted_in_closed);
@@ -1040,8 +1044,8 @@ where
             .collect::<FuturesUnordered<_>>();
         let total = entries_closed_blobs
             .map(|result| match result {
-                Ok(flag) => {
-                    if flag {
+                Ok(result) => {
+                    if result.success() {
                         1
                     } else {
                         0
@@ -1062,24 +1066,24 @@ where
         safe: &Safe<K>,
         key: &K,
         only_if_presented: bool,
-    ) -> Result<u64> {
+    ) -> Result<Option<DeleteResult>> {
         if !only_if_presented {
             assert!(safe.active_blob.is_some(), "Active BLOB should be initialized before calling 'mark_all_as_deleted_active'");
         }
         let active_blob = safe.active_blob.as_deref();
-        let count = if let Some(active_blob) = active_blob {
-            let is_deleted = active_blob
+        if let Some(active_blob) = active_blob {
+            let result = active_blob
                 .write()
                 .await
                 .mark_all_as_deleted(key, only_if_presented)
                 .await?;
-            let count = if is_deleted { 1 } else { 0 };
-            debug!("{} deleted from active blob", count);
-            count
+            if result.success() {
+                debug!("Deleted record from active blob");
+            }
+            Ok(Some(result))
         } else {
-            0
-        };
-        Ok(count)
+            Ok(None)
+        }
     }
 }
 
@@ -1234,7 +1238,14 @@ where
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
-        self.safe.read().await.fsyncdata().await
+        let safe = self.safe.read().await;
+        if let Some(ablob) = &safe.active_blob {
+            let ablob = ablob.read().await;
+            if ablob.file_dirty_bytes() <= self.config().max_dirty_bytes_before_sync() {
+                return Ok(());
+            }
+        }
+        safe.fsyncdata().await
     }
 
     /// Dumps indexes on old blobs. This method is slow, so it is better to run it in background
