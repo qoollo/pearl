@@ -241,7 +241,8 @@ where
             return false;
         }
 
-        complete_task(&mut self.fsync_task, "index_dump_task").await;
+        complete_task(&mut self.fsync_task, "fsync_task").await;
+
 
         let inner = self.inner.clone();
         let task = tokio::spawn(async move {
