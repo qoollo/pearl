@@ -120,7 +120,13 @@ impl File {
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
         let file_inner = self.inner.clone();
-        Self::background_sync_call(move || file_inner.std_file.sync_all()).await
+        Self::background_sync_call(
+            move || {
+               file_inner.std_file.sync_all()?;
+               file_inner.synced_size.store(size, Ordering::SeqCst);
+               Ok(())
+            }
+        ).await
     }
 
     pub(crate) fn created_at(&self) -> IOResult<SystemTime> {
