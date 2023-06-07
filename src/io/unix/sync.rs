@@ -188,6 +188,11 @@ impl File {
         self.inner.size.fetch_add(len, Ordering::SeqCst)
     }
 
+    #[cfg(feature = "async-io-rio")]
+    pub(super) fn set_synced_size(&self, synced_size: u64) {
+        self.inner.synced_size.store(synced_size, Ordering::SeqCst);
+    }
+
     fn advisory_write_lock_file(fd: i32) -> LockAcquisitionResult {
         let flock = libc::flock {
             l_len: 0, // 0 means "whole file"

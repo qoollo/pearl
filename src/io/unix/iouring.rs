@@ -139,7 +139,10 @@ impl File {
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
         if let Some(ref rio) = self.rio {
-            rio.fsync(self.sync.std_file_ref()).await
+            let size = self.size();
+            rio.fsync(self.sync.std_file_ref()).await?;
+            self.sync.set_synced_size(size);
+            Ok(())
         } else {
             self.sync.fsyncdata().await
         }
