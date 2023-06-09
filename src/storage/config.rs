@@ -184,7 +184,7 @@ impl Default for Config {
             deferred_min_time: Duration::from_secs(60),
             deferred_max_time: Duration::from_secs(180),
             validate_data_during_index_regen: false,
-            max_dirty_bytes_before_sync: 1//32 * 1024 * 1024
+            max_dirty_bytes_before_sync: 32 * 1024 * 1024
         }
     }
 }
