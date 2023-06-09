@@ -340,7 +340,7 @@ where
             }
         })?;
         self.try_update_active_blob(blob).await?;
-        if self.inner.should_try_fsync(result.dirty_bytes()) {
+        if self.inner.should_try_fsync(result.dirty_bytes) {
             self.observer.try_fsync_data().await;
         }
         Ok(())
@@ -1023,14 +1023,14 @@ where
     /// Core deletion logic, when lock on `Safe<K>` is acquired
     async fn delete_core(&self, safe: &Safe<K>, key: &K, only_if_presented: bool) -> Result<u64> {
         let deleted_in_active_result = Self::mark_all_as_deleted_active(safe, key, only_if_presented).await?;
-        let deleted_in_active = deleted_in_active_result.as_ref().map(|r| if r.success() { 1 } else { 0 }).unwrap_or(0);
+        let deleted_in_active = deleted_in_active_result.as_ref().map(|r| if r.deleted { 1 } else { 0 }).unwrap_or(0);
         let deleted_in_closed = Self::mark_all_as_deleted_closed(safe, key).await?;
 
         if deleted_in_closed > 0 {
             self.observer.defer_dump_old_blob_indexes().await;
         }
         if let Some(result) = deleted_in_active_result {
-            if self.inner.should_try_fsync(result.dirty_bytes()) {
+            if self.inner.should_try_fsync(result.dirty_bytes) {
                 self.observer.try_fsync_data().await;
             }
         }
@@ -1048,7 +1048,7 @@ where
         let total = entries_closed_blobs
             .map(|result| match result {
                 Ok(result) => {
-                    if result.success() {
+                    if result.deleted {
                         1
                     } else {
                         0
@@ -1080,7 +1080,7 @@ where
                 .await
                 .mark_all_as_deleted(key, only_if_presented)
                 .await?;
-            if result.success() {
+            if result.deleted {
                 debug!("Deleted record from active blob");
             }
             Ok(Some(result))
@@ -1242,17 +1242,22 @@ where
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
+        if self.fsync_in_progress.load(Ordering::Acquire) {
+            return Ok(())
+        }
+
+        self.fsync_in_progress.store(true, Ordering::Release);
+        let _flag = ResetableFlag { flag: &self.fsync_in_progress };
+
         let safe = self.safe.read().await;
         if let Some(ablob) = &safe.active_blob {
             let ablob = ablob.read().await;
-            if !self.should_try_fsync(ablob.file_dirty_bytes()) {
+            if !self.too_many_dirty_bytes(ablob.file_dirty_bytes()) {
                 return Ok(());
             }
         }
-        self.fsync_in_progress.store(true, Ordering::Release);
-        safe.fsyncdata().await?;
-        self.fsync_in_progress.store(false, Ordering::Release);
-        Ok(())
+
+        safe.fsyncdata().await
     }
 
     /// Dumps indexes on old blobs. This method is slow, so it is better to run it in background
@@ -1261,10 +1266,24 @@ where
     }
 
     pub(crate) fn should_try_fsync(&self, dirty_bytes: u64) -> bool {
-        if dirty_bytes > self.config().max_dirty_bytes_before_sync() {
+        if self.too_many_dirty_bytes(dirty_bytes) {
             return !self.fsync_in_progress.load(Ordering::Acquire);
         }
         false
+    }
+
+    fn too_many_dirty_bytes(&self, dirty_bytes: u64) -> bool {
+        dirty_bytes > self.config().max_dirty_bytes_before_sync()
+    }
+}
+
+struct ResetableFlag<'a> {
+    flag: &'a AtomicBool
+}
+
+impl<'a> Drop for ResetableFlag<'a> {
+    fn drop(&mut self) {
+        self.flag.store(false, Ordering::Release);
     }
 }
 

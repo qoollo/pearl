@@ -31,28 +31,12 @@ where
 }
 
 pub(crate) struct WriteResult {
-    dirty_bytes: u64
-}
-
-impl WriteResult {
-    pub(crate) fn dirty_bytes(&self) -> u64 {
-        self.dirty_bytes
-    }
+    pub dirty_bytes: u64
 }
 
 pub(crate) struct DeleteResult {
-    dirty_bytes: u64,
-    success: bool
-}
-
-impl DeleteResult {
-    pub(crate) fn dirty_bytes(&self) -> u64 {
-        self.dirty_bytes
-    }
-
-    pub(crate) fn success(&self) -> bool {
-        self.success
-    }
+    pub dirty_bytes: u64,
+    pub deleted: bool
 }
 
 impl<K> Blob<K>
@@ -279,13 +263,13 @@ where
         Ok(WriteResult { dirty_bytes: blob.file.dirty_bytes() })
     }
 
-    async fn write_mut(&mut self, key: &K, record: Record) -> Result<RecordHeader> {
+    async fn write_mut(&mut self, key: &K, record: Record) -> Result<WriteResult> {
         debug!("blob write");
         let (record, mut header) = record.to_partially_serialized_and_header()?;
         let write_result = record.write_to_file(&self.file).await?;
         header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
-        self.index.push(key, header.clone())?;
-        Ok(header)
+        self.index.push(key, header)?;
+        Ok(WriteResult { dirty_bytes: self.file.dirty_bytes() })
     }
 
     pub(crate) async fn read_last(
@@ -351,7 +335,7 @@ where
         if !only_if_presented || self.index.get_any(key).await?.is_found() {
             self.push_deletion_record(key).await
         } else {
-            Ok(DeleteResult { dirty_bytes: self.file.dirty_bytes(), success: false })
+            Ok(DeleteResult { dirty_bytes: self.file.dirty_bytes(), deleted: false })
         }
     }
 
@@ -361,10 +345,8 @@ where
             self.load_index().await?;
         }
         let record = Record::deleted(key)?;
-        let header = self.write_mut(key, record).await?;
-        self.index.push_deletion(key, header)?;
-        let dirty_bytes = self.file.dirty_bytes();
-        Ok(DeleteResult { dirty_bytes, success: true })
+        let result = self.write_mut(key, record).await?;
+        Ok(DeleteResult { dirty_bytes: result.dirty_bytes, deleted: true })
     }
 
     fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
