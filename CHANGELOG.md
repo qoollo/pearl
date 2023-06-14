@@ -4,6 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Check blob validity on index regeneration (#289)
 
 
 #### Changed
