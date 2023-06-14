@@ -1240,11 +1240,10 @@ where
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
-        if self.fsync_in_progress.load(Ordering::Acquire) {
+        if self.fsync_in_progress.compare_exchange(false, true, Ordering::Release, Ordering::Acquire).is_err() {
             return Ok(())
         }
 
-        self.fsync_in_progress.store(true, Ordering::Release);
         let _flag = ResetableFlag { flag: &self.fsync_in_progress };
 
         let safe = self.safe.read().await;
