@@ -1264,10 +1264,7 @@ where
     }
 
     pub(crate) fn should_try_fsync(&self, dirty_bytes: u64) -> bool {
-        if self.too_many_dirty_bytes(dirty_bytes) {
-            return !self.fsync_in_progress.load(Ordering::Acquire);
-        }
-        false
+        self.too_many_dirty_bytes(dirty_bytes) && !self.fsync_in_progress.load(Ordering::Acquire)
     }
 
     fn too_many_dirty_bytes(&self, dirty_bytes: u64) -> bool {
