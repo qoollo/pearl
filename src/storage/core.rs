@@ -1080,9 +1080,7 @@ where
                 .await
                 .mark_all_as_deleted(key, only_if_presented)
                 .await?;
-            if result.deleted {
-                debug!("Deleted record from active blob");
-            }
+            debug!("Deleted {} records from active blob", if result.deleted { 1 } else { 0 });
             Ok(Some(result))
         } else {
             Ok(None)
