@@ -1240,7 +1240,7 @@ where
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
-        if self.fsync_in_progress.compare_exchange(false, true, Ordering::Release, Ordering::Acquire).is_err() {
+        if self.fsync_in_progress.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire).is_err() {
             return Ok(())
         }
 
