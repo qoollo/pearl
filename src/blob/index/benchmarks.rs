@@ -151,10 +151,10 @@ async fn benchmark_from_file() {
     for _ in 0..TESTS_AMOUNT {
         let _ = FileIndexStruct::from_file(
             FileName::new(
-                PREFIX.to_owned(),
+                PREFIX,
                 ID,
-                EXTENSION.to_owned(),
-                PathBuf::from(DIR),
+                EXTENSION,
+                PathBuf::from(DIR).as_path(),
             ),
             iodriver.clone(),
         )

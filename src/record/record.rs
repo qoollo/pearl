@@ -8,45 +8,11 @@ const DELETE_FLAG: u8 = 0x01;
 
 const MAX_SINGLE_PASS_DATA_SIZE: usize = 4 * 1024;
 
-#[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct Record {
     pub header: Header,
     pub meta: Meta,
-    #[serde(
-        serialize_with = "serialize_data",
-        deserialize_with = "deserialize_data"
-    )]
     pub data: Bytes,
-}
-
-fn serialize_data<S>(data: &Bytes, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    serializer.serialize_bytes(data.as_ref())
-}
-
-fn deserialize_data<'de, D>(deserializer: D) -> Result<Bytes, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    struct DataVisitor();
-    impl<'de> serde::de::Visitor<'de> for DataVisitor {
-        type Value = Bytes;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("bytes")
-        }
-
-        fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(v.into())
-        }
-    }
-
-    deserializer.deserialize_byte_buf(DataVisitor())
 }
 
 impl Debug for Record {
@@ -192,23 +158,7 @@ impl Record {
     }
 
     fn check_data_checksum(&self) -> Result<()> {
-        Self::data_checksum_audit(&self.header, &self.data)
-    }
-
-    pub fn data_checksum_audit(header: &Header, data: &[u8]) -> Result<()> {
-        let calc_crc = CRC32C.checksum(data);
-        if calc_crc == header.data_checksum {
-            Ok(())
-        } else {
-            let cause = format!(
-                "wrong data checksum {} vs {}",
-                calc_crc, header.data_checksum
-            );
-            let param = ValidationErrorKind::RecordDataChecksum;
-            let e = Error::validation(param, cause);
-            error!("{:#?}", e);
-            Err(e.into())
-        }
+        self.header.data_checksum_audit(&self.data)
     }
 
     pub fn meta(&self) -> &Meta {
@@ -357,6 +307,22 @@ impl Header {
         self.check_header_checksum()
             .with_context(|| "check header checksum failed")?;
         Ok(())
+    }
+
+    pub(crate) fn data_checksum_audit(&self, data: &[u8]) -> Result<()> {
+        let calc_crc = CRC32C.checksum(data);
+        if calc_crc == self.data_checksum {
+            Ok(())
+        } else {
+            let cause = format!(
+                "wrong data checksum {} vs {}",
+                calc_crc, self.data_checksum
+            );
+            let param = ValidationErrorKind::RecordDataChecksum;
+            let e = Error::validation(param, cause);
+            error!("{:#?}", e);
+            Err(e.into())
+        }
     }
 
     pub(crate) fn mark_as_deleted(&mut self) -> bincode::Result<()> {

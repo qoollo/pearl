@@ -10,9 +10,15 @@ Pearl changelog
 - Receive timestamp as parameter, store it within record and return it with BlobRecordTimestamp (#231)
 - `Storage::read` now propagates the error further instead of hiding it (#241)
 - `Storage::read` now reads Entries first, select latest one and only then loads the data (#276)
+- Checksum validation in `Entry::load_data` (#274)
+- Add fsync to header writing in blob (#243)
+- Add periodic fsync (#234)
+- Reduced internal strucutre size in memory: bloom filter `Config` and `FileName` (#260)
+- Serialize/Deserialize implementation removed from `Record` struct (#282)
 
 #### Fixed
 - Use `dep:<crate_name>` syntax in feature declaration to avoid unnecessary feature flags (#272) 
+- Only add a deletion record in old blobs if the key is present (#284)
 
 #### Updated
 

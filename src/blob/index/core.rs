@@ -237,7 +237,7 @@ where
             let (meta_buf, bloom_offset) = self.serialize_filters()?;
             self.bloom_offset = Some(bloom_offset as u64);
             let findex = FileIndex::from_records(
-                &self.name.to_path(),
+                self.name.as_path(),
                 self.iodriver.clone(),
                 &headers,
                 meta_buf,

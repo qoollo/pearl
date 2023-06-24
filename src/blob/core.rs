@@ -30,6 +30,15 @@ where
     validate_data_during_index_regen: bool,
 }
 
+pub(crate) struct WriteResult {
+    pub dirty_bytes: u64
+}
+
+pub(crate) struct DeleteResult {
+    pub dirty_bytes: u64,
+    pub deleted: bool
+}
+
 impl<K> Blob<K>
 where
     for<'a> K: Key<'a> + 'static,
@@ -50,8 +59,8 @@ where
             index: index_config,
             validate_data_during_index_regen,
         } = config;
-        let file = iodriver.create(name.to_path()).await?;
-        let index = Self::create_index(name.clone(), iodriver, index_config);
+        let file = iodriver.create(name.as_path()).await?;
+        let index = Self::create_index(&name, iodriver, index_config);
         let header = Header::new();
         let mut blob = Self {
             header,
@@ -78,13 +87,13 @@ where
         let mut buf = BytesMut::with_capacity(size as usize);
         serialize_into((&mut buf).writer(), &self.header)?;
         self.file.write_append_all(buf.freeze()).await?;
+        self.file.fsyncdata().await?;
         Ok(())
     }
 
     #[inline]
-    fn create_index(mut name: FileName, iodriver: IoDriver, index_config: IndexConfig) -> Index<K> {
-        name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        Index::new(name, iodriver, index_config)
+    fn create_index(name: &FileName, iodriver: IoDriver, index_config: IndexConfig) -> Index<K> {
+        Index::new(name.with_extension(BLOB_INDEX_FILE_EXTENSION), iodriver, index_config)
     }
 
     pub(crate) async fn dump(&mut self) -> Result<usize> {
@@ -93,12 +102,12 @@ where
         } else {
             self.fsyncdata()
                 .await
-                .with_context(|| format!("blob file dump failed: {:?}", self.name.to_path()))?;
+                .with_context(|| format!("blob file dump failed: {:?}", self.name.as_path()))?;
 
             self.index.dump(self.file_size()).await.with_context(|| {
                 format!(
                     "index file dump failed, associated blob file: {:?}",
-                    self.name.to_path()
+                    self.name.as_path()
                 )
             })
         }
@@ -128,12 +137,11 @@ where
             .await
             .with_context(|| format!("failed to read blob header. Blob file: {:?}", path))?;
 
-        let mut index_name = name.clone();
+        let index_name = name.with_extension(BLOB_INDEX_FILE_EXTENSION);
         let BlobConfig {
             index: index_config,
             validate_data_during_index_regen,
         } = config;
-        index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         trace!("looking for index file: [{}]", index_name);
         let mut is_index_corrupted = false;
         let index = if index_name.exists() {
@@ -218,14 +226,14 @@ where
             .with_context(|| {
                 format!(
                     "failed to read raw records from blob {:?}",
-                    self.name.to_path()
+                    self.name.as_path()
                 )
             })?;
         debug!("raw records loaded");
         if let Some(headers) = raw_r.load().await.with_context(|| {
             format!(
                 "load headers from blob file failed, {:?}",
-                self.name.to_path()
+                self.name.as_path()
             )
         })? {
             for header in headers {
@@ -241,7 +249,7 @@ where
         // @TODO implement
     }
 
-    pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<()> {
+    pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<WriteResult> {
         debug!("blob write");
         let (partially_serialized, mut header) = record.to_partially_serialized_and_header()?;
         // Only one upgradable_read lock is allowed at a time. This is critical because we want to
@@ -250,16 +258,16 @@ where
         let write_result = partially_serialized.write_to_file(&blob.file).await?;
         header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
         blob.index.push(key, header)?;
-        Ok(())
+        Ok(WriteResult { dirty_bytes: blob.file.dirty_bytes() })
     }
 
-    async fn write_mut(&mut self, key: &K, record: Record) -> Result<RecordHeader> {
+    async fn write_mut(&mut self, key: &K, record: Record) -> Result<WriteResult> {
         debug!("blob write");
         let (record, mut header) = record.to_partially_serialized_and_header()?;
         let write_result = record.write_to_file(&self.file).await?;
         header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
-        self.index.push(key, header.clone())?;
-        Ok(header)
+        self.index.push(key, header)?;
+        Ok(WriteResult { dirty_bytes: self.file.dirty_bytes() })
     }
 
     #[allow(dead_code)]
@@ -277,7 +285,7 @@ where
                 let buf = entry
                     .load()
                     .await
-                    .with_context(|| format!("Failed to read data for key {:?} with meta {:?}", key, meta))?
+                    .with_context(|| format!("failed to read data for key {:?} with meta {:?}", key, meta))?
                     .into_data();
                 debug!("blob read any entry loaded bytes: {}", buf.len());
                 Ok(ReadResult::Found(buf))
@@ -317,23 +325,22 @@ where
         timestamp: BlobRecordTimestamp,
         meta: Option<Meta>,
         only_if_presented: bool,
-    ) -> Result<bool> {
+    ) -> Result<DeleteResult> {
         if !only_if_presented || self.index.get_latest(key).await?.is_found() {
             let record = Record::deleted(key, timestamp.into(), meta)?;
-            self.push_deletion_record(key, record).await?;
-            Ok(true)
+            self.push_deletion_record(key, record).await
         } else {
-            Ok(false)
+            Ok(DeleteResult { dirty_bytes: self.file.dirty_bytes(), deleted: false })
         }
     }
 
-    async fn push_deletion_record(&mut self, key: &K, record: Record) -> Result<()> {
+    async fn push_deletion_record(&mut self, key: &K, record: Record) -> Result<DeleteResult> {
         let on_disk = self.index.on_disk();
         if on_disk {
             self.load_index().await?;
         }
-        let header = self.write_mut(key, record).await?;
-        self.index.push_deletion(key, header)
+        let result = self.write_mut(key, record).await?;
+        Ok(DeleteResult { dirty_bytes: result.dirty_bytes, deleted: true })
     }
 
     fn headers_to_entries(headers: Vec<RecordHeader>, file: &File, file_name: &Arc<FileName>) -> Vec<Entry> {
@@ -364,7 +371,7 @@ where
                 .get_latest(key)
                 .await
                 .with_context(|| {
-                    format!("index get any failed for blob: {:?}", self.name.to_path())
+                    format!("index get any failed for blob: {:?}", self.name.as_path())
                 })?
                 .map(|header| {
                     let entry = Entry::new(header, self.file.clone(), self.name.clone());
@@ -427,13 +434,17 @@ where
         self.index.count()
     }
 
+    pub(crate) fn file_dirty_bytes(&self) -> u64 {
+        self.file.dirty_bytes()
+    }
+
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
         self.file.fsyncdata().await
     }
 
     #[inline]
     pub(crate) fn id(&self) -> usize {
-        self.name.id
+        self.name.id()
     }
 
     pub(crate) fn index_memory(&self) -> usize {
@@ -445,65 +456,6 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct FileName {
-    name_prefix: String,
-    id: usize,
-    extension: String,
-    dir: PathBuf,
-}
-
-impl FileName {
-    pub const fn new(name_prefix: String, id: usize, extension: String, dir: PathBuf) -> Self {
-        Self {
-            name_prefix,
-            id,
-            extension,
-            dir,
-        }
-    }
-
-    pub(crate) fn from_path(path: &Path) -> Result<Self> {
-        Self::try_from_path(path).ok_or_else(|| Error::file_pattern(path.to_owned()).into())
-    }
-
-    pub fn to_path(&self) -> PathBuf {
-        self.dir.join(self.to_string())
-    }
-
-    fn try_from_path(path: &Path) -> Option<Self> {
-        let extension = path.extension()?.to_str()?.to_owned();
-        let stem = path.file_stem()?;
-        let mut parts = stem
-            .to_str()?
-            .splitn(2, '.')
-            .collect::<Vec<_>>()
-            .into_iter();
-        let name_prefix = parts.next()?.to_owned();
-        let id = parts.next()?.parse().ok()?;
-        let dir = path.parent()?.to_owned();
-        Some(Self {
-            name_prefix,
-            id,
-            extension,
-            dir,
-        })
-    }
-
-    fn exists(&self) -> bool {
-        self.to_path().exists()
-    }
-
-    pub(crate) fn id(&self) -> usize {
-        self.id
-    }
-}
-
-impl Display for FileName {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}.{}.{}", self.name_prefix, self.id, self.extension)
-    }
-}
 
 struct RawRecords {
     current_offset: u64,
@@ -584,7 +536,7 @@ impl RawRecords {
                     )
                 })?;
             if let Some(data) = data {
-                Record::data_checksum_audit(&header, &data)
+                header.data_checksum_audit(&data)
                     .with_context(|| format!("bad data checksum, at {}", self.current_offset))?;
             }
             headers.push(header);

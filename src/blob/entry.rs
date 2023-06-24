@@ -48,11 +48,13 @@ impl Entry {
     /// Fails after any disk IO errors.
     pub async fn load_data(&self) -> Result<BytesMut> {
         let data_offset = self.header.data_offset();
-        self.blob_file
+        let data = self.blob_file
             .read_exact_at_allocate(self.header.data_size().try_into()?, data_offset)
             .await
             .map_err(|err| err.into_bincode_if_unexpected_eof())
-            .with_context(|| format!("Error loading Record data from BLOB: {}", self.blob_file_name.to_path().display()))
+            .with_context(|| format!("Error loading Record data from BLOB: {}", self.blob_file_name.to_path().display()))?;
+        self.header.data_checksum_audit(&data)?;
+        Ok(data)
     }
 
     /// Loads meta data from fisk, and returns reference to it.

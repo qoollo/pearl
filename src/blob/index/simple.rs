@@ -18,7 +18,7 @@ where
     async fn from_file(name: FileName, iodriver: IoDriver) -> Result<Self> {
         trace!("open index file");
         let file = iodriver
-            .open(name.to_path())
+            .open(name.as_path())
             .await
             .context(format!("failed to open index file: {}", name))?;
         let header = Self::read_index_header(&file).await?;
