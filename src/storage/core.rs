@@ -1,6 +1,8 @@
+use std::sync::atomic::AtomicBool;
+
 use crate::{
     error::ValidationErrorKind,
-    filter::{CombinedFilter, FilterTrait},
+    filter::{CombinedFilter, FilterTrait}, blob::DeleteResult,
 };
 
 use super::{prelude::*, read_result::BlobRecordTimestamp};
@@ -40,7 +42,7 @@ where
     for<'a> K: Key<'a>,
 {
     inner: Arc<Inner<K>>,
-    observer: Observer<K>,
+    observer: Observer<K>
 }
 
 #[derive(Debug)]
@@ -53,6 +55,7 @@ where
     next_blob_id: AtomicUsize,
     iodriver: IoDriver,
     corrupted_blobs: AtomicUsize,
+    fsync_in_progress: AtomicBool,
 }
 
 #[derive(Debug)]
@@ -323,7 +326,7 @@ where
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)?;
-        let result = Blob::write(blob, key, record).await.or_else(|err| {
+        let result = Blob::write(blob, key, record).await.or_else::<anyhow::Error, _>(|err| {
             let e = err.downcast::<Error>()?;
             if let ErrorKind::FileUnavailable(kind) = e.kind() {
                 let work_dir = self
@@ -335,9 +338,12 @@ where
             } else {
                 Err(e.into())
             }
-        });
+        })?;
         self.try_update_active_blob(blob).await?;
-        result
+        if self.inner.should_try_fsync(result.dirty_bytes) {
+            self.observer.try_fsync_data().await;
+        }
+        Ok(())
     }
 
     async fn try_update_active_blob(&self, active_blob: &Box<ASRwLock<Blob<K>>>) -> Result<()> {
@@ -1016,11 +1022,17 @@ where
 
     /// Core deletion logic, when lock on `Safe<K>` is acquired
     async fn delete_core(&self, safe: &Safe<K>, key: &K, only_if_presented: bool) -> Result<u64> {
-        let deleted_in_active = Self::mark_all_as_deleted_active(safe, key, only_if_presented).await?;
+        let deleted_in_active_result = Self::mark_all_as_deleted_active(safe, key, only_if_presented).await?;
+        let deleted_in_active = deleted_in_active_result.as_ref().map(|r| if r.deleted { 1 } else { 0 }).unwrap_or(0);
         let deleted_in_closed = Self::mark_all_as_deleted_closed(safe, key).await?;
 
         if deleted_in_closed > 0 {
             self.observer.defer_dump_old_blob_indexes().await;
+        }
+        if let Some(result) = deleted_in_active_result {
+            if self.inner.should_try_fsync(result.dirty_bytes) {
+                self.observer.try_fsync_data().await;
+            }
         }
 
         debug!("{} deleted total", deleted_in_active + deleted_in_closed);
@@ -1035,8 +1047,8 @@ where
             .collect::<FuturesUnordered<_>>();
         let total = entries_closed_blobs
             .map(|result| match result {
-                Ok(flag) => {
-                    if flag {
+                Ok(result) => {
+                    if result.deleted {
                         1
                     } else {
                         0
@@ -1057,24 +1069,22 @@ where
         safe: &Safe<K>,
         key: &K,
         only_if_presented: bool,
-    ) -> Result<u64> {
+    ) -> Result<Option<DeleteResult>> {
         if !only_if_presented {
             assert!(safe.active_blob.is_some(), "Active BLOB should be initialized before calling 'mark_all_as_deleted_active'");
         }
         let active_blob = safe.active_blob.as_deref();
-        let count = if let Some(active_blob) = active_blob {
-            let is_deleted = active_blob
+        if let Some(active_blob) = active_blob {
+            let result = active_blob
                 .write()
                 .await
                 .mark_all_as_deleted(key, only_if_presented)
                 .await?;
-            let count = if is_deleted { 1 } else { 0 };
-            debug!("{} deleted from active blob", count);
-            count
+            debug!("Deleted {} records from active blob", if result.deleted { 1 } else { 0 });
+            Ok(Some(result))
         } else {
-            0
-        };
-        Ok(count)
+            Ok(None)
+        }
     }
 }
 
@@ -1089,6 +1099,7 @@ where
             next_blob_id: AtomicUsize::new(0),
             iodriver,
             corrupted_blobs: AtomicUsize::new(0),
+            fsync_in_progress: AtomicBool::new(false)
         }
     }
 
@@ -1228,13 +1239,45 @@ where
         }
     }
 
-    async fn fsyncdata(&self) -> IOResult<()> {
-        self.safe.read().await.fsyncdata().await
+    pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
+        if self.fsync_in_progress.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire).is_err() {
+            return Ok(())
+        }
+
+        let _flag = ResetableFlag { flag: &self.fsync_in_progress };
+
+        let safe = self.safe.read().await;
+        if let Some(ablob) = &safe.active_blob {
+            let ablob = ablob.read().await;
+            if !self.too_many_dirty_bytes(ablob.file_dirty_bytes()) {
+                return Ok(());
+            }
+        }
+
+        safe.fsyncdata().await
     }
 
     /// Dumps indexes on old blobs. This method is slow, so it is better to run it in background
     pub(crate) async fn try_dump_old_blob_indexes(&self) {
         Safe::try_dump_old_blob_indexes(&self.safe, self.get_dump_sem(), Duration::from_millis(200)).await;
+    }
+
+    pub(crate) fn should_try_fsync(&self, dirty_bytes: u64) -> bool {
+        self.too_many_dirty_bytes(dirty_bytes) && !self.fsync_in_progress.load(Ordering::Acquire)
+    }
+
+    fn too_many_dirty_bytes(&self, dirty_bytes: u64) -> bool {
+        dirty_bytes > self.config().max_dirty_bytes_before_sync()
+    }
+}
+
+struct ResetableFlag<'a> {
+    flag: &'a AtomicBool
+}
+
+impl<'a> Drop for ResetableFlag<'a> {
+    fn drop(&mut self) {
+        self.flag.store(false, Ordering::Release);
     }
 }
 
