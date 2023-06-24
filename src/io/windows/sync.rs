@@ -124,7 +124,7 @@ impl File {
         Self::background_sync_call(
             move || {
                file_inner.std_file.sync_all()?;
-               file_inner.synced_size.store(size, Ordering::SeqCst);
+               file_inner.synced_size.fetch_max(size, Ordering::SeqCst);
                Ok(())
             }
         ).await

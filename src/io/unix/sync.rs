@@ -167,7 +167,7 @@ impl File {
         Self::background_sync_call(
             move || {
                file_inner.std_file.sync_all()?;
-               file_inner.synced_size.store(size, Ordering::SeqCst);
+               file_inner.synced_size.fetch_max(size, Ordering::SeqCst);
                Ok(())
             }
         ).await
@@ -190,7 +190,7 @@ impl File {
 
     #[cfg(feature = "async-io-rio")]
     pub(super) fn set_synced_size(&self, synced_size: u64) {
-        self.inner.synced_size.store(synced_size, Ordering::SeqCst);
+        self.inner.synced_size.fetch_max(synced_size, Ordering::SeqCst);
     }
 
     fn advisory_write_lock_file(fd: i32) -> LockAcquisitionResult {
