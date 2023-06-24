@@ -3,7 +3,7 @@ use ahash::AHasher;
 use atomic_bitvec::*;
 use std::hash::Hasher;
 use std::sync::RwLock;
-use std::cell::OnceCell;
+use std::sync::OnceLock;
 
 // All usizes in structures are serialized as u64 in binary
 /// Bloom filter
@@ -149,7 +149,7 @@ impl Config {
     /// Returns single shared instance of [`Config`] if the current is equal to it,
     /// otherwise just wraps `Self` with `Arc`
     pub(crate) fn make_shared(self) -> Arc<Self> {
-        static SHARED_INSTANCE: OnceCell<Arc<Config>> = OnceCell::new();
+        static SHARED_INSTANCE: OnceLock<Arc<Config>> = OnceLock::new();
 
         let local_instance = SHARED_INSTANCE.get_or_init(|| Arc::new(self.clone()));
         if self == **local_instance {
