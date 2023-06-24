@@ -17,7 +17,7 @@ Pearl changelog
 - Only add a deletion record in old blobs if the key is present (#284)
 
 #### Updated
-
+- Update `tokio`, `bytes`, `async-lock` and `nix` crate versions (#278)
 
 
 ## [0.19.0] - 2023-05-15
