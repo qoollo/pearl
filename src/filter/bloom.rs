@@ -3,7 +3,7 @@ use ahash::AHasher;
 use atomic_bitvec::*;
 use std::hash::Hasher;
 use std::sync::RwLock;
-use once_cell::sync::OnceCell;
+use std::cell::OnceCell;
 
 // All usizes in structures are serialized as u64 in binary
 /// Bloom filter
