@@ -538,7 +538,7 @@ impl RawRecords {
                     )
                 })?;
             if let Some(data) = data {
-                Record::data_checksum_audit(&header, &data)
+                header.data_checksum_audit(&data)
                     .with_context(|| format!("bad data checksum, at {}", self.current_offset))?;
             }
             headers.push(header);

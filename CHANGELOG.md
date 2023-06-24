@@ -4,6 +4,7 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+- Checksum validation in `Entry::load_data` (#274)
 - Add fsync to header writing in blob (#243)
 - Add periodic fsync (#234)
 
