@@ -30,6 +30,15 @@ where
     validate_data_during_index_regen: bool,
 }
 
+pub(crate) struct WriteResult {
+    pub dirty_bytes: u64
+}
+
+pub(crate) struct DeleteResult {
+    pub dirty_bytes: u64,
+    pub deleted: bool
+}
+
 impl<K> Blob<K>
 where
     for<'a> K: Key<'a> + 'static,
@@ -78,6 +87,7 @@ where
         let mut buf = BytesMut::with_capacity(size as usize);
         serialize_into((&mut buf).writer(), &self.header)?;
         self.file.write_append_all(buf.freeze()).await?;
+        self.file.fsyncdata().await?;
         Ok(())
     }
 
@@ -241,7 +251,7 @@ where
         // @TODO implement
     }
 
-    pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<()> {
+    pub(crate) async fn write(blob: &ASRwLock<Self>, key: &K, record: Record) -> Result<WriteResult> {
         debug!("blob write");
         let (partially_serialized, mut header) = record.to_partially_serialized_and_header()?;
         // Only one upgradable_read lock is allowed at a time. This is critical because we want to
@@ -250,16 +260,16 @@ where
         let write_result = partially_serialized.write_to_file(&blob.file).await?;
         header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
         blob.index.push(key, header)?;
-        Ok(())
+        Ok(WriteResult { dirty_bytes: blob.file.dirty_bytes() })
     }
 
-    async fn write_mut(&mut self, key: &K, record: Record) -> Result<RecordHeader> {
+    async fn write_mut(&mut self, key: &K, record: Record) -> Result<WriteResult> {
         debug!("blob write");
         let (record, mut header) = record.to_partially_serialized_and_header()?;
         let write_result = record.write_to_file(&self.file).await?;
         header.set_offset_checksum(write_result.blob_offset(), write_result.header_checksum());
-        self.index.push(key, header.clone())?;
-        Ok(header)
+        self.index.push(key, header)?;
+        Ok(WriteResult { dirty_bytes: self.file.dirty_bytes() })
     }
 
     pub(crate) async fn read_last(
@@ -321,23 +331,22 @@ where
         &mut self,
         key: &K,
         only_if_presented: bool,
-    ) -> Result<bool> {
+    ) -> Result<DeleteResult> {
         if !only_if_presented || self.index.get_any(key).await?.is_found() {
-            self.push_deletion_record(key).await?;
-            Ok(true)
+            self.push_deletion_record(key).await
         } else {
-            Ok(false)
+            Ok(DeleteResult { dirty_bytes: self.file.dirty_bytes(), deleted: false })
         }
     }
 
-    async fn push_deletion_record(&mut self, key: &K) -> Result<()> {
+    async fn push_deletion_record(&mut self, key: &K) -> Result<DeleteResult> {
         let on_disk = self.index.on_disk();
         if on_disk {
             self.load_index().await?;
         }
         let record = Record::deleted(key)?;
-        let header = self.write_mut(key, record).await?;
-        self.index.push_deletion(key, header)
+        let result = self.write_mut(key, record).await?;
+        Ok(DeleteResult { dirty_bytes: result.dirty_bytes, deleted: true })
     }
 
     fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
@@ -427,6 +436,10 @@ where
 
     pub(crate) fn records_count(&self) -> usize {
         self.index.count()
+    }
+
+    pub(crate) fn file_dirty_bytes(&self) -> u64 {
+        self.file.dirty_bytes()
     }
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
