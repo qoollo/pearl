@@ -37,6 +37,7 @@ pub(crate) trait WritableDataCreator<R>: Send + 'static {
 trait FileTrait: Sized {
     fn size(&self) -> u64;
     fn created_at(&self) -> IOResult<SystemTime>;
+    fn dirty_bytes(&self) -> u64;
 
     async fn write_append_writable_data<R: Send + 'static>(&self, c: impl WritableDataCreator<R>) -> IOResult<R>;
     async fn write_append_all(&self, buf: Bytes) -> IOResult<()>;

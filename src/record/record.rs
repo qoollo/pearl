@@ -8,45 +8,11 @@ const DELETE_FLAG: u8 = 0x01;
 
 const MAX_SINGLE_PASS_DATA_SIZE: usize = 4 * 1024;
 
-#[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct Record {
     pub header: Header,
     pub meta: Meta,
-    #[serde(
-        serialize_with = "serialize_data",
-        deserialize_with = "deserialize_data"
-    )]
     pub data: Bytes,
-}
-
-fn serialize_data<S>(data: &Bytes, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    serializer.serialize_bytes(data.as_ref())
-}
-
-fn deserialize_data<'de, D>(deserializer: D) -> Result<Bytes, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    struct DataVisitor();
-    impl<'de> serde::de::Visitor<'de> for DataVisitor {
-        type Value = Bytes;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("bytes")
-        }
-
-        fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(v.into())
-        }
-    }
-
-    deserializer.deserialize_byte_buf(DataVisitor())
 }
 
 impl Debug for Record {

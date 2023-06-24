@@ -1,8 +1,6 @@
 use super::prelude::*;
 use tokio::task::JoinHandle;
-use tokio::sync::{
-    mpsc::{channel, Sender}
-};
+use tokio::sync::mpsc::{channel, Sender};
 
 /// Max size of the channel between `Observer` and `ObserverWorker`
 const OBSERVER_CHANNEL_SIZE_LIMIT: usize = 1024;
@@ -16,6 +14,7 @@ pub(crate) enum OperationType {
     TryDumpBlobIndexes = 4,
     TryUpdateActiveBlob = 5,
     DeferredDumpBlobIndexes = 6,
+    TryFsyncData = 7,
 }
 
 #[derive(Debug)]
@@ -143,6 +142,11 @@ where
 
     pub(crate) async fn try_update_active_blob(&self) {
         self.send_msg(Msg::new(OperationType::TryUpdateActiveBlob, None))
+            .await
+    }
+
+    pub(crate) async fn try_fsync_data(&self) {
+        self.send_msg(Msg::new(OperationType::TryFsyncData, None))
             .await
     }
 

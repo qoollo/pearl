@@ -3,6 +3,7 @@ use ahash::AHasher;
 use atomic_bitvec::*;
 use std::hash::Hasher;
 use std::sync::RwLock;
+use once_cell::sync::OnceCell;
 
 // All usizes in structures are serialized as u64 in binary
 /// Bloom filter
@@ -96,7 +97,7 @@ where
 }
 
 /// Bloom filter configuration parameters.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Config {
     /// records count in one blob.
     pub elements: usize,
@@ -142,6 +143,19 @@ impl Config {
             max_buf_bits_count: 0,
             buf_increase_step: 0,
             preferred_false_positive_rate: 0.0
+        }
+    }
+
+    /// Returns single shared instance of [`Config`] if the current is equal to it,
+    /// otherwise just wraps `Self` with `Arc`
+    pub(crate) fn make_shared(self) -> Arc<Self> {
+        static SHARED_INSTANCE: OnceCell<Arc<Config>> = OnceCell::new();
+
+        let local_instance = SHARED_INSTANCE.get_or_init(|| Arc::new(self.clone()));
+        if self == **local_instance {
+            local_instance.clone()
+        } else {
+            Arc::new(self)
         }
     }
 }
@@ -209,7 +223,7 @@ impl Bloom {
     }
     /// Create new bloom filter
     pub fn new(config: Config) -> Self {
-        Self::new_from_shared_config(Arc::new(config))
+        Self::new_from_shared_config(config.make_shared())
     }
 
     /// Creates empty bloom filter
