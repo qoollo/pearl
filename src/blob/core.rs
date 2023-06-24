@@ -59,8 +59,8 @@ where
             index: index_config,
             validate_data_during_index_regen,
         } = config;
-        let file = iodriver.create(name.to_path()).await?;
-        let index = Self::create_index(name.clone(), iodriver, index_config);
+        let file = iodriver.create(name.as_path()).await?;
+        let index = Self::create_index(&name, iodriver, index_config);
         let header = Header::new();
         let mut blob = Self {
             header,
@@ -92,9 +92,8 @@ where
     }
 
     #[inline]
-    fn create_index(mut name: FileName, iodriver: IoDriver, index_config: IndexConfig) -> Index<K> {
-        name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
-        Index::new(name, iodriver, index_config)
+    fn create_index(name: &FileName, iodriver: IoDriver, index_config: IndexConfig) -> Index<K> {
+        Index::new(name.with_extension(BLOB_INDEX_FILE_EXTENSION), iodriver, index_config)
     }
 
     pub(crate) async fn dump(&mut self) -> Result<usize> {
@@ -103,12 +102,12 @@ where
         } else {
             self.fsyncdata()
                 .await
-                .with_context(|| format!("blob file dump failed: {:?}", self.name.to_path()))?;
+                .with_context(|| format!("blob file dump failed: {:?}", self.name.as_path()))?;
 
             self.index.dump(self.file_size()).await.with_context(|| {
                 format!(
                     "index file dump failed, associated blob file: {:?}",
-                    self.name.to_path()
+                    self.name.as_path()
                 )
             })
         }
@@ -138,12 +137,11 @@ where
             .await
             .with_context(|| format!("failed to read blob header. Blob file: {:?}", path))?;
 
-        let mut index_name = name.clone();
+        let index_name = name.with_extension(BLOB_INDEX_FILE_EXTENSION);
         let BlobConfig {
             index: index_config,
             validate_data_during_index_regen,
         } = config;
-        index_name.extension = BLOB_INDEX_FILE_EXTENSION.to_owned();
         trace!("looking for index file: [{}]", index_name);
         let mut is_index_corrupted = false;
         let index = if index_name.exists() {
@@ -228,14 +226,14 @@ where
             .with_context(|| {
                 format!(
                     "failed to read raw records from blob {:?}",
-                    self.name.to_path()
+                    self.name.as_path()
                 )
             })?;
         debug!("raw records loaded");
         if let Some(headers) = raw_r.load().await.with_context(|| {
             format!(
                 "load headers from blob file failed, {:?}",
-                self.name.to_path()
+                self.name.as_path()
             )
         })? {
             for header in headers {
@@ -291,7 +289,7 @@ where
                             "failed to read key {:?} with meta {:?} from blob {:?}",
                             key,
                             meta,
-                            self.name.to_path()
+                            self.name.as_path()
                         )
                     })?
                     .into_data();
@@ -376,7 +374,7 @@ where
                 .get_any(key)
                 .await
                 .with_context(|| {
-                    format!("index get any failed for blob: {:?}", self.name.to_path())
+                    format!("index get any failed for blob: {:?}", self.name.as_path())
                 })?
                 .map(|header| {
                     let entry = Entry::new(header, self.file.clone());
@@ -448,7 +446,7 @@ where
 
     #[inline]
     pub(crate) fn id(&self) -> usize {
-        self.name.id
+        self.name.id()
     }
 
     pub(crate) fn index_memory(&self) -> usize {
@@ -460,65 +458,6 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct FileName {
-    name_prefix: String,
-    id: usize,
-    extension: String,
-    dir: PathBuf,
-}
-
-impl FileName {
-    pub const fn new(name_prefix: String, id: usize, extension: String, dir: PathBuf) -> Self {
-        Self {
-            name_prefix,
-            id,
-            extension,
-            dir,
-        }
-    }
-
-    pub(crate) fn from_path(path: &Path) -> Result<Self> {
-        Self::try_from_path(path).ok_or_else(|| Error::file_pattern(path.to_owned()).into())
-    }
-
-    pub fn to_path(&self) -> PathBuf {
-        self.dir.join(self.to_string())
-    }
-
-    fn try_from_path(path: &Path) -> Option<Self> {
-        let extension = path.extension()?.to_str()?.to_owned();
-        let stem = path.file_stem()?;
-        let mut parts = stem
-            .to_str()?
-            .splitn(2, '.')
-            .collect::<Vec<_>>()
-            .into_iter();
-        let name_prefix = parts.next()?.to_owned();
-        let id = parts.next()?.parse().ok()?;
-        let dir = path.parent()?.to_owned();
-        Some(Self {
-            name_prefix,
-            id,
-            extension,
-            dir,
-        })
-    }
-
-    fn exists(&self) -> bool {
-        self.to_path().exists()
-    }
-
-    pub(crate) fn id(&self) -> usize {
-        self.id
-    }
-}
-
-impl Display for FileName {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}.{}.{}", self.name_prefix, self.id, self.extension)
-    }
-}
 
 struct RawRecords {
     current_offset: u64,

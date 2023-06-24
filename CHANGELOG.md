@@ -7,8 +7,8 @@ Pearl changelog
 - Add fsync to header writing in blob (#243)
 - Add periodic fsync (#234)
 
-
 #### Changed
+- Reduced internal strucutre size in memory: bloom filter `Config` and `FileName` (#260)
 - Serialize/Deserialize implementation removed from `Record` struct (#282)
 
 #### Fixed
