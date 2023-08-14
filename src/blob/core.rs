@@ -271,31 +271,6 @@ where
     }
 
     #[allow(dead_code)]
-    pub(crate) async fn read_latest(
-        &self,
-        key: &K,
-        meta: Option<&Meta>,
-        check_filters: bool,
-    ) -> Result<ReadResult<Bytes>> {
-        debug!("blob read any");
-        let entry = self.get_latest_entry(key, meta, check_filters).await?;
-        match entry {
-            ReadResult::Found(entry) => {
-                debug!("blob read any entry found");
-                let buf = entry
-                    .load()
-                    .await
-                    .with_context(|| format!("failed to read data for key {:?} with meta {:?}", key, meta))?
-                    .into_data();
-                debug!("blob read any entry loaded bytes: {}", buf.len());
-                Ok(ReadResult::Found(buf))
-            }
-            ReadResult::Deleted(ts) => Ok(ReadResult::Deleted(ts)),
-            ReadResult::NotFound => Ok(ReadResult::NotFound),
-        }
-    }
-
-    #[allow(dead_code)]
     #[inline]
     pub(crate) async fn read_all_entries(&self, key: &K) -> Result<Vec<Entry>> {
         let headers = self.index.get_all(key).await?;
