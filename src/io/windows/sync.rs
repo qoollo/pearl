@@ -44,13 +44,20 @@ pub(crate) struct File {
 #[derive(Debug)]
 struct FileInner {
     std_file: StdFile,
-    size: AtomicU64
+    size: AtomicU64,
+    synced_size: AtomicU64
 }
 
 
 impl File {
     pub(crate) fn size(&self) -> u64 {
         self.inner.size.load(Ordering::SeqCst)
+    }
+    pub(crate) fn synced_size(&self) -> u64 {
+        self.inner.synced_size.load(Ordering::SeqCst)
+    }
+    pub(crate) fn dirty_bytes(&self) -> u64 {
+        self.size() - self.synced_size()
     }
 
     pub(crate) async fn write_append_writable_data<R: Send + 'static>(
@@ -113,7 +120,14 @@ impl File {
 
     pub(crate) async fn fsyncdata(&self) -> IOResult<()> {
         let file_inner = self.inner.clone();
-        Self::background_sync_call(move || file_inner.std_file.sync_all()).await
+        let size = self.size();
+        Self::background_sync_call(
+            move || {
+               file_inner.std_file.sync_all()?;
+               file_inner.synced_size.fetch_max(size, Ordering::SeqCst);
+               Ok(())
+            }
+        ).await
     }
 
     pub(crate) fn created_at(&self) -> IOResult<SystemTime> {
@@ -151,12 +165,14 @@ impl File {
             };
 
         let size = file.metadata()?.len();
+        let synced_size = AtomicU64::new(size);
         let size = AtomicU64::new(size);
 
         Ok(Self {
             inner: Arc::new(FileInner {
                 std_file: file,
-                size
+                size,
+                synced_size
             })
         })
     }
@@ -210,6 +226,9 @@ impl super::super::FileTrait for File {
     }
     fn created_at(&self) -> IOResult<SystemTime> {
         self.created_at()
+    }
+    fn dirty_bytes(&self) -> u64 {
+        self.dirty_bytes()
     }
 
     async fn write_append_writable_data<R: Send + 'static>(&self, c: impl WritableDataCreator<R>) -> IOResult<R> {
