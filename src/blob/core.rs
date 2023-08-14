@@ -1,6 +1,6 @@
 use std::time::SystemTime;
 
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::{BufMut, BytesMut};
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
