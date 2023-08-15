@@ -568,6 +568,7 @@ impl RawRecords {
                     buf.len()
                 )
             })?;
+        header.validate()?;
         self.current_offset += self.record_header_size;
         self.current_offset += header.meta_size();
         let data = if read_data {

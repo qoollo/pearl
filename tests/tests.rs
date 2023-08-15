@@ -430,6 +430,43 @@ async fn test_corrupted_index_regeneration() {
 }
 
 #[tokio::test]
+async fn test_corrupted_blob_index_regeneration() {
+    use std::mem::size_of;
+    use common::CorruptionType;
+
+    let now = Instant::now();
+    let path = common::init("corrupted_blob_index");
+    let storage = common::create_test_storage(&path, 70_000).await.unwrap();
+    let records = common::generate_records(100, 10_000);
+    for (i, data) in &records {
+        write_one(&storage, *i, data, None).await.unwrap();
+    }
+    storage.close().await.unwrap();
+
+    let blob_header_size = 2 * size_of::<u64>() + size_of::<u32>();
+    let magic_len_size = size_of::<u64>() + size_of::<usize>();
+    let corruption = CorruptionType::ZeroedAt((blob_header_size + magic_len_size) as u64, 1);
+
+    let blob_file_path = path.join("test.0.blob");
+    let index_file_path = path.join("test.0.index");
+    assert!(blob_file_path.exists());
+    assert!(index_file_path.exists());
+
+    common::corrupt_file(blob_file_path, corruption).expect("blob corruption failed");
+    std::fs::remove_file(index_file_path.clone()).expect("index removal");
+    let new_storage = common::create_test_storage(&path, 1_000_000)
+        .await
+        .expect("storage should be loaded successfully");
+
+    assert_eq!(new_storage.corrupted_blobs_count(), 1);
+    let index_file_path = path.join("test.0.index");
+    assert!(!index_file_path.exists());
+
+    common::clean(new_storage, path).await;
+    warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
+}
+
+#[tokio::test]
 async fn test_index_from_blob() {
     let now = Instant::now();
     let path = common::init("index_from_blob");
