@@ -204,4 +204,10 @@ impl Builder {
         self.config.set_deferred_index_dump_times(min, max);
         self
     }
+
+    /// Set max dirty bytes before filesync will be performed in background
+    pub fn set_max_dirty_bytes_before_sync(mut self, bytes: u64) -> Self {
+        self.config.set_max_dirty_bytes_before_sync(bytes);
+        self
+    }
 }
