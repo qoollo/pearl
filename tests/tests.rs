@@ -440,7 +440,6 @@ async fn test_corrupted_blob_index_regeneration() {
     let records = common::generate_records(100, 10_000);
     for (i, data) in &records {
         write_one(&storage, *i, data, None).await.unwrap();
-        sleep(Duration::from_millis(10)).await;
     }
     storage.close().await.unwrap();
 
@@ -458,15 +457,10 @@ async fn test_corrupted_blob_index_regeneration() {
     let new_storage = common::create_test_storage(&path, 1_000_000)
         .await
         .expect("storage should be loaded successfully");
-    new_storage.close().await.unwrap();
 
+    assert_eq!(new_storage.corrupted_blobs_count(), 1);
     let index_file_path = path.join("test.0.index");
     assert!(!index_file_path.exists());
-
-    let new_storage = common::create_test_storage(&path, 1_000_000)
-        .await
-        .expect("storage should be loaded successfully");
-    assert_eq!(new_storage.corrupted_blobs_count(), 1);
 
     common::clean(new_storage, path).await;
     warn!("elapsed: {:.3}", now.elapsed().as_secs_f64());
