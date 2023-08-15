@@ -201,6 +201,7 @@ pub fn generate_records(count: usize, avg_size: usize) -> Vec<(u32, Vec<u8>)> {
 
 pub enum CorruptionType {
     ZeroedAtBegin(u64),
+    ZeroedAt(u64, u64),
 }
 
 pub fn corrupt_file(path: impl AsRef<Path>, corruption_type: CorruptionType) -> Result<()> {
@@ -214,6 +215,11 @@ pub fn corrupt_file(path: impl AsRef<Path>, corruption_type: CorruptionType) -> 
         CorruptionType::ZeroedAtBegin(zeroed_size) => {
             let write_size = zeroed_size.min(size);
             file.seek(SeekFrom::Start(0))?;
+            file.write_all(&vec![0u8; write_size as usize])?;
+        }
+        CorruptionType::ZeroedAt(start, len) => {
+            let write_size = len.min(size);
+            file.seek(SeekFrom::Start(start))?;
             file.write_all(&vec![0u8; write_size as usize])?;
         }
     }
