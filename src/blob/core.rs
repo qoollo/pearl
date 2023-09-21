@@ -270,17 +270,6 @@ where
         Ok(WriteResult { dirty_bytes: self.file.dirty_bytes() })
     }
 
-    #[allow(dead_code)]
-    #[inline]
-    pub(crate) async fn read_all_entries(&self, key: &K) -> Result<Vec<Entry>> {
-        let headers = self.index.get_all(key).await?;
-        debug_assert!(headers
-            .iter()
-            .zip(headers.iter().skip(1))
-            .all(|(x, y)| x.timestamp() >= y.timestamp()));
-        Ok(Self::headers_to_entries(headers, &self.file, &self.name))
-    }
-
     #[inline]
     pub(crate) async fn read_all_entries_with_deletion_marker(
         &self,
@@ -383,21 +372,6 @@ where
             }
         }
         Ok(None)
-    }
-
-    #[allow(dead_code)]
-    pub(crate) async fn contains(
-        &self,
-        key: &K,
-        meta: Option<&Meta>,
-    ) -> Result<ReadResult<BlobRecordTimestamp>> {
-        debug!("blob contains");
-        let contains = self
-            .get_latest_entry(key, meta, true)
-            .await?
-            .map(|e| e.timestamp());
-        debug!("blob contains any: {:?}", contains);
-        Ok(contains)
     }
 
     #[inline]
