@@ -35,7 +35,7 @@ pub struct Header {
     data_size: u64,
     flags: u8,
     blob_offset: u64,
-    created: u64,
+    timestamp: u64, // This was previously a 'created' field. Adding new field is a breaking change. TODO: add back 'created' in the future releases
     data_checksum: u32,
     header_checksum: u32,
 }
@@ -99,14 +99,15 @@ impl Record {
     }
 
     /// Creates new `Record` with provided data, key and meta.
-    pub fn create<K>(key: &K, data: Bytes, meta: Meta) -> bincode::Result<Self>
+    pub fn create<K>(key: &K, timestamp: u64, data: Bytes, meta: Option<Meta>) -> bincode::Result<Self>
     where
         for<'a> K: Key<'a>,
     {
         let key = key.as_ref().to_vec();
+        let meta = meta.unwrap_or_default();
         let meta_size = meta.serialized_size();
         let data_checksum = CRC32C.checksum(&data);
-        let header = Header::new(key, meta_size, data.len() as u64, data_checksum);
+        let header = Header::new(key, timestamp, meta_size, data.len() as u64, data_checksum);
         Ok(Self { header, meta, data })
     }
 
@@ -141,11 +142,11 @@ impl Record {
         ))
     }
 
-    pub(crate) fn deleted<K>(key: &K) -> bincode::Result<Self>
+    pub(crate) fn deleted<K>(key: &K, timestamp: u64, meta: Option<Meta>) -> bincode::Result<Self>
     where
         for<'a> K: Key<'a> + 'static,
     {
-        let mut record = Record::create(key, Bytes::new(), Meta::default())?;
+        let mut record = Record::create(key, timestamp, Bytes::new(), meta)?;
         record.header.mark_as_deleted()?;
         Ok(record)
     }
@@ -166,14 +167,7 @@ impl Record {
 }
 
 impl Header {
-    pub fn new(key: Vec<u8>, meta_size: u64, data_size: u64, data_checksum: u32) -> Self {
-        let created = std::time::UNIX_EPOCH.elapsed().map_or_else(
-            |e| {
-                error!("{}", e);
-                0
-            },
-            |d| d.as_secs(),
-        );
+    pub fn new(key: Vec<u8>, timestamp: u64, meta_size: u64, data_size: u64, data_checksum: u32) -> Self {
         Self {
             magic_byte: RECORD_MAGIC_BYTE,
             key,
@@ -181,7 +175,7 @@ impl Header {
             data_size,
             flags: 0,
             blob_offset: 0,
-            created,
+            timestamp: timestamp,
             data_checksum,
             header_checksum: 0,
         }
@@ -337,12 +331,14 @@ impl Header {
         Ok(())
     }
 
+    #[inline]
     pub(crate) fn is_deleted(&self) -> bool {
         self.flags & DELETE_FLAG == DELETE_FLAG
     }
 
-    pub(crate) fn created(&self) -> u64 {
-        self.created
+    #[inline]
+    pub(crate) fn timestamp(&self) -> u64 {
+        self.timestamp
     }
 }
 
@@ -362,7 +358,7 @@ mod tests {
             let checksum: u32 = CRC32C.checksum(&data);
             let meta = Meta::new();
             let header =
-                RecordHeader::new(key, meta.serialized_size(), data.len() as u64, checksum);
+                RecordHeader::new(key, 101, meta.serialized_size(), data.len() as u64, checksum);
             let header_size = header.serialized_size();
             let record = Record::new(header, meta, data);
             let offset: u64 = 101 * i as u64;
@@ -387,7 +383,7 @@ mod tests {
             let checksum: u32 = CRC32C.checksum(&data);
             let meta = Meta::new();
             let mut header =
-                RecordHeader::new(key, meta.serialized_size(), data.len() as u64, checksum);
+                RecordHeader::new(key, 101, meta.serialized_size(), data.len() as u64, checksum);
             let header_size = header.serialized_size() as usize;
             let record = Record::new(header.clone(), meta.clone(), data.clone());
             let offset: u64 = 101 * i as u64;

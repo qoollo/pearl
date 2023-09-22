@@ -61,7 +61,7 @@ fn generate_headers(records_amount: usize, key_mapper: fn(u32) -> u32) -> InMemo
         .map(|i| serialize(&i).expect("can't serialize"))
         .for_each(|key| {
             let key: KeyType = key.into();
-            let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+            let rh = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
             if let Some(v) = inmem.get_mut(&key) {
                 v.push(rh);
             } else {
@@ -208,7 +208,7 @@ async fn benchmark_get_any() {
         if (i as u32 + 1) % PRINT_EVERY == 0 {
             println!("Iteration: {}...", i + 1);
         }
-        let _ = findex.get_any(&q.into()).await.unwrap();
+        let _ = findex.get_latest(&q.into()).await.unwrap();
     }
     println!(
         "get_any avg time: {}\n",

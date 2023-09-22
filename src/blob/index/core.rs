@@ -316,9 +316,9 @@ where
     for<'a> K: Key<'a>,
 {
     async fn contains_key(&self, key: &K) -> Result<ReadResult<BlobRecordTimestamp>> {
-        self.get_any(key)
+        self.get_latest(key)
             .await
-            .map(|h| h.map(|h| BlobRecordTimestamp::new(h.created())))
+            .map(|h| h.map(|h| BlobRecordTimestamp::new(h.timestamp())))
     }
 
     fn push(&self, key: &K, h: RecordHeader) -> Result<()> {
@@ -332,7 +332,17 @@ where
                 let records_allocated;
                 if let Some(v) = data.headers.get_mut(key) {
                     let old_capacity = v.capacity();
-                    v.push(h);
+                    // Keep ordered by timestamp
+                    let mut pos = 0;
+                    if v.len() > 4 {
+                        // Use binary search when len > 4. For smaller len sequential search will be faster
+                        pos = v.binary_search_by(|item| item.timestamp().cmp(&h.timestamp())).unwrap_or_else(|e| e);
+                    }
+                    // Skip records with timestamp less or equal to our (our should be the latest)
+                    while pos < v.len() && v[pos].timestamp() <= h.timestamp() {
+                        pos += 1;
+                    }
+                    v.insert(pos, h);
                     trace!("capacity growth: {}", v.capacity() - old_capacity);
                     records_allocated = v.capacity() - old_capacity;
                 } else {
@@ -384,7 +394,7 @@ where
         }
     }
 
-    async fn get_any(&self, key: &K) -> Result<ReadResult<RecordHeader>> {
+    async fn get_latest(&self, key: &K) -> Result<ReadResult<RecordHeader>> {
         debug!("index get any");
         let result = match &self.inner {
             State::InMemory(headers) => {
@@ -396,12 +406,12 @@ where
             }
             State::OnDisk(findex) => {
                 debug!("index get any on disk");
-                findex.get_any(key).await?
+                findex.get_latest(key).await?
             }
         };
         Ok(match result {
             Some(header) if header.is_deleted() => {
-                ReadResult::Deleted(BlobRecordTimestamp::new(header.created()))
+                ReadResult::Deleted(BlobRecordTimestamp::new(header.timestamp()))
             }
             Some(header) => ReadResult::Found(header),
             None => ReadResult::NotFound,
@@ -455,7 +465,7 @@ pub(crate) trait FileIndexTrait<K>: Sized + Send + Sync {
     async fn read_meta_at(&self, i: u64) -> Result<u8>;
     async fn find_by_key(&self, key: &K) -> Result<Option<Vec<RecordHeader>>>;
     async fn get_records_headers(&self, blob_size: u64) -> Result<(InMemoryIndex<K>, usize)>;
-    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>>;
+    async fn get_latest(&self, key: &K) -> Result<Option<RecordHeader>>;
     fn validate(&self, blob_size: u64) -> Result<()>;
     fn memory_used(&self) -> usize;
 }

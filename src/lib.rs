@@ -18,7 +18,7 @@
 //! For more advanced usage see the benchmark tool as the example
 //!
 //! ```no_run
-//! use pearl::{Storage, Builder, ArrayKey};
+//! use pearl::{Storage, Builder, ArrayKey, BlobRecordTimestamp};
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -33,7 +33,8 @@
 //!     storage.init().await.unwrap();
 //!     let key = ArrayKey::<8>::default();
 //!     let data = b"Hello World!".to_vec();
-//!     storage.write(key, data.into()).await.unwrap();
+//!     let timestamp = BlobRecordTimestamp::now();
+//!     storage.write(key, data.into(), timestamp).await.unwrap();
 //! }
 //! ```
 
