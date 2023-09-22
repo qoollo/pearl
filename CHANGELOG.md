@@ -4,6 +4,20 @@ Pearl changelog
 
 ## [Unreleased]
 #### Added
+
+
+#### Changed
+
+
+#### Fixed
+
+
+#### Updated
+
+
+
+## [0.20.0] - 2023-09-22
+#### Added
 - Add ability to attach metadata to the deletion record (#229)
 
 #### Changed
