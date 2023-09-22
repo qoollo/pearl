@@ -1,6 +1,6 @@
 use std::time::SystemTime;
 
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::{BufMut, BytesMut};
 use tokio::time::Instant;
 
 use crate::error::ValidationErrorKind;
@@ -24,7 +24,7 @@ where
 {
     header: Header,
     index: Index<K>,
-    name: FileName,
+    name: Arc<FileName>,
     file: File,
     created_at: SystemTime,
     validate_data_during_index_regen: bool,
@@ -65,7 +65,7 @@ where
         let mut blob = Self {
             header,
             index,
-            name,
+            name: Arc::new(name),
             file,
             created_at: SystemTime::now(),
             validate_data_during_index_regen,
@@ -179,7 +179,7 @@ where
         let mut blob = Self {
             header,
             file,
-            name,
+            name: Arc::new(name),
             index,
             created_at,
             validate_data_during_index_regen,
@@ -270,48 +270,6 @@ where
         Ok(WriteResult { dirty_bytes: self.file.dirty_bytes() })
     }
 
-    pub(crate) async fn read_last(
-        &self,
-        key: &K,
-        meta: Option<&Meta>,
-        check_filters: bool,
-    ) -> Result<ReadResult<Bytes>> {
-        debug!("blob read any");
-        let entry = self.get_entry(key, meta, check_filters).await?;
-        match entry {
-            ReadResult::Found(entry) => {
-                debug!("blob read any entry found");
-                let buf = entry
-                    .load()
-                    .await
-                    .with_context(|| {
-                        format!(
-                            "failed to read key {:?} with meta {:?} from blob {:?}",
-                            key,
-                            meta,
-                            self.name.as_path()
-                        )
-                    })?
-                    .into_data();
-                debug!("blob read any entry loaded bytes: {}", buf.len());
-                Ok(ReadResult::Found(buf))
-            }
-            ReadResult::Deleted(ts) => Ok(ReadResult::Deleted(ts)),
-            ReadResult::NotFound => Ok(ReadResult::NotFound),
-        }
-    }
-
-    #[allow(dead_code)]
-    #[inline]
-    pub(crate) async fn read_all_entries(&self, key: &K) -> Result<Vec<Entry>> {
-        let headers = self.index.get_all(key).await?;
-        debug_assert!(headers
-            .iter()
-            .zip(headers.iter().skip(1))
-            .all(|(x, y)| x.created() >= y.created()));
-        Ok(Self::headers_to_entries(headers, &self.file))
-    }
-
     #[inline]
     pub(crate) async fn read_all_entries_with_deletion_marker(
         &self,
@@ -321,40 +279,43 @@ where
         debug_assert!(headers
             .iter()
             .zip(headers.iter().skip(1))
-            .all(|(x, y)| x.created() >= y.created()));
-        Ok(Self::headers_to_entries(headers, &self.file))
+            .all(|(x, y)| x.timestamp() >= y.timestamp()));
+        Ok(Self::headers_to_entries(headers, &self.file, &self.name))
     }
 
-    pub(crate) async fn mark_all_as_deleted(
+    pub(crate) async fn delete(
         &mut self,
         key: &K,
+        timestamp: BlobRecordTimestamp,
+        meta: Option<Meta>,
         only_if_presented: bool,
     ) -> Result<DeleteResult> {
-        if !only_if_presented || self.index.get_any(key).await?.is_found() {
-            self.push_deletion_record(key).await
+        if !only_if_presented || self.index.get_latest(key).await?.is_found() {
+            let record = Record::deleted(key, timestamp.into(), meta)?;
+            self.push_deletion_record(key, record).await
         } else {
             Ok(DeleteResult { dirty_bytes: self.file.dirty_bytes(), deleted: false })
         }
     }
 
-    async fn push_deletion_record(&mut self, key: &K) -> Result<DeleteResult> {
+    async fn push_deletion_record(&mut self, key: &K, record: Record) -> Result<DeleteResult> {
         let on_disk = self.index.on_disk();
         if on_disk {
             self.load_index().await?;
         }
-        let record = Record::deleted(key)?;
         let result = self.write_mut(key, record).await?;
         Ok(DeleteResult { dirty_bytes: result.dirty_bytes, deleted: true })
     }
 
-    fn headers_to_entries(headers: Vec<RecordHeader>, file: &File) -> Vec<Entry> {
+    fn headers_to_entries(headers: Vec<RecordHeader>, file: &File, file_name: &Arc<FileName>) -> Vec<Entry> {
         headers
             .into_iter()
-            .map(|header| Entry::new(header, file.clone()))
+            .map(|header| Entry::new(header, file.clone(), file_name.clone()))
             .collect()
     }
 
-    async fn get_entry(
+    /// Returns latest Entry from Blob for specified key and meta
+    pub(crate) async fn get_latest_entry(
         &self,
         key: &K,
         meta: Option<&Meta>,
@@ -371,13 +332,13 @@ where
             debug!("blob get any entry bloom true no meta");
             Ok(self
                 .index
-                .get_any(key)
+                .get_latest(key)
                 .await
                 .with_context(|| {
                     format!("index get any failed for blob: {:?}", self.name.as_path())
                 })?
                 .map(|header| {
-                    let entry = Entry::new(header, self.file.clone());
+                    let entry = Entry::new(header, self.file.clone(), self.name.clone());
                     debug!("blob, get any entry, bloom true no meta, entry found");
                     entry
                 }))
@@ -389,11 +350,11 @@ where
         let deleted_ts = headers
             .last()
             .filter(|h| h.is_deleted())
-            .map(|h| BlobRecordTimestamp::new(h.created()));
+            .map(|h| BlobRecordTimestamp::new(h.timestamp()));
         if deleted_ts.is_some() {
             headers.truncate(headers.len() - 1);
         }
-        let entries = Self::headers_to_entries(headers, &self.file);
+        let entries = Self::headers_to_entries(headers, &self.file, &self.name);
         if let Some(entries) = self.filter_entries(entries, meta).await? {
             Ok(ReadResult::Found(entries))
         } else {
@@ -411,20 +372,6 @@ where
             }
         }
         Ok(None)
-    }
-
-    pub(crate) async fn contains(
-        &self,
-        key: &K,
-        meta: Option<&Meta>,
-    ) -> Result<ReadResult<BlobRecordTimestamp>> {
-        debug!("blob contains");
-        let contains = self
-            .get_entry(key, meta, true)
-            .await?
-            .map(|e| BlobRecordTimestamp::new(e.created()));
-        debug!("blob contains any: {:?}", contains);
-        Ok(contains)
     }
 
     #[inline]

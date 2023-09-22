@@ -241,39 +241,41 @@ where
     /// creation
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Storage, ArrayKey};
+    /// use pearl::{Builder, Storage, ArrayKey, BlobRecordTimestamp};
     ///
     /// async fn write_data(storage: Storage<ArrayKey<8>>) {
     ///     let key = ArrayKey::<8>::default();
     ///     let data = b"async written to blob".to_vec().into();
-    ///     storage.write(key, data).await;
+    ///     let timestamp = BlobRecordTimestamp::now();
+    ///     storage.write(key, data, timestamp).await;
     /// }
     /// ```
     /// # Errors
     /// Fails with the same errors as [`write_with`]
     ///
     /// [`write_with`]: Storage::write_with
-    pub async fn write(&self, key: impl AsRef<K>, value: Bytes) -> Result<()> {
-        self.write_with_optional_meta(key, value, None).await
+    pub async fn write(&self, key: impl AsRef<K>, value: Bytes, timestamp: BlobRecordTimestamp) -> Result<()> {
+        self.write_with_optional_meta(key, value, timestamp, None).await
     }
 
     /// Similar to [`write`] but with metadata
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Meta, Storage, ArrayKey};
+    /// use pearl::{Builder, Meta, Storage, ArrayKey, BlobRecordTimestamp};
     ///
     /// async fn write_data(storage: Storage<ArrayKey<8>>) {
     ///     let key = ArrayKey::<8>::default();
     ///     let data = b"async written to blob".to_vec().into();
+    ///     let timestamp = BlobRecordTimestamp::now();
     ///     let mut meta = Meta::new();
     ///     meta.insert("version".to_string(), b"1.0".to_vec());
-    ///     storage.write_with(&key, data, meta).await;
+    ///     storage.write_with(&key, data, timestamp, meta).await;
     /// }
     /// ```
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
-    pub async fn write_with(&self, key: impl AsRef<K>, value: Bytes, meta: Meta) -> Result<()> {
-        self.write_with_optional_meta(key, value, Some(meta)).await
+    pub async fn write_with(&self, key: impl AsRef<K>, value: Bytes, timestamp: BlobRecordTimestamp, meta: Meta) -> Result<()> {
+        self.write_with_optional_meta(key, value, timestamp, Some(meta)).await
     }
 
     /// Free all resources that may be freed without work interruption
@@ -301,6 +303,7 @@ where
         &self,
         key: impl AsRef<K>,
         value: Bytes,
+        timestamp: BlobRecordTimestamp,
         meta: Option<Meta>,
     ) -> Result<()> {
         let key = key.as_ref();
@@ -319,7 +322,7 @@ where
             );
             return Ok(());
         }
-        let record = Record::create(key, value, meta.unwrap_or_default())
+        let record = Record::create(key, timestamp.into(), value, meta)
             .with_context(|| "storage write with record creation failed")?;
         let safe = self.inner.safe.read().await;
         let blob = safe
@@ -438,7 +441,11 @@ where
     /// Fails after any disk IO errors.
     pub async fn read_all_with_deletion_marker(&self, key: impl AsRef<K>) -> Result<Vec<Entry>> {
         let key = key.as_ref();
+
         let mut all_entries = Vec::new();
+        let mut deletion_marker_presence = false;
+        let mut affected_blobs_count = 0;
+
         let safe = self.inner.safe.read().await;
         let active_blob = safe.active_blob.as_ref();
         if let Some(active_blob) = active_blob {
@@ -451,13 +458,12 @@ where
                 "storage core read all active blob entries {}",
                 entries.len()
             );
-            if let Some(e) = entries.last() {
-                if e.is_deleted() {
-                    return Ok(entries);
-                }
-            }
+  
+            deletion_marker_presence = deletion_marker_presence || entries.last().map(|e| e.is_deleted()).unwrap_or(false);
+            affected_blobs_count += if entries.len() > 0 { 1 } else { 0 };
             all_entries.extend(entries);
         }
+
         let blobs = safe.blobs.read().await;
         let mut futures = blobs
             .iter_possible_childs_rev(key)
@@ -465,24 +471,66 @@ where
             .collect::<FuturesOrdered<_>>();
         while let Some(data) = futures.next().await {
             let entries = data?;
-            if let Some(e) = entries.last() {
-                if e.is_deleted() {
-                    all_entries.extend(entries);
-                    return Ok(all_entries);
-                }
-            }
+
+            deletion_marker_presence = deletion_marker_presence || entries.last().map(|e| e.is_deleted()).unwrap_or(false);
+            affected_blobs_count += if entries.len() > 0 { 1 } else { 0 };
             all_entries.extend(entries);
         }
         debug!(
             "storage core read from non-active total {} entries",
             all_entries.len()
         );
-        debug_assert!(all_entries
-            .iter()
-            .zip(all_entries.iter().skip(1))
-            .all(|(x, y)| x.created() >= y.created()));
+
+        // Try to preserve ordering by timestamp
+        if affected_blobs_count > 1 {
+            // If more than 1 blobs affect the result, then the order can be broken: restore it
+            all_entries.sort_by(|a, b| b.timestamp().cmp(&a.timestamp()));
+            if deletion_marker_presence {
+                // If deletion marker presented, we should find it and remove records after
+                let first_del = all_entries.iter().position(|h| h.is_deleted());
+                if let Some(first_del) = first_del {
+                    all_entries.truncate(first_del + 1);
+                }
+            }
+        }
+
         Ok(all_entries)
     }
+
+
+    /// Returns latest Entry by timestamp
+    async fn get_latest_entry(
+        safe: &Safe<K>,
+        key: &K,
+        meta: Option<&Meta>,
+    ) -> Result<ReadResult<Entry>> {
+        let mut latest_entry: ReadResult<Entry> = ReadResult::NotFound;
+
+        if let Some(ablob) = safe.active_blob.as_ref() {
+            let ablob_entry = ablob.read().await.get_latest_entry(key, meta, true).await.map_err(|err| {
+                debug!("get_latest_entry from active blob returned error: {:?}", err);
+                err
+            })?;
+
+            latest_entry = latest_entry.latest(ablob_entry);
+        }
+
+        let blobs = safe.blobs.read().await;
+        let mut stream = blobs
+            .iter_possible_childs_rev(key)
+            .map(|(_, blob)| blob.data.get_latest_entry(key, meta, true))
+            .collect::<FuturesOrdered<_>>();
+
+        while let Some(entry) = stream.next().await {
+            let entry = entry.map_err(|err| {
+                debug!("get_latest_entry from closed blob returned error: {:?}", err);
+                err
+            })?;
+            latest_entry = latest_entry.latest(entry);
+        }
+
+        Ok(latest_entry)
+    } 
 
     async fn read_with_optional_meta(
         &self,
@@ -491,62 +539,22 @@ where
     ) -> Result<ReadResult<Bytes>> {
         debug!("storage read with optional meta {:?}, {:?}", key, meta);
         let safe = self.inner.safe.read().await;
-        if let Some(ablob) = safe.active_blob.as_ref() {
-            match ablob.read().await.read_last(key, meta, true).await {
-                Ok(data) => {
-                    if data.is_presented() {
-                        debug!("storage read with optional meta active blob returned data");
-                        return Ok(data);
-                    }
-                }
-                Err(e) => debug!("read with optional meta active blob returned: {:#?}", e),
-            }
-        }
-        Self::get_data_last(&safe, key, meta).await
-    }
+        let latest_entry = Self::get_latest_entry(&safe, key, meta).await?;
 
-    async fn get_data_last(
-        safe: &Safe<K>,
-        key: &K,
-        meta: Option<&Meta>,
-    ) -> Result<ReadResult<Bytes>> {
-        let blobs = safe.blobs.read().await;
-        let possible_blobs = blobs
-            .iter_possible_childs_rev(key)
-            .map(|(id, blob)| async move {
-                if !matches!(blob.data.check_filter(key).await, FilterResult::NotContains) {
-                    Some(id)
-                } else {
-                    None
-                }
-            })
-            .collect::<FuturesOrdered<_>>()
-            .filter_map(|x| x)
-            .collect::<Vec<_>>()
-            .await;
-        debug!(
-            "len of possible blobs: {} (start len: {})",
-            possible_blobs.len(),
-            blobs.len()
-        );
-        let stream: FuturesOrdered<_> = possible_blobs
-            .into_iter()
-            .filter_map(|id| blobs.get_child(id))
-            .map(|blob| blob.data.read_last(key, meta, false))
-            .collect();
-        debug!("read with optional meta {} closed blobs", stream.len());
-
-        let mut task = stream.skip_while(|read_res| {
-            match read_res {
-                Ok(inner_res) => inner_res.is_not_found(), // Skip not found
-                Err(e) => {
-                    debug!("error reading data from Blob (blob.read_any): {:?}", e);
-                    true // skip errors
-                }
-            }
-        });
-
-        task.next().await.unwrap_or(Ok(ReadResult::NotFound))
+        match latest_entry {
+            ReadResult::Found(entry) => {
+                trace!("Storage::read_with_optional_meta: entry found");
+                let buf = entry
+                    .load()
+                    .await
+                    .with_context(|| format!("Failed to read data for key {:?} with meta {:?}", key, meta))?
+                    .into_data();
+                trace!("Storage::read_with_optional_meta: loaded bytes: {}", buf.len());
+                Ok(ReadResult::Found(buf))
+            },
+            ReadResult::Deleted(ts) => Ok(ReadResult::Deleted(ts)),
+            ReadResult::NotFound => Ok(ReadResult::NotFound)
+        }     
     }
 
     /// Stop blob updater and release lock file
@@ -901,22 +909,9 @@ where
         key: &K,
         meta: Option<&Meta>,
     ) -> Result<ReadResult<BlobRecordTimestamp>> {
-        let inner = self.inner.safe.read().await;
-        if let Some(active_blob) = &inner.active_blob {
-            let res = active_blob.read().await.contains(key, meta).await?;
-            if res.is_presented() {
-                return Ok(res);
-            }
-        }
-        let blobs = inner.blobs.read().await;
-        for blob in blobs.iter_possible_childs_rev(key) {
-            let res = blob.1.data.contains(key, meta).await?;
-            if res.is_presented() {
-                return Ok(res);
-            }
-        }
-
-        Ok(ReadResult::NotFound)
+        let safe = self.inner.safe.read().await;
+        let latest_result = Self::get_latest_entry(&safe, key, meta).await?;
+        Ok(latest_result.map(|entry| entry.timestamp()))
     }
 
     /// `check_filters` is used to check whether a key is in storage.
@@ -1003,12 +998,23 @@ where
     /// Delete entries with matching key
     /// # Errors
     /// Fails after any disk IO errors.
-    pub async fn delete(&self, key: impl AsRef<K>, only_if_presented: bool) -> Result<u64> {
+    pub async fn delete(&self, key: impl AsRef<K>, timestamp: BlobRecordTimestamp, only_if_presented: bool) -> Result<u64> {
+        self.delete_with_optional_meta(key, timestamp, None, only_if_presented).await
+    }
+
+    /// Delete entries with matching key. Appends metadata to deletion record
+    /// # Errors
+    /// Fails after any disk IO errors.
+    pub async fn delete_with(&self, key: impl AsRef<K>, timestamp: BlobRecordTimestamp, meta: Meta, only_if_presented: bool) -> Result<u64> {
+        self.delete_with_optional_meta(key, timestamp, Some(meta), only_if_presented).await
+    }
+
+    async fn delete_with_optional_meta(&self, key: impl AsRef<K>, timestamp: BlobRecordTimestamp, meta: Option<Meta>, only_if_presented: bool) -> Result<u64> {
         {
             // Try read lock first
             let safe = self.inner.safe.read().await;
             if only_if_presented || safe.active_blob.is_some() {
-                return self.delete_core(&safe, key.as_ref(), only_if_presented).await;
+                return self.delete_core(&safe, key.as_ref(), timestamp, meta, only_if_presented).await;
             }
         }
 
@@ -1017,14 +1023,14 @@ where
         if !only_if_presented {
             self.inner.ensure_active_blob_exists(&mut safe).await?;
         }
-        return self.delete_core(&mut safe, key.as_ref(), only_if_presented).await;
+        return self.delete_core(&mut safe, key.as_ref(), timestamp, meta, only_if_presented).await;
     }
 
     /// Core deletion logic, when lock on `Safe<K>` is acquired
-    async fn delete_core(&self, safe: &Safe<K>, key: &K, only_if_presented: bool) -> Result<u64> {
-        let deleted_in_active_result = Self::mark_all_as_deleted_active(safe, key, only_if_presented).await?;
+    async fn delete_core(&self, safe: &Safe<K>, key: &K, timestamp: BlobRecordTimestamp, meta: Option<Meta>, only_if_presented: bool) -> Result<u64> {
+        let deleted_in_active_result = Self::delete_in_active(safe, key, timestamp, meta.clone(), only_if_presented).await?;
         let deleted_in_active = deleted_in_active_result.as_ref().map(|r| if r.deleted { 1 } else { 0 }).unwrap_or(0);
-        let deleted_in_closed = Self::mark_all_as_deleted_closed(safe, key).await?;
+        let deleted_in_closed = Self::delete_in_closed(safe, key, timestamp, meta).await?;
 
         if deleted_in_closed > 0 {
             self.observer.defer_dump_old_blob_indexes().await;
@@ -1039,11 +1045,13 @@ where
         Ok(deleted_in_active + deleted_in_closed)
     }
 
-    async fn mark_all_as_deleted_closed(safe: &Safe<K>, key: &K) -> Result<u64> {
+    async fn delete_in_closed(safe: &Safe<K>, key: &K, timestamp: BlobRecordTimestamp, meta: Option<Meta>) -> Result<u64> {
+        const DELETE_ONLY_IF_PRESENTED: bool = true; // For closed blobs this should always be `true`
+
         let mut blobs = safe.blobs.write().await;
         let entries_closed_blobs = blobs
             .iter_mut()
-            .map(|b| b.mark_all_as_deleted(key, true))
+            .map(|b| b.delete(key, timestamp, meta.clone(), DELETE_ONLY_IF_PRESENTED))
             .collect::<FuturesUnordered<_>>();
         let total = entries_closed_blobs
             .map(|result| match result {
@@ -1065,9 +1073,11 @@ where
         Ok(total as u64)
     }
 
-    async fn mark_all_as_deleted_active(
+    async fn delete_in_active(
         safe: &Safe<K>,
         key: &K,
+        timestamp: BlobRecordTimestamp,
+        meta: Option<Meta>,
         only_if_presented: bool,
     ) -> Result<Option<DeleteResult>> {
         if !only_if_presented {
@@ -1078,7 +1088,7 @@ where
             let result = active_blob
                 .write()
                 .await
-                .mark_all_as_deleted(key, only_if_presented)
+                .delete(key, timestamp, meta, only_if_presented)
                 .await?;
             debug!("Deleted {} records from active blob", if result.deleted { 1 } else { 0 });
             Ok(Some(result))

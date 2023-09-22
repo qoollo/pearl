@@ -152,7 +152,7 @@ where
             .map(|headers| (headers, self.header.records_count))
     }
 
-    async fn get_any(&self, key: &K) -> Result<Option<RecordHeader>> {
+    async fn get_latest(&self, key: &K) -> Result<Option<RecordHeader>> {
         let root_offset = self.metadata.tree_offset;
         let buf = BytesMut::zeroed(BLOCK_SIZE);
         let (buf, leaf_offset) = self.find_leaf_node(key, root_offset, buf).await?;

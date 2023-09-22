@@ -92,7 +92,7 @@ async fn serialize_deserialize_file() {
     let test_dir = get_test_dir("serialize_deserialize_file");
     let mut inmem = InMemoryIndex::<KeyType>::new();
     (0..10000).map(|i| i.into()).for_each(|key: KeyType| {
-        let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+        let rh = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
         inmem.insert(key, vec![rh]);
     });
     let meta = vec![META_VALUE; META_SIZE];
@@ -122,7 +122,7 @@ async fn blob_size_invalidation() {
     let filename = test_dir.join("bptree_index.0.index");
     let mut inmem = InMemoryIndex::<KeyType>::new();
     (0..10000).map(|i| i.into()).for_each(|key: KeyType| {
-        let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+        let rh = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
         inmem.insert(key, vec![rh]);
     });
     let meta = vec![META_VALUE; META_SIZE];
@@ -161,7 +161,7 @@ async fn magic_byte_corruption() {
     let filename = test_dir.join("bptree_index.0.index");
     let mut inmem = InMemoryIndex::<KeyType>::new();
     (0..10000).map(|i| i.into()).for_each(|key: KeyType| {
-        let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+        let rh = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
         inmem.insert(key, vec![rh]);
     });
     let meta = vec![META_VALUE; META_SIZE];
@@ -219,7 +219,7 @@ async fn check_get_any() {
     (RANGE_FROM..RANGE_TO)
         .map(|i| i.into())
         .for_each(|key: KeyType| {
-            let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+            let rh = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
             inmem.insert(key, vec![rh]);
         });
     let meta = vec![META_VALUE; META_SIZE];
@@ -236,7 +236,7 @@ async fn check_get_any() {
     .expect("Can't create file index");
     let presented_keys = RANGE_FROM..RANGE_TO;
     for key in presented_keys.map(|k| k.into()) {
-        if let Ok(inner_res) = findex.get_any(&key).await {
+        if let Ok(inner_res) = findex.get_latest(&key).await {
             if let Some(actual_header) = inner_res {
                 let key_deserialized: usize = key.clone().into();
                 assert_eq!(
@@ -254,7 +254,7 @@ async fn check_get_any() {
     let not_presented_ranges = [0..RANGE_FROM, RANGE_TO..(RANGE_TO + 100)];
     for not_presented_keys in not_presented_ranges.iter() {
         for key in not_presented_keys.clone().map(|k| serialize(&k).unwrap()) {
-            assert_eq!(None, findex.get_any(&key.into()).await.unwrap());
+            assert_eq!(None, findex.get_latest(&key.into()).await.unwrap());
         }
     }
 
@@ -271,8 +271,8 @@ async fn preserves_records_order() {
     (RANGE_FROM..RANGE_TO)
         .map(|i| i.into())
         .for_each(|key: KeyType| {
-            let rh1 = RecordHeader::new(key.to_vec(), 1, 1, 1);
-            let rh2 = RecordHeader::new(key.to_vec(), 2, 2, 2);
+            let rh1 = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
+            let rh2 = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 2, 2, 2);
             inmem.insert(key, vec![rh1, rh2]);
         });
     let meta = vec![META_VALUE; META_SIZE];
@@ -314,7 +314,7 @@ async fn check_get() {
     (RANGE_FROM..RANGE_TO)
         .map(|i| (i % MAX_AMOUNT + 1, i.into()))
         .for_each(|(times, key): (_, KeyType)| {
-            let rh = RecordHeader::new(key.to_vec(), 1, 1, 1);
+            let rh = RecordHeader::new(key.to_vec(), BlobRecordTimestamp::now().into(), 1, 1, 1);
             let recs = (0..times).map(|_| rh.clone()).collect();
             inmem.insert(key, recs);
         });
@@ -332,7 +332,7 @@ async fn check_get() {
     .expect("Can't create file index");
     let presented_keys = RANGE_FROM..RANGE_TO;
     for key in presented_keys.map(|k| k.into()) {
-        if let Ok(inner_res) = findex.get_any(&key).await {
+        if let Ok(inner_res) = findex.get_latest(&key).await {
             if let Some(actual_header) = inner_res {
                 let key_deserialized: usize = key.clone().into();
                 assert_eq!(
