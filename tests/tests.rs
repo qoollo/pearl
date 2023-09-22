@@ -1108,6 +1108,8 @@ async fn test_mark_as_deleted_deferred_dump() {
     }
     let _ = storage.close().await;
 
+    assert!(path.join("test.1.blob").exists());
+
     let storage = common::create_test_storage(&path, 10_000).await.unwrap();
     let update_time = std::fs::metadata(&path.join("test.0.index")).expect("metadata");
     storage.delete(&delete_key, BlobRecordTimestamp::now(), false).await.unwrap();
