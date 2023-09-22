@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/storage/core.rs`."><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-be46fdc453a55015.css"><script src="../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/storage/core.rs`."><title>core.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="pearl" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1400,9 +1400,62 @@
 <a href="#1400" id="1400">1400</a>
 <a href="#1401" id="1401">1401</a>
 <a href="#1402" id="1402">1402</a>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#1403" id="1403">1403</a>
+<a href="#1404" id="1404">1404</a>
+<a href="#1405" id="1405">1405</a>
+<a href="#1406" id="1406">1406</a>
+<a href="#1407" id="1407">1407</a>
+<a href="#1408" id="1408">1408</a>
+<a href="#1409" id="1409">1409</a>
+<a href="#1410" id="1410">1410</a>
+<a href="#1411" id="1411">1411</a>
+<a href="#1412" id="1412">1412</a>
+<a href="#1413" id="1413">1413</a>
+<a href="#1414" id="1414">1414</a>
+<a href="#1415" id="1415">1415</a>
+<a href="#1416" id="1416">1416</a>
+<a href="#1417" id="1417">1417</a>
+<a href="#1418" id="1418">1418</a>
+<a href="#1419" id="1419">1419</a>
+<a href="#1420" id="1420">1420</a>
+<a href="#1421" id="1421">1421</a>
+<a href="#1422" id="1422">1422</a>
+<a href="#1423" id="1423">1423</a>
+<a href="#1424" id="1424">1424</a>
+<a href="#1425" id="1425">1425</a>
+<a href="#1426" id="1426">1426</a>
+<a href="#1427" id="1427">1427</a>
+<a href="#1428" id="1428">1428</a>
+<a href="#1429" id="1429">1429</a>
+<a href="#1430" id="1430">1430</a>
+<a href="#1431" id="1431">1431</a>
+<a href="#1432" id="1432">1432</a>
+<a href="#1433" id="1433">1433</a>
+<a href="#1434" id="1434">1434</a>
+<a href="#1435" id="1435">1435</a>
+<a href="#1436" id="1436">1436</a>
+<a href="#1437" id="1437">1437</a>
+<a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::atomic::AtomicBool;
+
+<span class="kw">use crate</span>::{
     error::ValidationErrorKind,
-    filter::{CombinedFilter, FilterTrait},
+    filter::{CombinedFilter, FilterTrait}, blob::DeleteResult,
 };
 
 <span class="kw">use super</span>::{prelude::<span class="kw-2">*</span>, read_result::BlobRecordTimestamp};
@@ -1442,7 +1495,7 @@
     for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
 {
     inner: Arc&lt;Inner&lt;K&gt;&gt;,
-    observer: Observer&lt;K&gt;,
+    observer: Observer&lt;K&gt;
 }
 
 <span class="attr">#[derive(Debug)]
@@ -1455,6 +1508,7 @@
     next_blob_id: AtomicUsize,
     iodriver: IoDriver,
     corrupted_blobs: AtomicUsize,
+    fsync_in_progress: AtomicBool,
 }
 
 <span class="attr">#[derive(Debug)]
@@ -1640,39 +1694,41 @@
     /// creation
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Storage, ArrayKey};
+    /// use pearl::{Builder, Storage, ArrayKey, BlobRecordTimestamp};
     ///
     /// async fn write_data(storage: Storage&lt;ArrayKey&lt;8&gt;&gt;) {
     ///     let key = ArrayKey::&lt;8&gt;::default();
     ///     let data = b&quot;async written to blob&quot;.to_vec().into();
-    ///     storage.write(key, data).await;
+    ///     let timestamp = BlobRecordTimestamp::now();
+    ///     storage.write(key, data, timestamp).await;
     /// }
     /// ```
     /// # Errors
     /// Fails with the same errors as [`write_with`]
     ///
     /// [`write_with`]: Storage::write_with
-    </span><span class="kw">pub async fn </span>write(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw">impl </span>AsRef&lt;K&gt;, value: Bytes) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="self">self</span>.write_with_optional_meta(key, value, <span class="prelude-val">None</span>).<span class="kw">await
+    </span><span class="kw">pub async fn </span>write(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw">impl </span>AsRef&lt;K&gt;, value: Bytes, timestamp: BlobRecordTimestamp) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="self">self</span>.write_with_optional_meta(key, value, timestamp, <span class="prelude-val">None</span>).<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Similar to [`write`] but with metadata
     /// # Examples
     /// ```no_run
-    /// use pearl::{Builder, Meta, Storage, ArrayKey};
+    /// use pearl::{Builder, Meta, Storage, ArrayKey, BlobRecordTimestamp};
     ///
     /// async fn write_data(storage: Storage&lt;ArrayKey&lt;8&gt;&gt;) {
     ///     let key = ArrayKey::&lt;8&gt;::default();
     ///     let data = b&quot;async written to blob&quot;.to_vec().into();
+    ///     let timestamp = BlobRecordTimestamp::now();
     ///     let mut meta = Meta::new();
     ///     meta.insert(&quot;version&quot;.to_string(), b&quot;1.0&quot;.to_vec());
-    ///     storage.write_with(&amp;key, data, meta).await;
+    ///     storage.write_with(&amp;key, data, timestamp, meta).await;
     /// }
     /// ```
     /// # Errors
     /// Fails if duplicates are not allowed and record already exists.
-    </span><span class="kw">pub async fn </span>write_with(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw">impl </span>AsRef&lt;K&gt;, value: Bytes, meta: Meta) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="self">self</span>.write_with_optional_meta(key, value, <span class="prelude-val">Some</span>(meta)).<span class="kw">await
+    </span><span class="kw">pub async fn </span>write_with(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw">impl </span>AsRef&lt;K&gt;, value: Bytes, timestamp: BlobRecordTimestamp, meta: Meta) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="self">self</span>.write_with_optional_meta(key, value, timestamp, <span class="prelude-val">Some</span>(meta)).<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Free all resources that may be freed without work interruption
@@ -1700,6 +1756,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         key: <span class="kw">impl </span>AsRef&lt;K&gt;,
         value: Bytes,
+        timestamp: BlobRecordTimestamp,
         meta: <span class="prelude-ty">Option</span>&lt;Meta&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>key = key.as_ref();
@@ -1718,14 +1775,14 @@
             );
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
-        <span class="kw">let </span>record = Record::create(key, value, meta.unwrap_or_default())
+        <span class="kw">let </span>record = Record::create(key, timestamp.into(), value, meta)
             .with_context(|| <span class="string">&quot;storage write with record creation failed&quot;</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>safe = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
         <span class="kw">let </span>blob = safe
             .active_blob
             .as_ref()
             .ok_or_else(Error::active_blob_not_set)<span class="question-mark">?</span>;
-        <span class="kw">let </span>result = Blob::write(blob, key, record).<span class="kw">await</span>.or_else(|err| {
+        <span class="kw">let </span>result = Blob::write(blob, key, record).<span class="kw">await</span>.or_else::&lt;anyhow::Error, <span class="kw">_</span>&gt;(|err| {
             <span class="kw">let </span>e = err.downcast::&lt;Error&gt;()<span class="question-mark">?</span>;
             <span class="kw">if let </span>ErrorKind::FileUnavailable(kind) = e.kind() {
                 <span class="kw">let </span>work_dir = <span class="self">self
@@ -1737,9 +1794,12 @@
             } <span class="kw">else </span>{
                 <span class="prelude-val">Err</span>(e.into())
             }
-        });
+        })<span class="question-mark">?</span>;
         <span class="self">self</span>.try_update_active_blob(blob).<span class="kw">await</span><span class="question-mark">?</span>;
-        result
+        <span class="kw">if </span><span class="self">self</span>.inner.should_try_fsync(result.dirty_bytes) {
+            <span class="self">self</span>.observer.try_fsync_data().<span class="kw">await</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">async fn </span>try_update_active_blob(<span class="kw-2">&amp;</span><span class="self">self</span>, active_blob: <span class="kw-2">&amp;</span>Box&lt;ASRwLock&lt;Blob&lt;K&gt;&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1834,7 +1894,11 @@
     /// Fails after any disk IO errors.
     </span><span class="kw">pub async fn </span>read_all_with_deletion_marker(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw">impl </span>AsRef&lt;K&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Entry&gt;&gt; {
         <span class="kw">let </span>key = key.as_ref();
+
         <span class="kw">let </span><span class="kw-2">mut </span>all_entries = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>deletion_marker_presence = <span class="bool-val">false</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>affected_blobs_count = <span class="number">0</span>;
+
         <span class="kw">let </span>safe = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
         <span class="kw">let </span>active_blob = safe.active_blob.as_ref();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(active_blob) = active_blob {
@@ -1847,13 +1911,12 @@
                 <span class="string">&quot;storage core read all active blob entries {}&quot;</span>,
                 entries.len()
             );
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = entries.last() {
-                <span class="kw">if </span>e.is_deleted() {
-                    <span class="kw">return </span><span class="prelude-val">Ok</span>(entries);
-                }
-            }
+  
+            deletion_marker_presence = deletion_marker_presence || entries.last().map(|e| e.is_deleted()).unwrap_or(<span class="bool-val">false</span>);
+            affected_blobs_count += <span class="kw">if </span>entries.len() &gt; <span class="number">0 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
             all_entries.extend(entries);
         }
+
         <span class="kw">let </span>blobs = safe.blobs.read().<span class="kw">await</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>futures = blobs
             .iter_possible_childs_rev(key)
@@ -1861,24 +1924,66 @@
             .collect::&lt;FuturesOrdered&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">while let </span><span class="prelude-val">Some</span>(data) = futures.next().<span class="kw">await </span>{
             <span class="kw">let </span>entries = data<span class="question-mark">?</span>;
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = entries.last() {
-                <span class="kw">if </span>e.is_deleted() {
-                    all_entries.extend(entries);
-                    <span class="kw">return </span><span class="prelude-val">Ok</span>(all_entries);
-                }
-            }
+
+            deletion_marker_presence = deletion_marker_presence || entries.last().map(|e| e.is_deleted()).unwrap_or(<span class="bool-val">false</span>);
+            affected_blobs_count += <span class="kw">if </span>entries.len() &gt; <span class="number">0 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
             all_entries.extend(entries);
         }
         <span class="macro">debug!</span>(
             <span class="string">&quot;storage core read from non-active total {} entries&quot;</span>,
             all_entries.len()
         );
-        <span class="macro">debug_assert!</span>(all_entries
-            .iter()
-            .zip(all_entries.iter().skip(<span class="number">1</span>))
-            .all(|(x, y)| x.created() &gt;= y.created()));
+
+        <span class="comment">// Try to preserve ordering by timestamp
+        </span><span class="kw">if </span>affected_blobs_count &gt; <span class="number">1 </span>{
+            <span class="comment">// If more than 1 blobs affect the result, then the order can be broken: restore it
+            </span>all_entries.sort_by(|a, b| b.timestamp().cmp(<span class="kw-2">&amp;</span>a.timestamp()));
+            <span class="kw">if </span>deletion_marker_presence {
+                <span class="comment">// If deletion marker presented, we should find it and remove records after
+                </span><span class="kw">let </span>first_del = all_entries.iter().position(|h| h.is_deleted());
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(first_del) = first_del {
+                    all_entries.truncate(first_del + <span class="number">1</span>);
+                }
+            }
+        }
+
         <span class="prelude-val">Ok</span>(all_entries)
     }
+
+
+    <span class="doccomment">/// Returns latest Entry by timestamp
+    </span><span class="kw">async fn </span>get_latest_entry(
+        safe: <span class="kw-2">&amp;</span>Safe&lt;K&gt;,
+        key: <span class="kw-2">&amp;</span>K,
+        meta: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Meta&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ReadResult&lt;Entry&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>latest_entry: ReadResult&lt;Entry&gt; = ReadResult::NotFound;
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ablob) = safe.active_blob.as_ref() {
+            <span class="kw">let </span>ablob_entry = ablob.read().<span class="kw">await</span>.get_latest_entry(key, meta, <span class="bool-val">true</span>).<span class="kw">await</span>.map_err(|err| {
+                <span class="macro">debug!</span>(<span class="string">&quot;get_latest_entry from active blob returned error: {:?}&quot;</span>, err);
+                err
+            })<span class="question-mark">?</span>;
+
+            latest_entry = latest_entry.latest(ablob_entry);
+        }
+
+        <span class="kw">let </span>blobs = safe.blobs.read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>stream = blobs
+            .iter_possible_childs_rev(key)
+            .map(|(<span class="kw">_</span>, blob)| blob.data.get_latest_entry(key, meta, <span class="bool-val">true</span>))
+            .collect::&lt;FuturesOrdered&lt;<span class="kw">_</span>&gt;&gt;();
+
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(entry) = stream.next().<span class="kw">await </span>{
+            <span class="kw">let </span>entry = entry.map_err(|err| {
+                <span class="macro">debug!</span>(<span class="string">&quot;get_latest_entry from closed blob returned error: {:?}&quot;</span>, err);
+                err
+            })<span class="question-mark">?</span>;
+            latest_entry = latest_entry.latest(entry);
+        }
+
+        <span class="prelude-val">Ok</span>(latest_entry)
+    } 
 
     <span class="kw">async fn </span>read_with_optional_meta(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -1887,62 +1992,22 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ReadResult&lt;Bytes&gt;&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;storage read with optional meta {:?}, {:?}&quot;</span>, key, meta);
         <span class="kw">let </span>safe = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(ablob) = safe.active_blob.as_ref() {
-            <span class="kw">match </span>ablob.read().<span class="kw">await</span>.read_last(key, meta, <span class="bool-val">true</span>).<span class="kw">await </span>{
-                <span class="prelude-val">Ok</span>(data) =&gt; {
-                    <span class="kw">if </span>data.is_presented() {
-                        <span class="macro">debug!</span>(<span class="string">&quot;storage read with optional meta active blob returned data&quot;</span>);
-                        <span class="kw">return </span><span class="prelude-val">Ok</span>(data);
-                    }
-                }
-                <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">debug!</span>(<span class="string">&quot;read with optional meta active blob returned: {:#?}&quot;</span>, e),
-            }
-        }
-        <span class="self">Self</span>::get_data_last(<span class="kw-2">&amp;</span>safe, key, meta).<span class="kw">await
-    </span>}
+        <span class="kw">let </span>latest_entry = <span class="self">Self</span>::get_latest_entry(<span class="kw-2">&amp;</span>safe, key, meta).<span class="kw">await</span><span class="question-mark">?</span>;
 
-    <span class="kw">async fn </span>get_data_last(
-        safe: <span class="kw-2">&amp;</span>Safe&lt;K&gt;,
-        key: <span class="kw-2">&amp;</span>K,
-        meta: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Meta&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ReadResult&lt;Bytes&gt;&gt; {
-        <span class="kw">let </span>blobs = safe.blobs.read().<span class="kw">await</span>;
-        <span class="kw">let </span>possible_blobs = blobs
-            .iter_possible_childs_rev(key)
-            .map(|(id, blob)| <span class="kw">async move </span>{
-                <span class="kw">if </span>!<span class="macro">matches!</span>(blob.data.check_filter(key).<span class="kw">await</span>, FilterResult::NotContains) {
-                    <span class="prelude-val">Some</span>(id)
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
-            })
-            .collect::&lt;FuturesOrdered&lt;<span class="kw">_</span>&gt;&gt;()
-            .filter_map(|x| x)
-            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-            .<span class="kw">await</span>;
-        <span class="macro">debug!</span>(
-            <span class="string">&quot;len of possible blobs: {} (start len: {})&quot;</span>,
-            possible_blobs.len(),
-            blobs.len()
-        );
-        <span class="kw">let </span>stream: FuturesOrdered&lt;<span class="kw">_</span>&gt; = possible_blobs
-            .into_iter()
-            .filter_map(|id| blobs.get_child(id))
-            .map(|blob| blob.data.read_last(key, meta, <span class="bool-val">false</span>))
-            .collect();
-        <span class="macro">debug!</span>(<span class="string">&quot;read with optional meta {} closed blobs&quot;</span>, stream.len());
-
-        <span class="kw">let </span><span class="kw-2">mut </span>task = stream.skip_while(|read_res| {
-            <span class="kw">match </span>read_res {
-                <span class="prelude-val">Ok</span>(inner_res) =&gt; inner_res.is_not_found(), <span class="comment">// Skip not found
-                </span><span class="prelude-val">Err</span>(e) =&gt; {
-                    <span class="macro">debug!</span>(<span class="string">&quot;error reading data from Blob (blob.read_any): {:?}&quot;</span>, e);
-                    <span class="bool-val">true </span><span class="comment">// skip errors
-                </span>}
-            }
-        });
-
-        task.next().<span class="kw">await</span>.unwrap_or(<span class="prelude-val">Ok</span>(ReadResult::NotFound))
+        <span class="kw">match </span>latest_entry {
+            ReadResult::Found(entry) =&gt; {
+                <span class="macro">trace!</span>(<span class="string">&quot;Storage::read_with_optional_meta: entry found&quot;</span>);
+                <span class="kw">let </span>buf = entry
+                    .load()
+                    .<span class="kw">await
+                    </span>.with_context(|| <span class="macro">format!</span>(<span class="string">&quot;Failed to read data for key {:?} with meta {:?}&quot;</span>, key, meta))<span class="question-mark">?
+                    </span>.into_data();
+                <span class="macro">trace!</span>(<span class="string">&quot;Storage::read_with_optional_meta: loaded bytes: {}&quot;</span>, buf.len());
+                <span class="prelude-val">Ok</span>(ReadResult::Found(buf))
+            },
+            ReadResult::Deleted(ts) =&gt; <span class="prelude-val">Ok</span>(ReadResult::Deleted(ts)),
+            ReadResult::NotFound =&gt; <span class="prelude-val">Ok</span>(ReadResult::NotFound)
+        }     
     }
 
     <span class="doccomment">/// Stop blob updater and release lock file
@@ -2297,22 +2362,9 @@
         key: <span class="kw-2">&amp;</span>K,
         meta: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Meta&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ReadResult&lt;BlobRecordTimestamp&gt;&gt; {
-        <span class="kw">let </span>inner = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(active_blob) = <span class="kw-2">&amp;</span>inner.active_blob {
-            <span class="kw">let </span>res = active_blob.read().<span class="kw">await</span>.contains(key, meta).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">if </span>res.is_presented() {
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(res);
-            }
-        }
-        <span class="kw">let </span>blobs = inner.blobs.read().<span class="kw">await</span>;
-        <span class="kw">for </span>blob <span class="kw">in </span>blobs.iter_possible_childs_rev(key) {
-            <span class="kw">let </span>res = blob.<span class="number">1</span>.data.contains(key, meta).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">if </span>res.is_presented() {
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(res);
-            }
-        }
-
-        <span class="prelude-val">Ok</span>(ReadResult::NotFound)
+        <span class="kw">let </span>safe = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
+        <span class="kw">let </span>latest_result = <span class="self">Self</span>::get_latest_entry(<span class="kw-2">&amp;</span>safe, key, meta).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(latest_result.map(|entry| entry.timestamp()))
     }
 
     <span class="doccomment">/// `check_filters` is used to check whether a key is in storage.
@@ -2399,12 +2451,23 @@
     <span class="doccomment">/// Delete entries with matching key
     /// # Errors
     /// Fails after any disk IO errors.
-    </span><span class="kw">pub async fn </span>delete(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw">impl </span>AsRef&lt;K&gt;, only_if_presented: bool) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
+    </span><span class="kw">pub async fn </span>delete(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw">impl </span>AsRef&lt;K&gt;, timestamp: BlobRecordTimestamp, only_if_presented: bool) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
+        <span class="self">self</span>.delete_with_optional_meta(key, timestamp, <span class="prelude-val">None</span>, only_if_presented).<span class="kw">await
+    </span>}
+
+    <span class="doccomment">/// Delete entries with matching key. Appends metadata to deletion record
+    /// # Errors
+    /// Fails after any disk IO errors.
+    </span><span class="kw">pub async fn </span>delete_with(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw">impl </span>AsRef&lt;K&gt;, timestamp: BlobRecordTimestamp, meta: Meta, only_if_presented: bool) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
+        <span class="self">self</span>.delete_with_optional_meta(key, timestamp, <span class="prelude-val">Some</span>(meta), only_if_presented).<span class="kw">await
+    </span>}
+
+    <span class="kw">async fn </span>delete_with_optional_meta(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw">impl </span>AsRef&lt;K&gt;, timestamp: BlobRecordTimestamp, meta: <span class="prelude-ty">Option</span>&lt;Meta&gt;, only_if_presented: bool) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
         {
             <span class="comment">// Try read lock first
             </span><span class="kw">let </span>safe = <span class="self">self</span>.inner.safe.read().<span class="kw">await</span>;
             <span class="kw">if </span>only_if_presented || safe.active_blob.is_some() {
-                <span class="kw">return </span><span class="self">self</span>.delete_core(<span class="kw-2">&amp;</span>safe, key.as_ref(), only_if_presented).<span class="kw">await</span>;
+                <span class="kw">return </span><span class="self">self</span>.delete_core(<span class="kw-2">&amp;</span>safe, key.as_ref(), timestamp, meta, only_if_presented).<span class="kw">await</span>;
             }
         }
 
@@ -2413,32 +2476,40 @@
         <span class="kw">if </span>!only_if_presented {
             <span class="self">self</span>.inner.ensure_active_blob_exists(<span class="kw-2">&amp;mut </span>safe).<span class="kw">await</span><span class="question-mark">?</span>;
         }
-        <span class="kw">return </span><span class="self">self</span>.delete_core(<span class="kw-2">&amp;mut </span>safe, key.as_ref(), only_if_presented).<span class="kw">await</span>;
+        <span class="kw">return </span><span class="self">self</span>.delete_core(<span class="kw-2">&amp;mut </span>safe, key.as_ref(), timestamp, meta, only_if_presented).<span class="kw">await</span>;
     }
 
     <span class="doccomment">/// Core deletion logic, when lock on `Safe&lt;K&gt;` is acquired
-    </span><span class="kw">async fn </span>delete_core(<span class="kw-2">&amp;</span><span class="self">self</span>, safe: <span class="kw-2">&amp;</span>Safe&lt;K&gt;, key: <span class="kw-2">&amp;</span>K, only_if_presented: bool) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
-        <span class="kw">let </span>deleted_in_active = <span class="self">Self</span>::mark_all_as_deleted_active(safe, key, only_if_presented).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let </span>deleted_in_closed = <span class="self">Self</span>::mark_all_as_deleted_closed(safe, key).<span class="kw">await</span><span class="question-mark">?</span>;
+    </span><span class="kw">async fn </span>delete_core(<span class="kw-2">&amp;</span><span class="self">self</span>, safe: <span class="kw-2">&amp;</span>Safe&lt;K&gt;, key: <span class="kw-2">&amp;</span>K, timestamp: BlobRecordTimestamp, meta: <span class="prelude-ty">Option</span>&lt;Meta&gt;, only_if_presented: bool) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
+        <span class="kw">let </span>deleted_in_active_result = <span class="self">Self</span>::delete_in_active(safe, key, timestamp, meta.clone(), only_if_presented).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>deleted_in_active = deleted_in_active_result.as_ref().map(|r| <span class="kw">if </span>r.deleted { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>}).unwrap_or(<span class="number">0</span>);
+        <span class="kw">let </span>deleted_in_closed = <span class="self">Self</span>::delete_in_closed(safe, key, timestamp, meta).<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="kw">if </span>deleted_in_closed &gt; <span class="number">0 </span>{
             <span class="self">self</span>.observer.defer_dump_old_blob_indexes().<span class="kw">await</span>;
+        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(result) = deleted_in_active_result {
+            <span class="kw">if </span><span class="self">self</span>.inner.should_try_fsync(result.dirty_bytes) {
+                <span class="self">self</span>.observer.try_fsync_data().<span class="kw">await</span>;
+            }
         }
 
         <span class="macro">debug!</span>(<span class="string">&quot;{} deleted total&quot;</span>, deleted_in_active + deleted_in_closed);
         <span class="prelude-val">Ok</span>(deleted_in_active + deleted_in_closed)
     }
 
-    <span class="kw">async fn </span>mark_all_as_deleted_closed(safe: <span class="kw-2">&amp;</span>Safe&lt;K&gt;, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>blobs = safe.blobs.write().<span class="kw">await</span>;
+    <span class="kw">async fn </span>delete_in_closed(safe: <span class="kw-2">&amp;</span>Safe&lt;K&gt;, key: <span class="kw-2">&amp;</span>K, timestamp: BlobRecordTimestamp, meta: <span class="prelude-ty">Option</span>&lt;Meta&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
+        <span class="kw">const </span>DELETE_ONLY_IF_PRESENTED: bool = <span class="bool-val">true</span>; <span class="comment">// For closed blobs this should always be `true`
+
+        </span><span class="kw">let </span><span class="kw-2">mut </span>blobs = safe.blobs.write().<span class="kw">await</span>;
         <span class="kw">let </span>entries_closed_blobs = blobs
             .iter_mut()
-            .map(|b| b.mark_all_as_deleted(key, <span class="bool-val">false</span>))
+            .map(|b| b.delete(key, timestamp, meta.clone(), DELETE_ONLY_IF_PRESENTED))
             .collect::&lt;FuturesUnordered&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>total = entries_closed_blobs
             .map(|result| <span class="kw">match </span>result {
-                <span class="prelude-val">Ok</span>(flag) =&gt; {
-                    <span class="kw">if </span>flag {
+                <span class="prelude-val">Ok</span>(result) =&gt; {
+                    <span class="kw">if </span>result.deleted {
                         <span class="number">1
                     </span>} <span class="kw">else </span>{
                         <span class="number">0
@@ -2455,28 +2526,28 @@
         <span class="prelude-val">Ok</span>(total <span class="kw">as </span>u64)
     }
 
-    <span class="kw">async fn </span>mark_all_as_deleted_active(
+    <span class="kw">async fn </span>delete_in_active(
         safe: <span class="kw-2">&amp;</span>Safe&lt;K&gt;,
         key: <span class="kw-2">&amp;</span>K,
+        timestamp: BlobRecordTimestamp,
+        meta: <span class="prelude-ty">Option</span>&lt;Meta&gt;,
         only_if_presented: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;DeleteResult&gt;&gt; {
         <span class="kw">if </span>!only_if_presented {
             <span class="macro">assert!</span>(safe.active_blob.is_some(), <span class="string">&quot;Active BLOB should be initialized before calling &#39;mark_all_as_deleted_active&#39;&quot;</span>);
         }
         <span class="kw">let </span>active_blob = safe.active_blob.as_deref();
-        <span class="kw">let </span>count = <span class="kw">if let </span><span class="prelude-val">Some</span>(active_blob) = active_blob {
-            <span class="kw">let </span>is_deleted = active_blob
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(active_blob) = active_blob {
+            <span class="kw">let </span>result = active_blob
                 .write()
                 .<span class="kw">await
-                </span>.mark_all_as_deleted(key, only_if_presented)
+                </span>.delete(key, timestamp, meta, only_if_presented)
                 .<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let </span>count = <span class="kw">if </span>is_deleted { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
-            <span class="macro">debug!</span>(<span class="string">&quot;{} deleted from active blob&quot;</span>, count);
-            count
+            <span class="macro">debug!</span>(<span class="string">&quot;Deleted {} records from active blob&quot;</span>, <span class="kw">if </span>result.deleted { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>});
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(result))
         } <span class="kw">else </span>{
-            <span class="number">0
-        </span>};
-        <span class="prelude-val">Ok</span>(count)
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+        }
     }
 }
 
@@ -2491,6 +2562,7 @@
             next_blob_id: AtomicUsize::new(<span class="number">0</span>),
             iodriver,
             corrupted_blobs: AtomicUsize::new(<span class="number">0</span>),
+            fsync_in_progress: AtomicBool::new(<span class="bool-val">false</span>)
         }
     }
 
@@ -2589,26 +2661,24 @@
     // It&#39;ll make code a bit more complicated, but blobs will sequentially grow for sure
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>next_blob_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;blob::FileName&gt; {
         <span class="kw">let </span>next_id = <span class="self">self</span>.next_blob_id.fetch_add(<span class="number">1</span>, Ordering::AcqRel);
-        <span class="kw">let </span>prefix = <span class="self">self
+        <span class="kw">let </span>name_prefix = <span class="self">self
             </span>.config
             .blob_file_name_prefix()
             .ok_or_else(|| {
                 <span class="macro">error!</span>(<span class="string">&quot;Blob file name prefix is not set&quot;</span>);
                 Error::uninitialized()
-            })<span class="question-mark">?
-            </span>.to_owned();
+            })<span class="question-mark">?</span>;
         <span class="kw">let </span>dir = <span class="self">self
             </span>.config
             .work_dir()
             .ok_or_else(|| {
                 <span class="macro">error!</span>(<span class="string">&quot;Work dir is not set&quot;</span>);
                 Error::uninitialized()
-            })<span class="question-mark">?
-            </span>.to_owned();
+            })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(blob::FileName::new(
-            prefix,
+            name_prefix,
             next_id,
-            BLOB_FILE_EXTENSION.to_owned(),
+            BLOB_FILE_EXTENSION,
             dir,
         ))
     }
@@ -2630,13 +2700,45 @@
         </span>}
     }
 
-    <span class="kw">async fn </span>fsyncdata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; IOResult&lt;()&gt; {
-        <span class="self">self</span>.safe.read().<span class="kw">await</span>.fsyncdata().<span class="kw">await
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>fsyncdata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; IOResult&lt;()&gt; {
+        <span class="kw">if </span><span class="self">self</span>.fsync_in_progress.compare_exchange(<span class="bool-val">false</span>, <span class="bool-val">true</span>, Ordering::AcqRel, Ordering::Acquire).is_err() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(())
+        }
+
+        <span class="kw">let </span>_flag = ResetableFlag { flag: <span class="kw-2">&amp;</span><span class="self">self</span>.fsync_in_progress };
+
+        <span class="kw">let </span>safe = <span class="self">self</span>.safe.read().<span class="kw">await</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ablob) = <span class="kw-2">&amp;</span>safe.active_blob {
+            <span class="kw">let </span>ablob = ablob.read().<span class="kw">await</span>;
+            <span class="kw">if </span>!<span class="self">self</span>.too_many_dirty_bytes(ablob.file_dirty_bytes()) {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+            }
+        }
+
+        safe.fsyncdata().<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Dumps indexes on old blobs. This method is slow, so it is better to run it in background
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>try_dump_old_blob_indexes(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         Safe::try_dump_old_blob_indexes(<span class="kw-2">&amp;</span><span class="self">self</span>.safe, <span class="self">self</span>.get_dump_sem(), Duration::from_millis(<span class="number">200</span>)).<span class="kw">await</span>;
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>should_try_fsync(<span class="kw-2">&amp;</span><span class="self">self</span>, dirty_bytes: u64) -&gt; bool {
+        <span class="self">self</span>.too_many_dirty_bytes(dirty_bytes) &amp;&amp; !<span class="self">self</span>.fsync_in_progress.load(Ordering::Acquire)
+    }
+
+    <span class="kw">fn </span>too_many_dirty_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, dirty_bytes: u64) -&gt; bool {
+        dirty_bytes &gt; <span class="self">self</span>.config().max_dirty_bytes_before_sync()
+    }
+}
+
+<span class="kw">struct </span>ResetableFlag&lt;<span class="lifetime">&#39;a</span>&gt; {
+    flag: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>AtomicBool
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Drop <span class="kw">for </span>ResetableFlag&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.flag.store(<span class="bool-val">false</span>, Ordering::Release);
     }
 }
 
@@ -2802,5 +2904,4 @@
         active + closed
     }
 }
-</code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="pearl" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
+</code></pre></div></section></main></body></html>

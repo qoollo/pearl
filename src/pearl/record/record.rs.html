@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/record/record.rs`."><title>record.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-be46fdc453a55015.css"><script src="../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/record/record.rs`."><title>record.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="pearl" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../pearl/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -408,45 +408,7 @@
 <a href="#408" id="408">408</a>
 <a href="#409" id="409">409</a>
 <a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{error::ValidationErrorKind, prelude::<span class="kw-2">*</span>};
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{error::ValidationErrorKind, prelude::<span class="kw-2">*</span>};
 <span class="kw">use </span>bytes::{BufMut, Bytes, BytesMut};
 
 <span class="kw">use </span><span class="kw">super</span>::partially_serialized::PartiallySerializedRecord;
@@ -456,45 +418,11 @@
 
 <span class="kw">const </span>MAX_SINGLE_PASS_DATA_SIZE: usize = <span class="number">4 </span>* <span class="number">1024</span>;
 
-<span class="attr">#[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
+<span class="attr">#[derive(Default, Clone, PartialEq)]
 </span><span class="kw">pub struct </span>Record {
     <span class="kw">pub </span>header: Header,
     <span class="kw">pub </span>meta: Meta,
-    <span class="attr">#[serde(
-        serialize_with = <span class="string">&quot;serialize_data&quot;</span>,
-        deserialize_with = <span class="string">&quot;deserialize_data&quot;
-    </span>)]
-    </span><span class="kw">pub </span>data: Bytes,
-}
-
-<span class="kw">fn </span>serialize_data&lt;S&gt;(data: <span class="kw-2">&amp;</span>Bytes, serializer: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
-<span class="kw">where
-    </span>S: serde::Serializer,
-{
-    serializer.serialize_bytes(data.as_ref())
-}
-
-<span class="kw">fn </span>deserialize_data&lt;<span class="lifetime">&#39;de</span>, D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;Bytes, D::Error&gt;
-<span class="kw">where
-    </span>D: serde::Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
-{
-    <span class="kw">struct </span>DataVisitor();
-    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>DataVisitor {
-        <span class="kw">type </span>Value = Bytes;
-
-        <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-            formatter.write_str(<span class="string">&quot;bytes&quot;</span>)
-        }
-
-        <span class="kw">fn </span>visit_byte_buf&lt;E&gt;(<span class="self">self</span>, v: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Value, E&gt;
-        <span class="kw">where
-            </span>E: serde::de::Error,
-        {
-            <span class="prelude-val">Ok</span>(v.into())
-        }
-    }
-
-    deserializer.deserialize_byte_buf(DataVisitor())
+    <span class="kw">pub </span>data: Bytes,
 }
 
 <span class="kw">impl </span>Debug <span class="kw">for </span>Record {
@@ -517,8 +445,8 @@
     data_size: u64,
     flags: u8,
     blob_offset: u64,
-    created: u64,
-    data_checksum: u32,
+    timestamp: u64, <span class="comment">// This was previously a &#39;created&#39; field. Adding new field is a breaking change. TODO: add back &#39;created&#39; in the future releases
+    </span>data_checksum: u32,
     header_checksum: u32,
 }
 
@@ -581,14 +509,15 @@
     }
 
     <span class="doccomment">/// Creates new `Record` with provided data, key and meta.
-    </span><span class="kw">pub fn </span>create&lt;K&gt;(key: <span class="kw-2">&amp;</span>K, data: Bytes, meta: Meta) -&gt; bincode::Result&lt;<span class="self">Self</span>&gt;
+    </span><span class="kw">pub fn </span>create&lt;K&gt;(key: <span class="kw-2">&amp;</span>K, timestamp: u64, data: Bytes, meta: <span class="prelude-ty">Option</span>&lt;Meta&gt;) -&gt; bincode::Result&lt;<span class="self">Self</span>&gt;
     <span class="kw">where
         for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt;,
     {
         <span class="kw">let </span>key = key.as_ref().to_vec();
+        <span class="kw">let </span>meta = meta.unwrap_or_default();
         <span class="kw">let </span>meta_size = meta.serialized_size();
         <span class="kw">let </span>data_checksum = CRC32C.checksum(<span class="kw-2">&amp;</span>data);
-        <span class="kw">let </span>header = Header::new(key, meta_size, data.len() <span class="kw">as </span>u64, data_checksum);
+        <span class="kw">let </span>header = Header::new(key, timestamp, meta_size, data.len() <span class="kw">as </span>u64, data_checksum);
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ header, meta, data })
     }
 
@@ -623,11 +552,11 @@
         ))
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>deleted&lt;K&gt;(key: <span class="kw-2">&amp;</span>K) -&gt; bincode::Result&lt;<span class="self">Self</span>&gt;
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>deleted&lt;K&gt;(key: <span class="kw-2">&amp;</span>K, timestamp: u64, meta: <span class="prelude-ty">Option</span>&lt;Meta&gt;) -&gt; bincode::Result&lt;<span class="self">Self</span>&gt;
     <span class="kw">where
         for</span>&lt;<span class="lifetime">&#39;a</span>&gt; K: Key&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let </span><span class="kw-2">mut </span>record = Record::create(key, Bytes::new(), Meta::default())<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>record = Record::create(key, timestamp, Bytes::new(), meta)<span class="question-mark">?</span>;
         record.header.mark_as_deleted()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(record)
     }
@@ -639,23 +568,7 @@
     }
 
     <span class="kw">fn </span>check_data_checksum(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="self">Self</span>::data_checksum_audit(<span class="kw-2">&amp;</span><span class="self">self</span>.header, <span class="kw-2">&amp;</span><span class="self">self</span>.data)
-    }
-
-    <span class="kw">pub fn </span>data_checksum_audit(header: <span class="kw-2">&amp;</span>Header, data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>calc_crc = CRC32C.checksum(data);
-        <span class="kw">if </span>calc_crc == header.data_checksum {
-            <span class="prelude-val">Ok</span>(())
-        } <span class="kw">else </span>{
-            <span class="kw">let </span>cause = <span class="macro">format!</span>(
-                <span class="string">&quot;wrong data checksum {} vs {}&quot;</span>,
-                calc_crc, header.data_checksum
-            );
-            <span class="kw">let </span>param = ValidationErrorKind::RecordDataChecksum;
-            <span class="kw">let </span>e = Error::validation(param, cause);
-            <span class="macro">error!</span>(<span class="string">&quot;{:#?}&quot;</span>, e);
-            <span class="prelude-val">Err</span>(e.into())
-        }
+        <span class="self">self</span>.header.data_checksum_audit(<span class="kw-2">&amp;</span><span class="self">self</span>.data)
     }
 
     <span class="kw">pub fn </span>meta(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Meta {
@@ -664,14 +577,7 @@
 }
 
 <span class="kw">impl </span>Header {
-    <span class="kw">pub fn </span>new(key: Vec&lt;u8&gt;, meta_size: u64, data_size: u64, data_checksum: u32) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>created = std::time::UNIX_EPOCH.elapsed().map_or_else(
-            |e| {
-                <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, e);
-                <span class="number">0
-            </span>},
-            |d| d.as_secs(),
-        );
+    <span class="kw">pub fn </span>new(key: Vec&lt;u8&gt;, timestamp: u64, meta_size: u64, data_size: u64, data_checksum: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             magic_byte: RECORD_MAGIC_BYTE,
             key,
@@ -679,7 +585,7 @@
             data_size,
             flags: <span class="number">0</span>,
             blob_offset: <span class="number">0</span>,
-            created,
+            timestamp: timestamp,
             data_checksum,
             header_checksum: <span class="number">0</span>,
         }
@@ -813,18 +719,36 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>data_checksum_audit(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>calc_crc = CRC32C.checksum(data);
+        <span class="kw">if </span>calc_crc == <span class="self">self</span>.data_checksum {
+            <span class="prelude-val">Ok</span>(())
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>cause = <span class="macro">format!</span>(
+                <span class="string">&quot;wrong data checksum {} vs {}&quot;</span>,
+                calc_crc, <span class="self">self</span>.data_checksum
+            );
+            <span class="kw">let </span>param = ValidationErrorKind::RecordDataChecksum;
+            <span class="kw">let </span>e = Error::validation(param, cause);
+            <span class="macro">error!</span>(<span class="string">&quot;{:#?}&quot;</span>, e);
+            <span class="prelude-val">Err</span>(e.into())
+        }
+    }
+
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>mark_as_deleted(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bincode::Result&lt;()&gt; {
         <span class="self">self</span>.flags |= DELETE_FLAG;
         <span class="self">self</span>.update_checksum()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_deleted(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    <span class="attr">#[inline]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_deleted(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.flags &amp; DELETE_FLAG == DELETE_FLAG
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>created(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
-        <span class="self">self</span>.created
+    <span class="attr">#[inline]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>timestamp(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.timestamp
     }
 }
 
@@ -844,7 +768,7 @@
             <span class="kw">let </span>checksum: u32 = CRC32C.checksum(<span class="kw-2">&amp;</span>data);
             <span class="kw">let </span>meta = Meta::new();
             <span class="kw">let </span>header =
-                RecordHeader::new(key, meta.serialized_size(), data.len() <span class="kw">as </span>u64, checksum);
+                RecordHeader::new(key, <span class="number">101</span>, meta.serialized_size(), data.len() <span class="kw">as </span>u64, checksum);
             <span class="kw">let </span>header_size = header.serialized_size();
             <span class="kw">let </span>record = Record::new(header, meta, data);
             <span class="kw">let </span>offset: u64 = <span class="number">101 </span>* i <span class="kw">as </span>u64;
@@ -869,7 +793,7 @@
             <span class="kw">let </span>checksum: u32 = CRC32C.checksum(<span class="kw-2">&amp;</span>data);
             <span class="kw">let </span>meta = Meta::new();
             <span class="kw">let </span><span class="kw-2">mut </span>header =
-                RecordHeader::new(key, meta.serialized_size(), data.len() <span class="kw">as </span>u64, checksum);
+                RecordHeader::new(key, <span class="number">101</span>, meta.serialized_size(), data.len() <span class="kw">as </span>u64, checksum);
             <span class="kw">let </span>header_size = header.serialized_size() <span class="kw">as </span>usize;
             <span class="kw">let </span>record = Record::new(header.clone(), meta.clone(), data.clone());
             <span class="kw">let </span>offset: u64 = <span class="number">101 </span>* i <span class="kw">as </span>u64;
@@ -894,5 +818,4 @@
         <span class="prelude-val">Ok</span>(())
     }
 }
-</code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="pearl" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
+</code></pre></div></section></main></body></html>
