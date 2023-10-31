@@ -15,7 +15,8 @@ impl<K: for<'a> Key<'a>> Writer<K> {
             .blob_file_name_prefix("benchmark")
             .max_blob_size(max_blob_size)
             .max_data_in_blob(max_data_in_blob)
-            .work_dir(tmp_dir.join("pearl_benchmark"));
+            .work_dir(tmp_dir.join("pearl_benchmark"))
+            .set_io_driver(pearl::IoDriver::new());
         if allow_duplicates {
             info!("duplicates allowed");
             builder = builder.allow_duplicates();
