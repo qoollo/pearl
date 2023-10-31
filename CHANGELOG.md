@@ -10,7 +10,7 @@ Pearl changelog
 
 
 #### Fixed
-
+- Benchmark build error (#296)
 
 #### Updated
 
