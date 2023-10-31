@@ -28,7 +28,10 @@ codegen-units = 1
 
 [dependencies]
 # Don't update without checking for backwards compatibility!!!
-ahash = "=0.7.6"
+# ahash = "=0.7.6"
+
+# ahash = 0.7.6 release
+ahash = { git = 'https://github.com/tkaitchuck/aHash/', rev = 'e77cab8c1e15bfc9f54dfd28bd8820c2a7bb27c4' } 
 
 anyhow = "1.0"
 async-trait = "0.1"
@@ -50,13 +53,14 @@ async-lock = "2.7"
 # Benchmark only dependencies
 clap = { version = "3.2", optional = true }
 env_logger = { version = "0.9", optional = true }
+rand = { version = "0.8", optional = true }
 
 [dependencies.tokio]
 version = "1.28"
 features = ["fs", "io-util", "sync", "time", "rt", "macros", "rt-multi-thread"]
 
 [features]
-benchmark = ["dep:clap", "dep:env_logger"]
+benchmark = ["dep:clap", "dep:env_logger", "dep:rand"]
 async-io-rio = ["dep:rio"]
 
 [lib]

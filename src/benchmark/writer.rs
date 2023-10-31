@@ -1,11 +1,10 @@
 use super::prelude::*;
-use pearl::rio;
 
-pub struct Writer<K: Key + 'static> {
+pub struct Writer<K: for<'a> Key<'a> + 'static> {
     storage: Storage<K>,
 }
 
-impl<K: Key> Writer<K> {
+impl<K: for<'a> Key<'a>> Writer<K> {
     pub fn new(
         tmp_dir: &Path,
         max_blob_size: u64,
@@ -22,8 +21,7 @@ impl<K: Key> Writer<K> {
             builder = builder.allow_duplicates();
         }
 
-        let rio = rio::new().unwrap();
-        let storage = builder.enable_aio(rio).build().unwrap();
+        let storage = builder.build().unwrap();
         Self { storage }
     }
 
@@ -35,14 +33,17 @@ impl<K: Key> Writer<K> {
         let kbuf: &[u8] = key.as_ref().as_ref();
         let mut report = Report::new(kbuf.len(), data.len());
         let now = Instant::now();
-        self.storage.write(key, data).await.unwrap();
+        self.storage
+            .write(key, data.into(), BlobRecordTimestamp::now())
+            .await
+            .unwrap();
         debug!("write finished");
         report.set_latency(now);
         tx.try_send(report).unwrap();
         debug!("report sent");
     }
 
-    pub async fn close(&self) {
-        self.storage.clone().close().await.unwrap();
+    pub async fn close(self) {
+        self.storage.close().await.unwrap();
     }
 }
