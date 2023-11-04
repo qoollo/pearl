@@ -29,7 +29,7 @@ fn test_hash_algorithm_compat() {
 }
 
 fn test_hash(data: &[u8], eq_to: u64) {
-    let mut hasher_7 = ahash::AHasher::new_with_keys(1, 2);
+    let mut hasher_7 = pearl::ahash::AHasher::new_with_keys(1, 2);
     hasher_7.write(data);
     let hash_7 = hasher_7.finish();
 
