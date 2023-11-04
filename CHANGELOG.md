@@ -8,6 +8,7 @@ Pearl changelog
 #### Changed
 
 #### Fixed
+- Fix build of version 0.9.5 (#298)
 
 #### Updated
 
