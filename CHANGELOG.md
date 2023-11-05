@@ -10,7 +10,7 @@ Pearl changelog
 
 
 #### Fixed
-
+- Fixed build warnings (#300)
 
 #### Updated
 

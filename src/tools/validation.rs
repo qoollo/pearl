@@ -28,7 +28,7 @@ where
         header.blob_size()
     };
     let headers = if header.version() < HEADER_VERSION {
-        return Err(Error::index_header_validation_error(format!(
+        return Err(ToolsError::index_header_validation_error(format!(
             "Index version is outdated. Passed version: {}, latest version: {}",
             header.version(),
             HEADER_VERSION
@@ -43,7 +43,7 @@ where
             AnyResult::<_>::Ok(res.0)
         })??
     } else {
-        return Err(Error::index_header_validation_error("unknown header version").into());
+        return Err(ToolsError::index_header_validation_error("unknown header version").into());
     };
     for (_, headers) in headers {
         for header in headers {

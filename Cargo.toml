@@ -28,7 +28,8 @@ codegen-units = 1
 
 [dependencies]
 # Don't update without checking for backwards compatibility!!!
-ahash = "=0.7.6"
+# ahash = "=0.7.6"
+ahash = { git = 'https://github.com/tkaitchuck/aHash/', rev = 'e77cab8c1e15bfc9f54dfd28bd8820c2a7bb27c4' } 
 
 anyhow = "1.0"
 async-trait = "0.1"

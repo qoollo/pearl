@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 /// The error type for `Storage` operations.
-#[derive(Debug, Error)]
+#[derive(Debug, ThisError)]
 pub struct Error {
     kind: Kind,
 }
