@@ -10,7 +10,6 @@ fn main() {
     if let Err(e) = std::fs::write(path, content) {
         println!("failed to write build time: {}", e);
     }
-    println!("cargo:rerun-if-changed=build.rs");
 
     // aHash build script
     let arch = std::env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH was not set");
