@@ -45,11 +45,7 @@ features = ["fs", "io-util", "sync", "time", "rt", "macros", "rt-multi-thread"]
 
 [features]
 # default = ["benchmark"]
-default = ["runtime-rng"]
 benchmark = ["clap"]
-
-# Runtime random key generation using getrandom.
-runtime-rng = ["getrandom"]
 
 [lib]
 name = "pearl"

@@ -3,7 +3,7 @@
 // Taken from aHash version 0.7.4 (commit ffa04fcb81f39755f636c75c9b7aa06533c0ae75)
 
 #![allow(clippy::complexity)]
-pub(crate) trait Convert<To> {
+pub trait Convert<To> {
     fn convert(self) -> To;
 }
 

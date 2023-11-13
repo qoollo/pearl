@@ -17,17 +17,7 @@
 
 #[macro_use]
 mod convert;
-
-#[cfg(all(
-    any(target_arch = "x86", target_arch = "x86_64"),
-    target_feature = "aes",
-    not(miri)
-))]
-mod aes_hash;
 mod fallback_hash;
-#[cfg(test)]
-mod hash_quality_test;
-
 mod operations;
 
 #[doc(hidden)]
@@ -38,34 +28,7 @@ pub const PI: [u64; 4] = [
     0x082e_fa98_ec4e_6c89,
 ];
 
-#[cfg(all(
-    any(target_arch = "x86", target_arch = "x86_64"),
-    target_feature = "aes",
-    not(miri)
-))]
-pub use self::aes_hash::AHasher;
-
-#[cfg(not(all(
-    any(target_arch = "x86", target_arch = "x86_64"),
-    target_feature = "aes",
-    not(miri)
-)))]
 pub use self::fallback_hash::AHasher;
-
-use core::hash::BuildHasher;
-use core::hash::Hash;
-
-/// Used for specialization. (Sealed)
-pub(crate) trait BuildHasherExt: BuildHasher {
-    #[doc(hidden)]
-    fn hash_as_u64<T: Hash + ?Sized>(&self, value: &T) -> u64;
-
-    #[doc(hidden)]
-    fn hash_as_fixed_length<T: Hash + ?Sized>(&self, value: &T) -> u64;
-
-    #[doc(hidden)]
-    fn hash_as_str<T: Hash + ?Sized>(&self, value: &T) -> u64;
-}
 
 #[cfg(feature = "std")]
 #[cfg(test)]

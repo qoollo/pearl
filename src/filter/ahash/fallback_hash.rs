@@ -9,7 +9,7 @@ use super::PI;
 use core::hash::Hasher;
 
 ///This constant come from Kunth's prng (Empirically it works better than those from splitmix32).
-pub(crate) const MULTIPLE: u64 = 6364136223846793005;
+pub const MULTIPLE: u64 = 6364136223846793005;
 const ROT: u32 = 23; //17
 
 /// A `Hasher` for hashing an arbitrary stream of bytes.
@@ -126,12 +126,6 @@ impl AHasher {
         self.update(block[0] ^ self.extra_keys[0]);
         self.update(block[1] ^ self.extra_keys[1]);
     }
-
-    #[inline]
-    #[cfg(feature = "specialize")]
-    fn short_finish(&self) -> u64 {
-        self.buffer.wrapping_add(self.pad)
-    }
 }
 
 /// Provides [Hasher] methods to hash all of the primitive types.
@@ -218,147 +212,6 @@ impl Hasher for AHasher {
         let rot = (self.buffer & 63) as u32;
         (self.buffer.wrapping_mul(MULTIPLE) ^ self.pad).rotate_left(rot)
     }
-}
-
-#[cfg(feature = "specialize")]
-pub(crate) struct AHasherU64 {
-    pub(crate) buffer: u64,
-    pub(crate) pad: u64,
-}
-
-/// A specialized hasher for only primitives under 64 bits.
-#[cfg(feature = "specialize")]
-impl Hasher for AHasherU64 {
-    #[inline]
-    fn finish(&self) -> u64 {
-        let rot = (self.pad & 63) as u32;
-        self.buffer.rotate_left(rot)
-    }
-
-    #[inline]
-    fn write(&mut self, _bytes: &[u8]) {
-        unreachable!("Specialized hasher was called with a different type of object")
-    }
-
-    #[inline]
-    fn write_u8(&mut self, i: u8) {
-        self.write_u64(i as u64);
-    }
-
-    #[inline]
-    fn write_u16(&mut self, i: u16) {
-        self.write_u64(i as u64);
-    }
-
-    #[inline]
-    fn write_u32(&mut self, i: u32) {
-        self.write_u64(i as u64);
-    }
-
-    #[inline]
-    fn write_u64(&mut self, i: u64) {
-        self.buffer = folded_multiply(i ^ self.buffer, MULTIPLE);
-    }
-
-    #[inline]
-    fn write_u128(&mut self, _i: u128) {
-        unreachable!("Specialized hasher was called with a different type of object")
-    }
-
-    #[inline]
-    fn write_usize(&mut self, _i: usize) {
-        unreachable!("Specialized hasher was called with a different type of object")
-    }
-}
-
-#[cfg(feature = "specialize")]
-pub(crate) struct AHasherFixed(pub AHasher);
-
-/// A specialized hasher for fixed size primitives larger than 64 bits.
-#[cfg(feature = "specialize")]
-impl Hasher for AHasherFixed {
-    #[inline]
-    fn finish(&self) -> u64 {
-        self.0.short_finish()
-    }
-
-    #[inline]
-    fn write(&mut self, bytes: &[u8]) {
-        self.0.write(bytes)
-    }
-
-    #[inline]
-    fn write_u8(&mut self, i: u8) {
-        self.write_u64(i as u64);
-    }
-
-    #[inline]
-    fn write_u16(&mut self, i: u16) {
-        self.write_u64(i as u64);
-    }
-
-    #[inline]
-    fn write_u32(&mut self, i: u32) {
-        self.write_u64(i as u64);
-    }
-
-    #[inline]
-    fn write_u64(&mut self, i: u64) {
-        self.0.write_u64(i);
-    }
-
-    #[inline]
-    fn write_u128(&mut self, i: u128) {
-        self.0.write_u128(i);
-    }
-
-    #[inline]
-    fn write_usize(&mut self, i: usize) {
-        self.0.write_usize(i);
-    }
-}
-
-#[cfg(feature = "specialize")]
-pub(crate) struct AHasherStr(pub AHasher);
-
-/// A specialized hasher for a single string
-/// Note that the other types don't panic because the hash impl for String tacks on an unneeded call. (As does vec)
-#[cfg(feature = "specialize")]
-impl Hasher for AHasherStr {
-    #[inline]
-    fn finish(&self) -> u64 {
-        self.0.finish()
-    }
-
-    #[inline]
-    fn write(&mut self, bytes: &[u8]) {
-        if bytes.len() > 8 {
-            self.0.write(bytes)
-        } else {
-            let value = read_small(bytes);
-            self.0.buffer =
-                folded_multiply(value[0] ^ self.0.buffer, value[1] ^ self.0.extra_keys[1]);
-            self.0.pad = self.0.pad.wrapping_add(bytes.len() as u64);
-        }
-    }
-
-    #[inline]
-    fn write_u8(&mut self, _i: u8) {}
-
-    #[inline]
-    fn write_u16(&mut self, _i: u16) {}
-
-    #[inline]
-    fn write_u32(&mut self, _i: u32) {}
-
-    #[inline]
-    fn write_u64(&mut self, _i: u64) {}
-
-    #[inline]
-    fn write_u128(&mut self, _i: u128) {}
-
-    #[inline]
-    fn write_usize(&mut self, _i: usize) {}
 }
 
 #[cfg(test)]
