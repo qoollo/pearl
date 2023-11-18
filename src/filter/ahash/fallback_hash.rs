@@ -216,8 +216,8 @@ impl Hasher for AHasher {
 
 #[cfg(test)]
 mod tests {
-    use crate::ahash::convert::Convert;
-    use crate::ahash::fallback_hash::*;
+    use super::super::convert::Convert;
+    use super::super::fallback_hash::*;
 
     #[test]
     fn test_hash() {

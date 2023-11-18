@@ -138,7 +138,7 @@ pub(crate) fn aesdec(value: u128, xor: u128) -> u128 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::ahash::convert::Convert;
+    use super::super::convert::Convert;
 
     // This is code to search for the shuffle constant
     //

@@ -73,7 +73,6 @@ pub use filter::{Bloom, BloomDataProvider, BloomProvider, Config as BloomConfig,
 
 pub use blob::Entry;
 pub use error::{Error, Kind as ErrorKind};
-pub use filter::ahash;
 pub use record::Meta;
 pub use rio;
 pub use storage::{Builder, Key, Storage};

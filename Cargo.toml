@@ -37,7 +37,6 @@ thiserror = "1.0"
 tokio-stream = "0.1"
 nix = "0.23.0"
 libc = "0.2"
-getrandom = { version = "0.2", optional = true }
 
 [dependencies.tokio]
 version = "1.14"
