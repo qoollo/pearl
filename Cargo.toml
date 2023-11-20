@@ -18,9 +18,6 @@ lto = true
 codegen-units = 1
 
 [dependencies]
-# Don't update without checking for backwards compatibility!!!
-ahash = "=0.7.4"
-
 anyhow = "1.0"
 async-trait = "0.1"
 bincode = "1.3"
@@ -59,3 +56,6 @@ required-features = ["benchmark"]
 
 [build-dependencies]
 chrono = "0.4"
+
+[dev-dependencies]
+hex = "0.4"

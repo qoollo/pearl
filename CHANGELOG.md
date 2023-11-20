@@ -8,6 +8,7 @@ Pearl changelog
 #### Changed
 
 #### Fixed
+- Fix build due to aHash crate was yanked (#298)
 
 #### Updated
 

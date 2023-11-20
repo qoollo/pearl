@@ -1,3 +1,5 @@
+/// aHash implementation
+mod ahash;
 /// Bloom filter
 pub mod bloom;
 /// Hierarchical
