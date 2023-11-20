@@ -8,7 +8,7 @@ Pearl changelog
 #### Changed
 
 #### Fixed
-- Fix build of version 0.9.5 (#298)
+- Fix build due to aHash crate was yanked (#298)
 
 #### Updated
 
