@@ -8,6 +8,16 @@ Pearl changelog
 #### Changed
 
 #### Fixed
+
+#### Updated
+
+
+## [0.9.6] - 2023-11-20
+#### Added
+
+#### Changed
+
+#### Fixed
 - Fix build due to aHash crate was yanked (#298)
 
 #### Updated
