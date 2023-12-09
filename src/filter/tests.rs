@@ -74,8 +74,8 @@ fn bloom_wyhash_seeded() {
             preferred_false_positive_rate: 8.,
         },
         vec![
-            WyHash::new(1, make_secret(2)),
-            WyHash::new(2, make_secret(3)),
+            WyHash::new(SEED1 as u64, make_secret(SEED2 as u64)),
+            WyHash::new(SEED3 as u64, make_secret(SEED4 as u64)),
         ],
     );
     println!("Seeded WyHash");

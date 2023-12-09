@@ -28,17 +28,17 @@ mean: 29580.6
 ok
 test filter::tests::bloom_wyhash_seeded ... [src/filter/bloom.rs:134] bits_count = 999998
 Seeded WyHash
-[1]-[100000] Collisions: 29620
-[100001]-[200000] Collisions: 29882
-[200001]-[300000] Collisions: 29529
-[300001]-[400000] Collisions: 29581
-[400001]-[500000] Collisions: 29851
-[500001]-[600000] Collisions: 29434
-[600001]-[700000] Collisions: 29808
-[700001]-[800000] Collisions: 29667
-[800001]-[900000] Collisions: 29495
-[900001]-[1000000] Collisions: 29458
-mean: 29632.5
+[1]-[100000] Collisions: 29606
+[100001]-[200000] Collisions: 29826
+[200001]-[300000] Collisions: 29516
+[300001]-[400000] Collisions: 29335
+[400001]-[500000] Collisions: 29364
+[500001]-[600000] Collisions: 29558
+[600001]-[700000] Collisions: 29676
+[700001]-[800000] Collisions: 29514
+[800001]-[900000] Collisions: 29700
+[900001]-[1000000] Collisions: 29452
+mean: 29554.7
 ok
 test filter::tests::bloom_wyhash_simple ... [src/filter/bloom.rs:134] bits_count = 1000000
 Simple WyHash
