@@ -2,19 +2,18 @@ use super::*;
 use ahash::AHasher;
 use bitvec::order::Lsb0;
 use bitvec::prelude::*;
-use std::hash::Hasher;
 
 // All usizes in structures are serialized as u64 in binary
 #[derive(Clone)]
 /// Bloom filter
-pub struct Bloom {
+pub struct Bloom<Hasher: SeededHash = AHasher> {
     inner: Option<BitVec<u64, Lsb0>>,
     bits_count: usize,
-    hashers: Vec<AHasher>,
+    hashers: Vec<Hasher>,
     config: Config,
 }
 
-impl Debug for Bloom {
+impl<Hasher: SeededHash> Debug for Bloom<Hasher> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         struct InnerDebug(usize, usize);
         impl Debug for InnerDebug {
@@ -35,7 +34,7 @@ impl Debug for Bloom {
     }
 }
 
-impl Default for Bloom {
+impl<Hasher: SeededHash> Default for Bloom<Hasher> {
     fn default() -> Self {
         Self {
             inner: Some(Default::default()),
@@ -47,7 +46,7 @@ impl Default for Bloom {
 }
 
 #[async_trait::async_trait]
-impl<K> FilterTrait<K> for Bloom
+impl<K, Hasher: SeededHash> FilterTrait<K> for Bloom<Hasher>
 where
     K: AsRef<[u8]> + Sync + Send,
 {
@@ -132,7 +131,7 @@ fn bits_count_from_formula(config: &Config) -> usize {
     let mut bits_count = (n * k as f64 / 2_f64.ln()) as usize;
     let fpr = config.preferred_false_positive_rate;
     bits_count = bits_count.max(max_bit_count.min(m_from_fpr(fpr, k as f64, n) as usize));
-    bits_count
+    dbg!(bits_count)
 }
 
 #[allow(dead_code)]
@@ -161,7 +160,7 @@ fn bits_count_via_iterations(config: &Config) -> usize {
     bits_count
 }
 
-impl Bloom {
+impl<Hasher: SeededHash> Bloom<Hasher> {
     /// Create new bloom filter
     pub fn new(config: Config) -> Self {
         let bits_count = bits_count_from_formula(&config);
@@ -173,9 +172,20 @@ impl Bloom {
         }
     }
 
+    /// Create new bloom filter
+    pub fn new_with_hashers(config: Config, hashers: Vec<Hasher>) -> Self {
+        let bits_count = bits_count_from_formula(&config);
+        Self {
+            inner: Some(bitvec![u64, Lsb0; 0; bits_count]),
+            hashers,
+            config,
+            bits_count,
+        }
+    }
+
     /// Merge filters
     #[must_use]
-    pub fn checked_add_assign(&mut self, other: &Bloom) -> bool {
+    pub fn checked_add_assign(&mut self, other: &Bloom<Hasher>) -> bool {
         match (&mut self.inner, &other.inner) {
             (Some(inner), Some(other_inner)) if inner.len() == other_inner.len() => {
                 inner
@@ -206,10 +216,11 @@ impl Bloom {
         freed
     }
 
-    fn hashers(k: usize) -> Vec<AHasher> {
+    fn hashers(k: usize) -> Vec<Hasher> {
         trace!("@TODO create configurable hashers???");
         (0..k)
-            .map(|i| AHasher::new_with_keys((i + 1) as u128, (i + 2) as u128))
+            // .map(|i| AHasher::new_with_keys((i + 1) as u128, (i + 2) as u128))
+            .map(|i| Hasher::new((i + 1) as u128))
             .collect()
     }
 
@@ -287,7 +298,7 @@ impl Bloom {
 
     // Returns empty iterator on len == 0
     fn iter_indices_for_key<'a>(
-        hashers: &'a Vec<AHasher>,
+        hashers: &'a Vec<Hasher>,
         len: u64,
         item: &'a [u8],
     ) -> impl Iterator<Item = u64> + 'a {

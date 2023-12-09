@@ -37,6 +37,7 @@ thiserror = "1.0"
 tokio-stream = "0.1"
 nix = "0.23.0"
 libc = "0.2"
+rand_core = "0.6"
 
 [dependencies.tokio]
 version = "1.14"
