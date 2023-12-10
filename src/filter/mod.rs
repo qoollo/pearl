@@ -51,10 +51,24 @@ impl SeededHash for AHasher {
     fn new(seed: u128) -> Self {
         Self::new_with_keys(seed, seed + 1)
     }
+
+    fn box_clone(&self) -> Box<dyn SeededHash>
+    where
+        Self: Sized,
+    {
+        Box::new(self.clone())
+    }
 }
 
 impl SeededHash for WyHash {
     fn new(seed: u128) -> Self {
         Self::new(seed as u64, wyhash3::make_secret(seed as u64))
+    }
+
+    fn box_clone(&self) -> Box<dyn SeededHash>
+    where
+        Self: Sized,
+    {
+        Box::new(self.clone())
     }
 }

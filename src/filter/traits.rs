@@ -56,7 +56,11 @@ pub trait FilterTrait<Key: Send + Sync>: Clone + Sync + Send {
 }
 
 /// Temp doc
-pub trait SeededHash: std::hash::Hasher + Send + Sync + Clone {
+pub trait SeededHash: std::hash::Hasher + Send + Sync {
     /// Temp doc
-    fn new(seed: u128) -> Self;
+    fn new(seed: u128) -> Self
+    where
+        Self: Sized;
+    /// Temp doc
+    fn box_clone(&self) -> Box<dyn SeededHash>;
 }

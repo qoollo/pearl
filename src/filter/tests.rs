@@ -82,7 +82,62 @@ fn bloom_wyhash_seeded() {
     test_collision(bloom);
 }
 
-fn test_collision<T: SeededHash>(mut bloom: Bloom<T>) {
+#[derive(Clone)]
+pub struct BoxedHasher(pub Box<dyn SeededHash>);
+
+impl SeededHash for BoxedHasher {
+    fn new(seed: u128) -> Self
+    where
+        Self: Sized,
+    {
+        todo!()
+    }
+
+    fn box_clone(&self) -> Box<dyn SeededHash> {
+        todo!()
+    }
+}
+
+impl Clone for Box<dyn SeededHash> {
+    fn clone(&self) -> Self {
+        self.box_clone()
+    }
+}
+
+impl std::hash::Hasher for BoxedHasher {
+    fn finish(&self) -> u64 {
+        self.0.finish()
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        self.0.write(bytes);
+    }
+}
+
+#[test]
+fn bloom_boxhash_seeded() {
+    let hashers: Vec<BoxedHasher> = vec![
+        BoxedHasher(Box::new(AHasher::new_with_keys(SEED3, SEED4))),
+        BoxedHasher(Box::new(WyHash::new(
+            SEED1 as u64,
+            make_secret(SEED2 as u64),
+        ))),
+    ];
+    let mut bloom = Bloom::<BoxedHasher>::new_with_hashers(
+        super::Config {
+            elements: (500_000. * 2_f64.ln()) as usize, // 1_000_000 bits
+            hashers_count: 2,
+            max_buf_bits_count: 1_000_000,
+            buf_increase_step: 1,
+            preferred_false_positive_rate: 8.,
+        },
+        hashers,
+    );
+    println!("Ahash + WyHash");
+    test_collision(bloom);
+}
+
+fn test_collision<T: SeededHash + Clone>(mut bloom: Bloom<T>) {
     let mut res = vec![];
     (0..10).into_iter().for_each(|iter| {
         bloom.clear();

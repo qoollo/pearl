@@ -6,14 +6,14 @@ use bitvec::prelude::*;
 // All usizes in structures are serialized as u64 in binary
 #[derive(Clone)]
 /// Bloom filter
-pub struct Bloom<Hasher: SeededHash = AHasher> {
+pub struct Bloom<Hasher: SeededHash + Clone = AHasher> {
     inner: Option<BitVec<u64, Lsb0>>,
     bits_count: usize,
     hashers: Vec<Hasher>,
     config: Config,
 }
 
-impl<Hasher: SeededHash> Debug for Bloom<Hasher> {
+impl<Hasher: SeededHash + Clone> Debug for Bloom<Hasher> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         struct InnerDebug(usize, usize);
         impl Debug for InnerDebug {
@@ -34,7 +34,7 @@ impl<Hasher: SeededHash> Debug for Bloom<Hasher> {
     }
 }
 
-impl<Hasher: SeededHash> Default for Bloom<Hasher> {
+impl<Hasher: SeededHash + Clone> Default for Bloom<Hasher> {
     fn default() -> Self {
         Self {
             inner: Some(Default::default()),
@@ -46,7 +46,7 @@ impl<Hasher: SeededHash> Default for Bloom<Hasher> {
 }
 
 #[async_trait::async_trait]
-impl<K, Hasher: SeededHash> FilterTrait<K> for Bloom<Hasher>
+impl<K, Hasher: SeededHash + Clone> FilterTrait<K> for Bloom<Hasher>
 where
     K: AsRef<[u8]> + Sync + Send,
 {
@@ -160,7 +160,7 @@ fn bits_count_via_iterations(config: &Config) -> usize {
     bits_count
 }
 
-impl<Hasher: SeededHash> Bloom<Hasher> {
+impl<Hasher: SeededHash + Clone> Bloom<Hasher> {
     /// Create new bloom filter
     pub fn new(config: Config) -> Self {
         let bits_count = bits_count_from_formula(&config);
