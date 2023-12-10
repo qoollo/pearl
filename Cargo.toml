@@ -56,7 +56,6 @@ features = ["fs", "io-util", "sync", "time", "rt", "macros", "rt-multi-thread"]
 [features]
 benchmark = ["dep:clap", "dep:env_logger"]
 async-io-rio = ["dep:rio"]
-default = ["runtime-rng"]
 
 [lib]
 name = "pearl"
