@@ -87,14 +87,14 @@ fn test_collision<T: SeededHash>(mut bloom: Bloom<T>) {
     (0..10).into_iter().for_each(|iter| {
         bloom.clear();
         (1..=100_000).into_iter().for_each(|key| {
-            bloom.add(((100_000 * iter + key) as u64).to_be_bytes());
+            bloom.add(((100_000 * iter + key) as u64).to_le_bytes());
         });
         res.push(
             (1..=1_000_000u64)
                 .into_iter()
                 .filter(|&key| {
                     matches!(
-                        bloom.contains_in_memory(key.to_be_bytes()).unwrap(),
+                        bloom.contains_in_memory(key.to_le_bytes()).unwrap(),
                         FilterResult::NeedAdditionalCheck
                     ) && (key <= 100_000 * iter || key > 100_000 * (iter + 1))
                 })

@@ -1,56 +1,57 @@
 test filter::tests::bloom_ahash_seeded ... [src/filter/bloom.rs:134] bits_count = 999998
 Seeded AHash
-[1]-[100000] Collisions: 29457
-[100001]-[200000] Collisions: 29806
-[200001]-[300000] Collisions: 29581
-[300001]-[400000] Collisions: 29541
-[400001]-[500000] Collisions: 29460
-[500001]-[600000] Collisions: 29633
-[600001]-[700000] Collisions: 29399
-[700001]-[800000] Collisions: 29349
-[800001]-[900000] Collisions: 29218
-[900001]-[1000000] Collisions: 29828
-mean: 29527.2
+[1]-[100000] Collisions: 29608
+[100001]-[200000] Collisions: 29482
+[200001]-[300000] Collisions: 29564
+[300001]-[400000] Collisions: 29509
+[400001]-[500000] Collisions: 29576
+[500001]-[600000] Collisions: 29747
+[600001]-[700000] Collisions: 29274
+[700001]-[800000] Collisions: 29826
+[800001]-[900000] Collisions: 29524
+[900001]-[1000000] Collisions: 29660
+mean: 29577
 ok
 test filter::tests::bloom_ahash_simple ... [src/filter/bloom.rs:134] bits_count = 999998
 Simple AHash
-[1]-[100000] Collisions: 29655
-[100001]-[200000] Collisions: 29707
-[200001]-[300000] Collisions: 29723
-[300001]-[400000] Collisions: 29554
-[400001]-[500000] Collisions: 29162
-[500001]-[600000] Collisions: 29449
-[600001]-[700000] Collisions: 29469
-[700001]-[800000] Collisions: 29631
-[800001]-[900000] Collisions: 29758
-[900001]-[1000000] Collisions: 29698
-mean: 29580.6
+[1]-[100000] Collisions: 29501
+[100001]-[200000] Collisions: 29683
+[200001]-[300000] Collisions: 29792
+[300001]-[400000] Collisions: 29564
+[400001]-[500000] Collisions: 29740
+[500001]-[600000] Collisions: 29704
+[600001]-[700000] Collisions: 29659
+[700001]-[800000] Collisions: 29496
+[800001]-[900000] Collisions: 29244
+[900001]-[1000000] Collisions: 29363
+mean: 29574.6
 ok
 test filter::tests::bloom_wyhash_seeded ... [src/filter/bloom.rs:134] bits_count = 999998
 Seeded WyHash
-[1]-[100000] Collisions: 29606
-[100001]-[200000] Collisions: 29826
-[200001]-[300000] Collisions: 29516
-[300001]-[400000] Collisions: 29335
-[400001]-[500000] Collisions: 29364
-[500001]-[600000] Collisions: 29558
-[600001]-[700000] Collisions: 29676
-[700001]-[800000] Collisions: 29514
-[800001]-[900000] Collisions: 29700
-[900001]-[1000000] Collisions: 29452
-mean: 29554.7
+[1]-[100000] Collisions: 29379
+[100001]-[200000] Collisions: 29508
+[200001]-[300000] Collisions: 29634
+[300001]-[400000] Collisions: 29404
+[400001]-[500000] Collisions: 29772
+[500001]-[600000] Collisions: 29609
+[600001]-[700000] Collisions: 29459
+[700001]-[800000] Collisions: 29612
+[800001]-[900000] Collisions: 29701
+[900001]-[1000000] Collisions: 29480
+mean: 29555.8
 ok
 test filter::tests::bloom_wyhash_simple ... [src/filter/bloom.rs:134] bits_count = 1000000
 Simple WyHash
-[1]-[100000] Collisions: 29344
-[100001]-[200000] Collisions: 29754
-[200001]-[300000] Collisions: 29558
-[300001]-[400000] Collisions: 29565
-[400001]-[500000] Collisions: 29608
-[500001]-[600000] Collisions: 29839
-[600001]-[700000] Collisions: 29669
-[700001]-[800000] Collisions: 29510
-[800001]-[900000] Collisions: 29489
-[900001]-[1000000] Collisions: 29550
-mean: 29588.6
+[1]-[100000] Collisions: 29540
+[100001]-[200000] Collisions: 29821
+[200001]-[300000] Collisions: 29365
+[300001]-[400000] Collisions: 29661
+[400001]-[500000] Collisions: 29355
+[500001]-[600000] Collisions: 29721
+[600001]-[700000] Collisions: 29417
+[700001]-[800000] Collisions: 29605
+[800001]-[900000] Collisions: 29572
+[900001]-[1000000] Collisions: 29403
+mean: 29546
 ok
+
