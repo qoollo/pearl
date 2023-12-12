@@ -5,12 +5,15 @@ Pearl changelog
 ## [Unreleased]
 #### Added
 
+
 #### Changed
+
 
 #### Fixed
 - Fix the build by adding yanked aHash implementation (#302)
 
 #### Updated
+
 
 
 ## [0.20.0] - 2023-09-22
