@@ -1,3 +1,22 @@
+//! aHash version 0.7.4 (commit ffa04fcb81f39755f636c75c9b7aa06533c0ae75) is used for `Bloom`
+//! filter. Several key tests were performed in order to determine the best hash function for this
+//! scenario. Results for aHash were compared with Wyhash as the second best after aHash.
+//!
+//! Results are the following:
+//! 1. [SMHasher](https://github.com/rurban/smhasher)
+//!     a. AHash: All tests passed
+//!     b. Wyhash: PerlinNoise test failed
+//! 2. [SMHasher3](https://gitlab.com/fwojcik/smhasher3)
+//!     a. AHash: 118 / 188 passed
+//!     b. Wyhash: 160 / 188 passed
+//! 3. Mean Bloom filter's false-positive amount of 100k keys in 1M-sized bitvec:
+//!     a. AHash: 29574.6
+//!     b. Wyhash: 29546
+//! 4. Average Speed:
+//!     a. AHash: 23.20 cycles/hash
+//!     b. Wyhash: 22.27 cycles/hash
+//!
+
 use super::*;
 use ahash::AHasher;
 use atomic_bitvec::*;

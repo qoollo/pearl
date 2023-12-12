@@ -10,7 +10,7 @@ Pearl changelog
 
 
 #### Fixed
-
+- Fix the build by adding yanked aHash implementation (#302)
 
 #### Updated
 
