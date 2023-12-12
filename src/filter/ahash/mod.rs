@@ -17,10 +17,10 @@
 
 #[macro_use]
 mod convert;
-mod fallback_hash;
-mod operations;
 #[cfg(test)]
 mod compatibility_test;
+mod fallback_hash;
+mod operations;
 
 #[doc(hidden)]
 pub const PI: [u64; 4] = [

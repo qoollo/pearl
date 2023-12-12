@@ -1,5 +1,5 @@
-use std::hash::Hasher;
 use super::AHasher;
+use std::hash::Hasher;
 
 #[test]
 fn test_hash_algorithm_compat() {
@@ -16,4 +16,3 @@ fn test_hash(data: &[u8], eq_to: u64) {
 
     assert_eq!(hash_7, eq_to);
 }
-
