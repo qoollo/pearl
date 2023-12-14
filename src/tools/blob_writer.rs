@@ -67,7 +67,7 @@ impl BlobWriter {
         let mut reader = BlobReader::from_file(file)?;
         let header = reader.read_header()?;
         if header != *written_header {
-            return Err(Error::blob_header_validation_error(
+            return Err(ToolsError::blob_header_validation_error(
                 "validation of written blob header failed",
             )
             .into());
@@ -97,7 +97,7 @@ impl BlobWriter {
         for record in cache.iter() {
             let written_record = reader.read_single_record()?;
             if record != &written_record {
-                return Err(Error::record_validation_error(
+                return Err(ToolsError::record_validation_error(
                     "Written and cached records is not equal",
                 )
                 .into());

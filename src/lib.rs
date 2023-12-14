@@ -102,7 +102,7 @@ mod prelude {
             Arc,
         },
     };
-    pub(crate) use thiserror::Error;
+    pub(crate) use thiserror::Error as ThisError;
     pub(crate) use tokio::{
         fs::{read_dir, DirEntry},
         sync::{RwLock, Semaphore},

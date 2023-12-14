@@ -65,7 +65,7 @@ impl BlobReader {
         self.position += bincode::serialized_size(&header)?;
         header.validate().map_err(|err| {
             self.latest_wrong_header = Some(header.clone());
-            Error::record_header_validation_error(err.to_string())
+            ToolsError::record_header_validation_error(err.to_string())
         })?;
         self.latest_wrong_header = None;
 
@@ -82,7 +82,7 @@ impl BlobReader {
         let record = Record { header, meta, data };
         let record = record
             .validate()
-            .map_err(|err| Error::record_validation_error(err.to_string()))?;
+            .map_err(|err| ToolsError::record_validation_error(err.to_string()))?;
         Ok(record)
     }
 
@@ -91,14 +91,14 @@ impl BlobReader {
         let header = self
             .latest_wrong_header
             .as_ref()
-            .ok_or_else(|| Error::skip_record_data_error("wrong header not found"))?;
+            .ok_or_else(|| ToolsError::skip_record_data_error("wrong header not found"))?;
         let position = self
             .position
             .checked_add(header.data_size())
             .and_then(|x| x.checked_add(header.meta_size()))
-            .ok_or_else(|| Error::skip_record_data_error("position overflow"))?;
+            .ok_or_else(|| ToolsError::skip_record_data_error("position overflow"))?;
         if position >= self.len {
-            return Err(Error::skip_record_data_error("position is bigger than file size").into());
+            return Err(ToolsError::skip_record_data_error("position is bigger than file size").into());
         }
         self.file.seek(SeekFrom::Start(position))?;
         debug!("Skipped {} bytes", position - self.position);
@@ -113,9 +113,9 @@ impl BlobReader {
         match self.read_single_record() {
             Ok(record) => Ok(record),
             Err(error) => {
-                match error.downcast_ref::<Error>() {
-                    Some(Error::RecordValidation(_)) => {}
-                    Some(Error::RecordHeaderValidation(_)) => self.skip_wrong_record_data()?,
+                match error.downcast_ref::<ToolsError>() {
+                    Some(ToolsError::RecordValidation(_)) => {}
+                    Some(ToolsError::RecordHeaderValidation(_)) => self.skip_wrong_record_data()?,
                     _ => return Err(error),
                 }
                 warn!("Record read error, trying read next record: {}", error);

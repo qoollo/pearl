@@ -7,7 +7,7 @@ impl Record {
         match (source, target) {
             (source, target) if source >= target => Ok(self),
             (0, 1) => self.mirgate_v0_to_v1(),
-            (source, target) => Err(Error::unsupported_migration(source, target).into()),
+            (source, target) => Err(ToolsError::unsupported_migration(source, target).into()),
         }
     }
 
@@ -40,7 +40,7 @@ impl BlobHeader {
         match (source_version, target_version) {
             (source, target) if source >= target => Ok(self),
             (0, 1) => self.mirgate_v0_to_v1(),
-            (source, target) => Err(Error::unsupported_migration(source, target).into()),
+            (source, target) => Err(ToolsError::unsupported_migration(source, target).into()),
         }
     }
 

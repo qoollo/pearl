@@ -3,7 +3,7 @@ use thiserror::Error;
 
 /// Error type
 #[derive(Debug, Error)]
-pub enum Error {
+pub enum ToolsError {
     /// Failed to validate record header
     #[error("record header validation error: {0}")]
     RecordHeaderValidation(String),
@@ -30,7 +30,7 @@ pub enum Error {
     UnsupportedKeySize(u16),
 }
 
-impl Error {
+impl ToolsError {
     pub(crate) fn record_header_validation_error(message: impl Into<String>) -> Self {
         Self::RecordHeaderValidation(message.into())
     }

@@ -27,12 +27,6 @@ lto = true
 codegen-units = 1
 
 [dependencies]
-# Don't update without checking for backwards compatibility!!!
-# ahash = "=0.7.6"
-
-# ahash = 0.7.6 release
-ahash = { git = 'https://github.com/tkaitchuck/aHash/', rev = 'e77cab8c1e15bfc9f54dfd28bd8820c2a7bb27c4' } 
-
 anyhow = "1.0"
 async-trait = "0.1"
 bincode = "1.3"
@@ -79,3 +73,4 @@ env_logger = "0.9"
 chrono = "0.4"
 rand = "0.8"
 rusty-fork = "0.3.0"
+hex = "0.4"
