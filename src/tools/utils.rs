@@ -144,7 +144,7 @@ where
             let res = index.get_records_headers(index.blob_size()).await?;
             AnyResult::<_>::Ok(res.0)
         }
-        _ => return Err(Error::index_header_validation_error("unsupported header version").into()),
+        _ => return Err(ToolsError::index_header_validation_error("unsupported header version").into()),
     }?;
     let headers = headers
         .into_iter()
@@ -163,7 +163,7 @@ pub async fn read_index(path: &Path) -> AnyResult<BTreeMap<Vec<u8>, Vec<record::
         32 => index_from_file::<ArrayKey<32>>(&header, path).await,
         64 => index_from_file::<ArrayKey<64>>(&header, path).await,
         128 => index_from_file::<ArrayKey<128>>(&header, path).await,
-        size => return Err(Error::unsupported_key_size(size).into()),
+        size => return Err(ToolsError::unsupported_key_size(size).into()),
     }?;
     for (_, headers) in headers.iter() {
         for header in headers {
