@@ -29,7 +29,6 @@ mod prelude {
         io::Write,
         ops::Add,
         path::{Path, PathBuf},
-        sync::Arc,
         time::{Duration, Instant},
     };
 }
@@ -79,13 +78,12 @@ async fn start_app() {
 
     let prepared = (0..futures_limit).map(|_| generator.next().unwrap());
     {
-        let arc_writer = Arc::new(&writer);
         let mut futures_pool: FuturesUnordered<_> = prepared
             .into_iter()
             .map(|(key, data)| {
                 let ltx = tx.clone();
                 counter += 1;
-                arc_writer.write(key, data, ltx)
+                writer.write(key, data, ltx)
             })
             .collect();
         println!(
@@ -115,7 +113,7 @@ async fn start_app() {
                 if let Some((key, data)) = generator.next() {
                     let ltx = tx.clone();
                     counter += 1;
-                    futures_pool.push(arc_writer.write(key.into(), data, ltx));
+                    futures_pool.push(writer.write(key.into(), data, ltx));
                 }
             }
             debug!("#{}/{} next await", counter, futures_pool.len());

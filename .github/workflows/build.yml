@@ -29,6 +29,11 @@ jobs:
         with:
           command: build
           args: --features async-io-rio
+      - name: Build benchmarks
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --features benchmark
 
   build-windows:
     runs-on: windows-latest
