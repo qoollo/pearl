@@ -47,13 +47,14 @@ async-lock = "2.7"
 # Benchmark only dependencies
 clap = { version = "3.2", optional = true }
 env_logger = { version = "0.9", optional = true }
+rand = { version = "0.8", optional = true }
 
 [dependencies.tokio]
 version = "1.28"
 features = ["fs", "io-util", "sync", "time", "rt", "macros", "rt-multi-thread"]
 
 [features]
-benchmark = ["dep:clap", "dep:env_logger"]
+benchmark = ["dep:clap", "dep:env_logger", "dep:rand"]
 async-io-rio = ["dep:rio"]
 
 [lib]

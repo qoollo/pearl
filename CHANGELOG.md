@@ -10,6 +10,7 @@ Pearl changelog
 
 
 #### Fixed
+- Fixed benchmark build error (#296)
 - Fixed build warnings (#300)
 - Fix the build by adding yanked aHash implementation (#302)
 

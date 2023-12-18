@@ -23,13 +23,12 @@ mod prelude {
         stream::{FuturesUnordered, StreamExt},
     };
     pub(crate) use log::{Level, LevelFilter};
-    pub(crate) use pearl::{Builder, Key, Storage};
+    pub(crate) use pearl::{BlobRecordTimestamp, Builder, Key, RefKey, Storage};
     pub(crate) use rand::{rngs::ThreadRng, RngCore};
     pub(crate) use std::{
         io::Write,
         ops::Add,
         path::{Path, PathBuf},
-        sync::Arc,
         time::{Duration, Instant},
     };
 }
@@ -73,62 +72,62 @@ async fn start_app() {
 
     info!("Start write cycle");
     let (tx, rx) = channel::<statistics::Report>(1024);
-    let writer = Arc::new(writer);
     let mut counter = 0;
 
     let futures_limit: usize = matches.value_of("futures_limit").unwrap().parse().unwrap();
 
     let prepared = (0..futures_limit).map(|_| generator.next().unwrap());
-
-    let mut futures_pool: FuturesUnordered<_> = prepared
-        .into_iter()
-        .map(|(key, data)| {
-            let ltx = tx.clone();
-            counter += 1;
-            writer.write(key, data, ltx)
-        })
-        .collect();
-    println!(
-        "{:<10}{:<10}{:<10}{:<10}{:<10}",
-        "Completed", "Active", "Limit", "Total", "%"
-    );
-    let write_limit = limit * 1000 / value_size_kb;
-    let mut prev_p = 0;
-    while futures_pool.next().await.is_some() {
-        debug!("#{}/{} future ready", counter, futures_pool.len());
-        let percent = counter * 1000 / write_limit;
-        if prev_p != percent {
-            print!(
-                "\r{:<10}{:<10}{:<10}{:<10}{:<10}",
-                counter,
-                futures_pool.len(),
-                futures_limit,
-                write_limit,
-                percent / 10
-            );
-            if percent % 50 == 0 {
-                println!();
-            }
-        }
-        prev_p = percent;
-        if futures_pool.len() < futures_limit {
-            if let Some((key, data)) = generator.next() {
+    {
+        let mut futures_pool: FuturesUnordered<_> = prepared
+            .into_iter()
+            .map(|(key, data)| {
                 let ltx = tx.clone();
                 counter += 1;
-                futures_pool.push(writer.write(key.into(), data, ltx));
+                writer.write(key, data, ltx)
+            })
+            .collect();
+        println!(
+            "{:<10}{:<10}{:<10}{:<10}{:<10}",
+            "Completed", "Active", "Limit", "Total", "%"
+        );
+        let write_limit = limit * 1000 / value_size_kb;
+        let mut prev_p = 0;
+        while futures_pool.next().await.is_some() {
+            debug!("#{}/{} future ready", counter, futures_pool.len());
+            let percent = counter * 1000 / write_limit;
+            if prev_p != percent {
+                print!(
+                    "\r{:<10}{:<10}{:<10}{:<10}{:<10}",
+                    counter,
+                    futures_pool.len(),
+                    futures_limit,
+                    write_limit,
+                    percent / 10
+                );
+                if percent % 50 == 0 {
+                    println!();
+                }
             }
+            prev_p = percent;
+            if futures_pool.len() < futures_limit {
+                if let Some((key, data)) = generator.next() {
+                    let ltx = tx.clone();
+                    counter += 1;
+                    futures_pool.push(writer.write(key.into(), data, ltx));
+                }
+            }
+            debug!("#{}/{} next await", counter, futures_pool.len());
         }
-        debug!("#{}/{} next await", counter, futures_pool.len());
-    }
 
-    info!("start await ");
-    let _ = rx
-        .take(counter as usize)
-        .map(|r| statistics.add(r))
-        .collect::<Vec<_>>()
-        .await;
-    info!("end await ");
-    statistics.display();
+        info!("start await ");
+        let _ = rx
+            .take(counter as usize)
+            .map(|r| statistics.add(r))
+            .collect::<Vec<_>>()
+            .await;
+        info!("end await ");
+        statistics.display();
+    }
     writer.close().await;
 }
 
@@ -206,8 +205,21 @@ fn init_logger() {
 #[derive(Debug, Default, PartialOrd, Ord, PartialEq, Eq, Clone)]
 pub struct Key128(Vec<u8>);
 
-impl Key for Key128 {
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub struct RefKeyType<'a>(&'a [u8]);
+
+impl<'a> From<&'a [u8]> for RefKeyType<'a> {
+    fn from(v: &'a [u8]) -> Self {
+        Self(v)
+    }
+}
+
+impl<'a> RefKey<'a> for RefKeyType<'a> {}
+
+impl<'a> Key<'a> for Key128 {
     const LEN: u16 = 8;
+    const MEM_SIZE: usize = 16 * 8;
+    type Ref = RefKeyType<'a>;
 }
 
 impl AsRef<Key128> for Key128 {
@@ -220,6 +232,13 @@ impl From<Vec<u8>> for Key128 {
     fn from(v: Vec<u8>) -> Self {
         assert_eq!(Self::LEN as usize, v.len());
         Self(v)
+    }
+}
+
+impl<'a> From<&'a [u8]> for Key128 {
+    fn from(v: &'a [u8]) -> Self {
+        assert_eq!(Self::LEN as usize, v.len());
+        Self(v.to_vec())
     }
 }
 
