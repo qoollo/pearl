@@ -10,6 +10,20 @@ Pearl changelog
 
 
 #### Fixed
+
+
+#### Updated
+
+
+
+## [0.21.0] - 2023-12-18
+#### Added
+
+
+#### Changed
+
+
+#### Fixed
 - Fixed benchmark build error (#296)
 - Fixed build warnings (#300)
 - Fix the build by adding yanked aHash implementation (#302)
